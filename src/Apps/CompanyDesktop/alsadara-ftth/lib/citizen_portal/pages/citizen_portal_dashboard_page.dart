@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/company_model.dart';
 import '../services/company_api_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// شاشة بوابة المواطن - تظهر فقط للشركة المرتبطة بنظام المواطن
 class CitizenPortalDashboardPage extends StatefulWidget {
@@ -65,13 +66,13 @@ class _CitizenPortalDashboardPageState
       return Scaffold(
         appBar: AppBar(
           title: const Text('بوابة المواطن'),
-          backgroundColor: Colors.teal,
+          backgroundColor: SdColors.accent,
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+              const Icon(Icons.error_outline, size: 64, color: SdColors.danger),
               const SizedBox(height: 16),
               Text(errorMessage!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
@@ -89,13 +90,13 @@ class _CitizenPortalDashboardPageState
       return Scaffold(
         appBar: AppBar(
           title: const Text('بوابة المواطن'),
-          backgroundColor: Colors.teal,
+          backgroundColor: SdColors.accent,
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.lock, size: 80, color: Colors.grey[400]),
+              Icon(Icons.lock, size: 80, color: SdColors.faint),
               const SizedBox(height: 24),
               Text(
                 'بوابة المواطن غير متاحة',
@@ -104,13 +105,13 @@ class _CitizenPortalDashboardPageState
               const SizedBox(height: 16),
               Text(
                 'هذه الشركة غير مرتبطة بنظام المواطن',
-                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 16, color: SdColors.muted),
               ),
               const SizedBox(height: 8),
               if (linkedCompany != null)
                 Text(
                   'الشركة المرتبطة حالياً: ${linkedCompany!.name}',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 14, color: SdColors.faint),
                 ),
             ],
           ),
@@ -122,7 +123,7 @@ class _CitizenPortalDashboardPageState
     return Scaffold(
       appBar: AppBar(
         title: const Text('بوابة المواطن'),
-        backgroundColor: Colors.teal,
+        backgroundColor: SdColors.accent,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -141,7 +142,7 @@ class _CitizenPortalDashboardPageState
               padding: EdgeInsets.all(isPhone ? 12 : 20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.teal, Colors.teal.shade700],
+                  colors: [SdColors.accent, SdColors.accent],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -189,25 +190,25 @@ class _CitizenPortalDashboardPageState
                   'المواطنين',
                   '0', // TODO: جلب من API
                   Icons.people,
-                  Colors.blue,
+                  SdColors.info,
                 ),
                 _buildStatCard(
                   'الطلبات الجديدة',
                   '0', // TODO: جلب من API
                   Icons.assignment,
-                  Colors.orange,
+                  SdColors.warning,
                 ),
                 _buildStatCard(
                   'الاشتراكات الفعالة',
                   '0', // TODO: جلب من API
                   Icons.wifi,
-                  Colors.green,
+                  SdColors.success,
                 ),
                 _buildStatCard(
                   'تذاكر الدعم',
                   '0', // TODO: جلب من API
                   Icons.support_agent,
-                  Colors.purple,
+                  SdColors.platformBase,
                 ),
               ],
             ),
@@ -230,37 +231,37 @@ class _CitizenPortalDashboardPageState
                 _buildActionCard(
                   'إدارة المواطنين',
                   Icons.people_outline,
-                  Colors.blue,
+                  SdColors.info,
                   () => _navigateToPage('citizens'),
                 ),
                 _buildActionCard(
                   'طلبات الاشتراك',
                   Icons.assignment_outlined,
-                  Colors.orange,
+                  SdColors.warning,
                   () => _navigateToPage('requests'),
                 ),
                 _buildActionCard(
                   'الاشتراكات',
                   Icons.wifi,
-                  Colors.green,
+                  SdColors.success,
                   () => _navigateToPage('subscriptions'),
                 ),
                 _buildActionCard(
                   'الدعم الفني',
                   Icons.support_agent,
-                  Colors.purple,
+                  SdColors.platformBase,
                   () => _navigateToPage('support'),
                 ),
                 _buildActionCard(
                   'طلبات المتجر',
                   Icons.shopping_cart,
-                  Colors.indigo,
+                  SdColors.primary,
                   () => _navigateToPage('store-orders'),
                 ),
                 _buildActionCard(
                   'التقارير',
                   Icons.bar_chart,
-                  Colors.teal,
+                  SdColors.accent,
                   () => _navigateToPage('reports'),
                 ),
               ],

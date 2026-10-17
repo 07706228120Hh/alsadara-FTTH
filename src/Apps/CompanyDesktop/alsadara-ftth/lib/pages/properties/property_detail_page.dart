@@ -8,7 +8,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -88,7 +87,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+        content: Text(m, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
         backgroundColor: err ? SdColors.danger : SdColors.success,
       ),
     );
@@ -108,23 +107,23 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: Text('حذف العقار؟',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           content: Text(
             'سيُحذف العقار ويُفكّ ربط مواطنيه وخدماته (لا يُحذف المواطنون من النظام).',
-            style: GoogleFonts.cairo(),
+            style: TextStyle(fontFamily: 'Cairo'),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text('إلغاء',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
               style:
                   FilledButton.styleFrom(backgroundColor: SdColors.danger),
               child: Text('حذف',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
             ),
           ],
         ),
@@ -207,20 +206,21 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: Text('حذف الخدمة؟',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           content: Text('سيُحذف ربط خدمة «${s.serviceTypeLabel}» بهذا العقار.',
-              style: GoogleFonts.cairo()),
+              style: TextStyle(fontFamily: 'Cairo')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text('إلغاء',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
               style: FilledButton.styleFrom(backgroundColor: SdColors.danger),
               child: Text('حذف',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.w800, color: Colors.white)),
             ),
           ],
@@ -353,12 +353,12 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 labelColor: SdColors.primary,
-                unselectedLabelColor: Colors.grey,
+                unselectedLabelColor: SdColors.faint,
                 indicatorColor: SdColors.primary,
                 labelStyle:
-                    GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 13),
+                    TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 13),
                 unselectedLabelStyle:
-                    GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 13),
+                    TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 13),
                 tabs: [
                   const Tab(text: 'المعلومات الأساسية'),
                   Tab(text: 'الخدمات (${d.services.length})'),
@@ -423,12 +423,12 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             color: Colors.transparent,
             child: TabBar(
               labelColor: SdColors.primary,
-              unselectedLabelColor: Colors.grey,
+              unselectedLabelColor: SdColors.faint,
               indicatorColor: SdColors.primary,
               labelStyle:
-                  GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 12.5),
+                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 12.5),
               unselectedLabelStyle:
-                  GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 12.5),
+                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 12.5),
               tabs: [
                 for (final t in types)
                   Tab(
@@ -472,7 +472,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
               ),
               icon: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
               label: Text('إضافة خدمة $typeLabel',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.w800, color: Colors.white)),
             ),
           ),
@@ -482,8 +483,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             padding: const EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: Text('لا خدمات $typeLabel لهذا العقار بعد',
-                  style: GoogleFonts.cairo(
-                      color: Colors.grey[600], fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.muted, fontWeight: FontWeight.w600)),
             ),
           )
         else
@@ -511,10 +513,11 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
       child: Column(
         children: [
           Text('العنوان الوطني',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontWeight: FontWeight.w800,
                   fontSize: 14,
-                  color: Colors.grey[700])),
+                  color: SdColors.muted)),
           const SizedBox(height: 12),
           if (payload.isNotEmpty)
             Container(
@@ -543,7 +546,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           SelectableText(
             p.displayTitle,
             textAlign: TextAlign.center,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontWeight: FontWeight.w900,
                 fontSize: 20,
                 letterSpacing: 1,
@@ -553,8 +557,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: SelectableText('IQ-Pin: ${p.iqPinDisplay}',
-                  style: GoogleFonts.cairo(
-                      color: Colors.grey[700], fontWeight: FontWeight.w700)),
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.muted, fontWeight: FontWeight.w700)),
             ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
@@ -566,7 +571,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
             ),
             icon: const Icon(Icons.print_rounded),
             label: Text('طباعة اللصاقة',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -623,7 +628,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
               icon: const Icon(Icons.map_rounded),
               label: Text(
                   'الموقع: ${p.latitude!.toStringAsFixed(5)}, ${p.longitude!.toStringAsFixed(5)}',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
           ],
         ],
@@ -647,7 +652,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     onPressed: _linkCitizen,
                     icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
                     label: Text('ربط مواطن',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                   )
                 : null,
           ),
@@ -657,8 +662,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Text(
                 'لا مواطنون مربوطون بعد — اربط مالكاً أو مستأجراً أو ساكناً.',
-                style: GoogleFonts.cairo(
-                    color: Colors.grey[600], fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.muted, fontWeight: FontWeight.w600),
               ),
             )
           else
@@ -694,7 +700,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     child: Text(r.name.isEmpty ? 'مواطن' : r.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.w800, color: PropUi.ink)),
                   ),
                   if (r.isPrimary) ...[
@@ -714,7 +721,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style:
-                    GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600]),
+                    TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.muted),
               ),
             ],
           ),
@@ -734,7 +741,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
     final statusColor = switch (s.status.toLowerCase()) {
       'active' => SdColors.success,
       'suspended' => SdColors.warning,
-      _ => Colors.grey,
+      _ => SdColors.faint,
     };
     final isInternet = s.serviceType.toLowerCase() == 'internet';
     final isMaster = s.serviceType.toLowerCase() == 'master';
@@ -775,7 +782,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     [s.serviceTypeLabel, s.providerTypeLabel]
                         .where((x) => x.trim().isNotEmpty && x != '—')
                         .join(' · '),
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.w800, color: PropUi.ink),
                   ),
                   if ([s.subscriberRef, s.providerRefId]
@@ -786,15 +794,17 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                           .join(' · '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
-                          fontSize: 12, color: Colors.grey[600]),
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 12, color: SdColors.muted),
                     ),
                   for (final line in extra)
                     Text(
                       line,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: SdColors.primary),
@@ -859,7 +869,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                 builder: (context, snap) {
                   if (snap.connectionState != ConnectionState.done) {
                     return Container(
-                      color: Colors.grey.withValues(alpha: 0.12),
+                      color: SdColors.faint.withValues(alpha: 0.12),
                       child: const Center(
                         child: SizedBox(
                           width: 18,
@@ -872,9 +882,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                   }
                   if (snap.hasError || snap.data == null) {
                     return Container(
-                      color: Colors.grey.withValues(alpha: 0.12),
+                      color: SdColors.faint.withValues(alpha: 0.12),
                       child: const Icon(Icons.broken_image_rounded,
-                          color: Colors.grey),
+                          color: SdColors.faint),
                     );
                   }
                   return Image.memory(
@@ -894,7 +904,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style:
-                  GoogleFonts.cairo(fontSize: 10, color: Colors.grey[600]),
+                  TextStyle(fontFamily: 'Cairo', fontSize: 10, color: SdColors.muted),
             ),
           ),
         ],
@@ -919,7 +929,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                   children: [
                     Expanded(
                       child: Text(label,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontWeight: FontWeight.w800,
                               color: Colors.white)),
                     ),
@@ -945,7 +956,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                       return Padding(
                         padding: const EdgeInsets.all(40),
                         child: Text('تعذّر تحميل الصورة',
-                            style: GoogleFonts.cairo(color: Colors.white)),
+                            style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
                       );
                     }
                     return InteractiveViewer(
@@ -981,7 +992,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     onPressed: _createTask,
                     icon: const Icon(Icons.add_rounded, size: 18),
                     label: Text('إنشاء مهمة',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                   )
                 : null,
           ),
@@ -998,7 +1009,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                 children: [
                   Expanded(
                     child: Text('تعذّر تحميل المهام: $_tasksError',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             color: SdColors.danger,
                             fontWeight: FontWeight.w600)),
                   ),
@@ -1006,7 +1018,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                     onPressed: _loadTasks,
                     icon: const Icon(Icons.refresh_rounded, size: 18),
                     label: Text('إعادة',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
@@ -1016,8 +1028,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Text(
                 'لا مهام مرتبطة بعد — أنشئ مهمة (صيانة/تركيب…) لهذا العقار.',
-                style: GoogleFonts.cairo(
-                    color: Colors.grey[600], fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.muted, fontWeight: FontWeight.w600),
               ),
             )
           else
@@ -1056,7 +1069,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                 t.requestNumber.isEmpty ? 'طلب #${t.id}' : t.requestNumber,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.w800, color: PropUi.ink),
               ),
               if (meta.trim().isNotEmpty)
@@ -1065,7 +1079,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style:
-                      GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600]),
+                      TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.muted),
                 ),
             ],
           ),
@@ -1081,7 +1095,7 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
         'inprogress' || 'assigned' => SdColors.primary,
         'pending' || 'reviewing' || 'onhold' => SdColors.warning,
         'cancelled' || 'rejected' => SdColors.danger,
-        _ => Colors.grey,
+        _ => SdColors.faint,
       };
 
   String _shortDate(String raw) {
@@ -1102,8 +1116,9 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           SizedBox(
             width: 110,
             child: Text('أجر الصيانة',
-                style: GoogleFonts.cairo(
-                    color: Colors.grey[600], fontWeight: FontWeight.w600)),
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.muted, fontWeight: FontWeight.w600)),
           ),
           Expanded(
             child: _feeLoading
@@ -1114,7 +1129,8 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
                         strokeWidth: 2, color: SdColors.warning),
                   )
                 : Text('${_fmtFee(_totalFee ?? 0)} د.ع  (تراكمي)',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.w800,
                         color: SdColors.warning)),
           ),
@@ -1138,12 +1154,14 @@ class _PropertyDetailPageState extends State<PropertyDetailPage> {
           SizedBox(
             width: 110,
             child: Text(k,
-                style: GoogleFonts.cairo(
-                    color: Colors.grey[600], fontWeight: FontWeight.w600)),
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.muted, fontWeight: FontWeight.w600)),
           ),
           Expanded(
             child: Text(v,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.w700, color: PropUi.ink)),
           ),
         ],
@@ -1212,7 +1230,7 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('تمّ ربط المواطن',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
               backgroundColor: SdColors.success),
         );
         Navigator.pop(context, true);
@@ -1221,7 +1239,7 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('تعذّر الربط: $e', style: GoogleFonts.cairo()),
+              content: Text('تعذّر الربط: $e', style: TextStyle(fontFamily: 'Cairo')),
               backgroundColor: SdColors.danger),
         );
       }
@@ -1245,7 +1263,8 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
               children: [
                 Expanded(
                   child: Text('ربط مواطن بالعقار',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.w800, fontSize: 16)),
                 ),
                 IconButton(
@@ -1267,12 +1286,13 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
                       for (final e in kRelationshipLabels.entries)
                         ChoiceChip(
                           label: Text(e.value,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                   color: _relationship == e.key
                                       ? Colors.white
-                                      : const Color(0xFF475569))),
+                                      : SdColors.muted)),
                           selected: _relationship == e.key,
                           showCheckmark: false,
                           backgroundColor: Colors.white,
@@ -1285,7 +1305,8 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
                 ),
                 FilterChip(
                   label: Text('أساسي',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.w700, fontSize: 12)),
                   selected: _isPrimary,
                   showCheckmark: true,
@@ -1302,10 +1323,10 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
             child: TextField(
               controller: _q,
               onSubmitted: (_) => _search(),
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
               decoration: InputDecoration(
                 hintText: 'ابحث باسم المواطن / الهاتف',
-                hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
+                hintStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.faint),
                 prefixIcon: const Icon(Icons.search_rounded,
                     color: SdColors.primary),
                 suffixIcon: IconButton(
@@ -1351,15 +1372,17 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(c.name.isEmpty ? 'مواطن' : c.name,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.w800, color: PropUi.ink)),
                 if ([c.phone, c.district].any((x) => x.trim().isNotEmpty))
                   Text(
                     [c.phone, c.district]
                         .where((x) => x.trim().isNotEmpty)
                         .join(' · '),
-                    style: GoogleFonts.cairo(
-                        fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 12, color: SdColors.muted),
                   ),
               ],
             ),
@@ -1372,7 +1395,7 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
             ),
             child: Text('ربط',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -1383,7 +1406,7 @@ class _CitizenPickerSheetState extends State<_CitizenPickerSheet> {
         width: 44,
         height: 5,
         decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.35),
+          color: SdColors.faint.withValues(alpha: 0.35),
           borderRadius: BorderRadius.circular(3),
         ),
       );
@@ -1528,7 +1551,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-          content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+          content: Text(m, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
           backgroundColor: err ? SdColors.danger : SdColors.success),
     );
   }
@@ -1575,7 +1598,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
           SnackBar(
               content: Text(
                   '${_isEdit ? 'تعذّر تعديل' : 'تعذّر إضافة'} الخدمة: $e',
-                  style: GoogleFonts.cairo()),
+                  style: TextStyle(fontFamily: 'Cairo')),
               backgroundColor: SdColors.danger),
         );
       }
@@ -1598,7 +1621,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
             width: 44,
             height: 5,
             decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.35),
+              color: SdColors.faint.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(3),
             ),
           ),
@@ -1609,7 +1632,8 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
                 Expanded(
                   child: Text(
                       '${_isEdit ? 'تعديل' : 'إضافة'} خدمة ${serviceTypeLabelOf(_serviceType)}',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.w800, fontSize: 16)),
                 ),
                 IconButton(
@@ -1689,7 +1713,8 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
                       : Icon(_isEdit ? Icons.save_rounded : Icons.add_rounded,
                           color: Colors.white),
                   label: Text(_isEdit ? 'حفظ التعديل' : 'إضافة الخدمة',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
                           color: Colors.white)),
@@ -1705,10 +1730,11 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
   Widget _label(String t) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(t,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
-                color: Colors.grey[700])),
+                color: SdColors.muted)),
       );
 
   Widget _choiceRow(
@@ -1720,12 +1746,13 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
         for (final e in options.entries)
           ChoiceChip(
             label: Text(e.value,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.w700,
                     fontSize: 12.5,
                     color: value == e.key
                         ? Colors.white
-                        : const Color(0xFF475569))),
+                        : SdColors.muted)),
             selected: value == e.key,
             showCheckmark: false,
             backgroundColor: Colors.white,
@@ -1733,7 +1760,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
             side: BorderSide(
                 color: value == e.key
                     ? SdColors.primary
-                    : Colors.grey.withValues(alpha: 0.25)),
+                    : SdColors.faint.withValues(alpha: 0.25)),
             onSelected: (_) => onSet(e.key),
           ),
       ],
@@ -1747,10 +1774,10 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
       child: TextField(
         controller: c,
         maxLines: maxLines,
-        style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: GoogleFonts.cairo(),
+          labelStyle: TextStyle(fontFamily: 'Cairo'),
           prefixIcon: icon == null
               ? null
               : Icon(icon, color: SdColors.primary, size: 20),
@@ -1779,7 +1806,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
         border: Border.all(
             color: done
                 ? SdColors.success.withValues(alpha: 0.4)
-                : Colors.grey.withValues(alpha: 0.25)),
+                : SdColors.faint.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
@@ -1793,13 +1820,15 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(label,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.w700, fontSize: 13)),
                 Text(
                   done ? 'تمّ الرفع' : 'لم تُرفع بعد',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 11,
-                      color: done ? SdColors.success : Colors.grey[600]),
+                      color: done ? SdColors.success : SdColors.muted),
                 ),
               ],
             ),
@@ -1819,7 +1848,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
                 : Icon(done ? Icons.refresh_rounded : Icons.upload_rounded,
                     size: 16),
             label: Text(done ? 'تغيير' : 'رفع',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -1898,7 +1927,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text('اختر الخدمة والعملية أولاً',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
             backgroundColor: SdColors.warning),
       );
       return;
@@ -1922,7 +1951,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                 reqNo != null && reqNo.isNotEmpty
                     ? 'تمّ إنشاء المهمة — رقم الطلب $reqNo'
                     : 'تمّ إنشاء المهمة',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
             backgroundColor: SdColors.success),
       );
     } catch (e) {
@@ -1930,7 +1959,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('تعذّر إنشاء المهمة: $e', style: GoogleFonts.cairo()),
+            content: Text('تعذّر إنشاء المهمة: $e', style: TextStyle(fontFamily: 'Cairo')),
             backgroundColor: SdColors.danger),
       );
     }
@@ -1950,7 +1979,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
             width: 44,
             height: 5,
             decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.35),
+              color: SdColors.faint.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(3),
             ),
           ),
@@ -1960,7 +1989,8 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
               children: [
                 Expanded(
                   child: Text('إنشاء مهمة لهذا العقار',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.w800, fontSize: 16)),
                 ),
                 IconButton(
@@ -1989,8 +2019,9 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
         _label('الخدمة'),
         if (_services.isEmpty)
           Text('لا توجد خدمات متاحة',
-              style: GoogleFonts.cairo(
-                  color: Colors.grey[600], fontWeight: FontWeight.w600))
+              style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.muted, fontWeight: FontWeight.w600))
         else
           Wrap(
             spacing: 8,
@@ -1999,12 +2030,13 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
               for (final s in _services)
                 ChoiceChip(
                   label: Text(s.nameAr,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.w700,
                           fontSize: 12.5,
                           color: _serviceId == s.id
                               ? Colors.white
-                              : const Color(0xFF475569))),
+                              : SdColors.muted)),
                   selected: _serviceId == s.id,
                   showCheckmark: false,
                   backgroundColor: Colors.white,
@@ -2012,7 +2044,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                   side: BorderSide(
                       color: _serviceId == s.id
                           ? SdColors.primary
-                          : Colors.grey.withValues(alpha: 0.25)),
+                          : SdColors.faint.withValues(alpha: 0.25)),
                   onSelected: (_) => setState(() {
                     _serviceId = s.id;
                     _operationId = null; // إعادة ضبط العملية عند تغيير الخدمة
@@ -2024,12 +2056,14 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
         _label('العملية'),
         if (_serviceId == null)
           Text('اختر خدمة لعرض عملياتها',
-              style: GoogleFonts.cairo(
-                  color: Colors.grey[600], fontWeight: FontWeight.w600))
+              style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.muted, fontWeight: FontWeight.w600))
         else if (_operations.isEmpty)
           Text('لا توجد عمليات لهذه الخدمة',
-              style: GoogleFonts.cairo(
-                  color: Colors.grey[600], fontWeight: FontWeight.w600))
+              style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.muted, fontWeight: FontWeight.w600))
         else
           Wrap(
             spacing: 8,
@@ -2038,12 +2072,13 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
               for (final op in _operations)
                 ChoiceChip(
                   label: Text(op.nameAr,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.w700,
                           fontSize: 12.5,
                           color: _operationId == op.id
                               ? Colors.white
-                              : const Color(0xFF475569))),
+                              : SdColors.muted)),
                   selected: _operationId == op.id,
                   showCheckmark: false,
                   backgroundColor: Colors.white,
@@ -2051,7 +2086,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                   side: BorderSide(
                       color: _operationId == op.id
                           ? SdColors.primary
-                          : Colors.grey.withValues(alpha: 0.25)),
+                          : SdColors.faint.withValues(alpha: 0.25)),
                   onSelected: (_) => setState(() => _operationId = op.id),
                 ),
             ],
@@ -2064,12 +2099,13 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
             for (int p = 1; p <= 5; p++)
               ChoiceChip(
                 label: Text('$p',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.w800,
                         fontSize: 12.5,
                         color: _priority == p
                             ? Colors.white
-                            : const Color(0xFF475569))),
+                            : SdColors.muted)),
                 selected: _priority == p,
                 showCheckmark: false,
                 backgroundColor: Colors.white,
@@ -2077,7 +2113,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                 side: BorderSide(
                     color: _priority == p
                         ? SdColors.primary
-                        : Colors.grey.withValues(alpha: 0.25)),
+                        : SdColors.faint.withValues(alpha: 0.25)),
                 onSelected: (_) => setState(() => _priority = p),
               ),
           ],
@@ -2103,7 +2139,7 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
               : const Icon(Icons.add_task_rounded),
           label: Text('إنشاء',
               style:
-                  GoogleFonts.cairo(fontWeight: FontWeight.w800, fontSize: 15)),
+                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 15)),
         ),
       ],
     );
@@ -2112,10 +2148,11 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
   Widget _label(String t) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(t,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
-                color: Colors.grey[700])),
+                color: SdColors.muted)),
       );
 
   Widget _field(TextEditingController c, String label,
@@ -2125,10 +2162,10 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
       child: TextField(
         controller: c,
         maxLines: maxLines,
-        style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: GoogleFonts.cairo(),
+          labelStyle: TextStyle(fontFamily: 'Cairo'),
           prefixIcon: icon == null
               ? null
               : Icon(icon, color: SdColors.primary, size: 20),

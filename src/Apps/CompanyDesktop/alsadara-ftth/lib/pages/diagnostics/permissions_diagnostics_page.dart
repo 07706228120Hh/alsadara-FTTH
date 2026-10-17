@@ -3,7 +3,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../permissions/permissions.dart';
 import '../../services/vps_auth_service.dart';
@@ -821,7 +820,8 @@ class _DiagnosticsBody extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: color,

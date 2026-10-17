@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../pages/whatsapp_bulk_sender_page.dart';
 import '../../ftth/whatsapp/whatsapp_bottom_window.dart';
 import 'whatsapp_server_settings_page.dart';
@@ -8,6 +7,7 @@ import 'whatsapp_system_settings_page.dart';
 import '../services/whatsapp_permissions_service.dart';
 import '../../services/custom_auth_service.dart';
 import '../../services/vps_auth_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// صفحة إعدادات الواتساب الموحدة - تصميم فخم وعصري
 class WhatsAppSettingsHubPage extends StatefulWidget {
@@ -90,8 +90,8 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                                     'فتح واتساب ويب داخل التطبيق للرد على رسائل العملاء مباشرة',
                                 icon: Icons.language_rounded,
                                 gradientColors: const [
-                                  Color(0xFF128C7E),
-                                  Color(0xFF25D366)
+                                  SdColors.whatsappEdge,
+                                  SdColors.whatsapp
                                 ],
                                 features: [
                                   'الرد على رسائل العملاء',
@@ -113,7 +113,7 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                                 icon: Icons.api_rounded,
                                 gradientColors: const [
                                   Color(0xFF075E54),
-                                  Color(0xFF128C7E)
+                                  SdColors.whatsappEdge
                                 ],
                                 features: [
                                   'إرسال رسائل جماعية',
@@ -142,7 +142,7 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                                     'الاتصال بسيرفر الواتساب الخاص للإرسال التلقائي',
                                 icon: Icons.dns_rounded,
                                 gradientColors: const [
-                                  Color(0xFF1E88E5),
+                                  SdColors.info,
                                   Color(0xFF42A5F5)
                                 ],
                                 features: [
@@ -176,7 +176,7 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                                     'إرسال الرسائل عبر تطبيق الواتساب المثبت على الجهاز',
                                 icon: Icons.phone_android_rounded,
                                 gradientColors: const [
-                                  Color(0xFF25D366),
+                                  SdColors.whatsapp,
                                   Color(0xFF5EE896)
                                 ],
                                 features: [
@@ -206,7 +206,7 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF25D366), Color(0xFF128C7E)],
+          colors: [SdColors.whatsapp, SdColors.whatsappEdge],
         ),
       ),
       child: Center(
@@ -227,7 +227,8 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
             const SizedBox(height: 24),
             Text(
               'جاري التحميل...',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -244,7 +245,7 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
       expandedHeight: 100,
       floating: false,
       pinned: true,
-      backgroundColor: const Color(0xFF25D366),
+      backgroundColor: SdColors.whatsapp,
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
@@ -253,8 +254,8 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color(0xFF25D366),
-                Color(0xFF128C7E),
+                SdColors.whatsapp,
+                SdColors.whatsappEdge,
               ],
             ),
           ),
@@ -263,7 +264,8 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
               padding: const EdgeInsets.only(top: 40, right: 60, left: 60),
               child: Text(
                 'إعدادات الواتساب',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -313,7 +315,8 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
               ),
               label: Text(
                 'القوالب',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   color: Color(0xFF7C3AED),
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -348,14 +351,14 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.orange.shade400,
-            Colors.deepOrange.shade500,
+            SdColors.warning,
+            SdColors.warning,
           ],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.4),
+            color: SdColors.warning.withOpacity(0.4),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -382,7 +385,8 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
               children: [
                 Text(
                   'لا توجد أنظمة واتساب متاحة',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                     fontSize: 17,
@@ -391,7 +395,8 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                 const SizedBox(height: 6),
                 Text(
                   'تواصل مع مدير النظام لتفعيل أنظمة الواتساب للشركة',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 13,
                     color: Colors.white.withOpacity(0.9),
                     height: 1.4,
@@ -474,7 +479,8 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                                 Flexible(
                                   child: Text(
                                     title,
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,
@@ -508,7 +514,8 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                                         const SizedBox(width: 3),
                                         Text(
                                           'Pro',
-                                          style: GoogleFonts.cairo(
+                                          style: TextStyle(
+                                            fontFamily: 'Cairo',
                                             fontSize: 9,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.white,
@@ -522,7 +529,8 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                             ),
                             Text(
                               subtitle,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 11,
                                 color: Colors.white.withOpacity(0.8),
                               ),
@@ -587,12 +595,12 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF25D366), Color(0xFF5EE896)],
+                    colors: [SdColors.whatsapp, Color(0xFF5EE896)],
                   ),
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF25D366).withOpacity(0.4),
+                      color: SdColors.whatsapp.withOpacity(0.4),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -607,19 +615,21 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
               const SizedBox(height: 28),
               Text(
                 'النظام العادي',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF25D366),
+                  color: SdColors.whatsapp,
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 'هذا النظام لا يحتاج إعدادات خاصة.\n\nعند إرسال رسالة، سيتم فتح تطبيق الواتساب المثبت على جهازك مباشرة مع النص والرقم جاهزين.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 15,
-                  color: Colors.grey[700],
+                  color: SdColors.muted,
                   height: 1.7,
                 ),
               ),
@@ -629,7 +639,7 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(ctx),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
+                    backgroundColor: SdColors.whatsapp,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
@@ -639,7 +649,8 @@ class _WhatsAppSettingsHubPageState extends State<WhatsAppSettingsHubPage>
                   ),
                   child: Text(
                     'حسناً، فهمت',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 17,
                       fontWeight: FontWeight.bold,
                     ),

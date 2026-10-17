@@ -35,37 +35,37 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
       'value': 0,
       'label': 'إيجار مكتب',
       'icon': Icons.business,
-      'color': Color(0xFFE67E22)
+      'color': SdColors.warning
     },
     {
       'value': 1,
       'label': 'تكلفة مولد',
       'icon': Icons.flash_on,
-      'color': Color(0xFFF39C12)
+      'color': SdColors.warning
     },
     {
       'value': 2,
       'label': 'إنترنت',
       'icon': Icons.wifi,
-      'color': Color(0xFF3498DB)
+      'color': SdColors.info
     },
     {
       'value': 3,
       'label': 'كهرباء',
       'icon': Icons.electrical_services,
-      'color': Color(0xFF2ECC71)
+      'color': SdColors.success
     },
     {
       'value': 4,
       'label': 'ماء',
       'icon': Icons.water_drop,
-      'color': Color(0xFF1ABC9C)
+      'color': SdColors.accent
     },
     {
       'value': 99,
       'label': 'أخرى',
       'icon': Icons.more_horiz,
-      'color': Color(0xFF95A5A6)
+      'color': SdColors.faint
     },
   ];
 
@@ -117,14 +117,14 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
   void _showError(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+      SnackBar(content: Text(msg), backgroundColor: SdColors.danger),
     );
   }
 
   void _showSuccess(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.green),
+      SnackBar(content: Text(msg), backgroundColor: SdColors.success),
     );
   }
 
@@ -281,7 +281,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                 labelStyle: TextStyle(
                   color: _selectedCategoryFilter == null
                       ? SdColors.primary
-                      : Colors.grey.shade700,
+                      : SdColors.muted,
                   fontWeight: _selectedCategoryFilter == null
                       ? FontWeight.bold
                       : FontWeight.normal,
@@ -297,7 +297,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                 child: FilterChip(
                   avatar: Icon(cat['icon'] as IconData,
                       size: context.accR.iconS,
-                      color: isSelected ? color : Colors.grey),
+                      color: isSelected ? color : SdColors.faint),
                   label: Text(cat['label'] as String,
                       style: TextStyle(fontSize: context.accR.small)),
                   selected: isSelected,
@@ -307,7 +307,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                   selectedColor: color.withValues(alpha: 0.15),
                   checkmarkColor: color,
                   labelStyle: TextStyle(
-                    color: isSelected ? color : Colors.grey.shade700,
+                    color: isSelected ? color : SdColors.muted,
                     fontWeight:
                         isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
@@ -541,7 +541,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                             // قائمة الإجراءات
                             PopupMenuButton<String>(
                               icon: const Icon(Icons.more_vert,
-                                  color: Colors.grey),
+                                  color: SdColors.faint),
                               splashRadius: 20,
                               itemBuilder: (_) => [
                                 PopupMenuItem(
@@ -550,7 +550,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                       children: [
                                         Icon(Icons.edit,
                                             size: context.accR.iconM,
-                                            color: Colors.blue),
+                                            color: SdColors.info),
                                         SizedBox(width: 8),
                                         Text('تعديل'),
                                       ],
@@ -564,7 +564,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                               ? Icons.pause_circle
                                               : Icons.play_circle,
                                           size: context.accR.iconM,
-                                          color: Colors.orange),
+                                          color: SdColors.warning),
                                       SizedBox(width: context.accR.spaceS),
                                       Text(isActive ? 'إيقاف' : 'تفعيل'),
                                     ],
@@ -576,11 +576,11 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                                       children: [
                                         Icon(Icons.delete,
                                             size: context.accR.iconM,
-                                            color: Colors.red),
+                                            color: SdColors.danger),
                                         SizedBox(width: 8),
                                         Text('حذف',
                                             style:
-                                                TextStyle(color: Colors.red)),
+                                                TextStyle(color: SdColors.danger)),
                                       ],
                                     )),
                               ],
@@ -756,7 +756,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                 child: const Text('إلغاء')),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
               child: Text('حذف', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -953,7 +953,7 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
               child: const Text('إلغاء')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: Text('حذف', style: TextStyle(color: Colors.white)),
           ),
         ],

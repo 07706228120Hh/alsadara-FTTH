@@ -4,7 +4,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../models/tenant_user.dart';
 import '../permissions/permission_registry.dart';
@@ -109,9 +108,9 @@ class _UserDetailsPageState extends State<UserDetailsPage>
           SnackBar(
             content: Text(
               'تم حفظ التغييرات بنجاح',
-              style: GoogleFonts.cairo(),
+              style: TextStyle(fontFamily: 'Cairo'),
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
         setState(() {
@@ -125,9 +124,9 @@ class _UserDetailsPageState extends State<UserDetailsPage>
           SnackBar(
             content: Text(
               'حدث خطأ',
-              style: GoogleFonts.cairo(),
+              style: TextStyle(fontFamily: 'Cairo'),
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -147,7 +146,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
       builder: (context) => AlertDialog(
         title: Text(
           'تغيير كلمة المرور',
-          style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -157,7 +156,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
               obscureText: true,
               decoration: InputDecoration(
                 labelText: 'كلمة المرور الجديدة',
-                labelStyle: GoogleFonts.cairo(),
+                labelStyle: TextStyle(fontFamily: 'Cairo'),
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.lock),
               ),
@@ -168,7 +167,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
               obscureText: true,
               decoration: InputDecoration(
                 labelText: 'تأكيد كلمة المرور',
-                labelStyle: GoogleFonts.cairo(),
+                labelStyle: TextStyle(fontFamily: 'Cairo'),
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.lock_outline),
               ),
@@ -178,7 +177,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -187,7 +186,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                   SnackBar(
                     content: Text(
                       'يرجى إدخال كلمة المرور',
-                      style: GoogleFonts.cairo(),
+                      style: TextStyle(fontFamily: 'Cairo'),
                     ),
                   ),
                 );
@@ -199,9 +198,9 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                   SnackBar(
                     content: Text(
                       'كلمات المرور غير متطابقة',
-                      style: GoogleFonts.cairo(),
+                      style: TextStyle(fontFamily: 'Cairo'),
                     ),
-                    backgroundColor: Colors.red,
+                    backgroundColor: SdColors.danger,
                   ),
                 );
                 return;
@@ -210,7 +209,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
               Navigator.pop(context);
               await _changePassword(passwordController.text);
             },
-            child: Text('تغيير', style: GoogleFonts.cairo()),
+            child: Text('تغيير', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -235,9 +234,9 @@ class _UserDetailsPageState extends State<UserDetailsPage>
           SnackBar(
             content: Text(
               'تم تغيير كلمة المرور بنجاح',
-              style: GoogleFonts.cairo(),
+              style: TextStyle(fontFamily: 'Cairo'),
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -247,9 +246,9 @@ class _UserDetailsPageState extends State<UserDetailsPage>
           SnackBar(
             content: Text(
               'حدث خطأ',
-              style: GoogleFonts.cairo(),
+              style: TextStyle(fontFamily: 'Cairo'),
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -339,7 +338,8 @@ class _UserDetailsPageState extends State<UserDetailsPage>
               backgroundColor: _isActive ? SdColors.primary : SdColors.faint,
               child: Text(
                 widget.user.username[0].toUpperCase(),
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 48,
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -355,7 +355,8 @@ class _UserDetailsPageState extends State<UserDetailsPage>
             title: 'اسم المستخدم',
             child: Text(
               widget.user.username,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -369,7 +370,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
             child: _isEditing
                 ? TextField(
                     controller: _fullNameController,
-                    style: GoogleFonts.cairo(),
+                    style: TextStyle(fontFamily: 'Cairo'),
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       isDense: true,
@@ -379,7 +380,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                     _fullNameController.text.isEmpty
                         ? 'غير محدد'
                         : _fullNameController.text,
-                    style: GoogleFonts.cairo(fontSize: 16),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 16),
                   ),
           ),
 
@@ -390,7 +391,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
             child: _isEditing
                 ? TextField(
                     controller: _emailController,
-                    style: GoogleFonts.cairo(),
+                    style: TextStyle(fontFamily: 'Cairo'),
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
@@ -401,7 +402,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                     _emailController.text.isEmpty
                         ? 'غير محدد'
                         : _emailController.text,
-                    style: GoogleFonts.cairo(fontSize: 16),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 16),
                   ),
           ),
 
@@ -412,7 +413,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
             child: _isEditing
                 ? TextField(
                     controller: _phoneController,
-                    style: GoogleFonts.cairo(),
+                    style: TextStyle(fontFamily: 'Cairo'),
                     keyboardType: TextInputType.phone,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
@@ -423,7 +424,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                     _phoneController.text.isEmpty
                         ? 'غير محدد'
                         : _phoneController.text,
-                    style: GoogleFonts.cairo(fontSize: 16),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 16),
                   ),
           ),
 
@@ -434,7 +435,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
             child: _isEditing
                 ? TextField(
                     controller: _codeController,
-                    style: GoogleFonts.cairo(),
+                    style: TextStyle(fontFamily: 'Cairo'),
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       isDense: true,
@@ -444,7 +445,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                     _codeController.text.isEmpty
                         ? 'غير محدد'
                         : _codeController.text,
-                    style: GoogleFonts.cairo(fontSize: 16),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 16),
                   ),
           ),
 
@@ -463,7 +464,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                       return DropdownMenuItem(
                         value: role,
                         child:
-                            Text(role.arabicName, style: GoogleFonts.cairo()),
+                            Text(role.arabicName, style: TextStyle(fontFamily: 'Cairo')),
                       );
                     }).toList(),
                     onChanged: (value) {
@@ -474,7 +475,8 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                   )
                 : Text(
                     _selectedRole.arabicName,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 16,
                       color: SdColors.primary,
                       fontWeight: FontWeight.bold,
@@ -489,7 +491,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
             child: _isEditing
                 ? TextField(
                     controller: _departmentController,
-                    style: GoogleFonts.cairo(),
+                    style: TextStyle(fontFamily: 'Cairo'),
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       isDense: true,
@@ -499,7 +501,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                     _departmentController.text.isEmpty
                         ? 'غير محدد'
                         : _departmentController.text,
-                    style: GoogleFonts.cairo(fontSize: 16),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 16),
                   ),
           ),
 
@@ -510,7 +512,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
             child: _isEditing
                 ? TextField(
                     controller: _centerController,
-                    style: GoogleFonts.cairo(),
+                    style: TextStyle(fontFamily: 'Cairo'),
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
                       isDense: true,
@@ -520,7 +522,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                     _centerController.text.isEmpty
                         ? 'غير محدد'
                         : _centerController.text,
-                    style: GoogleFonts.cairo(fontSize: 16),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 16),
                   ),
           ),
 
@@ -531,7 +533,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
             child: _isEditing
                 ? TextField(
                     controller: _salaryController,
-                    style: GoogleFonts.cairo(),
+                    style: TextStyle(fontFamily: 'Cairo'),
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
@@ -542,7 +544,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
                     _salaryController.text.isEmpty
                         ? 'غير محدد'
                         : _salaryController.text,
-                    style: GoogleFonts.cairo(fontSize: 16),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 16),
                   ),
           ),
 
@@ -552,7 +554,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
             title: 'حالة الحساب',
             child: _isEditing
                 ? SwitchListTile(
-                    title: Text('حساب نشط', style: GoogleFonts.cairo()),
+                    title: Text('حساب نشط', style: TextStyle(fontFamily: 'Cairo')),
                     value: _isActive,
                     onChanged: (value) => setState(() => _isActive = value),
                     contentPadding: EdgeInsets.zero,
@@ -573,7 +575,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
             title: 'تاريخ الإنشاء',
             child: Text(
               '${widget.user.createdAt.year}-${widget.user.createdAt.month}-${widget.user.createdAt.day}',
-              style: GoogleFonts.cairo(fontSize: 16),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 16),
             ),
           ),
 
@@ -584,7 +586,7 @@ class _UserDetailsPageState extends State<UserDetailsPage>
               title: 'آخر تسجيل دخول',
               child: Text(
                 '${widget.user.lastLogin!.year}-${widget.user.lastLogin!.month}-${widget.user.lastLogin!.day}',
-                style: GoogleFonts.cairo(fontSize: 16),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 16),
               ),
             ),
 
@@ -705,7 +707,8 @@ class _UserDetailsPageState extends State<UserDetailsPage>
         child: SwitchListTile(
           title: Text(
             title,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontWeight: FontWeight.w700,
               color: enabled ? SdColors.ink : SdColors.faint,
             ),

@@ -467,7 +467,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         builder: (context, setDialogState) => AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.login, color: Colors.teal),
+              Icon(Icons.login, color: SdColors.accent),
               const SizedBox(width: 8),
               const Text('تسجيل الدخول للداشبورد'),
             ],
@@ -478,7 +478,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
               children: [
                 const Text(
                   'أدخل بيانات حساب Dashboard FTTH',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                  style: TextStyle(fontSize: 14, color: SdColors.faint),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -503,12 +503,12 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: SdColors.infoTint,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
                     'ملاحظة: هذه البيانات خاصة بنظام dashboard.ftth.iq',
-                    style: TextStyle(fontSize: 11, color: Colors.blue),
+                    style: TextStyle(fontSize: 11, color: SdColors.info),
                   ),
                 ),
               ],
@@ -529,7 +529,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                           const SnackBar(
                             content:
                                 Text('يرجى إدخال اسم المستخدم وكلمة المرور'),
-                            backgroundColor: Colors.red,
+                            backgroundColor: SdColors.danger,
                           ),
                         );
                         return;
@@ -560,7 +560,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('تم تسجيل الدخول بنجاح ✓'),
-                                backgroundColor: Colors.green,
+                                backgroundColor: SdColors.success,
                               ),
                             );
                           } else {
@@ -568,7 +568,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                               const SnackBar(
                                 content: Text(
                                     'تم تسجيل الدخول لكن فشل جلب Guest Token'),
-                                backgroundColor: Colors.orange,
+                                backgroundColor: SdColors.warning,
                               ),
                             );
                           }
@@ -577,7 +577,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                             SnackBar(
                               content: Text(
                                   result.errorMessage ?? 'فشل تسجيل الدخول'),
-                              backgroundColor: Colors.red,
+                              backgroundColor: SdColors.danger,
                             ),
                           );
                         }
@@ -585,7 +585,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('خطأ'),
-                            backgroundColor: Colors.red,
+                            backgroundColor: SdColors.danger,
                           ),
                         );
                       } finally {
@@ -593,7 +593,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                       }
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
+                backgroundColor: SdColors.accent,
                 foregroundColor: Colors.white,
               ),
               child: isLoggingIn
@@ -624,7 +624,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         context,
         const SnackBar(
           content: Text('يرجى الانتظار حتى يتم الاتصال بالخادم'),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
         ),
       );
       return;
@@ -731,7 +731,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
           context,
           SnackBar(
             content: Text('خطأ في جلب البيانات'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -747,7 +747,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
           children: [
             Icon(
               success > 0 ? Icons.check_circle : Icons.error,
-              color: success > 0 ? Colors.green : Colors.red,
+              color: success > 0 ? SdColors.success : SdColors.danger,
             ),
             const SizedBox(width: 8),
             const Text('نتائج جلب البيانات'),
@@ -763,7 +763,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
+                  color: SdColors.infoTint,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -775,9 +775,9 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                             style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.green)),
+                                color: SdColors.success)),
                         const Text('نجاح',
-                            style: TextStyle(color: Colors.green)),
+                            style: TextStyle(color: SdColors.success)),
                       ],
                     ),
                     Column(
@@ -786,8 +786,8 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                             style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.red)),
-                        const Text('فشل', style: TextStyle(color: Colors.red)),
+                                color: SdColors.danger)),
+                        const Text('فشل', style: TextStyle(color: SdColors.danger)),
                       ],
                     ),
                     Column(
@@ -797,9 +797,9 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                             style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue)),
+                                color: SdColors.info)),
                         const Text('إجمالي السجلات',
-                            style: TextStyle(color: Colors.blue)),
+                            style: TextStyle(color: SdColors.info)),
                       ],
                     ),
                   ],
@@ -820,7 +820,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: Colors.blue,
+                          backgroundColor: SdColors.info,
                           child: Text('${item['slice_id']}',
                               style: const TextStyle(
                                   color: Colors.white, fontSize: 12)),
@@ -900,7 +900,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         actions: [
           if (data.length > 100)
             Text('عرض أول 100 من ${data.length}',
-                style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                style: const TextStyle(color: SdColors.faint, fontSize: 12)),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('إغلاق'),
@@ -944,7 +944,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
             context,
             SnackBar(
               content: Text('تم حفظ البيانات في: ${file.path}'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
               duration: const Duration(seconds: 5),
               action: SnackBarAction(
                 label: 'نسخ المسار',
@@ -966,7 +966,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
             context,
             const SnackBar(
               content: Text('تم نسخ البيانات إلى الحافظة ✓'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
         }
@@ -976,7 +976,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
         context,
         SnackBar(
           content: Text('خطأ في التصدير'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ),
       );
     }
@@ -1622,7 +1622,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                   SnackBar(
                     content: const Text(
                         'جاري تحميل البيانات، يرجى المحاولة مرة أخرى'),
-                    backgroundColor: Colors.orange,
+                    backgroundColor: SdColors.warning,
                     action: SnackBarAction(
                       label: 'إعادة تحميل',
                       onPressed: () async {
@@ -1689,7 +1689,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                     'تم جلب الرول بنجاح. يرجى تزويد الروابط الجديدة لواجهات الـ API (Agents, Dashboard, Charts...) ليتم عرض البيانات.',
                     style: TextStyle(
                         fontSize: 16,
-                        color: Colors.orange,
+                        color: SdColors.warning,
                         fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
@@ -1713,12 +1713,12 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                       const SizedBox(height: 16),
                       const Text(
                         'جاري تحميل البيانات...',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                        style: TextStyle(fontSize: 16, color: SdColors.faint),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'الاتصال بـ dashboard.ftth.iq',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                        style: TextStyle(fontSize: 12, color: SdColors.faint),
                       ),
                     ],
                   ),
@@ -1733,7 +1733,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                             const Icon(
                               Icons.error_outline,
                               size: 64,
-                              color: Colors.red,
+                              color: SdColors.danger,
                             ),
                             const SizedBox(height: 16),
                             const Text(
@@ -1741,21 +1741,21 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.red,
+                                color: SdColors.danger,
                               ),
                             ),
                             const SizedBox(height: 12),
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: Colors.red[50],
+                                color: SdColors.dangerTint,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.red[200]!),
+                                border: Border.all(color: SdColors.dangerTintEdge),
                               ),
                               child: Text(
                                 error!,
                                 style: const TextStyle(
-                                    color: Colors.red, fontSize: 14),
+                                    color: SdColors.danger, fontSize: 14),
                                 textAlign: TextAlign.center,
                               ),
                             ),
@@ -1764,7 +1764,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.grey[100],
+                                color: SdColors.groundAlt,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Column(
@@ -1800,7 +1800,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                   icon: const Icon(Icons.refresh),
                                   label: const Text('إعادة المحاولة'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.deepPurple,
+                                    backgroundColor: SdColors.platformBase,
                                     foregroundColor: Colors.white,
                                   ),
                                 ),
@@ -1810,7 +1810,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                   icon: const Icon(Icons.login),
                                   label: const Text('تسجيل دخول'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.teal,
+                                    backgroundColor: SdColors.accent,
                                     foregroundColor: Colors.white,
                                   ),
                                 ),
@@ -1839,8 +1839,8 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 8),
                           color: guestToken != null
-                              ? Colors.green[50]
-                              : Colors.orange[50],
+                              ? SdColors.successTint
+                              : SdColors.warningTint,
                           child: Row(
                             children: [
                               Icon(
@@ -1849,8 +1849,8 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                     : Icons.warning,
                                 size: 18,
                                 color: guestToken != null
-                                    ? Colors.green
-                                    : Colors.orange,
+                                    ? SdColors.success
+                                    : SdColors.warning,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -1861,8 +1861,8 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: guestToken != null
-                                        ? Colors.green[800]
-                                        : Colors.orange[800],
+                                        ? SdColors.success
+                                        : SdColors.warning,
                                   ),
                                 ),
                               ),
@@ -1882,12 +1882,12 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: [
-                                _buildStatCard('العدد 1', stat2, Colors.blue),
-                                _buildStatCard('العدد 2', stat3, Colors.green),
-                                _buildStatCard('العدد 3', stat4, Colors.orange),
-                                _buildStatCard('العدد 4', stat5, Colors.purple),
-                                _buildStatCard('العدد 5', stat6, Colors.teal),
-                                _buildStatCard('العدد 6', stat32, Colors.red),
+                                _buildStatCard('العدد 1', stat2, SdColors.info),
+                                _buildStatCard('العدد 2', stat3, SdColors.success),
+                                _buildStatCard('العدد 3', stat4, SdColors.warning),
+                                _buildStatCard('العدد 4', stat5, SdColors.platformBase),
+                                _buildStatCard('العدد 5', stat6, SdColors.accent),
+                                _buildStatCard('العدد 6', stat32, SdColors.danger),
                               ],
                             ),
                           ),
@@ -1896,7 +1896,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                           Padding(
                             padding: const EdgeInsets.all(12.0),
                             child: Card(
-                              color: Colors.amber[50],
+                              color: SdColors.warningTint,
                               elevation: 2,
                               child: Padding(
                                 padding: const EdgeInsets.all(12.0),
@@ -1908,7 +1908,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                       style: const TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 18,
-                                          color: Colors.orange),
+                                          color: SdColors.warning),
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
@@ -1936,7 +1936,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                           Padding(
                             padding: const EdgeInsets.all(12.0),
                             child: Card(
-                              color: Colors.green[50],
+                              color: SdColors.successTint,
                               elevation: 2,
                               child: Padding(
                                 padding: const EdgeInsets.all(12.0),
@@ -1948,7 +1948,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
-                                          color: Colors.green),
+                                          color: SdColors.success),
                                     ),
                                     const SizedBox(height: 8),
                                     // عرض بعض الحقول المهمة إذا وجدت
@@ -2059,13 +2059,13 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                         Icon(
                                           Icons.inbox_outlined,
                                           size: 64,
-                                          color: Colors.grey[400],
+                                          color: SdColors.faint,
                                         ),
                                         const SizedBox(height: 16),
                                         Text(
                                           'لا توجد بيانات لعرضها',
                                           style: TextStyle(
-                                            color: Colors.grey[700],
+                                            color: SdColors.muted,
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -2074,7 +2074,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                         Container(
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
-                                            color: Colors.blue[50],
+                                            color: SdColors.infoTint,
                                             borderRadius:
                                                 BorderRadius.circular(8),
                                           ),
@@ -2153,7 +2153,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                                       vertical: 4,
                                                       horizontal: 8),
                                                   decoration: BoxDecoration(
-                                                    color: Colors.green,
+                                                    color: SdColors.success,
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             12),
@@ -2170,7 +2170,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                             Row(
                                               children: [
                                                 const Icon(Icons.location_on,
-                                                    color: Colors.grey,
+                                                    color: SdColors.faint,
                                                     size: 16),
                                                 const SizedBox(width: 4),
                                                 Text(
@@ -2178,7 +2178,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                                       agent['zone'] ??
                                                       'لا يوجد منطقة',
                                                   style: const TextStyle(
-                                                      color: Colors.grey,
+                                                      color: SdColors.faint,
                                                       fontSize: 14),
                                                 ),
                                               ],
@@ -2187,7 +2187,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                             Row(
                                               children: [
                                                 const Icon(Icons.build,
-                                                    color: Colors.grey,
+                                                    color: SdColors.faint,
                                                     size: 16),
                                                 const SizedBox(width: 4),
                                                 Text(
@@ -2195,7 +2195,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                                       agent['contractor'] ??
                                                       'لا يوجد مقاول',
                                                   style: const TextStyle(
-                                                      color: Colors.grey,
+                                                      color: SdColors.faint,
                                                       fontSize: 14),
                                                 ),
                                               ],
@@ -2204,7 +2204,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                             Row(
                                               children: [
                                                 const Icon(Icons.category,
-                                                    color: Colors.grey,
+                                                    color: SdColors.faint,
                                                     size: 16),
                                                 const SizedBox(width: 4),
                                                 Text(
@@ -2212,7 +2212,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                                       agent['zonetype'] ??
                                                       'لا يوجد نوع زون',
                                                   style: const TextStyle(
-                                                      color: Colors.grey,
+                                                      color: SdColors.faint,
                                                       fontSize: 14),
                                                 ),
                                               ],
@@ -2230,7 +2230,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12.0, vertical: 4),
                             child: Card(
-                              color: Colors.blue[50],
+                              color: SdColors.infoTint,
                               elevation: 1,
                               child: Padding(
                                 padding: const EdgeInsets.all(10.0),
@@ -2242,7 +2242,7 @@ class _AgentsDetailsPageState extends State<AgentsDetailsPage> {
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
-                                          color: Colors.blue),
+                                          color: SdColors.info),
                                     ),
                                     const SizedBox(height: 8),
                                     SizedBox(
@@ -2362,7 +2362,7 @@ class _AddAgentPageState extends State<AddAgentPage> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF283593), Color(0xFF1976D2), Color(0xFF64B5F6)],
+              colors: [SdColors.primaryMid, SdColors.info, SdColors.infoTintEdge],
             ),
           ),
         ),
@@ -2516,7 +2516,7 @@ class _AddAgentPageState extends State<AddAgentPage> {
                                 jsonBody['message'] ?? 'فشل في إضافة الوكيل',
                                 textAlign: TextAlign.right,
                               ),
-                              backgroundColor: Colors.red,
+                              backgroundColor: SdColors.danger,
                             ),
                           );
                         }
@@ -2526,7 +2526,7 @@ class _AddAgentPageState extends State<AddAgentPage> {
                             context,
                             const SnackBar(
                               content: Text('حدث خطأ أثناء إضافة الوكيل'),
-                              backgroundColor: Colors.red,
+                              backgroundColor: SdColors.danger,
                             ),
                           );
                         }

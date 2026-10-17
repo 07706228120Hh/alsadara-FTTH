@@ -11,6 +11,7 @@ import '../../services/auth_service.dart';
 import '../../services/whatsapp_template_storage.dart';
 import '../../services/template_password_storage.dart';
 import '../auth/auth_error_handler.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class DiagnosticPage extends StatefulWidget {
   final String authToken;
@@ -791,7 +792,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFF1a1a2e),
+        backgroundColor: SdColors.ink,
         appBar: AppBar(
           title: const Text('🔧 تشخيص التطبيق',
               style: TextStyle(fontWeight: FontWeight.bold)),
@@ -834,8 +835,8 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
               padding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 16, vertical: _isPhone ? 8 : 12),
               decoration: BoxDecoration(
                 color: _isRunning
-                    ? Colors.blue.shade900
-                    : (_isDone ? Colors.green.shade900 : Colors.grey.shade900),
+                    ? SdColors.infoEdge
+                    : (_isDone ? SdColors.successEdge : SdColors.ink),
               ),
               child: Row(
                 children: [
@@ -856,15 +857,15 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                         style: TextStyle(
                             color: Colors.greenAccent, fontSize: _fs(14))),
                   ] else ...[
-                    Icon(Icons.bug_report, color: Colors.amber, size: _isPhone ? 18 : 20),
+                    Icon(Icons.bug_report, color: SdColors.warning, size: _isPhone ? 18 : 20),
                     const SizedBox(width: 8),
                     Text('اضغط "ابدأ التشخيص" للبدء',
-                        style: TextStyle(color: Colors.amber, fontSize: _fs(14))),
+                        style: TextStyle(color: SdColors.warning, fontSize: _fs(14))),
                   ],
                   const Spacer(),
                   Text('سجلات: ${_logs.length}',
                       style:
-                          TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                          TextStyle(color: SdColors.faint, fontSize: 12)),
                 ],
               ),
             ),
@@ -877,13 +878,13 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.bug_report,
-                              size: _isPhone ? 60 : 80, color: Colors.grey.shade700),
+                              size: _isPhone ? 60 : 80, color: SdColors.muted),
                           const SizedBox(height: 16),
                           Text(
                             'سيتم البحث عن "مرتضى باسل" وتتبع كل خطوة\nحتى شاشة التجديد لتحديد سبب التجمد',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                                color: Colors.grey.shade500,
+                                color: SdColors.faint,
                                 fontSize: _fs(14),
                                 height: 1.6),
                           ),
@@ -907,7 +908,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                                 child: Text(
                                   '${log.time}ms',
                                   style: TextStyle(
-                                    color: Colors.grey.shade600,
+                                    color: SdColors.muted,
                                     fontSize: _fs(11),
                                     fontFamily: 'Consolas',
                                   ),
@@ -942,7 +943,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
               padding: EdgeInsets.all(_isPhone ? 10 : 16),
               decoration: BoxDecoration(
                 color: const Color(0xFF16213e),
-                border: Border(top: BorderSide(color: Colors.grey.shade800)),
+                border: Border(top: BorderSide(color: SdColors.ink)),
               ),
               child: ElevatedButton.icon(
                 onPressed: _isRunning ? null : _startDiagnostic,
@@ -958,7 +959,7 @@ class _DiagnosticPageState extends State<DiagnosticPage> {
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
-                      _isRunning ? Colors.grey : Colors.green.shade700,
+                      _isRunning ? SdColors.faint : SdColors.success,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: _isPhone ? 10 : 14),
                   shape: RoundedRectangleBorder(
@@ -987,11 +988,11 @@ class _LogEntry {
   Color get color {
     switch (level) {
       case _LogLevel.info:
-        return Colors.grey.shade300;
+        return SdColors.edge;
       case _LogLevel.success:
         return Colors.greenAccent;
       case _LogLevel.warning:
-        return Colors.amber;
+        return SdColors.warning;
       case _LogLevel.error:
         return Colors.redAccent;
       case _LogLevel.header:

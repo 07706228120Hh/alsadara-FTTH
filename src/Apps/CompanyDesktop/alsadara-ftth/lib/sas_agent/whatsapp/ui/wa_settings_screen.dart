@@ -146,7 +146,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                     SasSectionHeader(
                       title: 'نمط الإرسال',
                       icon: Icons.send_rounded,
-                      gradient: const [_kWaGreen, Color(0xFF128C7E)],
+                      gradient: const [_kWaGreen, SdColors.whatsappEdge],
                     ),
                     SizedBox(height: 12.h),
                     for (final m in WaMode.values) _modeCard(m),
@@ -184,7 +184,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
           border: Border.all(
             color: selected
                 ? SdColors.primary.withValues(alpha: 0.45)
-                : Colors.grey.withValues(alpha: 0.16),
+                : SdColors.faint.withValues(alpha: 0.16),
             width: selected ? 1.6 : 1.2,
           ),
           boxShadow: selected
@@ -212,7 +212,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                         : Icons.radio_button_unchecked_rounded,
                     color: selected
                         ? SdColors.primary
-                        : Colors.grey.withValues(alpha: 0.55),
+                        : SdColors.faint.withValues(alpha: 0.55),
                     size: 22.sp,
                   ),
                   SizedBox(width: 12.w),
@@ -228,13 +228,13 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                                 style: TextStyle(fontFamily: 'Cairo', 
                                     fontSize: 13.5.sp,
                                     fontWeight: FontWeight.w800,
-                                    color: const Color(0xFF1A1A2E)),
+                                    color: SdColors.ink),
                               ),
                             ),
                             if (!enabled) ...[
                               SizedBox(width: 6.w),
                               const SasStatusBadge(
-                                  label: 'قريباً', color: Colors.grey),
+                                  label: 'قريباً', color: SdColors.faint),
                             ],
                           ],
                         ),
@@ -243,7 +243,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                           m.description,
                           style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 11.sp,
-                              color: Colors.grey[600],
+                              color: SdColors.muted,
                               height: 1.4),
                         ),
                       ],
@@ -325,7 +325,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
               style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 12.sp,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey[700]),
+                  color: SdColors.muted),
             ),
             SizedBox(height: 10.h),
             Center(
@@ -334,7 +334,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-                  border: Border.all(color: Colors.grey.withValues(alpha: 0.20)),
+                  border: Border.all(color: SdColors.faint.withValues(alpha: 0.20)),
                   boxShadow: SasUi.cardShadow(_kWaGreen),
                 ),
                 child: ClipRRect(
@@ -380,7 +380,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                               'أو استخدم النمط اليدوي (wa.me) بلا خادم.',
                       style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 11.5.sp,
-                          color: Colors.grey[700],
+                          color: SdColors.muted,
                           height: 1.5),
                     ),
                   ),
@@ -454,7 +454,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
           SdColors.danger,
           Icons.cloud_off_rounded
         ),
-      null => ('لم يُفحَص', Colors.grey, Icons.help_outline_rounded),
+      null => ('لم يُفحَص', SdColors.faint, Icons.help_outline_rounded),
     };
     return SasStatusBadge(label: txt, color: c, icon: icon);
   }
@@ -474,7 +474,7 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
             children: [
               SasUi.gradientBadge(
                 icon: Icons.chat_bubble_rounded,
-                colors: const [_kWaGreen, Color(0xFF128C7E)],
+                colors: const [_kWaGreen, SdColors.whatsappEdge],
                 size: 38,
                 iconSize: 18,
               ),
@@ -489,12 +489,12 @@ class _WaSettingsScreenState extends State<WaSettingsScreen> {
                     SizedBox(height: 2.h),
                     Text('تذكير · تجديد · انتهاء + قوالب مخصّصة',
                         style: TextStyle(fontFamily: 'Cairo', 
-                            fontSize: 11.sp, color: Colors.grey[600])),
+                            fontSize: 11.sp, color: SdColors.muted)),
                   ],
                 ),
               ),
               Icon(Icons.chevron_left_rounded,
-                  color: Colors.grey[400], size: 24.sp),
+                  color: SdColors.faint, size: 24.sp),
             ],
           ),
         ),

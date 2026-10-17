@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'models/citizen_portal_models.dart';
 import 'services/citizen_portal_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class CitizenPaymentsPage extends StatefulWidget {
   const CitizenPaymentsPage({super.key});
@@ -66,7 +67,7 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.shade200,
+                  color: SdColors.divider,
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -116,7 +117,7 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
                         'إجمالي الناجح',
                         '${_totalAmount.toStringAsFixed(0)} د.ع',
                         Icons.check_circle,
-                        Colors.green,
+                        SdColors.success,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -125,7 +126,7 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
                         'عدد العمليات',
                         '${_payments.length}',
                         Icons.receipt_long,
-                        Colors.blue,
+                        SdColors.info,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -134,7 +135,7 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
                         'معلق',
                         '${_payments.where((p) => p.status == 'pending').length}',
                         Icons.pending,
-                        Colors.orange,
+                        SdColors.warning,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -143,7 +144,7 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
                         'فشل',
                         '${_payments.where((p) => p.status == 'failed').length}',
                         Icons.error,
-                        Colors.red,
+                        SdColors.danger,
                       ),
                     ),
                   ],
@@ -191,7 +192,7 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
                 label,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey.shade600,
+                  color: SdColors.muted,
                 ),
               ),
             ],
@@ -204,7 +205,7 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
   Widget _buildContent() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.teal),
+        child: CircularProgressIndicator(color: SdColors.accent),
       );
     }
 
@@ -213,7 +214,7 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+            Icon(Icons.error_outline, size: 48, color: SdColors.dangerTintEdge),
             const SizedBox(height: 16),
             Text(_error!),
             const SizedBox(height: 16),
@@ -233,11 +234,11 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.payments_outlined,
-                size: 64, color: Colors.grey.shade300),
+                size: 64, color: SdColors.edge),
             const SizedBox(height: 16),
             const Text(
               'لا توجد مدفوعات',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+              style: TextStyle(fontSize: 18, color: SdColors.faint),
             ),
           ],
         ),
@@ -246,7 +247,7 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
 
     return RefreshIndicator(
       onRefresh: _loadPayments,
-      color: Colors.teal,
+      color: SdColors.accent,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _payments.length,
@@ -260,10 +261,10 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
 
   Widget _buildPaymentCard(CitizenPaymentModel payment) {
     final color = payment.status == 'success'
-        ? Colors.green
+        ? SdColors.success
         : payment.status == 'pending'
-            ? Colors.orange
-            : Colors.red;
+            ? SdColors.warning
+            : SdColors.danger;
 
     final statusIcon = payment.status == 'success'
         ? Icons.check_circle
@@ -343,12 +344,12 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.person, size: 14, color: Colors.grey),
+                      const Icon(Icons.person, size: 14, color: SdColors.faint),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           payment.citizenName ?? 'غير محدد',
-                          style: TextStyle(color: Colors.grey.shade700),
+                          style: TextStyle(color: SdColors.muted),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -357,20 +358,20 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.payment, size: 14, color: Colors.grey),
+                      const Icon(Icons.payment, size: 14, color: SdColors.faint),
                       const SizedBox(width: 4),
                       Text(
                         _getPaymentMethodName(payment.paymentMethod),
-                        style: TextStyle(color: Colors.grey.shade600),
+                        style: TextStyle(color: SdColors.muted),
                       ),
                       const Spacer(),
                       const Icon(Icons.access_time,
-                          size: 14, color: Colors.grey),
+                          size: 14, color: SdColors.faint),
                       const SizedBox(width: 4),
                       Text(
                         _formatDateTime(payment.createdAt),
                         style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade600),
+                            fontSize: 12, color: SdColors.muted),
                       ),
                     ],
                   ),
@@ -378,13 +379,13 @@ class _CitizenPaymentsPageState extends State<CitizenPaymentsPage> {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.receipt, size: 14, color: Colors.grey),
+                        const Icon(Icons.receipt, size: 14, color: SdColors.faint),
                         const SizedBox(width: 4),
                         Text(
                           'رقم العملية: ${payment.transactionId}',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey.shade500,
+                            color: SdColors.faint,
                           ),
                         ),
                       ],

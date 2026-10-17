@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
 import '../../services/accounting_export_service.dart';
@@ -32,10 +31,10 @@ class _AgingReportPageState extends State<AgingReportPage> {
   // ═══════════════════════════════════════════════════════════════
 
   static const _categoryColors = <int, Color>{
-    0: Color(0xFF27AE60), // حالي
-    1: Color(0xFFF39C12), // متأخر
-    2: Color(0xFFE67E22), // متأخر جداً
-    3: Color(0xFFE74C3C), // خطر
+    0: SdColors.success, // حالي
+    1: SdColors.warning, // متأخر
+    2: SdColors.warning, // متأخر جداً
+    3: SdColors.danger, // خطر
   };
 
   static const _categoryLabels = <int, String>{
@@ -286,7 +285,7 @@ class _AgingReportPageState extends State<AgingReportPage> {
 
         return Container(
           decoration: BoxDecoration(
-            color: AccountingTheme.bgCard,
+            color: SdColors.surface,
             borderRadius: BorderRadius.circular(ar.cardRadius),
             boxShadow: AccountingTheme.cardShadow,
             border: Border(
@@ -305,7 +304,8 @@ class _AgingReportPageState extends State<AgingReportPage> {
                   Expanded(
                     child: Text(
                       label,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: ar.small,
                         fontWeight: FontWeight.w600,
                         color: color,
@@ -324,7 +324,8 @@ class _AgingReportPageState extends State<AgingReportPage> {
                     ),
                     child: Text(
                       '$count',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: ar.caption,
                         fontWeight: FontWeight.bold,
                         color: color,
@@ -339,10 +340,11 @@ class _AgingReportPageState extends State<AgingReportPage> {
                 alignment: Alignment.centerRight,
                 child: Text(
                   _fmtCurrency(amount),
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: ar.financialMedium,
                     fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textPrimary,
+                    color: SdColors.ink,
                   ),
                 ),
               ),
@@ -368,21 +370,22 @@ class _AgingReportPageState extends State<AgingReportPage> {
         vertical: ar.spaceS,
       ),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
         boxShadow: AccountingTheme.cardShadow,
       ),
       child: Row(
         children: [
           Icon(Icons.filter_alt_outlined,
-              color: AccountingTheme.textMuted, size: ar.iconS),
+              color: SdColors.faint, size: ar.iconS),
           SizedBox(width: ar.spaceS),
           Text(
             'الفني:',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: ar.body,
               fontWeight: FontWeight.w600,
-              color: AccountingTheme.textSecondary,
+              color: SdColors.muted,
             ),
           ),
           SizedBox(width: ar.spaceS),
@@ -391,32 +394,35 @@ class _AgingReportPageState extends State<AgingReportPage> {
               height: ar.btnHeight,
               padding: EdgeInsets.symmetric(horizontal: ar.spaceS),
               decoration: BoxDecoration(
-                color: AccountingTheme.bgPrimary,
+                color: SdColors.ground,
                 borderRadius: BorderRadius.circular(ar.btnRadius),
-                border: Border.all(color: AccountingTheme.borderColor),
+                border: Border.all(color: SdColors.divider),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _filterTechnician ?? 'الكل',
                   isExpanded: true,
                   icon: Icon(Icons.keyboard_arrow_down,
-                      size: ar.iconS, color: AccountingTheme.textMuted),
-                  style: GoogleFonts.cairo(
+                      size: ar.iconS, color: SdColors.faint),
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMobile ? ar.small : ar.body,
-                    color: AccountingTheme.textPrimary,
+                    color: SdColors.ink,
                   ),
                   items: [
                     DropdownMenuItem(
                       value: 'الكل',
                       child: Text('الكل',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: isMobile ? ar.small : ar.body,
                           )),
                     ),
                     ...names.map((name) => DropdownMenuItem(
                           value: name,
                           child: Text(name,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: isMobile ? ar.small : ar.body,
                               )),
                         )),
@@ -437,15 +443,16 @@ class _AgingReportPageState extends State<AgingReportPage> {
               vertical: ar.spaceXS,
             ),
             decoration: BoxDecoration(
-              color: AccountingTheme.bgSecondary,
+              color: SdColors.groundAlt,
               borderRadius: BorderRadius.circular(ar.btnRadius),
             ),
             child: Text(
               'الإجمالي: ${_fmtCurrency(_totalDebt)}',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMobile ? ar.small : ar.body,
                 fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
+                color: SdColors.ink,
               ),
             ),
           ),
@@ -474,7 +481,7 @@ class _AgingReportPageState extends State<AgingReportPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
         boxShadow: AccountingTheme.cardShadow,
       ),
@@ -522,10 +529,11 @@ class _AgingReportPageState extends State<AgingReportPage> {
     final ar = context.accR;
     final child = Text(
       label,
-      style: GoogleFonts.cairo(
+      style: TextStyle(
+        fontFamily: 'Cairo',
         fontSize: ar.tableHeaderFont,
         fontWeight: FontWeight.bold,
-        color: AccountingTheme.tableHeaderText,
+        color: SdColors.surface,
       ),
       textAlign: TextAlign.center,
     );
@@ -562,9 +570,9 @@ class _AgingReportPageState extends State<AgingReportPage> {
       decoration: BoxDecoration(
         color: isEven
             ? color.withOpacity(0.04)
-            : AccountingTheme.bgCard,
+            : SdColors.surface,
         border: const Border(
-          bottom: BorderSide(color: AccountingTheme.borderColor, width: 0.5),
+          bottom: BorderSide(color: SdColors.divider, width: 0.5),
         ),
       ),
       child: Row(
@@ -574,9 +582,10 @@ class _AgingReportPageState extends State<AgingReportPage> {
             width: ar.colNumW,
             child: Text(
               '${index + 1}',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: ar.tableCellFont,
-                color: AccountingTheme.textMuted,
+                color: SdColors.faint,
               ),
               textAlign: TextAlign.center,
             ),
@@ -586,10 +595,11 @@ class _AgingReportPageState extends State<AgingReportPage> {
             flex: 2,
             child: Text(
               technician,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: ar.tableCellFont,
                 fontWeight: FontWeight.w600,
-                color: AccountingTheme.textPrimary,
+                color: SdColors.ink,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -599,10 +609,11 @@ class _AgingReportPageState extends State<AgingReportPage> {
             width: ar.colAmountW + 10,
             child: Text(
               _fmtCurrency(amount),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: ar.tableCellFont,
                 fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
+                color: SdColors.ink,
               ),
               textAlign: TextAlign.center,
             ),
@@ -612,9 +623,10 @@ class _AgingReportPageState extends State<AgingReportPage> {
             width: ar.colDateW + 10,
             child: Text(
               formattedDate,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: ar.tableCellFont,
-                color: AccountingTheme.textSecondary,
+                color: SdColors.muted,
               ),
               textAlign: TextAlign.center,
             ),
@@ -624,7 +636,8 @@ class _AgingReportPageState extends State<AgingReportPage> {
             width: ar.colAmountW,
             child: Text(
               '$ageDays',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: ar.tableCellFont,
                 fontWeight: FontWeight.w600,
                 color: color,
@@ -648,7 +661,8 @@ class _AgingReportPageState extends State<AgingReportPage> {
                 ),
                 child: Text(
                   category,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: ar.badgeFont,
                     fontWeight: FontWeight.bold,
                     color: color,
@@ -672,9 +686,9 @@ class _AgingReportPageState extends State<AgingReportPage> {
         vertical: ar.tableCellPadV + 4,
       ),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgSecondary,
+        color: SdColors.groundAlt,
         border: const Border(
-          top: BorderSide(color: AccountingTheme.borderColor, width: 1.5),
+          top: BorderSide(color: SdColors.divider, width: 1.5),
         ),
       ),
       child: Row(
@@ -686,10 +700,11 @@ class _AgingReportPageState extends State<AgingReportPage> {
             flex: 2,
             child: Text(
               'الإجمالي (${debts.length} سجل)',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: ar.tableCellFont,
                 fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
+                color: SdColors.ink,
               ),
             ),
           ),
@@ -698,10 +713,11 @@ class _AgingReportPageState extends State<AgingReportPage> {
             width: ar.colAmountW + 10,
             child: Text(
               _fmtCurrency(_totalDebt),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: ar.tableCellFont,
                 fontWeight: FontWeight.bold,
-                color: AccountingTheme.danger,
+                color: SdColors.danger,
               ),
               textAlign: TextAlign.center,
             ),
@@ -731,14 +747,14 @@ class _AgingReportPageState extends State<AgingReportPage> {
       AccountingTheme.showSnack(
         context,
         'تم التصدير: $path',
-        AccountingTheme.success,
+        SdColors.success,
       );
     } catch (e) {
       if (!mounted) return;
       AccountingTheme.showSnack(
         context,
         'خطأ في التصدير',
-        AccountingTheme.danger,
+        SdColors.danger,
       );
     }
   }

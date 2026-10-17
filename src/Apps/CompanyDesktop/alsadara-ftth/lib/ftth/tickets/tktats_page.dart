@@ -164,7 +164,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
       enableVibration: true,
       playSound: true,
       icon: '@mipmap/ic_launcher',
-      color: Color(0xFF2196F3), // لون الإشعار
+      color: SdColors.info, // لون الإشعار
       ticker: 'مهمة جديدة',
       styleInformation: BigTextStyleInformation(
         body,
@@ -721,13 +721,13 @@ class _TKTATsPageState extends State<TKTATsPage> {
   Color getPriorityColor(String? priority) {
     switch (priority?.toLowerCase()) {
       case 'high':
-        return Colors.red;
+        return SdColors.danger;
       case 'medium':
-        return Colors.orange;
+        return SdColors.warning;
       case 'low':
-        return Colors.green;
+        return SdColors.success;
       default:
-        return Colors.grey;
+        return SdColors.faint;
     }
   }
 
@@ -802,7 +802,7 @@ $lastErrorDetails
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.error_outline, color: Colors.red),
+              Icon(Icons.error_outline, color: SdColors.danger),
               SizedBox(width: 8),
               Text('تفاصيل الخطأ'),
             ],
@@ -818,9 +818,9 @@ $lastErrorDetails
                       width: double.infinity,
                       padding: EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.grey[100],
+                        color: SdColors.groundAlt,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[300]!),
+                        border: Border.all(color: SdColors.edge),
                       ),
                       child: SelectableText(
                         fullErrorReport,
@@ -842,7 +842,7 @@ $lastErrorDetails
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('تم نسخ تفاصيل الخطأ إلى الحافظة'),
-                            backgroundColor: Colors.green,
+                            backgroundColor: SdColors.success,
                             duration: Duration(seconds: 2),
                           ),
                         );
@@ -850,7 +850,7 @@ $lastErrorDetails
                       icon: Icon(Icons.copy),
                       label: Text('نسخ'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[600],
+                        backgroundColor: SdColors.info,
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -862,7 +862,7 @@ $lastErrorDetails
                       icon: Icon(Icons.refresh),
                       label: Text('إعادة المحاولة'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[600],
+                        backgroundColor: SdColors.success,
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -1535,7 +1535,7 @@ $lastErrorDetails
               children: [
                 Row(
                   children: [
-                    Icon(Icons.data_object, color: Colors.blue[600]),
+                    Icon(Icons.data_object, color: SdColors.info),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -1568,12 +1568,12 @@ $lastErrorDetails
                       children: [
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.blueGrey[50],
+                            color: SdColors.surfaceAlt,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: TabBar(
-                            labelColor: Colors.blue[700],
-                            unselectedLabelColor: Colors.blueGrey[400],
+                            labelColor: SdColors.info,
+                            unselectedLabelColor: SdColors.faint,
                             indicator: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
@@ -1616,10 +1616,10 @@ $lastErrorDetails
                                       padding: EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 8),
                                       decoration: BoxDecoration(
-                                        color: Colors.grey[50],
+                                        color: SdColors.surfaceAlt,
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                            color: Colors.grey[200]!),
+                                            color: SdColors.divider),
                                       ),
                                       child: Row(
                                         crossAxisAlignment:
@@ -1631,7 +1631,7 @@ $lastErrorDetails
                                               k,
                                               style: TextStyle(
                                                 fontWeight: FontWeight.w600,
-                                                color: Colors.blueGrey[700],
+                                                color: SdColors.muted,
                                                 fontSize: 12.5,
                                               ),
                                             ),
@@ -1643,7 +1643,7 @@ $lastErrorDetails
                                               shortVal,
                                               style: TextStyle(
                                                   fontSize: 12,
-                                                  color: Colors.blueGrey[800]),
+                                                  color: SdColors.ink),
                                               maxLines: 4,
                                             ),
                                           ),
@@ -1658,7 +1658,7 @@ $lastErrorDetails
                                               padding: EdgeInsets.all(4),
                                               child: Icon(Icons.copy,
                                                   size: 14,
-                                                  color: Colors.blueGrey[400]),
+                                                  color: SdColors.faint),
                                             ),
                                           )
                                         ],
@@ -1793,7 +1793,7 @@ $lastErrorDetails
         enableVibration: true,
         playSound: true,
         icon: '@mipmap/ic_launcher',
-        color: Color(0xFF4CAF50), // لون أخضر للمهام الجديدة
+        color: SdColors.success, // لون أخضر للمهام الجديدة
         ticker: 'مهام جديدة وصلت',
         styleInformation: BigTextStyleInformation(
           body,
@@ -1804,7 +1804,7 @@ $lastErrorDetails
         sound: RawResourceAndroidNotificationSound('notification'),
         // إضافة أضواء LED
         enableLights: true,
-        ledColor: Color(0xFF4CAF50),
+        ledColor: SdColors.success,
         ledOnMs: 1000,
         ledOffMs: 500,
       );
@@ -1968,7 +1968,7 @@ $lastErrorDetails
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.notifications, color: Colors.blue[600]),
+              Icon(Icons.notifications, color: SdColors.info),
               SizedBox(width: 8),
               Text('الإشعارات'),
               Spacer(),
@@ -1992,10 +1992,10 @@ $lastErrorDetails
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.blue[50]!, Colors.blue[100]!],
+                      colors: [SdColors.infoTint, SdColors.infoTint],
                     ),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue[200]!),
+                    border: Border.all(color: SdColors.infoTintEdge),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -2004,21 +2004,21 @@ $lastErrorDetails
                         'إجمالي التذاكر',
                         totalTKTATs.toString(),
                         Icons.assignment,
-                        Colors.blue[600]!,
+                        SdColors.info,
                       ),
-                      Container(width: 1, height: 30, color: Colors.blue[300]),
+                      Container(width: 1, height: 30, color: SdColors.infoTintEdge),
                       _buildNotificationStat(
                         'التذاكر المعروضة',
                         filteredTKTATs.length.toString(),
                         Icons.visibility,
-                        Colors.green[600]!,
+                        SdColors.success,
                       ),
-                      Container(width: 1, height: 30, color: Colors.blue[300]),
+                      Container(width: 1, height: 30, color: SdColors.infoTintEdge),
                       _buildNotificationStat(
                         'الصفحة الحالية',
                         currentPage.toString(),
                         Icons.pages,
-                        Colors.orange[600]!,
+                        SdColors.warning,
                       ),
                     ],
                   ),
@@ -2036,14 +2036,14 @@ $lastErrorDetails
                               Icon(
                                 Icons.notifications_none,
                                 size: 64,
-                                color: Colors.grey[400],
+                                color: SdColors.faint,
                               ),
                               SizedBox(height: 16),
                               Text(
                                 'لا توجد تذاكر للعرض',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: Colors.grey[600],
+                                  color: SdColors.muted,
                                 ),
                               ),
                               SizedBox(height: 8),
@@ -2051,7 +2051,7 @@ $lastErrorDetails
                                 'جميع التذاكر محدثة!',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: Colors.grey[500],
+                                  color: SdColors.faint,
                                 ),
                               ),
                             ],
@@ -2110,7 +2110,7 @@ $lastErrorDetails
                                         children: [
                                           Icon(Icons.person,
                                               size: 12,
-                                              color: Colors.grey[600]),
+                                              color: SdColors.muted),
                                           SizedBox(width: 4),
                                           Expanded(
                                             child: Text(
@@ -2129,13 +2129,13 @@ $lastErrorDetails
                                         children: [
                                           Icon(Icons.access_time,
                                               size: 12,
-                                              color: Colors.grey[600]),
+                                              color: SdColors.muted),
                                           SizedBox(width: 4),
                                           Text(
                                             formatDate(createdAt),
                                             style: TextStyle(
                                                 fontSize: 11,
-                                                color: Colors.grey[600]),
+                                                color: SdColors.muted),
                                           ),
                                         ],
                                       ),
@@ -2146,13 +2146,13 @@ $lastErrorDetails
                                   padding: EdgeInsets.symmetric(
                                       horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Colors.red.withValues(alpha: 0.15),
+                                    color: SdColors.danger.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
                                     translateStatus(status),
                                     style: TextStyle(
-                                      color: Colors.red,
+                                      color: SdColors.danger,
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -2174,21 +2174,21 @@ $lastErrorDetails
                   Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.blue[50],
+                      color: SdColors.infoTint,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue[200]!),
+                      border: Border.all(color: SdColors.infoTintEdge),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.info_outline,
-                            size: 16, color: Colors.blue[600]),
+                            size: 16, color: SdColors.info),
                         SizedBox(width: 8),
                         Text(
                           'يوجد ${filteredTKTATs.length - 5} تذاكر إضافية',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.blue[600],
+                            color: SdColors.info,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -2242,7 +2242,7 @@ $lastErrorDetails
           label,
           style: TextStyle(
             fontSize: 10,
-            color: Colors.grey[600],
+            color: SdColors.muted,
           ),
           textAlign: TextAlign.center,
         ),

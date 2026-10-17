@@ -454,12 +454,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ListTile(
-                  leading: const Icon(Icons.photo_library, color: Colors.purple),
+                  leading: const Icon(Icons.photo_library, color: SdColors.platformBase),
                   title: const Text('المعرض'),
                   onTap: () => Navigator.pop(ctx, ImageSource.gallery),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.camera_alt, color: Colors.blue),
+                  leading: const Icon(Icons.camera_alt, color: SdColors.info),
                   title: const Text('الكاميرا'),
                   onTap: () => Navigator.pop(ctx, ImageSource.camera),
                 ),
@@ -499,7 +499,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 ),
                 const SizedBox(height: 12),
                 Text('${(file.lengthSync() / 1024).toStringAsFixed(0)} KB',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                    style: TextStyle(fontSize: 12, color: SdColors.faint)),
               ],
             ),
             actions: [
@@ -544,7 +544,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           child: AlertDialog(
             content: Row(
               children: [
-                const Icon(Icons.insert_drive_file, size: 40, color: Colors.indigo),
+                const Icon(Icons.insert_drive_file, size: 40, color: SdColors.primary),
                 const SizedBox(width: 12),
                 Expanded(child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -552,7 +552,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   children: [
                     Text(fileName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
-                    Text(sizeStr, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                    Text(sizeStr, style: TextStyle(fontSize: 12, color: SdColors.faint)),
                   ],
                 )),
               ],
@@ -608,12 +608,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.location_on, size: 48, color: Colors.red),
+                const Icon(Icons.location_on, size: 48, color: SdColors.danger),
                 const SizedBox(height: 8),
                 const Text('هل تريد مشاركة موقعك الحالي؟'),
                 const SizedBox(height: 4),
                 Text('${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                    style: TextStyle(fontSize: 11, color: SdColors.faint)),
               ],
             ),
             actions: [
@@ -961,8 +961,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               ),
               if (canDelete)
                 ListTile(
-                  leading: const Icon(Icons.delete_outline, color: Colors.red),
-                  title: const Text('حذف', style: TextStyle(color: Colors.red)),
+                  leading: const Icon(Icons.delete_outline, color: SdColors.danger),
+                  title: const Text('حذف', style: TextStyle(color: SdColors.danger)),
                   onTap: () async {
                     Navigator.pop(ctx);
 
@@ -987,7 +987,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                               ),
                               SimpleDialogOption(
                                 onPressed: () => Navigator.pop(c, 'all'),
-                                child: const Text('حذف للجميع', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                child: const Text('حذف للجميع', style: TextStyle(color: SdColors.danger, fontWeight: FontWeight.bold)),
                               ),
                             ],
                           ),
@@ -1001,7 +1001,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                           content: const Text('هل أنت متأكد؟'),
                           actions: [
                             TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('إلغاء')),
-                            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('حذف', style: TextStyle(color: Colors.red))),
+                            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('حذف', style: TextStyle(color: SdColors.danger))),
                           ],
                         ),
                       );
@@ -1117,7 +1117,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 }
                 return ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: Colors.blue[100],
+                    backgroundColor: SdColors.infoTint,
                     child: Icon(
                       r['type'] == 0
                           ? Icons.person
@@ -1127,7 +1127,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                                   ? Icons.campaign
                                   : Icons.group,
                       size: 20,
-                      color: Colors.blue[700],
+                      color: SdColors.info,
                     ),
                   ),
                   title: Text(r['name']?.toString() ?? ''),
@@ -1181,15 +1181,15 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     final items = <_AttachItem>[];
 
     if (pm.hasAction('chat.send_image', 'send'))
-      items.add(_AttachItem(Icons.photo_camera, 'صورة', Colors.pink, _sendImageMessage));
+      items.add(_AttachItem(Icons.photo_camera, 'صورة', SdColors.platformBase, _sendImageMessage));
     if (pm.hasAction('chat.send_file', 'send'))
-      items.add(_AttachItem(Icons.insert_drive_file, 'ملف', Colors.indigo, _sendFileMessage));
+      items.add(_AttachItem(Icons.insert_drive_file, 'ملف', SdColors.primary, _sendFileMessage));
     if (pm.hasAction('chat.send_audio', 'send'))
-      items.add(_AttachItem(Icons.headphones, 'صوت', Colors.orange, _toggleRecording));
+      items.add(_AttachItem(Icons.headphones, 'صوت', SdColors.warning, _toggleRecording));
     if (pm.hasAction('chat.send_location', 'send'))
-      items.add(_AttachItem(Icons.location_on, 'موقع', Colors.green, _sendLocationMessage));
+      items.add(_AttachItem(Icons.location_on, 'موقع', SdColors.success, _sendLocationMessage));
     if (pm.hasAction('chat.send_contact', 'send'))
-      items.add(_AttachItem(Icons.person, 'جهة اتصال', Colors.blue, _sendContactMessage));
+      items.add(_AttachItem(Icons.person, 'جهة اتصال', SdColors.info, _sendContactMessage));
 
     showModalBottomSheet(
       context: context,
@@ -1212,7 +1212,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     children: [
                       CircleAvatar(radius: 26, backgroundColor: item.color, child: Icon(item.icon, color: Colors.white, size: 24)),
                       const SizedBox(height: 6),
-                      Text(item.label, style: TextStyle(fontSize: 11, color: Colors.grey[700]), textAlign: TextAlign.center),
+                      Text(item.label, style: TextStyle(fontSize: 11, color: SdColors.muted), textAlign: TextAlign.center),
                     ],
                   ),
                 ),
@@ -1334,7 +1334,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 Expanded(child: Text('الاعضاء (${_roomMembers.length})')),
                 if (canManage)
                   IconButton(
-                    icon: const Icon(Icons.person_add, color: Colors.blue),
+                    icon: const Icon(Icons.person_add, color: SdColors.info),
                     tooltip: 'إضافة أعضاء',
                     onPressed: () async {
                       Navigator.pop(ctx);
@@ -1342,7 +1342,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     },
                   ),
                 IconButton(
-                  icon: Icon(Icons.exit_to_app, color: Colors.red[300], size: 20),
+                  icon: Icon(Icons.exit_to_app, color: SdColors.dangerTintEdge, size: 20),
                   tooltip: 'مغادرة المجموعة',
                   onPressed: () async {
                     Navigator.pop(ctx);
@@ -1355,7 +1355,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                           content: const Text('هل تريد مغادرة هذه المجموعة؟'),
                           actions: [
                             TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('إلغاء')),
-                            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('مغادرة', style: TextStyle(color: Colors.red))),
+                            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('مغادرة', style: TextStyle(color: SdColors.danger))),
                           ],
                         ),
                       ),
@@ -1398,20 +1398,20 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                                 const SizedBox(width: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                  decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                                  child: const Text('مدير', style: TextStyle(fontSize: 10, color: Colors.blue)),
+                                  decoration: BoxDecoration(color: SdColors.info.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                                  child: const Text('مدير', style: TextStyle(fontSize: 10, color: SdColors.info)),
                                 ),
                               ],
                               if (isMe) ...[
                                 const SizedBox(width: 6),
-                                const Text('(أنت)', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                const Text('(أنت)', style: TextStyle(fontSize: 11, color: SdColors.faint)),
                               ],
                             ],
                           ),
-                          subtitle: dept.isNotEmpty ? Text(dept, style: TextStyle(fontSize: 12, color: Colors.grey[500])) : null,
+                          subtitle: dept.isNotEmpty ? Text(dept, style: TextStyle(fontSize: 12, color: SdColors.faint)) : null,
                           trailing: canManage && !isMe && !isAdmin
                               ? IconButton(
-                                  icon: Icon(Icons.remove_circle_outline, color: Colors.red[300], size: 20),
+                                  icon: Icon(Icons.remove_circle_outline, color: SdColors.dangerTintEdge, size: 20),
                                   tooltip: 'إزالة',
                                   onPressed: () async {
                                     final confirm = await showDialog<bool>(
@@ -1421,7 +1421,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                                         content: Text('هل تريد إزالة $name من المجموعة؟'),
                                         actions: [
                                           TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('إلغاء')),
-                                          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('إزالة', style: TextStyle(color: Colors.red))),
+                                          TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('إزالة', style: TextStyle(color: SdColors.danger))),
                                         ],
                                       ),
                                     );
@@ -1514,9 +1514,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                       style: const TextStyle(fontSize: 13),
                       decoration: InputDecoration(
                         hintText: 'بحث بالاسم...',
-                        hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
-                        prefixIcon: Icon(Icons.search, size: 20, color: Colors.grey[400]),
-                        filled: true, fillColor: Colors.grey[100],
+                        hintStyle: TextStyle(fontSize: 13, color: SdColors.faint),
+                        prefixIcon: Icon(Icons.search, size: 20, color: SdColors.faint),
+                        filled: true, fillColor: SdColors.groundAlt,
                         contentPadding: EdgeInsets.zero,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
                       ),
@@ -1585,14 +1585,14 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                         style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
                       ),
                       const Spacer(),
-                      Text('${selectedIds.length} محدد', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                      Text('${selectedIds.length} محدد', style: TextStyle(fontSize: 11, color: SdColors.muted)),
                     ],
                   ),
-                  Divider(height: 1, color: Colors.grey[200]),
+                  Divider(height: 1, color: SdColors.divider),
                   // القائمة
                   Expanded(
                     child: filtered.isEmpty
-                        ? Center(child: Text('لا توجد نتائج', style: TextStyle(color: Colors.grey[400])))
+                        ? Center(child: Text('لا توجد نتائج', style: TextStyle(color: SdColors.faint)))
                         : ListView.builder(
                             itemCount: filtered.length,
                             itemBuilder: (_, i) {
@@ -1604,7 +1604,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                                 dense: true,
                                 value: selectedIds.contains(id),
                                 title: Text(name, style: const TextStyle(fontSize: 13)),
-                                subtitle: dept.isNotEmpty ? Text(dept, style: TextStyle(fontSize: 11, color: Colors.grey[500])) : null,
+                                subtitle: dept.isNotEmpty ? Text(dept, style: TextStyle(fontSize: 11, color: SdColors.faint)) : null,
                                 onChanged: (_) => ss(() {
                                   if (selectedIds.contains(id)) { selectedIds.remove(id); } else { selectedIds.add(id); }
                                 }),
@@ -1745,7 +1745,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         ),
         child: Text(
           _formatDateLabel(date),
-          style: TextStyle(fontSize: 12, color: Colors.grey[700], fontWeight: FontWeight.w500),
+          style: TextStyle(fontSize: 12, color: SdColors.muted, fontWeight: FontWeight.w500),
         ),
       ),
     );
@@ -1867,7 +1867,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           if (_searchMatchIndices.isNotEmpty) ...[
             Text(
               '${_currentSearchMatch + 1}/${_searchMatchIndices.length}',
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 12, color: SdColors.muted),
             ),
             IconButton(
               icon: const Icon(Icons.keyboard_arrow_up, size: 20),
@@ -2041,7 +2041,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             children: [
               if (dateSeparator != null) dateSeparator,
               Container(
-                color: isHighlighted ? Colors.yellow.withValues(alpha: 0.3) : null,
+                color: isHighlighted ? SdColors.warning.withValues(alpha: 0.3) : null,
                 child: _buildMessageBubble(msg, isFirstInGroup: isFirstInGroup, isLastInGroup: isLastInGroup),
               ),
             ],
@@ -2189,9 +2189,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.refresh, size: 14, color: Colors.red[400]),
+                        Icon(Icons.refresh, size: 14, color: SdColors.danger),
                         const SizedBox(width: 4),
-                        Text('إعادة الإرسال', style: TextStyle(fontSize: 11, color: Colors.red[400])),
+                        Text('إعادة الإرسال', style: TextStyle(fontSize: 11, color: SdColors.danger)),
                       ],
                     ),
                   ),
@@ -2225,7 +2225,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     return grouped.entries.map((e) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.15),
+        color: SdColors.faint.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text('${e.key} ${e.value > 1 ? e.value : ''}',
@@ -2363,7 +2363,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               errorBuilder: (_, __, ___) => Container(
                 width: 200,
                 height: 120,
-                color: Colors.grey.shade300,
+                color: SdColors.edge,
                 child: const Icon(Icons.broken_image, size: 40),
               ),
             ),

@@ -4,6 +4,7 @@ library;
 
 import 'package:flutter/material.dart';
 import '../../services/company_settings_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class CompanyFirebaseSettingsPage extends StatefulWidget {
   const CompanyFirebaseSettingsPage({super.key});
@@ -106,7 +107,7 @@ class _CompanyFirebaseSettingsPageState
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg, textAlign: TextAlign.right),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        backgroundColor: isError ? SdColors.danger : SdColors.success,
       ),
     );
   }
@@ -148,7 +149,7 @@ class _CompanyFirebaseSettingsPageState
                       child: Text(
                         'آخر تحديث: ${_formatDate(_settings.updatedAt!)}',
                         style: TextStyle(
-                            color: Colors.grey[500], fontSize: 12),
+                            color: SdColors.faint, fontSize: 12),
                       ),
                     ),
                   ],
@@ -192,7 +193,7 @@ class _CompanyFirebaseSettingsPageState
               decoration: InputDecoration(
                 labelText: 'رقم واتساب المدير',
                 hintText: '07xxxxxxxxx',
-                prefixIcon: const Icon(Icons.phone, color: Colors.green),
+                prefixIcon: const Icon(Icons.phone, color: SdColors.success),
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -213,7 +214,7 @@ class _CompanyFirebaseSettingsPageState
           children: [
             Row(
               children: [
-                const Icon(Icons.assessment, color: Colors.orange),
+                const Icon(Icons.assessment, color: SdColors.warning),
                 const SizedBox(width: 8),
                 const Text('إعدادات التقارير',
                     style:
@@ -227,7 +228,7 @@ class _CompanyFirebaseSettingsPageState
                   const Text('تفعيل أو تعطيل إرسال التقارير للمدير'),
               value: _receiveReports,
               onChanged: (v) => setState(() => _receiveReports = v),
-              activeColor: Colors.green,
+              activeColor: SdColors.success,
             ),
             if (_receiveReports) ...[
               const Divider(),
@@ -237,21 +238,21 @@ class _CompanyFirebaseSettingsPageState
                     'إرسال تقرير بعد كل عملية إرسال جماعي'),
                 value: _bulkSendReport,
                 onChanged: (v) => setState(() => _bulkSendReport = v),
-                activeColor: Colors.blue,
+                activeColor: SdColors.info,
               ),
               SwitchListTile(
                 title: const Text('تقرير يومي'),
                 subtitle: const Text('ملخص يومي للعمليات'),
                 value: _dailyReport,
                 onChanged: (v) => setState(() => _dailyReport = v),
-                activeColor: Colors.blue,
+                activeColor: SdColors.info,
               ),
               SwitchListTile(
                 title: const Text('تقرير أسبوعي'),
                 subtitle: const Text('ملخص أسبوعي للعمليات'),
                 value: _weeklyReport,
                 onChanged: (v) => setState(() => _weeklyReport = v),
-                activeColor: Colors.blue,
+                activeColor: SdColors.info,
               ),
             ],
           ],

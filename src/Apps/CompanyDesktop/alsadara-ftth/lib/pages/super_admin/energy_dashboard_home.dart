@@ -4,11 +4,11 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/energy_dashboard_theme.dart';
 import '../../services/api/auth/super_admin_api.dart';
 import '../../services/api/api_response.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 class EnergyDashboardHome extends StatefulWidget {
   const EnergyDashboardHome({super.key});
 
@@ -96,7 +96,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
     final spacing = isCompact ? 8.0 : 12.0;
 
     return Container(
-      color: EnergyDashboardTheme.bgPrimary,
+      color: SdColors.ground,
       child: Padding(
         padding: EdgeInsets.all(padding),
         child: Column(
@@ -131,9 +131,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Row(
         children: [
@@ -142,15 +142,16 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             width: 8,
             height: 8,
             decoration: BoxDecoration(
-              color: EnergyDashboardTheme.neonGreen,
+              color: SdColors.success,
               shape: BoxShape.circle,
             ),
           ),
           const SizedBox(width: 6),
           Text(
             'نشط',
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.neonGreen,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.success,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -181,7 +182,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: EnergyDashboardTheme.neonGreen,
+                color: SdColors.success,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -192,7 +193,8 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                   const SizedBox(width: 4),
                   Text(
                     'تحديث',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: Colors.white,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -211,18 +213,19 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgSecondary,
+        color: SdColors.groundAlt,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: EnergyDashboardTheme.textMuted),
+          Icon(icon, size: 12, color: SdColors.faint),
           const SizedBox(width: 4),
           Text(
             label,
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textSecondary,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.muted,
               fontSize: 11,
             ),
           ),
@@ -241,18 +244,20 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
       children: [
         Text(
           'مرحباً، $userName! 👋',
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: EnergyDashboardTheme.textPrimary,
+            color: SdColors.ink,
           ),
         ),
         const SizedBox(height: 8),
         Text(
           'ماذا تبحث عنه اليوم؟',
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: 16,
-            color: EnergyDashboardTheme.textSecondary,
+            color: SdColors.muted,
           ),
         ),
       ],
@@ -272,9 +277,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
         return Container(
           padding: EdgeInsets.all(padding),
           decoration: BoxDecoration(
-            color: EnergyDashboardTheme.bgCard,
+            color: SdColors.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: EnergyDashboardTheme.borderColor),
+            border: Border.all(color: SdColors.divider),
           ),
           child: Column(
             children: [
@@ -285,10 +290,10 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                     width: 10,
                     height: 10,
                     decoration: BoxDecoration(
-                      color: EnergyDashboardTheme.neonGreen,
+                      color: SdColors.success,
                       shape: BoxShape.circle,
                       boxShadow: EnergyDashboardTheme.glowCustom(
-                        EnergyDashboardTheme.neonGreen,
+                        SdColors.success,
                         intensity: 0.5,
                       ),
                     ),
@@ -296,8 +301,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                   const SizedBox(width: 8),
                   Text(
                     'المراقبة المباشرة نشطة',
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.neonGreen,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.success,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -343,10 +349,10 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                   icon: const Icon(Icons.refresh_rounded, size: 18),
                   label: Text(
                     'تحديث البيانات',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: EnergyDashboardTheme.neonGreen,
+                    backgroundColor: SdColors.success,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -370,29 +376,31 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgSecondary,
+        color: SdColors.groundAlt,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: EnergyDashboardTheme.textMuted, size: 18),
+          Icon(icon, color: SdColors.faint, size: 18),
           const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: GoogleFonts.cairo(
-                  color: EnergyDashboardTheme.textMuted,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.faint,
                   fontSize: 10,
                 ),
               ),
               Text(
                 value,
-                style: GoogleFonts.cairo(
-                  color: EnergyDashboardTheme.textPrimary,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.ink,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -402,7 +410,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
           const SizedBox(width: 8),
           const Icon(
             Icons.keyboard_arrow_down_rounded,
-            color: EnergyDashboardTheme.textMuted,
+            color: SdColors.faint,
             size: 18,
           ),
         ],
@@ -417,7 +425,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
   Widget _buildStatCards() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: EnergyDashboardTheme.neonGreen),
+        child: CircularProgressIndicator(color: SdColors.success),
       );
     }
 
@@ -431,7 +439,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             unit: 'شركة',
             trend: '$_activeCompanies نشط',
             icon: Icons.business_rounded,
-            color: EnergyDashboardTheme.neonBlue,
+            color: SdColors.info,
           ),
         ),
         const SizedBox(width: 8),
@@ -442,7 +450,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             unit: 'مستخدم',
             trend: '$_activeUsersToday نشط',
             icon: Icons.people_rounded,
-            color: EnergyDashboardTheme.neonGreen,
+            color: SdColors.success,
           ),
         ),
         const SizedBox(width: 8),
@@ -454,7 +462,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             trend:
                 '${_totalCompanies > 0 ? ((_activeCompanies / _totalCompanies) * 100).toStringAsFixed(0) : 0}%',
             icon: Icons.verified_rounded,
-            color: EnergyDashboardTheme.neonPurple,
+            color: SdColors.platformBase,
           ),
         ),
         const SizedBox(width: 8),
@@ -465,7 +473,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             unit: 'طلب',
             trend: _ordersToday > 0 ? '+$_ordersToday' : 'لا طلبات',
             icon: Icons.shopping_cart_rounded,
-            color: EnergyDashboardTheme.neonOrange,
+            color: SdColors.warning,
           ),
         ),
       ],
@@ -510,7 +518,8 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 ),
                 child: Text(
                   trend,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: color,
                     fontSize: 9,
                     fontWeight: FontWeight.w600,
@@ -525,10 +534,11 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             children: [
               Text(
                 value,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: EnergyDashboardTheme.textPrimary,
+                  color: SdColors.ink,
                   height: 1,
                 ),
               ),
@@ -537,7 +547,8 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Text(
                   unit,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 10,
                     color: color,
                   ),
@@ -548,8 +559,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
           const SizedBox(height: 4),
           Text(
             title,
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textMuted,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.faint,
               fontSize: 10,
             ),
           ),
@@ -561,7 +573,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
   Widget _buildStatCardsOld() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: EnergyDashboardTheme.neonGreen),
+        child: CircularProgressIndicator(color: SdColors.success),
       );
     }
 
@@ -582,7 +594,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 statusText: 'إجمالي الشركات في النظام',
                 trend: '$_activeCompanies نشط',
                 icon: Icons.business_rounded,
-                color: EnergyDashboardTheme.neonBlue,
+                color: SdColors.info,
               )),
               const SizedBox(width: 16),
               Expanded(
@@ -594,7 +606,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 statusText: 'إجمالي المستخدمين',
                 trend: '$_activeUsersToday نشط اليوم',
                 icon: Icons.people_rounded,
-                color: EnergyDashboardTheme.neonGreen,
+                color: SdColors.success,
               )),
               const SizedBox(width: 16),
               Expanded(
@@ -608,7 +620,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 trend:
                     '${_totalCompanies > 0 ? ((_activeCompanies / _totalCompanies) * 100).toStringAsFixed(0) : 0}%',
                 icon: Icons.verified_rounded,
-                color: EnergyDashboardTheme.neonPurple,
+                color: SdColors.platformBase,
               )),
               const SizedBox(width: 16),
               Expanded(
@@ -620,7 +632,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 statusText: 'طلبات اليوم',
                 trend: _ordersToday > 0 ? '+$_ordersToday' : 'لا طلبات',
                 icon: Icons.shopping_cart_rounded,
-                color: EnergyDashboardTheme.neonOrange,
+                color: SdColors.warning,
               )),
             ],
           );
@@ -638,7 +650,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                     statusText: 'إجمالي الشركات',
                     trend: '$_activeCompanies نشط',
                     icon: Icons.business_rounded,
-                    color: EnergyDashboardTheme.neonBlue,
+                    color: SdColors.info,
                   )),
                   const SizedBox(width: 16),
                   Expanded(
@@ -650,7 +662,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                     statusText: 'إجمالي المستخدمين',
                     trend: '$_activeUsersToday نشط اليوم',
                     icon: Icons.people_rounded,
-                    color: EnergyDashboardTheme.neonGreen,
+                    color: SdColors.success,
                   )),
                 ],
               ),
@@ -669,7 +681,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                     trend:
                         '${_totalCompanies > 0 ? ((_activeCompanies / _totalCompanies) * 100).toStringAsFixed(0) : 0}%',
                     icon: Icons.verified_rounded,
-                    color: EnergyDashboardTheme.neonPurple,
+                    color: SdColors.platformBase,
                   )),
                   const SizedBox(width: 16),
                   Expanded(
@@ -681,7 +693,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                     statusText: 'طلبات اليوم',
                     trend: _ordersToday > 0 ? '+$_ordersToday' : 'لا طلبات',
                     icon: Icons.shopping_cart_rounded,
-                    color: EnergyDashboardTheme.neonOrange,
+                    color: SdColors.warning,
                   )),
                 ],
               ),
@@ -698,7 +710,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 statusText: 'إجمالي الشركات',
                 trend: '$_activeCompanies نشط',
                 icon: Icons.business_rounded,
-                color: EnergyDashboardTheme.neonBlue,
+                color: SdColors.info,
               ),
               const SizedBox(height: 12),
               _buildStatCard(
@@ -709,7 +721,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 statusText: 'إجمالي المستخدمين',
                 trend: '$_activeUsersToday نشط اليوم',
                 icon: Icons.people_rounded,
-                color: EnergyDashboardTheme.neonGreen,
+                color: SdColors.success,
               ),
               const SizedBox(height: 12),
               _buildStatCard(
@@ -722,7 +734,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 trend:
                     '${_totalCompanies > 0 ? ((_activeCompanies / _totalCompanies) * 100).toStringAsFixed(0) : 0}%',
                 icon: Icons.verified_rounded,
-                color: EnergyDashboardTheme.neonPurple,
+                color: SdColors.platformBase,
               ),
               const SizedBox(height: 12),
               _buildStatCard(
@@ -733,7 +745,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 statusText: 'طلبات اليوم',
                 trend: _ordersToday > 0 ? '+$_ordersToday' : 'لا طلبات',
                 icon: Icons.shopping_cart_rounded,
-                color: EnergyDashboardTheme.neonOrange,
+                color: SdColors.warning,
               ),
             ],
           );
@@ -756,13 +768,13 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
     Color statusColor;
     switch (status) {
       case 'high':
-        statusColor = EnergyDashboardTheme.neonGreen;
+        statusColor = SdColors.success;
         break;
       case 'optimal':
-        statusColor = EnergyDashboardTheme.neonBlue;
+        statusColor = SdColors.info;
         break;
       default:
-        statusColor = EnergyDashboardTheme.textSecondary;
+        statusColor = SdColors.muted;
     }
 
     return Container(
@@ -814,8 +826,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                   const SizedBox(width: 10),
                   Text(
                     title,
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textSecondary,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.muted,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -831,7 +844,8 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 ),
                 child: Text(
                   status,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: statusColor,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -848,10 +862,11 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             children: [
               Text(
                 value,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: EnergyDashboardTheme.textPrimary,
+                  color: SdColors.ink,
                   height: 1,
                 ),
               ),
@@ -860,7 +875,8 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text(
                   unit,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 14,
                     color: color,
                     fontWeight: FontWeight.w500,
@@ -877,8 +893,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             children: [
               Text(
                 statusText,
-                style: GoogleFonts.cairo(
-                  color: EnergyDashboardTheme.textMuted,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.faint,
                   fontSize: 12,
                 ),
               ),
@@ -886,17 +903,18 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: (isNegative
-                          ? EnergyDashboardTheme.danger
-                          : EnergyDashboardTheme.success)
+                          ? SdColors.danger
+                          : SdColors.success)
                       .withOpacity(0.35),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   trend,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: isNegative
-                        ? EnergyDashboardTheme.danger
-                        : EnergyDashboardTheme.success,
+                        ? SdColors.danger
+                        : SdColors.success,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -936,9 +954,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -949,8 +967,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             children: [
               Text(
                 'نظرة عامة على النشاط',
-                style: GoogleFonts.cairo(
-                  color: EnergyDashboardTheme.textPrimary,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.ink,
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -959,7 +978,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: EnergyDashboardTheme.neonGreen.withOpacity(0.2),
+                  color: SdColors.success.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -967,8 +986,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                   children: [
                     Text(
                       '$_activeCompanies',
-                      style: GoogleFonts.cairo(
-                        color: EnergyDashboardTheme.neonGreen,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.success,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -976,8 +996,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                     const SizedBox(width: 4),
                     Text(
                       'شركة نشطة',
-                      style: GoogleFonts.cairo(
-                        color: EnergyDashboardTheme.textMuted,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.faint,
                         fontSize: 10,
                       ),
                     ),
@@ -996,11 +1017,11 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildMiniLegend('نشط', EnergyDashboardTheme.neonGreen),
+              _buildMiniLegend('نشط', SdColors.success),
               const SizedBox(width: 16),
-              _buildMiniLegend('مستخدمين', EnergyDashboardTheme.neonBlue),
+              _buildMiniLegend('مستخدمين', SdColors.info),
               const SizedBox(width: 16),
-              _buildMiniLegend('طلبات', EnergyDashboardTheme.neonOrange),
+              _buildMiniLegend('طلبات', SdColors.warning),
             ],
           ),
         ],
@@ -1023,8 +1044,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
         const SizedBox(width: 4),
         Text(
           label,
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.textMuted,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.faint,
             fontSize: 10,
           ),
         ),
@@ -1036,17 +1058,18 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'حالة الشركات',
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textPrimary,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.ink,
               fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
@@ -1057,7 +1080,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             child: _isLoading
                 ? const Center(
                     child: CircularProgressIndicator(
-                      color: EnergyDashboardTheme.neonGreen,
+                      color: SdColors.success,
                       strokeWidth: 2,
                     ),
                   )
@@ -1069,14 +1092,15 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                             Icon(
                               Icons.business_outlined,
                               size: 32,
-                              color: EnergyDashboardTheme.textMuted
+                              color: SdColors.faint
                                   .withOpacity(0.5),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               'لا توجد شركات',
-                              style: GoogleFonts.cairo(
-                                color: EnergyDashboardTheme.textMuted,
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                color: SdColors.faint,
                                 fontSize: 12,
                               ),
                             ),
@@ -1104,7 +1128,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgSecondary,
+        color: SdColors.groundAlt,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -1114,16 +1138,16 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             height: 28,
             decoration: BoxDecoration(
               color: (isActive
-                      ? EnergyDashboardTheme.neonGreen
-                      : EnergyDashboardTheme.textMuted)
+                      ? SdColors.success
+                      : SdColors.faint)
                   .withOpacity(0.35),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Icon(
               Icons.business_rounded,
               color: isActive
-                  ? EnergyDashboardTheme.neonGreen
-                  : EnergyDashboardTheme.textMuted,
+                  ? SdColors.success
+                  : SdColors.faint,
               size: 14,
             ),
           ),
@@ -1131,8 +1155,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
           Expanded(
             child: Text(
               name,
-              style: GoogleFonts.cairo(
-                color: EnergyDashboardTheme.textPrimary,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.ink,
                 fontSize: 12,
               ),
               maxLines: 1,
@@ -1144,8 +1169,8 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             height: 8,
             decoration: BoxDecoration(
               color: isActive
-                  ? EnergyDashboardTheme.neonGreen
-                  : EnergyDashboardTheme.danger,
+                  ? SdColors.success
+                  : SdColors.danger,
               shape: BoxShape.circle,
             ),
           ),
@@ -1197,9 +1222,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1213,8 +1238,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 children: [
                   Text(
                     'نظرة عامة على النشاط',
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textPrimary,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.ink,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1222,8 +1248,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                   const SizedBox(height: 4),
                   Text(
                     'توزيع النشاط عبر جميع الشركات لهذا اليوم',
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textMuted,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.faint,
                       fontSize: 12,
                     ),
                   ),
@@ -1234,18 +1261,19 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: EnergyDashboardTheme.neonGreen.withOpacity(0.2),
+                  color: SdColors.success.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: EnergyDashboardTheme.neonGreen.withOpacity(0.5),
+                    color: SdColors.success.withOpacity(0.5),
                   ),
                 ),
                 child: Row(
                   children: [
                     Text(
                       '$_activeCompanies',
-                      style: GoogleFonts.cairo(
-                        color: EnergyDashboardTheme.neonGreen,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.success,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1253,8 +1281,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                     const SizedBox(width: 8),
                     Text(
                       'شركة نشطة من $_totalCompanies',
-                      style: GoogleFonts.cairo(
-                        color: EnergyDashboardTheme.textSecondary,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.muted,
                         fontSize: 12,
                       ),
                     ),
@@ -1278,9 +1307,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             runSpacing: 8,
             children: [
               _buildLegendItem(
-                  'الشركات النشطة', EnergyDashboardTheme.neonGreen),
-              _buildLegendItem('المستخدمين', EnergyDashboardTheme.neonBlue),
-              _buildLegendItem('الطلبات', EnergyDashboardTheme.neonOrange),
+                  'الشركات النشطة', SdColors.success),
+              _buildLegendItem('المستخدمين', SdColors.info),
+              _buildLegendItem('الطلبات', SdColors.warning),
             ],
           ),
         ],
@@ -1309,18 +1338,18 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                       end: Alignment.topCenter,
                       colors: isHighlighted
                           ? [
-                              EnergyDashboardTheme.neonGreen,
-                              EnergyDashboardTheme.neonGreen.withOpacity(0.5),
+                              SdColors.success,
+                              SdColors.success.withOpacity(0.5),
                             ]
                           : [
-                              EnergyDashboardTheme.neonBlue.withOpacity(0.8),
-                              EnergyDashboardTheme.neonBlue.withOpacity(0.5),
+                              SdColors.info.withOpacity(0.8),
+                              SdColors.info.withOpacity(0.5),
                             ],
                     ),
                     borderRadius: BorderRadius.circular(4),
                     boxShadow: isHighlighted
                         ? EnergyDashboardTheme.glowCustom(
-                            EnergyDashboardTheme.neonGreen,
+                            SdColors.success,
                             intensity: 0.3,
                           )
                         : null,
@@ -1329,8 +1358,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 const SizedBox(height: 8),
                 Text(
                   '${(index * 2).toString().padLeft(2, '0')}:00',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textMuted,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.faint,
                     fontSize: 10,
                   ),
                 ),
@@ -1357,8 +1387,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.textSecondary,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.muted,
             fontSize: 12,
           ),
         ),
@@ -1370,17 +1401,18 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'حالة الشركات',
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textPrimary,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.ink,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -1393,7 +1425,7 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
               padding: EdgeInsets.all(20),
               child: Center(
                 child: CircularProgressIndicator(
-                  color: EnergyDashboardTheme.neonGreen,
+                  color: SdColors.success,
                 ),
               ),
             )
@@ -1403,8 +1435,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
               child: Center(
                 child: Text(
                   'خطأ في تحميل البيانات',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.danger,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.danger,
                   ),
                 ),
               ),
@@ -1427,8 +1460,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 },
                 child: Text(
                   'عرض الكل (${_companies.length})',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.neonGreen,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.success,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1449,12 +1483,12 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgSecondary,
+        color: SdColors.groundAlt,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isActive
-              ? EnergyDashboardTheme.neonGreen.withOpacity(0.2)
-              : EnergyDashboardTheme.borderColor,
+              ? SdColors.success.withOpacity(0.2)
+              : SdColors.divider,
         ),
       ),
       child: Row(
@@ -1465,16 +1499,16 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             height: 40,
             decoration: BoxDecoration(
               color: (isActive
-                      ? EnergyDashboardTheme.neonGreen
-                      : EnergyDashboardTheme.textMuted)
+                      ? SdColors.success
+                      : SdColors.faint)
                   .withOpacity(0.35),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               Icons.business_rounded,
               color: isActive
-                  ? EnergyDashboardTheme.neonGreen
-                  : EnergyDashboardTheme.textMuted,
+                  ? SdColors.success
+                  : SdColors.faint,
               size: 20,
             ),
           ),
@@ -1486,8 +1520,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
               children: [
                 Text(
                   name,
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1496,8 +1531,9 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
                 ),
                 Text(
                   value,
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textMuted,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.faint,
                     fontSize: 12,
                   ),
                 ),
@@ -1509,17 +1545,18 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: (isActive
-                      ? EnergyDashboardTheme.neonGreen
-                      : EnergyDashboardTheme.danger)
+                      ? SdColors.success
+                      : SdColors.danger)
                   .withOpacity(0.35),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               isActive ? 'نشط' : 'غير نشط',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 color: isActive
-                    ? EnergyDashboardTheme.neonGreen
-                    : EnergyDashboardTheme.danger,
+                    ? SdColors.success
+                    : SdColors.danger,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -1539,13 +1576,14 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
           Icon(
             Icons.business_outlined,
             size: 48,
-            color: EnergyDashboardTheme.textMuted.withOpacity(0.5),
+            color: SdColors.faint.withOpacity(0.5),
           ),
           const SizedBox(height: 12),
           Text(
             'لا توجد شركات حالياً',
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textMuted,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.faint,
               fontSize: 14,
             ),
           ),
@@ -1555,10 +1593,10 @@ class _EnergyDashboardHomeState extends State<EnergyDashboardHome> {
             icon: const Icon(Icons.refresh, size: 18),
             label: Text(
               'تحديث',
-              style: GoogleFonts.cairo(),
+              style: TextStyle(fontFamily: 'Cairo'),
             ),
             style: TextButton.styleFrom(
-              foregroundColor: EnergyDashboardTheme.neonGreen,
+              foregroundColor: SdColors.success,
             ),
           ),
         ],

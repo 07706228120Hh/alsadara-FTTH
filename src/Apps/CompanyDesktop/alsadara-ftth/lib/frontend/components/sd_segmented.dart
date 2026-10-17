@@ -24,7 +24,11 @@ class SdSegmented extends StatelessWidget {
     required this.selected,
     required this.onChanged,
     this.height = 46,
+    this.glass = false,
   });
+
+  /// نسخة زجاجية داكنة (فوق الخلفيات الداكنة/الشفافة).
+  final bool glass;
 
   final List<SdSegment> segments;
   final int selected;
@@ -36,9 +40,9 @@ class SdSegmented extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: const Color(0xFFEEF0F7),
+        color: glass ? const Color(0x1AFFFFFF) : const Color(0xFFEEF0F7),
         borderRadius: BorderRadius.circular(SdRadius.md),
-        border: SdOutline.all,
+        border: glass ? Border.all(color: const Color(0x33FFFFFF)) : SdOutline.all,
         boxShadow: const [
           BoxShadow(
             color: Color(0x1A0F1660),
@@ -61,7 +65,7 @@ class SdSegmented extends StatelessWidget {
   Widget _buildSegment(int i) {
     final on = i == selected;
     final seg = segments[i];
-    final fg = on ? SdColors.primary : SdColors.muted;
+    final fg = on ? SdColors.primary : (glass ? const Color(0xCCFFFFFF) : SdColors.muted);
     return Semantics(
       button: true,
       selected: on,

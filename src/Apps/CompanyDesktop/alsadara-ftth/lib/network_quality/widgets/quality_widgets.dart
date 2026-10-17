@@ -7,20 +7,21 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../models/quality_models.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// لون التقييم.
 Color ratingColor(QualityRating r) {
   switch (r) {
     case QualityRating.excellent:
-      return const Color(0xFF2E7D32);
+      return SdColors.success;
     case QualityRating.good:
       return const Color(0xFF66BB6A);
     case QualityRating.fair:
-      return const Color(0xFFF9A825);
+      return SdColors.warning;
     case QualityRating.poor:
-      return const Color(0xFFEF6C00);
+      return SdColors.warning;
     case QualityRating.bad:
-      return const Color(0xFFC62828);
+      return SdColors.danger;
     case QualityRating.unknown:
       return const Color(0xFF9E9E9E);
   }
@@ -84,9 +85,9 @@ class ScoreGauge extends StatelessWidget {
         ? Color.lerp(color, Colors.white, 0.25)!
         : color;
     final trackColor =
-        onDark ? Colors.white.withValues(alpha: 0.14) : Colors.grey.shade200;
+        onDark ? Colors.white.withValues(alpha: 0.14) : SdColors.divider;
     final hintColor =
-        onDark ? Colors.white.withValues(alpha: 0.6) : Colors.grey.shade500;
+        onDark ? Colors.white.withValues(alpha: 0.6) : SdColors.faint;
     return SizedBox(
       width: size,
       height: size,
@@ -129,7 +130,7 @@ class _GaugePainter extends CustomPainter {
   final double fraction; // 0..1
   final Color color;
   final Color trackColor;
-  _GaugePainter(this.fraction, this.color, [this.trackColor = const Color(0xFFEEEEEE)]);
+  _GaugePainter(this.fraction, this.color, [this.trackColor = SdColors.divider]);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -189,7 +190,7 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = accent ?? const Color(0xFF1A237E);
+    final c = accent ?? SdColors.primary;
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 7, 12, 12),
       // بطاقة «مادّية» بارزة: حافّة سفلية صلبة + توهّج ناعم (تصميم ثلاثي الأبعاد).
@@ -247,7 +248,7 @@ class SectionCard extends StatelessWidget {
                             child: Text(subtitle!,
                                 style: TextStyle(
                                     fontSize: 10.5,
-                                    color: Colors.grey.shade500)),
+                                    color: SdColors.faint)),
                           ),
                       ],
                     ),
@@ -388,7 +389,7 @@ class MetricTile extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 1),
                         child: Text(metric.note!,
                             style: TextStyle(
-                                fontSize: 10.5, color: Colors.grey.shade600)),
+                                fontSize: 10.5, color: SdColors.muted)),
                       ),
                   ],
                 ),
@@ -432,11 +433,11 @@ class SignalRangeBar extends StatelessWidget {
     this.valueLabel,
     // الافتراضي: المدى الطرفاه سيّئان والوسط هو الأفضل (مناسب لـRx الضوئي).
     this.gradientColors = const [
-      Color(0xFFC62828),
-      Color(0xFFF9A825),
-      Color(0xFF2E7D32),
-      Color(0xFFF9A825),
-      Color(0xFFC62828),
+      SdColors.danger,
+      SdColors.warning,
+      SdColors.success,
+      SdColors.warning,
+      SdColors.danger,
     ],
   });
 
@@ -540,12 +541,12 @@ class SignalRangeBar extends StatelessWidget {
               Text(startLabel,
                   style: TextStyle(
                       fontSize: 9.5,
-                      color: Colors.grey.shade500,
+                      color: SdColors.faint,
                       fontFamily: 'monospace')),
               Text(endLabel,
                   style: TextStyle(
                       fontSize: 9.5,
-                      color: Colors.grey.shade500,
+                      color: SdColors.faint,
                       fontFamily: 'monospace')),
             ],
           ),
@@ -596,7 +597,7 @@ class BigStatTile extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Colors.grey.shade700)),
+                        color: SdColors.muted)),
               ),
             ],
           ),
@@ -646,7 +647,7 @@ class InfoRow extends StatelessWidget {
           SizedBox(
             width: 130,
             child: Text(label,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                style: TextStyle(fontSize: 12, color: SdColors.muted)),
           ),
           Expanded(
             child: Text(value.isEmpty ? '—' : value,
@@ -698,9 +699,9 @@ class Speedometer extends StatelessWidget {
         (onDark ? Color.lerp(color, Colors.white, 0.18)! : color);
     // مسار غير مُعبّأ شفّاف فاتح يبرز التعبئة بوضوح.
     final trackColor =
-        onDark ? Colors.white.withValues(alpha: 0.16) : Colors.grey.shade200;
+        onDark ? Colors.white.withValues(alpha: 0.16) : SdColors.divider;
     final tickColor =
-        onDark ? Colors.white.withValues(alpha: 0.30) : Colors.grey.shade400;
+        onDark ? Colors.white.withValues(alpha: 0.30) : SdColors.faint;
     // مقياس لوغاريتمي-لطيف: يمنع تكدّس القيم الصغيرة ويحتوي الكبيرة.
     final v = value ?? 0;
     final frac = maxValue <= 0
@@ -885,7 +886,7 @@ class MiniMetricChip extends StatelessWidget {
         : c.withValues(alpha: 0.06);
     final labelColor = onDark
         ? Colors.white.withValues(alpha: 0.7)
-        : Colors.grey.shade600;
+        : SdColors.muted;
     final valueColor = onDark ? Colors.white : c;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
@@ -1000,7 +1001,7 @@ class HealthBandBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = ratingColor(rating);
-    const bandGreen = Color(0xFF43A047);
+    const bandGreen = SdColors.success;
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Column(
@@ -1059,7 +1060,7 @@ class HealthBandBar extends StatelessWidget {
                       child: Container(
                         height: 8,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFC62828).withValues(alpha: 0.16),
+                          color: SdColors.danger.withValues(alpha: 0.16),
                           borderRadius: BorderRadius.circular(5),
                         ),
                       ),
@@ -1116,7 +1117,7 @@ class HealthBandBar extends StatelessWidget {
               Text(startLabel,
                   style: TextStyle(
                       fontSize: 9.5,
-                      color: Colors.grey.shade500,
+                      color: SdColors.faint,
                       fontFamily: 'monospace')),
               if (bandLabel != null)
                 Row(
@@ -1126,20 +1127,20 @@ class HealthBandBar extends StatelessWidget {
                       width: 7,
                       height: 7,
                       decoration: const BoxDecoration(
-                          color: Color(0xFF43A047), shape: BoxShape.circle),
+                          color: SdColors.success, shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 4),
                     Text(bandLabel!,
                         style: const TextStyle(
                             fontSize: 9.5,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF2E7D32))),
+                            color: SdColors.success)),
                   ],
                 ),
               Text(endLabel,
                   style: TextStyle(
                       fontSize: 9.5,
-                      color: Colors.grey.shade500,
+                      color: SdColors.faint,
                       fontFamily: 'monospace')),
             ],
           ),
@@ -1160,9 +1161,9 @@ class PingBarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <({String label, double? v, Color c})>[
-      (label: 'الأدنى', v: minMs, c: const Color(0xFF2E7D32)),
-      (label: 'المتوسط', v: avgMs, c: const Color(0xFF3949AB)),
-      (label: 'الأعلى', v: maxMs, c: const Color(0xFFEF6C00)),
+      (label: 'الأدنى', v: minMs, c: SdColors.success),
+      (label: 'المتوسط', v: avgMs, c: SdColors.primaryLight),
+      (label: 'الأعلى', v: maxMs, c: SdColors.warning),
     ];
     final values = items.map((e) => e.v ?? 0).toList();
     final maxY = (values.fold<double>(0, math.max)) * 1.25;
@@ -1183,7 +1184,7 @@ class PingBarChart extends StatelessWidget {
                 drawVerticalLine: false,
                 horizontalInterval: safeMaxY / 4,
                 getDrawingHorizontalLine: (v) => FlLine(
-                  color: Colors.grey.withValues(alpha: 0.12),
+                  color: SdColors.faint.withValues(alpha: 0.12),
                   strokeWidth: 1,
                 ),
               ),
@@ -1214,7 +1215,7 @@ class PingBarChart extends StatelessWidget {
                         backDrawRodData: BackgroundBarChartRodData(
                           show: true,
                           toY: safeMaxY,
-                          color: Colors.grey.withValues(alpha: 0.08),
+                          color: SdColors.faint.withValues(alpha: 0.08),
                         ),
                       ),
                     ],
@@ -1244,7 +1245,7 @@ class PingBarChart extends StatelessWidget {
                               style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade600)),
+                                  color: SdColors.muted)),
                         ],
                       ),
                       const SizedBox(height: 2),
@@ -1278,8 +1279,8 @@ class QualityRadarChart extends StatelessWidget {
         onDark ? Colors.white.withValues(alpha: 0.85) : const Color(0xFF37474F);
     final gridColor = onDark
         ? Colors.white.withValues(alpha: 0.18)
-        : Colors.grey.withValues(alpha: 0.35);
-    const accent = Color(0xFF00897B);
+        : SdColors.faint.withValues(alpha: 0.35);
+    const accent = SdColors.accent;
     return SizedBox(
       height: 230,
       child: RadarChart(
@@ -1364,7 +1365,7 @@ class SpecGrid extends StatelessWidget {
                                   style: TextStyle(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.grey.shade600)),
+                                      color: SdColors.muted)),
                               const SizedBox(height: 2),
                               Text(it.value.isEmpty ? '—' : it.value,
                                   style: const TextStyle(

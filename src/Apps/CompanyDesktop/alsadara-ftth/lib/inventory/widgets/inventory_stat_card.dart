@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// بطاقة إحصائية قابلة لإعادة الاستخدام لنظام المخازن
 class InventoryStatCard extends StatelessWidget {
@@ -77,7 +78,7 @@ class InventoryStatCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A2E),
+                        color: SdColors.ink,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -87,7 +88,7 @@ class InventoryStatCard extends StatelessWidget {
                       title,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey.shade600,
+                        color: SdColors.muted,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

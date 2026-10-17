@@ -88,7 +88,7 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
     _onTemplateChanged();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تغيير الشعار'), backgroundColor: Colors.green, duration: Duration(seconds: 2)),
+        const SnackBar(content: Text('تم تغيير الشعار'), backgroundColor: SdColors.success, duration: Duration(seconds: 2)),
       );
     }
   }
@@ -164,7 +164,7 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم حفظ القالب بنجاح'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             duration: Duration(seconds: 2),
           ),
         );
@@ -243,7 +243,7 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم تصفير عداد الوصل'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             duration: Duration(seconds: 2),
           ),
         );
@@ -1211,7 +1211,7 @@ class _ReceiptTemplateEditorPageState extends State<ReceiptTemplateEditorPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم حفظ معلومات الشركة'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             duration: Duration(seconds: 2),
           ),
         );

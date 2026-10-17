@@ -5,7 +5,6 @@ import '../../services/accounting_service.dart';
 import '../../services/attendance_api_service.dart';
 import '../../services/period_closing_service.dart';
 import '../../services/audit_trail_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../permissions/permissions.dart';
 
@@ -403,29 +402,29 @@ class _SalariesPageState extends State<SalariesPage> {
                   DataCell(Text(
                     s['EmployeeName'] ?? s['UserName'] ?? s['UserId'] ?? '',
                     style: TextStyle(
-                        color: AccountingTheme.textPrimary,
+                        color: SdColors.ink,
                         fontWeight: FontWeight.bold,
                         fontSize: context.accR.small),
                   )),
                   DataCell(Text(_fmt(s['BaseSalary']),
                       style: TextStyle(
-                          color: AccountingTheme.textSecondary,
+                          color: SdColors.muted,
                           fontSize: context.accR.small))),
                   DataCell(Text(_fmt(s['Allowances']),
                       style: TextStyle(
-                          color: AccountingTheme.textSecondary,
+                          color: SdColors.muted,
                           fontSize: context.accR.small))),
                   DataCell(Text(_fmt(s['Bonuses']),
                       style: TextStyle(
-                          color: AccountingTheme.info,
+                          color: SdColors.info,
                           fontSize: context.accR.small))),
                   DataCell(Text(_fmt(s['Deductions']),
                       style: TextStyle(
-                          color: AccountingTheme.danger,
+                          color: SdColors.danger,
                           fontSize: context.accR.small))),
                   DataCell(Text(_fmt(s['NetSalary']),
                       style: TextStyle(
-                          color: AccountingTheme.textPrimary,
+                          color: SdColors.ink,
                           fontWeight: FontWeight.bold,
                           fontSize: context.accR.small))),
                   DataCell(_buildTechDuesCell(s)),
@@ -435,27 +434,27 @@ class _SalariesPageState extends State<SalariesPage> {
                   )),
                   DataCell(Text('${s['AttendanceDays'] ?? 0}',
                       style: TextStyle(
-                          color: AccountingTheme.textSecondary,
+                          color: SdColors.muted,
                           fontSize: context.accR.small))),
                   DataCell(Text('${s['AbsentDays'] ?? 0}',
                       style: TextStyle(
-                          color: AccountingTheme.textSecondary,
+                          color: SdColors.muted,
                           fontSize: context.accR.small))),
                   DataCell(Text(_fmt(s['LateDeduction']),
                       style: TextStyle(
-                          color: AccountingTheme.danger,
+                          color: SdColors.danger,
                           fontSize: context.accR.small))),
                   DataCell(Text(_fmt(s['AbsentDeduction']),
                       style: TextStyle(
-                          color: AccountingTheme.danger,
+                          color: SdColors.danger,
                           fontSize: context.accR.small))),
                   DataCell(Text(_fmt(s['OvertimeBonus']),
                       style: TextStyle(
-                          color: AccountingTheme.success,
+                          color: SdColors.success,
                           fontSize: context.accR.small))),
                   DataCell(Text(_fmt(earnedByDays),
                       style: TextStyle(
-                          color: Color(0xFF2196F3),
+                          color: SdColors.info,
                           fontWeight: FontWeight.bold,
                           fontSize: context.accR.small))),
                   DataCell(Row(
@@ -467,7 +466,7 @@ class _SalariesPageState extends State<SalariesPage> {
                           borderRadius: BorderRadius.circular(4),
                           child: Padding(
                             padding: const EdgeInsets.all(4),
-                            child: Icon(Icons.payment, size: 18, color: AccountingTheme.success),
+                            child: Icon(Icons.payment, size: 18, color: SdColors.success),
                           ),
                         ),
                       if (PermissionManager.instance.canEdit('accounting.salaries'))
@@ -476,7 +475,7 @@ class _SalariesPageState extends State<SalariesPage> {
                           borderRadius: BorderRadius.circular(4),
                           child: Padding(
                             padding: const EdgeInsets.all(4),
-                            child: Icon(Icons.edit, size: 18, color: AccountingTheme.info),
+                            child: Icon(Icons.edit, size: 18, color: SdColors.info),
                           ),
                         ),
                       if (PermissionManager.instance.canDelete('accounting.salaries'))
@@ -485,7 +484,7 @@ class _SalariesPageState extends State<SalariesPage> {
                           borderRadius: BorderRadius.circular(4),
                           child: Padding(
                             padding: const EdgeInsets.all(4),
-                            child: Icon(Icons.delete_outline, size: 18, color: AccountingTheme.danger),
+                            child: Icon(Icons.delete_outline, size: 18, color: SdColors.danger),
                           ),
                         ),
                     ],
@@ -502,10 +501,10 @@ class _SalariesPageState extends State<SalariesPage> {
   Widget _buildTechDuesCell(dynamic s) {
     final techBalance = ((s['TechNetBalance'] ?? 0) as num).toDouble();
     if (techBalance == 0) {
-      return Text('0', style: TextStyle(color: AccountingTheme.textMuted, fontSize: context.accR.small));
+      return Text('0', style: TextStyle(color: SdColors.faint, fontSize: context.accR.small));
     }
     // سالب = عليه مبلغ (أحمر)، موجب = له رصيد (أخضر)
-    final color = techBalance < 0 ? AccountingTheme.danger : AccountingTheme.success;
+    final color = techBalance < 0 ? SdColors.danger : SdColors.success;
     return Text(
       _fmt(techBalance.abs()),
       style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: context.accR.small),
@@ -525,17 +524,17 @@ class _SalariesPageState extends State<SalariesPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: Row(
             children: [
               Icon(Icons.schedule,
-                  color: AccountingTheme.info, size: context.accR.iconM),
+                  color: SdColors.info, size: context.accR.iconM),
               SizedBox(width: context.accR.spaceS),
               Expanded(
                 child: Text(
                   'سجل حضور: $employeeName - ${_months[_selectedMonth - 1]} $_selectedYear',
                   style: TextStyle(
-                      color: AccountingTheme.textPrimary,
+                      color: SdColors.ink,
                       fontSize: context.accR.headingSmall),
                 ),
               ),
@@ -558,7 +557,7 @@ class _SalariesPageState extends State<SalariesPage> {
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('إغلاق',
-                  style: TextStyle(color: AccountingTheme.textMuted)),
+                  style: TextStyle(color: SdColors.faint)),
             ),
           ],
         ),
@@ -576,7 +575,7 @@ class _SalariesPageState extends State<SalariesPage> {
 
     final employees = (result['data'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     if (employees.isEmpty) {
-      _snack('لا يوجد موظفون', AccountingTheme.warning);
+      _snack('لا يوجد موظفون', SdColors.warning);
       return;
     }
 
@@ -596,16 +595,16 @@ class _SalariesPageState extends State<SalariesPage> {
             return Directionality(
               textDirection: TextDirection.rtl,
               child: AlertDialog(
-                backgroundColor: AccountingTheme.bgCard,
+                backgroundColor: SdColors.surface,
                 title: Row(
                   children: [
-                    Icon(Icons.group, color: AccountingTheme.info, size: 22),
+                    Icon(Icons.group, color: SdColors.info, size: 22),
                     const SizedBox(width: 8),
                     Text('كادر الرواتب',
-                        style: TextStyle(color: AccountingTheme.textPrimary, fontSize: context.accR.headingSmall)),
+                        style: TextStyle(color: SdColors.ink, fontSize: context.accR.headingSmall)),
                     const Spacer(),
                     Text('${selected.length}/${employees.length}',
-                        style: TextStyle(color: AccountingTheme.textMuted, fontSize: 14)),
+                        style: TextStyle(color: SdColors.faint, fontSize: 14)),
                   ],
                 ),
                 content: SizedBox(
@@ -623,7 +622,7 @@ class _SalariesPageState extends State<SalariesPage> {
 
                       return CheckboxListTile(
                         value: isSelected,
-                        activeColor: AccountingTheme.neonGreen,
+                        activeColor: SdColors.success,
                         checkColor: Colors.white,
                         onChanged: (val) {
                           setDialogState(() {
@@ -636,13 +635,13 @@ class _SalariesPageState extends State<SalariesPage> {
                         },
                         title: Text(name,
                             style: TextStyle(
-                                color: AccountingTheme.textPrimary,
+                                color: SdColors.ink,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14)),
                         subtitle: Text(
                           '${_roleLabel(role)}${salary != null ? ' • ${_fmt(salary)}' : ''}',
                           style: TextStyle(
-                              color: AccountingTheme.textMuted, fontSize: 12),
+                              color: SdColors.faint, fontSize: 12),
                         ),
                         dense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 4),
@@ -660,23 +659,23 @@ class _SalariesPageState extends State<SalariesPage> {
                         }
                       });
                     },
-                    child: Text('تحديد الكل', style: TextStyle(color: AccountingTheme.info)),
+                    child: Text('تحديد الكل', style: TextStyle(color: SdColors.info)),
                   ),
                   TextButton(
                     onPressed: () {
                       setDialogState(() => selected.clear());
                     },
-                    child: Text('إلغاء التحديد', style: TextStyle(color: AccountingTheme.textMuted)),
+                    child: Text('إلغاء التحديد', style: TextStyle(color: SdColors.faint)),
                   ),
                   const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.pop(ctx, null),
-                    child: Text('إلغاء', style: TextStyle(color: AccountingTheme.textMuted)),
+                    child: Text('إلغاء', style: TextStyle(color: SdColors.faint)),
                   ),
                   ElevatedButton(
                     onPressed: () => Navigator.pop(ctx, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AccountingTheme.neonGreen,
+                      backgroundColor: SdColors.success,
                       foregroundColor: Colors.white,
                     ),
                     child: const Text('حفظ'),
@@ -697,10 +696,10 @@ class _SalariesPageState extends State<SalariesPage> {
       userIds: selected.toList(),
     );
     if (updateResult['success'] == true) {
-      _snack(updateResult['message'] ?? 'تم تحديث الكادر', AccountingTheme.success);
+      _snack(updateResult['message'] ?? 'تم تحديث الكادر', SdColors.success);
       _loadData();
     } else {
-      _snack(updateResult['message'] ?? 'خطأ', AccountingTheme.danger);
+      _snack(updateResult['message'] ?? 'خطأ', SdColors.danger);
     }
   }
 
@@ -740,7 +739,7 @@ class _SalariesPageState extends State<SalariesPage> {
         companyId: widget.companyId ?? '',
       );
       if (result['success'] == true) {
-        _snack('تم توليد الرواتب بنجاح', AccountingTheme.success);
+        _snack('تم توليد الرواتب بنجاح', SdColors.success);
         AuditTrailService.instance.log(
           action: AuditAction.create,
           entityType: AuditEntityType.salary,
@@ -749,13 +748,13 @@ class _SalariesPageState extends State<SalariesPage> {
         );
         _loadData();
       } else {
-        _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+        _snack(result['message'] ?? 'خطأ', SdColors.danger);
         setState(() {
           _isLoading = false;
         });
       }
     } catch (e) {
-      _snack('خطأ', AccountingTheme.danger);
+      _snack('خطأ', SdColors.danger);
       setState(() {
         _isLoading = false;
       });
@@ -765,7 +764,7 @@ class _SalariesPageState extends State<SalariesPage> {
   Future<void> _payAllSalaries() async {
     final pending = _salaries.where((s) => s['Status'] == 'Pending').length;
     if (pending == 0) {
-      _snack('لا توجد رواتب معلقة', AccountingTheme.warning);
+      _snack('لا توجد رواتب معلقة', SdColors.warning);
       return;
     }
     final confirm = await _confirmAction(
@@ -789,7 +788,7 @@ class _SalariesPageState extends State<SalariesPage> {
         companyId: widget.companyId ?? '',
       );
       if (result['success'] == true) {
-        _snack('تم صرف جميع الرواتب', AccountingTheme.success);
+        _snack('تم صرف جميع الرواتب', SdColors.success);
         AuditTrailService.instance.log(
           action: AuditAction.edit,
           entityType: AuditEntityType.salary,
@@ -799,13 +798,13 @@ class _SalariesPageState extends State<SalariesPage> {
         );
         _loadData();
       } else {
-        _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+        _snack(result['message'] ?? 'خطأ', SdColors.danger);
         setState(() {
           _isLoading = false;
         });
       }
     } catch (e) {
-      _snack('خطأ', AccountingTheme.danger);
+      _snack('خطأ', SdColors.danger);
       setState(() {
         _isLoading = false;
       });
@@ -836,39 +835,39 @@ class _SalariesPageState extends State<SalariesPage> {
         builder: (ctx) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            backgroundColor: AccountingTheme.bgCard,
+            backgroundColor: SdColors.surface,
             title: Text('صرف راتب: $empName',
-                style: const TextStyle(color: AccountingTheme.textPrimary)),
+                style: const TextStyle(color: SdColors.ink)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _duesInfoRow('صافي الراتب', _fmt(netSalary), AccountingTheme.textPrimary),
+                _duesInfoRow('صافي الراتب', _fmt(netSalary), SdColors.ink),
                 const SizedBox(height: 8),
-                _duesInfoRow('ذمم الفني', _fmt(duesAmount), AccountingTheme.danger),
-                const Divider(color: AccountingTheme.borderColor, height: 20),
-                _duesInfoRow('المبلغ المخصوم', _fmt(deducted), const Color(0xFFF39C12)),
+                _duesInfoRow('ذمم الفني', _fmt(duesAmount), SdColors.danger),
+                const Divider(color: SdColors.divider, height: 20),
+                _duesInfoRow('المبلغ المخصوم', _fmt(deducted), SdColors.warning),
                 const SizedBox(height: 4),
-                _duesInfoRow('المبلغ المصروف نقداً', _fmt(afterDeduction), AccountingTheme.success),
+                _duesInfoRow('المبلغ المصروف نقداً', _fmt(afterDeduction), SdColors.success),
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, null),
-                child: Text('إلغاء', style: TextStyle(color: AccountingTheme.textMuted)),
+                child: Text('إلغاء', style: TextStyle(color: SdColors.faint)),
               ),
               OutlinedButton(
                 onPressed: () => Navigator.pop(ctx, false),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AccountingTheme.info,
-                  side: const BorderSide(color: AccountingTheme.info),
+                  foregroundColor: SdColors.info,
+                  side: const BorderSide(color: SdColors.info),
                 ),
                 child: const Text('صرف بدون خصم'),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.neonGreen,
+                  backgroundColor: SdColors.success,
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('صرف مع خصم الذمم'),
@@ -891,7 +890,7 @@ class _SalariesPageState extends State<SalariesPage> {
         deductTechDues: deductDues,
       );
       if (result['success'] == true) {
-        _snack(result['message'] ?? 'تم صرف الراتب', AccountingTheme.success);
+        _snack(result['message'] ?? 'تم صرف الراتب', SdColors.success);
         AuditTrailService.instance.log(
           action: AuditAction.edit,
           entityType: AuditEntityType.salary,
@@ -900,13 +899,13 @@ class _SalariesPageState extends State<SalariesPage> {
         );
         _loadData();
       } else {
-        _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+        _snack(result['message'] ?? 'خطأ', SdColors.danger);
         setState(() {
           _isLoading = false;
         });
       }
     } catch (e) {
-      _snack('خطأ', AccountingTheme.danger);
+      _snack('خطأ', SdColors.danger);
       setState(() {
         _isLoading = false;
       });
@@ -917,7 +916,7 @@ class _SalariesPageState extends State<SalariesPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: AccountingTheme.textSecondary)),
+        Text(label, style: const TextStyle(color: SdColors.muted)),
         Text('$value د.ع', style: TextStyle(color: valueColor, fontWeight: FontWeight.bold)),
       ],
     );
@@ -937,9 +936,9 @@ class _SalariesPageState extends State<SalariesPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: Text('تعديل راتب: ${salary['EmployeeName'] ?? ''}',
-              style: const TextStyle(color: AccountingTheme.textPrimary)),
+              style: const TextStyle(color: SdColors.ink)),
           content: SizedBox(
             width: context.accR.isMobile
                 ? MediaQuery.of(context).size.width * 0.85
@@ -961,10 +960,10 @@ class _SalariesPageState extends State<SalariesPage> {
             TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('إلغاء',
-                    style: TextStyle(color: AccountingTheme.textMuted))),
+                    style: TextStyle(color: SdColors.faint))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.neonGreen,
+                  backgroundColor: SdColors.success,
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -982,7 +981,7 @@ class _SalariesPageState extends State<SalariesPage> {
                   notes: notesCtrl.text.isEmpty ? null : notesCtrl.text,
                 );
                 if (result['success'] == true) {
-                  _snack('تم التعديل', AccountingTheme.success);
+                  _snack('تم التعديل', SdColors.success);
                   AuditTrailService.instance.log(
                     action: AuditAction.edit,
                     entityType: AuditEntityType.salary,
@@ -991,7 +990,7 @@ class _SalariesPageState extends State<SalariesPage> {
                   );
                   _loadData();
                 } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                  _snack(result['message'] ?? 'خطأ', SdColors.danger);
                 }
               },
               child: const Text('حفظ'),
@@ -1008,19 +1007,19 @@ class _SalariesPageState extends State<SalariesPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: Text(title,
-              style: const TextStyle(color: AccountingTheme.textPrimary)),
+              style: const TextStyle(color: SdColors.ink)),
           content: Text(msg,
-              style: const TextStyle(color: AccountingTheme.textSecondary)),
+              style: const TextStyle(color: SdColors.muted)),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
                 child: Text('إلغاء',
-                    style: TextStyle(color: AccountingTheme.textMuted))),
+                    style: TextStyle(color: SdColors.faint))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.neonGreen,
+                  backgroundColor: SdColors.success,
                   foregroundColor: Colors.white),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('متابعة'),
@@ -1035,13 +1034,13 @@ class _SalariesPageState extends State<SalariesPage> {
       {bool isNumber = false}) {
     return TextField(
       controller: ctrl,
-      style: const TextStyle(color: AccountingTheme.textPrimary),
+      style: const TextStyle(color: SdColors.ink),
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+        labelStyle: const TextStyle(color: SdColors.faint),
         filled: true,
-        fillColor: AccountingTheme.bgCardHover,
+        fillColor: SdColors.surfaceAlt,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none),
@@ -1055,22 +1054,22 @@ class _SalariesPageState extends State<SalariesPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: Text('تأكيد الحذف',
-              style: TextStyle(color: AccountingTheme.danger)),
+              style: TextStyle(color: SdColors.danger)),
           content: Text(
             'هل تريد حذف راتب "${s['EmployeeName'] ?? ''}" بمبلغ ${_fmt(s['NetSalary'])} د.ع؟',
-            style: const TextStyle(color: AccountingTheme.textPrimary),
+            style: const TextStyle(color: SdColors.ink),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('إلغاء',
-                  style: TextStyle(color: AccountingTheme.textMuted)),
+                  style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.danger,
+                  backgroundColor: SdColors.danger,
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -1083,7 +1082,7 @@ class _SalariesPageState extends State<SalariesPage> {
                 final result = await AccountingService.instance
                     .deleteSalary(s['Id'].toString());
                 if (result['success'] == true) {
-                  _snack('تم حذف الراتب', AccountingTheme.success);
+                  _snack('تم حذف الراتب', SdColors.success);
                   AuditTrailService.instance.log(
                     action: AuditAction.delete,
                     entityType: AuditEntityType.salary,
@@ -1092,7 +1091,7 @@ class _SalariesPageState extends State<SalariesPage> {
                   );
                   _loadData();
                 } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                  _snack(result['message'] ?? 'خطأ', SdColors.danger);
                 }
               },
               child: const Text('حذف'),
@@ -1166,13 +1165,13 @@ class _AttendanceDetailWidgetState extends State<_AttendanceDetailWidget> {
   };
 
   final _statusColors = {
-    'Present': const Color(0xFF4CAF50),
-    'Late': const Color(0xFFF39C12),
-    'Absent': const Color(0xFFE74C3C),
-    'HalfDay': const Color(0xFF9B59B6),
-    'EarlyDeparture': const Color(0xFFE67E22),
-    'OnLeave': const Color(0xFF3498DB),
-    'Holiday': const Color(0xFF1ABC9C),
+    'Present': SdColors.success,
+    'Late': SdColors.warning,
+    'Absent': SdColors.danger,
+    'HalfDay': SdColors.platformBase,
+    'EarlyDeparture': SdColors.warning,
+    'OnLeave': SdColors.info,
+    'Holiday': SdColors.accent,
   };
 
   @override
@@ -1205,17 +1204,17 @@ class _AttendanceDetailWidgetState extends State<_AttendanceDetailWidget> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Center(
-          child: CircularProgressIndicator(color: AccountingTheme.neonGreen));
+          child: CircularProgressIndicator(color: SdColors.success));
     }
     if (_error != null) {
       return Center(
           child: Text(_error!,
-              style: const TextStyle(color: AccountingTheme.danger)));
+              style: const TextStyle(color: SdColors.danger)));
     }
     if (_records.isEmpty) {
       return const Center(
           child: Text('لا توجد سجلات حضور لهذا الشهر',
-              style: TextStyle(color: AccountingTheme.textMuted)));
+              style: TextStyle(color: SdColors.faint)));
     }
 
     return SingleChildScrollView(
@@ -1224,15 +1223,15 @@ class _AttendanceDetailWidgetState extends State<_AttendanceDetailWidget> {
         child: ConstrainedBox(
           constraints: BoxConstraints(minWidth: min(600, MediaQuery.of(context).size.width - 32)),
           child: DataTable(
-            headingRowColor: WidgetStateProperty.all(const Color(0xFF1E293B)),
+            headingRowColor: WidgetStateProperty.all(SdColors.ink),
             dataRowColor: WidgetStateProperty.resolveWith((states) {
               if (states.contains(WidgetState.hovered)) {
-                return const Color(0xFF1E293B).withValues(alpha: 0.3);
+                return SdColors.ink.withValues(alpha: 0.3);
               }
-              return AccountingTheme.bgCard;
+              return SdColors.surface;
             }),
             border: TableBorder.all(
-                color: AccountingTheme.borderColor.withValues(alpha: 0.3),
+                color: SdColors.divider.withValues(alpha: 0.3),
                 width: 0.5),
             columnSpacing: 16,
             horizontalMargin: 10,
@@ -1294,23 +1293,23 @@ class _AttendanceDetailWidgetState extends State<_AttendanceDetailWidget> {
             ],
             rows: _records.map((r) {
               final status = r['status'] ?? '';
-              final color = _statusColors[status] ?? AccountingTheme.textMuted;
+              final color = _statusColors[status] ?? SdColors.faint;
               final workedMin = (r['workedMinutes'] ?? 0) as num;
               final hours = (workedMin / 60).toStringAsFixed(1);
 
               return DataRow(cells: [
                 DataCell(Text(r['date'] ?? '',
                     style: TextStyle(
-                        color: AccountingTheme.textPrimary,
+                        color: SdColors.ink,
                         fontSize: context.accR.small))),
                 DataCell(Text(r['checkInTime'] ?? '-',
                     style: TextStyle(
-                        color: AccountingTheme.success,
+                        color: SdColors.success,
                         fontWeight: FontWeight.bold,
                         fontSize: context.accR.small))),
                 DataCell(Text(r['checkOutTime'] ?? '-',
                     style: TextStyle(
-                        color: AccountingTheme.danger,
+                        color: SdColors.danger,
                         fontWeight: FontWeight.bold,
                         fontSize: context.accR.small))),
                 DataCell(Container(
@@ -1330,23 +1329,23 @@ class _AttendanceDetailWidgetState extends State<_AttendanceDetailWidget> {
                 )),
                 DataCell(Text(hours,
                     style: TextStyle(
-                        color: AccountingTheme.textSecondary,
+                        color: SdColors.muted,
                         fontSize: context.accR.small))),
                 DataCell(Text('${r['lateMinutes'] ?? 0}',
                     style: TextStyle(
                         color: (r['lateMinutes'] ?? 0) > 0
-                            ? AccountingTheme.danger
-                            : AccountingTheme.textMuted,
+                            ? SdColors.danger
+                            : SdColors.faint,
                         fontSize: context.accR.small))),
                 DataCell(Text('${r['overtimeMinutes'] ?? 0}',
                     style: TextStyle(
                         color: (r['overtimeMinutes'] ?? 0) > 0
-                            ? AccountingTheme.success
-                            : AccountingTheme.textMuted,
+                            ? SdColors.success
+                            : SdColors.faint,
                         fontSize: context.accR.small))),
                 DataCell(Text(r['notes'] ?? '',
                     style: TextStyle(
-                        color: AccountingTheme.textMuted,
+                        color: SdColors.faint,
                         fontSize: context.accR.small))),
               ]);
             }).toList(),

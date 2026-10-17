@@ -12,7 +12,6 @@ import '../permissions/permission_manager.dart';
 import 'employee_tracking_report_page.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:google_fonts/google_fonts.dart';
 import 'package:signalr_netcore/signalr_client.dart';
 
 class TrackUsersMapPage extends StatefulWidget {
@@ -173,7 +172,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('🚫 تحذير: $userId يستخدم موقع وهمي!'),
-              backgroundColor: Colors.red.shade700,
+              backgroundColor: SdColors.danger,
               duration: const Duration(seconds: 5),
               action: SnackBarAction(
                 label: 'عرض',
@@ -375,8 +374,8 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
 
   Widget _buildProfessionalMarker(String name, Map<String, dynamic> data) {
     final isFake = data['isFake'] == true;
-    final markerColor = isFake ? Colors.red : _primaryColor;
-    final pinColor = isFake ? Colors.red : _accentColor;
+    final markerColor = isFake ? SdColors.danger : _primaryColor;
+    final pinColor = isFake ? SdColors.danger : _accentColor;
 
     return GestureDetector(
       onTap: () => _showUserDetailsDialog(context, data),
@@ -407,7 +406,8 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
                 ),
                 Text(
                   name,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: Colors.white,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -513,7 +513,8 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
       toolbarHeight: _isMobile ? 46 : kToolbarHeight,
       title: Text(
         _isMobile ? "تتبع الفنيين" : "تتبع الفنيين - نظام الذكاء المكاني",
-        style: GoogleFonts.cairo(
+        style: TextStyle(
+          fontFamily: 'Cairo',
           fontWeight: FontWeight.bold,
           color: Colors.white,
           fontSize: _isMobile ? 15 : 20,
@@ -536,7 +537,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
                 dropdownColor: _primaryColor,
                 isExpanded: true,
                 icon: Icon(Icons.arrow_drop_down, color: Colors.white, size: _isMobile ? 14 : 18),
-                style: GoogleFonts.cairo(color: Colors.white, fontSize: _isMobile ? 10 : 13),
+                style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontSize: _isMobile ? 10 : 13),
                 items: _provinces.keys.map((name) => DropdownMenuItem(
                   value: name,
                   child: Text(name, overflow: TextOverflow.ellipsis),
@@ -556,7 +557,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
             margin: const EdgeInsets.symmetric(horizontal: 6),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: _isSignalRConnected ? Colors.greenAccent : Colors.orange,
+              color: _isSignalRConnected ? Colors.greenAccent : SdColors.warning,
             ),
           ),
         ),
@@ -564,8 +565,8 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
           IconButton(
             icon: Badge(
               label: Text('${_staleCount + _stoppedCount}'),
-              backgroundColor: Colors.red,
-              child: Icon(Icons.warning_amber_rounded, color: Colors.orange, size: _isMobile ? 20 : 24),
+              backgroundColor: SdColors.danger,
+              child: Icon(Icons.warning_amber_rounded, color: SdColors.warning, size: _isMobile ? 20 : 24),
             ),
             onPressed: _showAlerts,
             tooltip: "تنبيهات",
@@ -624,10 +625,10 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
                 const SizedBox(height: 8),
                 if (days == 0)
                   Text('⚠️ سيتم حذف جميع سجلات التتبع والمواقع الحالية!',
-                      style: TextStyle(color: Colors.red.shade700, fontSize: 12, fontWeight: FontWeight.bold))
+                      style: TextStyle(color: SdColors.danger, fontSize: 12, fontWeight: FontWeight.bold))
                 else
                   Text('⚠️ هذا الإجراء لا يمكن التراجع عنه',
-                      style: TextStyle(color: Colors.red.shade700, fontSize: 12)),
+                      style: TextStyle(color: SdColors.danger, fontSize: 12)),
               ],
             ),
             actions: [
@@ -636,7 +637,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
                 child: const Text('إلغاء'),
               ),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
                 icon: const Icon(Icons.delete_forever, color: Colors.white),
                 label: Text(days == 0 ? 'مسح الكل' : 'مسح',
                     style: const TextStyle(color: Colors.white)),
@@ -657,18 +658,18 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
                       _fetchAndUpdateMarkers(); // تحديث القائمة بعد المسح
                       scaffoldMessenger.showSnackBar(SnackBar(
                         content: Text('✅ تم حذف ${response['deletedCount']} سجل'),
-                        backgroundColor: Colors.green,
+                        backgroundColor: SdColors.success,
                       ));
                     } else {
                       scaffoldMessenger.showSnackBar(SnackBar(
                         content: Text('❌ ${response?['message'] ?? 'فشل'}'),
-                        backgroundColor: Colors.red,
+                        backgroundColor: SdColors.danger,
                       ));
                     }
                   } catch (_) {
                     scaffoldMessenger.showSnackBar(const SnackBar(
                       content: Text('❌ خطأ في الاتصال'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: SdColors.danger,
                     ));
                   }
                 },
@@ -688,7 +689,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
         child: AlertDialog(
           title: Row(
             children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+              const Icon(Icons.warning_amber_rounded, color: SdColors.warning),
               const SizedBox(width: 8),
               Text('تنبيهات ($_staleCount متأخر، $_stoppedCount متوقف)'),
             ],
@@ -709,7 +710,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
                       return ListTile(
                         leading: Icon(
                           type == 'stale' ? Icons.timer_off : Icons.location_off,
-                          color: type == 'stale' ? Colors.orange : Colors.red,
+                          color: type == 'stale' ? SdColors.warning : SdColors.danger,
                         ),
                         title: Text(user),
                         subtitle: Text(
@@ -793,7 +794,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
           children: [
             Icon(Icons.people_alt_rounded, color: _accentColor, size: 20),
             const SizedBox(width: 8),
-            Text('$count فني متصل', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: _primaryColor)),
+            Text('$count فني متصل', style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold, color: _primaryColor)),
             const Spacer(),
             Icon(Icons.keyboard_arrow_up_rounded, color: _primaryColor),
           ],
@@ -836,7 +837,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
               Expanded(
                 child: Text(
                   "الفنيين المتصلين (${users.length})",
-                  style: GoogleFonts.cairo(fontSize: titleSize, fontWeight: FontWeight.bold, color: _primaryColor),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: titleSize, fontWeight: FontWeight.bold, color: _primaryColor),
                 ),
               ),
               IconButton(
@@ -858,11 +859,11 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
                 setState(() => _searchQuery = val);
                 _applyFilters();
               },
-              style: GoogleFonts.cairo(fontSize: mobile ? 12 : 14),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: mobile ? 12 : 14),
               decoration: InputDecoration(
                 hintText: "بحث عن فني...",
-                hintStyle: GoogleFonts.cairo(fontSize: mobile ? 12 : 14),
-                prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[400], size: mobile ? 18 : 22),
+                hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: mobile ? 12 : 14),
+                prefixIcon: Icon(Icons.search_rounded, color: SdColors.faint, size: mobile ? 18 : 22),
                 filled: true,
                 fillColor: _surfaceColor,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(mobile ? 10 : 16), borderSide: BorderSide.none),
@@ -913,8 +914,8 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(user, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: _primaryColor, fontSize: mobile ? 12 : 14), overflow: TextOverflow.ellipsis),
-                            Text("نشط الآن", style: GoogleFonts.cairo(fontSize: mobile ? 10 : 11, color: Colors.green)),
+                            Text(user, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: _primaryColor, fontSize: mobile ? 12 : 14), overflow: TextOverflow.ellipsis),
+                            Text("نشط الآن", style: TextStyle(fontFamily: 'Cairo', fontSize: mobile ? 10 : 11, color: SdColors.success)),
                           ],
                         ),
                       ),
@@ -922,7 +923,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
                         icon: Icon(
                           isHidden ? Icons.visibility_off_rounded : Icons.visibility_rounded,
                           size: mobile ? 18 : 20,
-                          color: isHidden ? Colors.grey : _accentColor,
+                          color: isHidden ? SdColors.faint : _accentColor,
                         ),
                         constraints: BoxConstraints(minWidth: mobile ? 32 : 48, minHeight: mobile ? 32 : 48),
                         padding: EdgeInsets.zero,
@@ -966,7 +967,7 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
             Expanded(
               child: Text(
                 user["اسم المستخدم"] ?? "",
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -988,7 +989,8 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
             onPressed: () => Navigator.of(context).pop(),
             child: Text(
               'إغلاق',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   color: _primaryColor, fontWeight: FontWeight.bold),
             ),
           ),
@@ -1003,18 +1005,19 @@ class _TrackUsersMapPageState extends State<TrackUsersMapPage>
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: Colors.grey[600]),
+          Icon(icon, size: 18, color: SdColors.muted),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: GoogleFonts.cairo(fontSize: 10, color: Colors.grey[500]),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: SdColors.faint),
               ),
               Text(
                 value.toString(),
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: _primaryColor),

@@ -4,8 +4,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../../models/property.dart';
 import '../../services/property_api_service.dart';
 import '../../frontend/tokens/sd_colors.dart';
@@ -371,7 +369,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+        content: Text(m, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
         backgroundColor: err ? SdColors.danger : SdColors.success,
       ),
     );
@@ -410,7 +408,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                       icon: const Icon(Icons.layers_rounded, size: 18),
                       label: Text('إدارة المناطق',
                           style:
-                              GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                              TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                     ),
                   ],
                 ),
@@ -494,7 +492,8 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                           ? Icons.save_rounded
                           : Icons.check_circle_rounded),
                   label: Text(editing ? 'حفظ التعديلات' : 'إنشاء العقار',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.w800, fontSize: 15)),
                 ),
               ],
@@ -526,7 +525,8 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text('رمز فارغ — أدخل بيانات العقار',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.w800,
                         fontSize: 13.5,
                         color: PropUi.ink)),
@@ -535,7 +535,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                       ? 'سيُربط العقار بالرمز المطبوع (تسلسل $serial).'
                       : 'سيُربط العقار بالرمز المطبوع الممسوح.',
                   style:
-                      GoogleFonts.cairo(fontSize: 11.5, color: Colors.grey[700]),
+                      TextStyle(fontFamily: 'Cairo', fontSize: 11.5, color: SdColors.muted),
                 ),
               ],
             ),
@@ -558,11 +558,12 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     return DropdownButtonFormField<int>(
       initialValue: _govCode,
       isExpanded: true,
-      style: GoogleFonts.cairo(
+      style: TextStyle(
+          fontFamily: 'Cairo',
           fontWeight: FontWeight.w600, color: PropUi.ink),
       decoration: InputDecoration(
         labelText: 'المحافظة',
-        labelStyle: GoogleFonts.cairo(),
+        labelStyle: TextStyle(fontFamily: 'Cairo'),
         prefixIcon:
             const Icon(Icons.location_on_rounded, color: SdColors.primary),
         isDense: true,
@@ -570,7 +571,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
       items: [
         for (final g in _governorates)
           DropdownMenuItem(
-              value: g.key, child: Text(g.value, style: GoogleFonts.cairo())),
+              value: g.key, child: Text(g.value, style: TextStyle(fontFamily: 'Cairo'))),
       ],
       onChanged: (v) => setState(() => _govCode = v ?? _govCode),
     );
@@ -604,7 +605,8 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         const SizedBox(width: 8),
         Expanded(
           child: Text('تعذّر تحميل المناطق — $_locError',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: SdColors.danger)),
@@ -612,7 +614,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         TextButton(
           onPressed: _loadRegions,
           child: Text('إعادة',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
         ),
       ],
     );
@@ -622,10 +624,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     return DropdownButtonFormField<String?>(
       initialValue: _regionId,
       isExpanded: true,
-      style: GoogleFonts.cairo(fontWeight: FontWeight.w600, color: PropUi.ink),
+      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600, color: PropUi.ink),
       decoration: InputDecoration(
         labelText: 'المنطقة',
-        labelStyle: GoogleFonts.cairo(),
+        labelStyle: TextStyle(fontFamily: 'Cairo'),
         prefixIcon: _loadingRegions
             ? const _MiniSpinner()
             : const Icon(Icons.location_on_outlined,
@@ -636,10 +638,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         DropdownMenuItem(
             value: null,
             child: Text('— بلا منطقة —',
-                style: GoogleFonts.cairo(color: Colors.grey[600]))),
+                style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted))),
         for (final r in _regions)
           DropdownMenuItem(
-              value: r.id, child: Text(r.name, style: GoogleFonts.cairo())),
+              value: r.id, child: Text(r.name, style: TextStyle(fontFamily: 'Cairo'))),
       ],
       onChanged: _loadingRegions
           ? null
@@ -666,10 +668,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     return DropdownButtonFormField<String?>(
       initialValue: _address2Id,
       isExpanded: true,
-      style: GoogleFonts.cairo(fontWeight: FontWeight.w600, color: PropUi.ink),
+      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600, color: PropUi.ink),
       decoration: InputDecoration(
         labelText: 'العنوان 2',
-        labelStyle: GoogleFonts.cairo(),
+        labelStyle: TextStyle(fontFamily: 'Cairo'),
         prefixIcon: _loadingA2
             ? const _MiniSpinner()
             : const Icon(Icons.signpost_rounded, color: SdColors.primary),
@@ -679,10 +681,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         DropdownMenuItem(
             value: null,
             child: Text('— بلا عنوان 2 —',
-                style: GoogleFonts.cairo(color: Colors.grey[600]))),
+                style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted))),
         for (final a in _address2Options)
           DropdownMenuItem(
-              value: a.id, child: Text(a.name, style: GoogleFonts.cairo())),
+              value: a.id, child: Text(a.name, style: TextStyle(fontFamily: 'Cairo'))),
       ],
       onChanged: enabled
           ? (v) {
@@ -707,10 +709,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
     return DropdownButtonFormField<String?>(
       initialValue: _address3Id,
       isExpanded: true,
-      style: GoogleFonts.cairo(fontWeight: FontWeight.w600, color: PropUi.ink),
+      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600, color: PropUi.ink),
       decoration: InputDecoration(
         labelText: 'العنوان 3',
-        labelStyle: GoogleFonts.cairo(),
+        labelStyle: TextStyle(fontFamily: 'Cairo'),
         prefixIcon: _loadingA3
             ? const _MiniSpinner()
             : const Icon(Icons.add_road_rounded, color: SdColors.primary),
@@ -720,10 +722,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         DropdownMenuItem(
             value: null,
             child: Text('— بلا عنوان 3 —',
-                style: GoogleFonts.cairo(color: Colors.grey[600]))),
+                style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted))),
         for (final a in _address3Options)
           DropdownMenuItem(
-              value: a.id, child: Text(a.name, style: GoogleFonts.cairo())),
+              value: a.id, child: Text(a.name, style: TextStyle(fontFamily: 'Cairo'))),
       ],
       onChanged: enabled
           ? (v) {
@@ -756,13 +758,15 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text('أجر الصيانة الإجمالي',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.w800,
                         fontSize: 13,
                         color: PropUi.ink)),
                 Text('تراكمي: منطقة + عنوان 2 + عنوان 3',
-                    style: GoogleFonts.cairo(
-                        fontSize: 11, color: Colors.grey[600])),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 11, color: SdColors.muted)),
               ],
             ),
           ),
@@ -776,7 +780,8 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
             )
           else
             Text('${_fmtFee(_totalFee ?? 0)} د.ع',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.w900,
                     fontSize: 16,
                     color: SdColors.warning)),
@@ -793,16 +798,17 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         Row(
           children: [
             Icon(hasLoc ? Icons.place_rounded : Icons.location_off_rounded,
-                color: hasLoc ? SdColors.success : Colors.grey),
+                color: hasLoc ? SdColors.success : SdColors.faint),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 hasLoc
                     ? '${_lat!.toStringAsFixed(5)}, ${_lon!.toStringAsFixed(5)}'
                     : 'لم يُحدَّد الموقع بعد',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.w700,
-                    color: hasLoc ? PropUi.ink : Colors.grey[600]),
+                    color: hasLoc ? PropUi.ink : SdColors.muted),
               ),
             ),
             FilledButton.icon(
@@ -817,7 +823,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
                           strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.my_location_rounded, size: 18),
               label: Text('موقعي',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -832,7 +838,8 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
               icon: const Icon(Icons.clear_rounded,
                   size: 16, color: SdColors.danger),
               label: Text('مسح الموقع',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.w700, color: SdColors.danger)),
             ),
           ),
@@ -843,10 +850,11 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
   Widget _chipsLabel(String t) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(t,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
-                color: Colors.grey[700])),
+                color: SdColors.muted)),
       );
 
   Widget _choiceRow(
@@ -858,12 +866,13 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         for (final e in options.entries)
           ChoiceChip(
             label: Text(e.value,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.w700,
                     fontSize: 12.5,
                     color: value == e.key
                         ? Colors.white
-                        : const Color(0xFF475569))),
+                        : SdColors.muted)),
             selected: value == e.key,
             showCheckmark: false,
             backgroundColor: Colors.white,
@@ -871,7 +880,7 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
             side: BorderSide(
                 color: value == e.key
                     ? SdColors.primary
-                    : Colors.grey.withValues(alpha: 0.25)),
+                    : SdColors.faint.withValues(alpha: 0.25)),
             onSelected: (_) => onSet(e.key),
           ),
       ],
@@ -891,10 +900,10 @@ class _PropertyFormPageState extends State<PropertyFormPage> {
         controller: c,
         maxLines: maxLines,
         keyboardType: keyboard,
-        style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: GoogleFonts.cairo(),
+          labelStyle: TextStyle(fontFamily: 'Cairo'),
           prefixIcon: icon == null
               ? null
               : Icon(icon, color: SdColors.primary, size: 20),

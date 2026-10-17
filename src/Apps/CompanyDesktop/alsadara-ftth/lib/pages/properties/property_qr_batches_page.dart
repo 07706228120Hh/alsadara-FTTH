@@ -7,7 +7,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -69,7 +68,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+        content: Text(m, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
         backgroundColor: err ? SdColors.danger : SdColors.success,
       ),
     );
@@ -170,18 +169,18 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
               const Icon(Icons.phone_rounded, color: SdColors.primary),
               const SizedBox(width: 8),
               Text('هاتف الطباعة',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
             ],
           ),
           content: TextField(
             controller: ctrl,
             keyboardType: TextInputType.phone,
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w700),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700),
             decoration: InputDecoration(
               labelText: 'رقم الهاتف (يُطبع تحت كل رمز)',
-              labelStyle: GoogleFonts.cairo(),
+              labelStyle: TextStyle(fontFamily: 'Cairo'),
               helperText: 'يُحفظ محلياً ويُستخدم لكل الطباعات',
-              helperStyle: GoogleFonts.cairo(fontSize: 11),
+              helperStyle: TextStyle(fontFamily: 'Cairo', fontSize: 11),
               isDense: true,
             ),
           ),
@@ -189,7 +188,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text('إلغاء',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, ctrl.text.trim()),
@@ -198,7 +197,8 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
                 foregroundColor: Colors.white,
               ),
               child: Text('حفظ',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.w800, color: Colors.white)),
             ),
           ],
@@ -236,7 +236,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
               const SizedBox(width: 16),
               Expanded(
                 child: Text(message,
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -358,7 +358,8 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
           foregroundColor: Colors.white,
           icon: const Icon(Icons.add_box_rounded, color: Colors.white),
           label: Text('توليد دفعة',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontWeight: FontWeight.w800, color: Colors.white)),
         ),
         body: PropContentWrap(
@@ -383,7 +384,8 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
                             icon: const Icon(Icons.add_box_rounded,
                                 color: Colors.white),
                             label: Text('توليد دفعة',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontWeight: FontWeight.w700,
                                     color: Colors.white)),
                           ),
@@ -423,7 +425,8 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
                   b.note.isNotEmpty ? b.note : 'دفعة ${_shortId(b.batchId)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
                       color: PropUi.ink),
@@ -431,8 +434,9 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
                 if (b.createdAt.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(_shortDate(b.createdAt),
-                      style: GoogleFonts.cairo(
-                          fontSize: 12, color: Colors.grey[600])),
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 12, color: SdColors.muted)),
                 ],
                 const SizedBox(height: 6),
                 Wrap(
@@ -444,7 +448,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
                     _tag(
                         fullyUsed ? 'مكتملة' : 'المتبقّي ${b.remaining}',
                         fullyUsed
-                            ? Colors.grey
+                            ? SdColors.faint
                             : SdColors.success),
                   ],
                 ),
@@ -466,7 +470,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
                 ),
                 icon: const Icon(Icons.visibility_rounded, size: 18),
                 label: Text('معاينة / PDF',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
               ),
               const SizedBox(height: 6),
               OutlinedButton.icon(
@@ -480,7 +484,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
                 ),
                 icon: const Icon(Icons.print_rounded, size: 18),
                 label: Text('طباعة',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
               ),
               const SizedBox(height: 6),
               OutlinedButton.icon(
@@ -493,7 +497,7 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
                 ),
                 icon: const Icon(Icons.fact_check_rounded, size: 18),
                 label: Text('الحالات',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
               ),
             ],
           ),
@@ -510,7 +514,8 @@ class _PropertyQrBatchesPageState extends State<PropertyQrBatchesPage> {
           border: Border.all(color: c.withValues(alpha: 0.22)),
         ),
         child: Text(t,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 color: c, fontWeight: FontWeight.w700, fontSize: 11)),
       );
 }
@@ -588,7 +593,7 @@ class _GenerateDialogState extends State<_GenerateDialog> {
             const Icon(Icons.add_box_rounded, color: SdColors.primary),
             const SizedBox(width: 8),
             Text('توليد دفعة رموز QR',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           ],
         ),
         content: Column(
@@ -598,10 +603,10 @@ class _GenerateDialogState extends State<_GenerateDialog> {
               controller: _count,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w700),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700),
               decoration: InputDecoration(
                 labelText: 'عدد الرموز (حتى ${widget.maxCount})',
-                labelStyle: GoogleFonts.cairo(),
+                labelStyle: TextStyle(fontFamily: 'Cairo'),
                 prefixIcon: const Icon(Icons.numbers_rounded,
                     color: SdColors.primary),
                 errorText: _err,
@@ -612,10 +617,10 @@ class _GenerateDialogState extends State<_GenerateDialog> {
             TextField(
               controller: _phone,
               keyboardType: TextInputType.phone,
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w700),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700),
               decoration: InputDecoration(
                 labelText: 'رقم الهاتف (يُطبع تحت كل رمز — يُحفظ محلياً)',
-                labelStyle: GoogleFonts.cairo(),
+                labelStyle: TextStyle(fontFamily: 'Cairo'),
                 prefixIcon: const Icon(Icons.phone_rounded,
                     color: SdColors.primary),
                 isDense: true,
@@ -624,10 +629,10 @@ class _GenerateDialogState extends State<_GenerateDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _note,
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
               decoration: InputDecoration(
                 labelText: 'ملاحظة (اختياري)',
-                labelStyle: GoogleFonts.cairo(),
+                labelStyle: TextStyle(fontFamily: 'Cairo'),
                 prefixIcon: const Icon(Icons.notes_rounded,
                     color: SdColors.primary),
                 isDense: true,
@@ -639,7 +644,7 @@ class _GenerateDialogState extends State<_GenerateDialog> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('إلغاء',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           ),
           FilledButton(
             onPressed: _submit,
@@ -648,7 +653,8 @@ class _GenerateDialogState extends State<_GenerateDialog> {
               foregroundColor: Colors.white,
             ),
             child: Text('توليد',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.w800, color: Colors.white)),
           ),
         ],
@@ -722,7 +728,7 @@ class _PrintRangeDialogState extends State<_PrintRangeDialog> {
             const Icon(Icons.print_rounded, color: SdColors.primary),
             const SizedBox(width: 8),
             Text('نطاق الطباعة',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           ],
         ),
         content: Column(
@@ -732,7 +738,7 @@ class _PrintRangeDialogState extends State<_PrintRangeDialog> {
               'دفعة بـ ${widget.batch.count} رمزاً. اختر نطاق تسلسل للطباعة '
               '(حتى ${widget.maxTokensPerPrint} لكل مرّة).',
               style:
-                  GoogleFonts.cairo(fontSize: 12.5, color: Colors.grey[700]),
+                  TextStyle(fontFamily: 'Cairo', fontSize: 12.5, color: SdColors.muted),
             ),
             const SizedBox(height: 14),
             Row(
@@ -742,10 +748,10 @@ class _PrintRangeDialogState extends State<_PrintRangeDialog> {
                     controller: _from,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700),
                     decoration: InputDecoration(
                       labelText: 'من تسلسل',
-                      labelStyle: GoogleFonts.cairo(),
+                      labelStyle: TextStyle(fontFamily: 'Cairo'),
                       isDense: true,
                     ),
                   ),
@@ -756,10 +762,10 @@ class _PrintRangeDialogState extends State<_PrintRangeDialog> {
                     controller: _to,
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700),
                     decoration: InputDecoration(
                       labelText: 'إلى تسلسل',
-                      labelStyle: GoogleFonts.cairo(),
+                      labelStyle: TextStyle(fontFamily: 'Cairo'),
                       isDense: true,
                     ),
                   ),
@@ -769,7 +775,8 @@ class _PrintRangeDialogState extends State<_PrintRangeDialog> {
             if (_err != null) ...[
               const SizedBox(height: 10),
               Text(_err!,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: SdColors.danger,
                       fontWeight: FontWeight.w600,
                       fontSize: 12)),
@@ -780,7 +787,7 @@ class _PrintRangeDialogState extends State<_PrintRangeDialog> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('إلغاء',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           ),
           FilledButton.icon(
             onPressed: _submit,
@@ -790,7 +797,8 @@ class _PrintRangeDialogState extends State<_PrintRangeDialog> {
             ),
             icon: const Icon(Icons.print_rounded, size: 18, color: Colors.white),
             label: Text('طباعة',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.w800, color: Colors.white)),
           ),
         ],
@@ -817,7 +825,8 @@ class _PdfPreviewScreen extends StatelessWidget {
           backgroundColor: SdColors.primary,
           foregroundColor: Colors.white,
           title: Text('معاينة $title',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontWeight: FontWeight.w800, color: Colors.white)),
         ),
         body: PdfPreview(
@@ -930,7 +939,8 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
           backgroundColor: SdColors.primary,
           foregroundColor: Colors.white,
           title: Text('حالات رموز الدفعة',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontWeight: FontWeight.w800, color: Colors.white)),
         ),
         body: Column(
@@ -949,10 +959,10 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
                             FilteringTextInputFormatter.digitsOnly
                           ],
                           style:
-                              GoogleFonts.cairo(fontWeight: FontWeight.w700),
+                              TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700),
                           decoration: InputDecoration(
                             labelText: 'من تسلسل',
-                            labelStyle: GoogleFonts.cairo(),
+                            labelStyle: TextStyle(fontFamily: 'Cairo'),
                             isDense: true,
                           ),
                         ),
@@ -966,10 +976,10 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
                             FilteringTextInputFormatter.digitsOnly
                           ],
                           style:
-                              GoogleFonts.cairo(fontWeight: FontWeight.w700),
+                              TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700),
                           decoration: InputDecoration(
                             labelText: 'إلى تسلسل',
-                            labelStyle: GoogleFonts.cairo(),
+                            labelStyle: TextStyle(fontFamily: 'Cairo'),
                             isDense: true,
                           ),
                         ),
@@ -982,7 +992,8 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
                           foregroundColor: Colors.white,
                         ),
                         child: Text('تحميل',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white)),
                       ),
@@ -1006,7 +1017,8 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(_error!,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         color: SdColors.danger,
                         fontWeight: FontWeight.w700)),
               ),
@@ -1017,8 +1029,9 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
                   : shown.isEmpty
                       ? Center(
                           child: Text('لا رموز ضمن النطاق/الفلتر',
-                              style: GoogleFonts.cairo(
-                                  color: Colors.grey[600],
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  color: SdColors.muted,
                                   fontWeight: FontWeight.w600)))
                       : ListView.separated(
                           padding: const EdgeInsets.all(12),
@@ -1038,7 +1051,8 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
     final sel = _filter == f;
     return ChoiceChip(
       label: Text(label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+              fontFamily: 'Cairo',
               fontWeight: FontWeight.w700,
               fontSize: 12,
               color: sel ? Colors.white : SdColors.primary)),
@@ -1050,7 +1064,7 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
 
   Widget _tokenTile(PropertyQrToken t) {
     final used = t.isUsed;
-    final c = used ? SdColors.success : Colors.grey;
+    final c = used ? SdColors.success : SdColors.faint;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -1068,13 +1082,14 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('تسلسل ${t.serial}',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
                 const SizedBox(height: 2),
                 Text(
                   used
                       ? (t.npn.isNotEmpty ? 'مستخدَم — عقار ${t.npn}' : 'مستخدَم')
                       : 'فارغ (غير مستخدَم)',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: c, fontWeight: FontWeight.w700, fontSize: 12),
                 ),
               ],
@@ -1088,7 +1103,7 @@ class _BatchTokensScreenState extends State<_BatchTokensScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('نُسخ الرمز',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
                   duration: const Duration(seconds: 1),
                 ),
               );

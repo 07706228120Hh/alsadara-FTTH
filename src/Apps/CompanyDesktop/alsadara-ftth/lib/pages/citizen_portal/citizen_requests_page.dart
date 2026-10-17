@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'models/citizen_portal_models.dart';
 import 'services/citizen_portal_service.dart';
 import 'widgets/request_status_badge.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class CitizenRequestsPage extends StatefulWidget {
   const CitizenRequestsPage({super.key});
@@ -109,7 +110,7 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.shade200,
+                  color: SdColors.divider,
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -169,21 +170,21 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
                   _requests
                       .where((r) => r.status == ServiceRequestStatus.pending)
                       .length,
-                  Colors.blue,
+                  SdColors.info,
                 ),
                 _buildQuickStat(
                   'قيد التنفيذ',
                   _requests
                       .where((r) => r.status == ServiceRequestStatus.inProgress)
                       .length,
-                  Colors.indigo,
+                  SdColors.primary,
                 ),
                 _buildQuickStat(
                   'مكتمل',
                   _requests
                       .where((r) => r.status == ServiceRequestStatus.completed)
                       .length,
-                  Colors.green,
+                  SdColors.success,
                 ),
               ],
             ),
@@ -235,7 +236,7 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
   Widget _buildContent() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.teal),
+        child: CircularProgressIndicator(color: SdColors.accent),
       );
     }
 
@@ -244,7 +245,7 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+            Icon(Icons.error_outline, size: 48, color: SdColors.dangerTintEdge),
             const SizedBox(height: 16),
             Text(_error!),
             const SizedBox(height: 16),
@@ -264,11 +265,11 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.list_alt_outlined,
-                size: 64, color: Colors.grey.shade300),
+                size: 64, color: SdColors.edge),
             const SizedBox(height: 16),
             const Text(
               'لا توجد طلبات',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+              style: TextStyle(fontSize: 18, color: SdColors.faint),
             ),
           ],
         ),
@@ -277,7 +278,7 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
 
     return RefreshIndicator(
       onRefresh: _loadRequests,
-      color: Colors.teal,
+      color: SdColors.accent,
       child: ListView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.all(16),
@@ -287,7 +288,7 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(color: Colors.teal),
+                child: CircularProgressIndicator(color: SdColors.accent),
               ),
             );
           }
@@ -349,7 +350,7 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
                         Text(
                           request.serviceName ?? 'خدمة ${request.serviceId}',
                           style: TextStyle(
-                            color: Colors.grey.shade600,
+                            color: SdColors.muted,
                             fontSize: 13,
                           ),
                         ),
@@ -403,13 +404,13 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.engineering, size: 16, color: Colors.grey),
+                    const Icon(Icons.engineering, size: 16, color: SdColors.faint),
                     const SizedBox(width: 4),
                     Text(
                       'معين إلى: ${request.assignedToName}',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade600,
+                        color: SdColors.muted,
                       ),
                     ),
                   ],
@@ -448,7 +449,7 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: Colors.grey),
+        Icon(icon, size: 14, color: SdColors.faint),
         const SizedBox(width: 4),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,7 +458,7 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
               label,
               style: TextStyle(
                 fontSize: 10,
-                color: Colors.grey.shade500,
+                color: SdColors.faint,
               ),
             ),
             Text(
@@ -552,7 +553,7 @@ class _CitizenRequestsPageState extends State<CitizenRequestsPage> {
               Expanded(
                 child: InkWell(
                   onTap: () => launchUrl(Uri.parse(d['locationUrl'])),
-                  child: Text('فتح في Google Maps', style: TextStyle(color: Colors.blue[700], decoration: TextDecoration.underline)),
+                  child: Text('فتح في Google Maps', style: TextStyle(color: SdColors.info, decoration: TextDecoration.underline)),
                 ),
               ),
             ],

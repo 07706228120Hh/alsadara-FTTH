@@ -5,6 +5,7 @@ library;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class PikachuOverlay {
   static OverlayEntry? _pikachuEntry;
@@ -169,7 +170,7 @@ class PikachuOverlay {
               return FloatingActionButton.small(
                 heroTag: 'pikachu_toggle_global',
                 backgroundColor:
-                    _showPikachu ? Colors.amber : Colors.grey.shade400,
+                    _showPikachu ? SdColors.warning : SdColors.faint,
                 onPressed: () async {
                   final newValue = !_showPikachu;
                   await _saveSetting(newValue);

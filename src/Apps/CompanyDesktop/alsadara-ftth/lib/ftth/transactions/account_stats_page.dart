@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../subscriptions/connections_list_page.dart';
 import '../users/user_records_page.dart'; // الصفحة الجديدة لسجلات المستخدم
 import '../../models/filter_criteria.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 // صفحة إحصائيات السجلات (نسخة نظيفة وبسيطة)
 class AccountStatsPage extends StatelessWidget {
@@ -168,7 +169,7 @@ class AccountStatsPage extends StatelessWidget {
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: Colors.deepPurple.shade700)),
+                  color: SdColors.platformBase)),
           const SizedBox(height: 8),
           if (userStats.isEmpty)
             _emptyUsersBox()
@@ -178,7 +179,7 @@ class AccountStatsPage extends StatelessWidget {
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: Text('حسب التصفية الحالية',
-                style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                style: TextStyle(color: SdColors.muted, fontSize: 14)),
           ),
         ],
       ),
@@ -249,8 +250,8 @@ class AccountStatsPage extends StatelessWidget {
                     title: 'العدد الكلي',
                     icon: Icons.format_list_numbered,
                     color: Colors.green,
-                    bgColor: Colors.green.shade50,
-                    borderColor: Colors.green.shade200,
+                    bgColor: SdColors.successTint,
+                    borderColor: SdColors.successTintEdge,
                     count: totalRecords,
                     amount: 0,
                     countLabel: 'سجل',
@@ -263,8 +264,8 @@ class AccountStatsPage extends StatelessWidget {
                     title: 'المجموع الكلي',
                     icon: Icons.account_balance_wallet,
                     color: Colors.teal,
-                    bgColor: Colors.teal.shade50,
-                    borderColor: Colors.teal.shade200,
+                    bgColor: SdColors.accentTint,
+                    borderColor: SdColors.accentTintEdge,
                     count: totalRecords,
                     amount: totalAmount,
                     countLabel: 'سجلات',
@@ -287,8 +288,8 @@ class AccountStatsPage extends StatelessWidget {
                 title: 'العدد الكلي',
                 icon: Icons.format_list_numbered,
                 color: Colors.green,
-                bgColor: Colors.green.shade50,
-                borderColor: Colors.green.shade200,
+                bgColor: SdColors.successTint,
+                borderColor: SdColors.successTintEdge,
                 count: totalRecords,
                 amount: 0,
                 countLabel: 'سجل',
@@ -301,8 +302,8 @@ class AccountStatsPage extends StatelessWidget {
                 title: 'المجموع الكلي',
                 icon: Icons.account_balance_wallet,
                 color: Colors.teal,
-                bgColor: Colors.teal.shade50,
-                borderColor: Colors.teal.shade200,
+                bgColor: SdColors.accentTint,
+                borderColor: SdColors.accentTintEdge,
                 count: totalRecords,
                 amount: totalAmount,
                 countLabel: 'سجلات',
@@ -344,11 +345,11 @@ class AccountStatsPage extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: _isPhone(context) ? 16 : 20,
-                            backgroundColor: Colors.deepPurple.shade100,
+                            backgroundColor: SdColors.platformTint,
                             child: Text(
                               u.name.isNotEmpty ? u.name.characters.first : '?',
                               style: TextStyle(
-                                  color: Colors.deepPurple.shade800,
+                                  color: SdColors.platformBase,
                                   fontSize: _fs(context, 16)),
                             ),
                           ),
@@ -367,7 +368,7 @@ class AccountStatsPage extends StatelessWidget {
                                 Text('اضغط لعرض السجلات التفصيلية',
                                     style: TextStyle(
                                         fontSize: _fs(context, 11),
-                                        color: Colors.grey.shade600,
+                                        color: SdColors.muted,
                                         fontStyle: FontStyle.italic)),
                               ],
                             ),
@@ -378,15 +379,15 @@ class AccountStatsPage extends StatelessWidget {
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    Colors.deepPurple.shade50,
-                                    Colors.deepPurple.shade100
+                                    SdColors.platformTint,
+                                    SdColors.platformTint
                                   ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                                 border:
-                                    Border.all(color: Colors.deepPurple.shade200),
+                                    Border.all(color: SdColors.platformTintEdge),
                               ),
                               child: Material(
                                 color: Colors.transparent,
@@ -405,7 +406,7 @@ class AccountStatsPage extends StatelessWidget {
                                         Icon(
                                           Icons.assignment_outlined,
                                           size: _isPhone(context) ? 14 : 16,
-                                          color: Colors.deepPurple.shade700,
+                                          color: SdColors.platformBase,
                                         ),
                                         SizedBox(width: _isPhone(context) ? 2 : 4),
                                         Flexible(
@@ -416,7 +417,7 @@ class AccountStatsPage extends StatelessWidget {
                                             style: TextStyle(
                                               fontSize: _fs(context, 12),
                                               fontWeight: FontWeight.w600,
-                                              color: Colors.deepPurple.shade700,
+                                              color: SdColors.platformBase,
                                             ),
                                           ),
                                         ),
@@ -467,9 +468,9 @@ class AccountStatsPage extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.amber.shade50,
+          color: SdColors.warningTint,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.amber.shade200),
+          border: Border.all(color: SdColors.warningTintEdge),
         ),
         child: const Text('لا توجد بيانات مستخدمين متاحة لهذه التصفية',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
@@ -536,7 +537,7 @@ class AccountStatsPage extends StatelessWidget {
         margin: const EdgeInsetsDirectional.only(end: 16),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: SdColors.groundAlt,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.black, width: 1.2),
         ),

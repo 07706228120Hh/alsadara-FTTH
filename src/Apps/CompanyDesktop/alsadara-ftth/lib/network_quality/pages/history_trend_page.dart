@@ -209,8 +209,8 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
         children: [
           tab(_Metric.score, 'الدرجة', SdColors.primary),
           tab(_Metric.download, 'تنزيل', const Color(0xFF26A69A)),
-          tab(_Metric.upload, 'رفع', const Color(0xFFEF6C00)),
-          tab(_Metric.ping, 'الاستجابة', const Color(0xFF6A1B9A)),
+          tab(_Metric.upload, 'رفع', SdColors.warning),
+          tab(_Metric.ping, 'الاستجابة', SdColors.platformBase),
         ],
       ),
     );
@@ -232,13 +232,13 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
         );
       case _Metric.upload:
         return (
-          color: const Color(0xFFEF6C00),
+          color: SdColors.warning,
           unit: 'Mbps',
           pick: (s) => s.uploadMbps
         );
       case _Metric.ping:
         return (
-          color: const Color(0xFF6A1B9A),
+          color: SdColors.platformBase,
           unit: 'ms',
           pick: (s) => s.pingMs
         );
@@ -304,7 +304,7 @@ class _HistoryTrendPageState extends State<HistoryTrendPage> {
                         drawVerticalLine: false,
                         horizontalInterval: maxY / 4,
                         getDrawingHorizontalLine: (v) => FlLine(
-                            color: Colors.grey.withValues(alpha: 0.12),
+                            color: SdColors.faint.withValues(alpha: 0.12),
                             strokeWidth: 1),
                       ),
                       borderData: FlBorderData(show: false),

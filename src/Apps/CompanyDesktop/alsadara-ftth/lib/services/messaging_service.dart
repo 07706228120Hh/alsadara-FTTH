@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../models/task.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class RealTimeMessagingService {
   static final RealTimeMessagingService _instance =
@@ -188,7 +189,7 @@ class _LiveMessagesWidgetState extends State<LiveMessagesWidget>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.2),
+            color: SdColors.faint.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: Offset(0, 5),
           ),
@@ -201,7 +202,7 @@ class _LiveMessagesWidgetState extends State<LiveMessagesWidget>
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.blue.shade600, Colors.blue.shade400],
+                colors: [SdColors.info, SdColors.info],
               ),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(20),
@@ -248,12 +249,12 @@ class _LiveMessagesWidgetState extends State<LiveMessagesWidget>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.message_outlined,
-                            size: 48, color: Colors.grey.shade400),
+                            size: 48, color: SdColors.faint),
                         SizedBox(height: 8),
                         Text(
                           'لا توجد رسائل حالياً',
                           style: TextStyle(
-                            color: Colors.grey.shade600,
+                            color: SdColors.muted,
                             fontSize: 14,
                           ),
                         ),
@@ -289,19 +290,19 @@ class _LiveMessagesWidgetState extends State<LiveMessagesWidget>
 
     switch (message.type) {
       case MessageType.success:
-        typeColor = Colors.green;
+        typeColor = SdColors.success;
         typeIcon = Icons.check_circle;
         break;
       case MessageType.warning:
-        typeColor = Colors.orange;
+        typeColor = SdColors.warning;
         typeIcon = Icons.warning;
         break;
       case MessageType.error:
-        typeColor = Colors.red;
+        typeColor = SdColors.danger;
         typeIcon = Icons.error;
         break;
       default:
-        typeColor = Colors.blue;
+        typeColor = SdColors.info;
         typeIcon = Icons.info;
     }
 
@@ -352,7 +353,7 @@ class _LiveMessagesWidgetState extends State<LiveMessagesWidget>
                 _formatTime(message.timestamp),
                 style: TextStyle(
                   fontSize: 10,
-                  color: Colors.grey.shade600,
+                  color: SdColors.muted,
                 ),
               ),
             ],
@@ -362,7 +363,7 @@ class _LiveMessagesWidgetState extends State<LiveMessagesWidget>
             message.message,
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey.shade800,
+              color: SdColors.ink,
             ),
           ),
         ],
@@ -376,7 +377,7 @@ class _LiveMessagesWidgetState extends State<LiveMessagesWidget>
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(20),
           bottomRight: Radius.circular(20),
@@ -410,7 +411,7 @@ class _LiveMessagesWidgetState extends State<LiveMessagesWidget>
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.blue.shade600, Colors.blue.shade400],
+                colors: [SdColors.info, SdColors.info],
               ),
               shape: BoxShape.circle,
             ),

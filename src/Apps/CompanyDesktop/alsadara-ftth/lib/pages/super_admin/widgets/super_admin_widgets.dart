@@ -3,9 +3,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../theme/energy_dashboard_theme.dart';
 
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 // ═══════════════════════════════════════════════════════════════
 // 1. SAPageHeader — رأس الصفحة الموحد
 // ═══════════════════════════════════════════════════════════════
@@ -35,7 +35,7 @@ class SAPageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color2 = secondaryColor ?? EnergyDashboardTheme.neonBlue;
+    final color2 = secondaryColor ?? SdColors.info;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -71,16 +71,18 @@ class SAPageHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   subtitle,
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textMuted,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.faint,
                     fontSize: 12,
                   ),
                 ),
@@ -99,11 +101,11 @@ class SAPageHeader extends StatelessWidget {
             IconButton(
               onPressed: onRefresh,
               icon: const Icon(Icons.refresh_rounded,
-                  color: EnergyDashboardTheme.neonGreen, size: 22),
+                  color: SdColors.success, size: 22),
               tooltip: 'تحديث',
               style: IconButton.styleFrom(
                 backgroundColor:
-                    EnergyDashboardTheme.neonGreen.withOpacity(0.1),
+                    SdColors.success.withOpacity(0.1),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
@@ -154,20 +156,22 @@ class SAFilterBar extends StatelessWidget {
             child: Container(
               height: 38,
               decoration: BoxDecoration(
-                color: EnergyDashboardTheme.bgCard,
+                color: SdColors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: EnergyDashboardTheme.borderColor),
+                border: Border.all(color: SdColors.divider),
               ),
               child: TextField(
                 onChanged: onSearchChanged,
-                style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary, fontSize: 12),
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink, fontSize: 12),
                 decoration: InputDecoration(
                   hintText: searchHint ?? 'بحث...',
-                  hintStyle: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textMuted, fontSize: 12),
+                  hintStyle: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.faint, fontSize: 12),
                   prefixIcon: const Icon(Icons.search_rounded,
-                      color: EnergyDashboardTheme.textMuted, size: 18),
+                      color: SdColors.faint, size: 18),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 ),
@@ -193,21 +197,22 @@ class SAFilterBar extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isSelected
                         ? chip.color.withOpacity(0.2)
-                        : EnergyDashboardTheme.bgCard,
+                        : SdColors.surface,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isSelected
                           ? chip.color
-                          : EnergyDashboardTheme.borderColor,
+                          : SdColors.divider,
                     ),
                   ),
                   child: Center(
                     child: Text(
                       chip.label,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         color: isSelected
                             ? chip.color
-                            : EnergyDashboardTheme.textMuted,
+                            : SdColors.faint,
                         fontSize: 11,
                         fontWeight:
                             isSelected ? FontWeight.bold : FontWeight.w500,
@@ -280,18 +285,19 @@ class SADropdown extends StatelessWidget {
       height: 38,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          dropdownColor: EnergyDashboardTheme.bgCard,
-          style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textPrimary, fontSize: 11),
+          dropdownColor: SdColors.surface,
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.ink, fontSize: 11),
           icon: Icon(icon ?? Icons.keyboard_arrow_down_rounded,
-              color: EnergyDashboardTheme.textMuted, size: 18),
+              color: SdColors.faint, size: 18),
           items: items
               .map((i) => DropdownMenuItem(value: i.value, child: Text(i.label)))
               .toList(),
@@ -378,18 +384,20 @@ class SAStatCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               value,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: EnergyDashboardTheme.textPrimary,
+                color: SdColors.ink,
                 height: 1,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               title,
-              style: GoogleFonts.cairo(
-                color: EnergyDashboardTheme.textSecondary,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.muted,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -398,7 +406,8 @@ class SAStatCard extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 subtitle!,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   color: color.withOpacity(0.8),
                   fontSize: 10,
                 ),
@@ -435,13 +444,13 @@ class SASection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = iconColor ?? EnergyDashboardTheme.neonGreen;
+    final color = iconColor ?? SdColors.success;
 
     return Container(
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,8 +472,9 @@ class SASection extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textPrimary,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.ink,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
@@ -506,10 +516,10 @@ class SATableHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgSecondary,
+        color: SdColors.groundAlt,
         border: Border(
-          top: BorderSide(color: EnergyDashboardTheme.borderColor),
-          bottom: BorderSide(color: EnergyDashboardTheme.borderColor),
+          top: BorderSide(color: SdColors.divider),
+          bottom: BorderSide(color: SdColors.divider),
         ),
       ),
       child: Row(
@@ -518,8 +528,9 @@ class SATableHeader extends StatelessWidget {
                   flex: c.flex,
                   child: Text(
                     c.label,
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textMuted,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.faint,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
@@ -555,7 +566,7 @@ class SATableRow extends StatelessWidget {
           color: highlightColor,
           border: Border(
             bottom: BorderSide(
-              color: EnergyDashboardTheme.borderColor.withOpacity(0.3),
+              color: SdColors.divider.withOpacity(0.3),
             ),
           ),
         ),
@@ -604,7 +615,8 @@ class SAStatusBadge extends StatelessWidget {
           ],
           Text(
             text,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: color,
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -632,10 +644,10 @@ class SAAlertItem {
   });
 
   Color get color => type == 'danger'
-      ? EnergyDashboardTheme.danger
+      ? SdColors.danger
       : type == 'warning'
-          ? EnergyDashboardTheme.warning
-          : EnergyDashboardTheme.info;
+          ? SdColors.warning
+          : SdColors.info;
 
   IconData get icon => type == 'danger'
       ? Icons.error_rounded
@@ -656,10 +668,10 @@ class SAAlertBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: EnergyDashboardTheme.warning.withOpacity(0.3)),
+            color: SdColors.warning.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -667,12 +679,13 @@ class SAAlertBanner extends StatelessWidget {
           Row(
             children: [
               const Icon(Icons.notifications_active_rounded,
-                  color: EnergyDashboardTheme.warning, size: 16),
+                  color: SdColors.warning, size: 16),
               const SizedBox(width: 8),
               Text(
                 'تنبيهات النظام',
-                style: GoogleFonts.cairo(
-                  color: EnergyDashboardTheme.textPrimary,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.ink,
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                 ),
@@ -680,7 +693,7 @@ class SAAlertBanner extends StatelessWidget {
               const Spacer(),
               SACountBadge(
                   count: alerts.length,
-                  color: EnergyDashboardTheme.warning),
+                  color: SdColors.warning),
             ],
           ),
           const SizedBox(height: 10),
@@ -703,7 +716,8 @@ class SAAlertBanner extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text(
                       '${a.title} (${a.message})',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         color: a.color,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -744,7 +758,8 @@ class SACountBadge extends StatelessWidget {
       ),
       child: Text(
         '$count',
-        style: GoogleFonts.cairo(
+        style: TextStyle(
+          fontFamily: 'Cairo',
           color: color,
           fontSize: 11,
           fontWeight: FontWeight.bold,
@@ -776,8 +791,8 @@ class SAProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final barColor = color ??
         (value > 0.8
-            ? EnergyDashboardTheme.warning
-            : EnergyDashboardTheme.neonGreen);
+            ? SdColors.warning
+            : SdColors.success);
 
     final row = Row(
       children: [
@@ -786,7 +801,7 @@ class SAProgressBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(height / 2),
             child: LinearProgressIndicator(
               value: value.clamp(0.0, 1.0),
-              backgroundColor: EnergyDashboardTheme.bgSecondary,
+              backgroundColor: SdColors.groundAlt,
               valueColor: AlwaysStoppedAnimation(barColor),
               minHeight: height,
             ),
@@ -796,8 +811,9 @@ class SAProgressBar extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             '${(value * 100).toStringAsFixed(0)}%',
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textMuted,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.faint,
               fontSize: 10,
             ),
           ),
@@ -819,12 +835,12 @@ class SADaysRemainingBadge extends StatelessWidget {
   const SADaysRemainingBadge({super.key, required this.days});
 
   Color get _color => days <= 0
-      ? EnergyDashboardTheme.danger
+      ? SdColors.danger
       : days <= 7
-          ? EnergyDashboardTheme.neonOrange
+          ? SdColors.warning
           : days <= 30
-              ? EnergyDashboardTheme.warning
-              : EnergyDashboardTheme.success;
+              ? SdColors.warning
+              : SdColors.success;
 
   @override
   Widget build(BuildContext context) {
@@ -840,7 +856,8 @@ class SADaysRemainingBadge extends StatelessWidget {
         children: [
           Text(
             days > 0 ? '$days' : 'منتهي',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: _color,
               fontSize: days > 0 ? 14 : 10,
               fontWeight: FontWeight.bold,
@@ -850,7 +867,8 @@ class SADaysRemainingBadge extends StatelessWidget {
           if (days > 0)
             Text(
               'يوم',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 color: _color.withOpacity(0.7),
                 fontSize: 9,
               ),
@@ -889,7 +907,8 @@ class SACompanyAvatar extends StatelessWidget {
       child: Center(
         child: Text(
           name.isNotEmpty ? name[0] : '?',
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             color: color,
             fontSize: size * 0.4,
             fontWeight: FontWeight.bold,
@@ -908,17 +927,17 @@ class SACompanyAvatar extends StatelessWidget {
 Color saStatusColor(String status) {
   switch (status) {
     case 'active':
-      return EnergyDashboardTheme.success;
+      return SdColors.success;
     case 'warning':
-      return EnergyDashboardTheme.warning;
+      return SdColors.warning;
     case 'critical':
-      return EnergyDashboardTheme.neonOrange;
+      return SdColors.warning;
     case 'expired':
-      return EnergyDashboardTheme.danger;
+      return SdColors.danger;
     case 'suspended':
-      return EnergyDashboardTheme.textMuted;
+      return SdColors.faint;
     default:
-      return EnergyDashboardTheme.textMuted;
+      return SdColors.faint;
   }
 }
 

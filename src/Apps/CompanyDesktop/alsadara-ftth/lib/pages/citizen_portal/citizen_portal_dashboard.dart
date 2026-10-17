@@ -240,7 +240,7 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
                   value: '${_stats?.totalCitizens ?? 0}',
                   subtitle: '${_stats?.activeCitizens ?? 0} نشط',
                   icon: Icons.people_rounded,
-                  color: Colors.blue,
+                  color: SdColors.info,
                   onTap: () => _tabController.animateTo(1),
                 ),
                 CitizenStatsCard(
@@ -248,7 +248,7 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
                   value: '${_stats?.pendingRequests ?? 0}',
                   subtitle: 'من ${_stats?.totalRequests ?? 0} طلب',
                   icon: Icons.pending_actions_rounded,
-                  color: Colors.orange,
+                  color: SdColors.warning,
                   onTap: () => _tabController.animateTo(2),
                 ),
                 CitizenStatsCard(
@@ -256,7 +256,7 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
                   value: '${_stats?.activeSubscriptions ?? 0}',
                   subtitle: 'اشتراك فعال',
                   icon: Icons.card_membership_rounded,
-                  color: Colors.purple,
+                  color: SdColors.platformBase,
                   onTap: () => _tabController.animateTo(3),
                 ),
                 CitizenStatsCard(
@@ -266,7 +266,7 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
                   subtitle:
                       'إجمالي: ${(_stats?.totalRevenue ?? 0).toStringAsFixed(0)} د.ع',
                   icon: Icons.trending_up_rounded,
-                  color: Colors.green,
+                  color: SdColors.success,
                   onTap: () => _tabController.animateTo(4),
                 ),
               ],
@@ -284,7 +284,7 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
                 _buildQuickAction(
                   icon: Icons.person_add_rounded,
                   label: 'إضافة مواطن',
-                  color: Colors.blue,
+                  color: SdColors.info,
                   onTap: () {
                     // TODO: فتح نافذة إضافة مواطن
                   },
@@ -292,7 +292,7 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
                 _buildQuickAction(
                   icon: Icons.add_task_rounded,
                   label: 'طلب جديد',
-                  color: Colors.orange,
+                  color: SdColors.warning,
                   onTap: () {
                     // TODO: فتح نافذة إضافة طلب
                   },
@@ -300,7 +300,7 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
                 _buildQuickAction(
                   icon: Icons.card_giftcard_rounded,
                   label: 'اشتراك جديد',
-                  color: Colors.purple,
+                  color: SdColors.platformBase,
                   onTap: () {
                     // TODO: فتح نافذة إضافة اشتراك
                   },
@@ -308,7 +308,7 @@ class _CitizenPortalDashboardState extends State<CitizenPortalDashboard>
                 _buildQuickAction(
                   icon: Icons.local_offer_rounded,
                   label: 'إدارة الخطط',
-                  color: Colors.teal,
+                  color: SdColors.accent,
                   onTap: () => _tabController.animateTo(5),
                 ),
               ],

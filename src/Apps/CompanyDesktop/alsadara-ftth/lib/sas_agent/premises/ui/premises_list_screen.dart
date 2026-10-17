@@ -155,7 +155,7 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
         style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
         decoration: InputDecoration(
           hintText: 'بحث: رقم وطني / هاتف / مالك / عنوان',
-          hintStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[500]),
+          hintStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.faint),
           prefixIcon:
               const Icon(Icons.search_rounded, color: SdColors.primary),
           suffixIcon: IconButton(
@@ -202,7 +202,7 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
             style: TextStyle(fontFamily: 'Cairo', 
                 fontWeight: FontWeight.w700,
                 fontSize: 12.5,
-                color: selected ? Colors.white : const Color(0xFF475569))),
+                color: selected ? Colors.white : SdColors.muted)),
         selected: selected,
         onSelected: (_) => onTap(),
         showCheckmark: false,
@@ -211,7 +211,7 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
         side: BorderSide(
             color: selected
                 ? SdColors.primary
-                : Colors.grey.withValues(alpha: 0.25)),
+                : SdColors.faint.withValues(alpha: 0.25)),
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusPill)),
       ),
@@ -271,7 +271,7 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
           const SizedBox(width: 12),
           Text('صفحة $_page',
               style: TextStyle(fontFamily: 'Cairo', 
-                  fontWeight: FontWeight.w800, color: Colors.grey[700])),
+                  fontWeight: FontWeight.w800, color: SdColors.muted)),
           const SizedBox(width: 12),
           OutlinedButton.icon(
             onPressed: _hasMore ? () => _load(page: _page + 1) : null,
@@ -320,7 +320,7 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
                       style: TextStyle(fontFamily: 'Cairo', 
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
-                          color: const Color(0xFF1A1A2E)),
+                          color: SdColors.ink),
                     ),
                     if (p.shortAddress.isNotEmpty) ...[
                       const SizedBox(height: 2),
@@ -328,7 +328,7 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontFamily: 'Cairo', 
-                              fontSize: 12, color: Colors.grey[600])),
+                              fontSize: 12, color: SdColors.muted)),
                     ],
                     const SizedBox(height: 6),
                     Wrap(
@@ -341,13 +341,13 @@ class _PremisesListScreenState extends State<PremisesListScreen> {
                         _tag('${p.subscriberCount} اشتراك',
                             SdColors.primaryLight),
                         if (p.phone.trim().isNotEmpty)
-                          _tag(p.phone, Colors.blueGrey),
+                          _tag(p.phone, SdColors.faint),
                       ],
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_left_rounded, color: Colors.grey),
+              const Icon(Icons.chevron_left_rounded, color: SdColors.faint),
             ],
           ),
         ),

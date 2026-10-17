@@ -4,8 +4,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../frontend/tokens/sd_colors.dart';
 
 /// ثيم Energy Dashboard - تصميم عصري مع تأثيرات Neon
@@ -162,14 +160,14 @@ class EnergyDashboardTheme {
           const SizedBox(height: 16),
           Text(
             message,
-            style: GoogleFonts.cairo(color: textSecondary, fontSize: 14),
+            style: TextStyle(fontFamily: 'Cairo', color: textSecondary, fontSize: 14),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh),
-            label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
+            label: Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo')),
             style: primaryButton,
           ),
         ],
@@ -185,7 +183,7 @@ class EnergyDashboardTheme {
         children: [
           Icon(icon, color: textMuted, size: 64),
           const SizedBox(height: 16),
-          Text(message, style: GoogleFonts.cairo(color: textMuted)),
+          Text(message, style: TextStyle(fontFamily: 'Cairo', color: textMuted)),
         ],
       ),
     );
@@ -195,7 +193,7 @@ class EnergyDashboardTheme {
   static void showSnack(BuildContext context, String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: GoogleFonts.cairo()),
+        content: Text(msg, style: TextStyle(fontFamily: 'Cairo')),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
@@ -220,13 +218,13 @@ class EnergyDashboardTheme {
         backgroundColor: bgCard,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusLarge)),
-        title: Text(title, style: GoogleFonts.cairo(color: textPrimary)),
-        content: Text(message, style: GoogleFonts.cairo(color: textSecondary)),
+        title: Text(title, style: TextStyle(fontFamily: 'Cairo', color: textPrimary)),
+        content: Text(message, style: TextStyle(fontFamily: 'Cairo', color: textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child:
-                Text(cancelLabel, style: GoogleFonts.cairo(color: textMuted)),
+                Text(cancelLabel, style: TextStyle(fontFamily: 'Cairo', color: textMuted)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -236,7 +234,7 @@ class EnergyDashboardTheme {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(radiusMedium)),
             ),
-            child: Text(confirmLabel, style: GoogleFonts.cairo()),
+            child: Text(confirmLabel, style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -669,7 +667,8 @@ class EnergyDashboardTheme {
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle: GoogleFonts.cairo(
+        textStyle: TextStyle(
+          fontFamily: 'Cairo',
           fontSize: 15,
           fontWeight: FontWeight.bold,
         ),
@@ -706,7 +705,8 @@ class EnergyDashboardTheme {
   // ═══════════════════════════════════════════════════════════════
 
   /// نص العنوان الرئيسي (H1) - للعناوين الكبيرة
-  static TextStyle get headingH1 => GoogleFonts.cairo(
+  static TextStyle get headingH1 => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeH1,
         fontWeight: FontWeight.bold,
         color: textPrimary,
@@ -714,7 +714,8 @@ class EnergyDashboardTheme {
       );
 
   /// نص العنوان الثانوي (H2) - لعناوين الأقسام
-  static TextStyle get headingH2 => GoogleFonts.cairo(
+  static TextStyle get headingH2 => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeH2,
         fontWeight: FontWeight.bold,
         color: textPrimary,
@@ -722,7 +723,8 @@ class EnergyDashboardTheme {
       );
 
   /// نص العنوان الفرعي (H3) - للعناوين الفرعية
-  static TextStyle get headingH3 => GoogleFonts.cairo(
+  static TextStyle get headingH3 => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeH3,
         fontWeight: FontWeight.w600,
         color: textPrimary,
@@ -730,7 +732,8 @@ class EnergyDashboardTheme {
       );
 
   /// نص العنوان الصغير (H4)
-  static TextStyle get headingH4 => GoogleFonts.cairo(
+  static TextStyle get headingH4 => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeH4,
         fontWeight: FontWeight.w600,
         color: textPrimary,
@@ -738,7 +741,8 @@ class EnergyDashboardTheme {
       );
 
   /// نص الجسم العادي
-  static TextStyle get bodyText => GoogleFonts.cairo(
+  static TextStyle get bodyText => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeBody,
         fontWeight: FontWeight.normal,
         color: textSecondary,
@@ -746,7 +750,8 @@ class EnergyDashboardTheme {
       );
 
   /// نص الجسم الغامق
-  static TextStyle get bodyTextBold => GoogleFonts.cairo(
+  static TextStyle get bodyTextBold => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeBody,
         fontWeight: FontWeight.w600,
         color: textPrimary,
@@ -754,7 +759,8 @@ class EnergyDashboardTheme {
       );
 
   /// نص صغير
-  static TextStyle get smallText => GoogleFonts.cairo(
+  static TextStyle get smallText => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeSmall,
         fontWeight: FontWeight.normal,
         color: textSecondary,
@@ -762,7 +768,8 @@ class EnergyDashboardTheme {
       );
 
   /// نص التسمية التوضيحية
-  static TextStyle get captionText => GoogleFonts.cairo(
+  static TextStyle get captionText => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeCaption,
         fontWeight: FontWeight.normal,
         color: textMuted,
@@ -770,7 +777,8 @@ class EnergyDashboardTheme {
       );
 
   /// نص قيمة الإحصائية الكبيرة
-  static TextStyle get statValueText => GoogleFonts.cairo(
+  static TextStyle get statValueText => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeStatValue,
         fontWeight: FontWeight.bold,
         color: textPrimary,
@@ -778,7 +786,8 @@ class EnergyDashboardTheme {
       );
 
   /// نص قيمة الإحصائية المتوسطة
-  static TextStyle get statValueMediumText => GoogleFonts.cairo(
+  static TextStyle get statValueMediumText => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeStatMedium,
         fontWeight: FontWeight.bold,
         color: textPrimary,
@@ -786,21 +795,24 @@ class EnergyDashboardTheme {
       );
 
   /// نص النجاح (أخضر)
-  static TextStyle get successText => GoogleFonts.cairo(
+  static TextStyle get successText => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeBody,
         fontWeight: FontWeight.w600,
         color: success,
       );
 
   /// نص التحذير (برتقالي)
-  static TextStyle get warningText => GoogleFonts.cairo(
+  static TextStyle get warningText => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeBody,
         fontWeight: FontWeight.w600,
         color: warning,
       );
 
   /// نص الخطر (أحمر)
-  static TextStyle get dangerText => GoogleFonts.cairo(
+  static TextStyle get dangerText => TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSizeBody,
         fontWeight: FontWeight.w600,
         color: danger,
@@ -812,7 +824,8 @@ class EnergyDashboardTheme {
     double? fontSize,
     FontWeight? fontWeight,
   }) =>
-      GoogleFonts.cairo(
+      TextStyle(
+        fontFamily: 'Cairo',
         fontSize: fontSize ?? fontSizeBody,
         fontWeight: fontWeight ?? FontWeight.normal,
         color: color,
@@ -831,15 +844,18 @@ class EnergyDashboardTheme {
       InputDecoration(
         labelText: label,
         hintText: hint,
-        labelStyle: GoogleFonts.cairo(
+        labelStyle: TextStyle(
+          fontFamily: 'Cairo',
           color: textSecondary,
           fontSize: 14,
         ),
-        hintStyle: GoogleFonts.cairo(
+        hintStyle: TextStyle(
+          fontFamily: 'Cairo',
           color: textMuted,
           fontSize: 14,
         ),
-        floatingLabelStyle: GoogleFonts.cairo(
+        floatingLabelStyle: TextStyle(
+          fontFamily: 'Cairo',
           color: neonGreen,
           fontWeight: FontWeight.w600,
         ),
@@ -922,7 +938,8 @@ class EnergyDashboardTheme {
                         const SizedBox(width: 4),
                         Text(
                           trend,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             color: isPositive ? success : danger,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -940,7 +957,8 @@ class EnergyDashboardTheme {
               children: [
                 Text(
                   value,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 36,
                     fontWeight: FontWeight.bold,
                     color: textPrimary,
@@ -952,7 +970,8 @@ class EnergyDashboardTheme {
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text(
                     unit,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 14,
                       color: color,
                       fontWeight: FontWeight.w600,
@@ -965,7 +984,8 @@ class EnergyDashboardTheme {
             // العنوان
             Text(
               title,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 14,
                 color: textSecondary,
               ),
@@ -991,10 +1011,10 @@ class EnergyDashboardTheme {
       child: TextField(
         controller: controller,
         onChanged: onChanged,
-        style: GoogleFonts.cairo(color: textPrimary),
+        style: TextStyle(fontFamily: 'Cairo', color: textPrimary),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: GoogleFonts.cairo(color: textMuted),
+          hintStyle: TextStyle(fontFamily: 'Cairo', color: textMuted),
           prefixIcon: const Icon(Icons.search_rounded, color: textMuted),
           border: InputBorder.none,
           contentPadding:
@@ -1033,7 +1053,8 @@ class EnergyDashboardTheme {
           ],
           Text(
             text,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: color,
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -1087,7 +1108,8 @@ class EnergyDashboardTheme {
             children: [
               Text(
                 '${(percentage * 100).toInt()}%',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: size * 0.2,
                   fontWeight: FontWeight.bold,
                   color: color,
@@ -1095,7 +1117,8 @@ class EnergyDashboardTheme {
               ),
               Text(
                 label,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: size * 0.1,
                   color: textMuted,
                 ),
@@ -1141,7 +1164,8 @@ class EnergyDashboardTheme {
         ),
         title: Text(
           title,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontWeight: FontWeight.w600,
             color: textPrimary,
             fontSize: 14,
@@ -1150,7 +1174,8 @@ class EnergyDashboardTheme {
         subtitle: subtitle != null
             ? Text(
                 subtitle,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   color: textMuted,
                   fontSize: 12,
                 ),
@@ -1192,7 +1217,8 @@ class EnergyDashboardTheme {
             Expanded(
               child: Text(
                 title,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   color: textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -1229,7 +1255,8 @@ class EnergyDashboardTheme {
             const SizedBox(height: 16),
             Text(
               message,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 color: textSecondary,
                 fontSize: 14,
               ),
@@ -1262,7 +1289,8 @@ class EnergyDashboardTheme {
           const SizedBox(height: 20),
           Text(
             message,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: textSecondary,
               fontSize: 16,
             ),
@@ -1273,7 +1301,7 @@ class EnergyDashboardTheme {
             ElevatedButton.icon(
               onPressed: onAction,
               icon: const Icon(Icons.add_rounded),
-              label: Text(actionLabel, style: GoogleFonts.cairo()),
+              label: Text(actionLabel, style: TextStyle(fontFamily: 'Cairo')),
               style: primaryButton,
             ),
           ],
@@ -1307,7 +1335,8 @@ class EnergyDashboardTheme {
             const SizedBox(height: 20),
             Text(
               message,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 color: textPrimary,
                 fontSize: fontSizeH4,
                 fontWeight: FontWeight.bold,
@@ -1324,7 +1353,8 @@ class EnergyDashboardTheme {
                 ),
                 child: Text(
                   details,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: textSecondary,
                     fontSize: fontSizeSmall,
                   ),
@@ -1337,7 +1367,7 @@ class EnergyDashboardTheme {
               ElevatedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh_rounded),
-                label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
+                label: Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo')),
                 style: primaryButton,
               ),
             ],
@@ -1400,7 +1430,8 @@ class EnergyDashboardTheme {
                         const SizedBox(width: 4),
                         Text(
                           trend,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             color: isPositive ? success : danger,
                             fontSize: fontSizeSmall,
                             fontWeight: FontWeight.bold,
@@ -1534,9 +1565,11 @@ class EnergyDashboardTheme {
       indicatorSize: TabBarIndicatorSize.tab,
       labelColor: neonGreen,
       unselectedLabelColor: textMuted,
-      labelStyle: GoogleFonts.cairo(
+      labelStyle: TextStyle(
+          fontFamily: 'Cairo',
           fontWeight: FontWeight.w600, fontSize: fontSizeBody),
-      unselectedLabelStyle: GoogleFonts.cairo(
+      unselectedLabelStyle: TextStyle(
+          fontFamily: 'Cairo',
           fontWeight: FontWeight.w500, fontSize: fontSizeBody),
       tabs: List.generate(tabs.length, (index) {
         return Tab(
@@ -1635,7 +1668,8 @@ class EnergyDashboardTheme {
           ],
           Text(
             text,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: filled ? Colors.white : color,
               fontSize: fontSizeSmall,
               fontWeight: FontWeight.w600,
@@ -1768,7 +1802,8 @@ class _GlowingButtonState extends State<GlowingButton>
                 ],
                 Text(
                   widget.text,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),

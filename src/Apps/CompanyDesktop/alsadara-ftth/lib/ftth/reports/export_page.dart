@@ -16,6 +16,7 @@ import 'package:open_filex/open_filex.dart';
 import '../../permissions/permissions.dart';
 import '../../services/auth_service.dart';
 import '../auth/auth_error_handler.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 // تم تحديث الواجهة لتصبح أكثر عصرية وحداثة بدون إضافة حزم خارجية
 // ركزنا على: ألوان متدرجة، بطاقات تفاعلية، حركات انتقالية، وتحسين عرض التقدم والرسائل
@@ -291,7 +292,7 @@ class _ExportPageState extends State<ExportPage>
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall
-                      ?.copyWith(color: Colors.grey[600]),
+                      ?.copyWith(color: SdColors.muted),
                 ),
               ],
             ),
@@ -757,9 +758,9 @@ class _ExportPageState extends State<ExportPage>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF283593),
-                  Color(0xFF1976D2),
-                  Color(0xFF64B5F6)
+                  SdColors.primaryMid,
+                  SdColors.info,
+                  SdColors.infoTintEdge
                 ],
               ),
             ),
@@ -873,7 +874,7 @@ class _ExportPageState extends State<ExportPage>
                                   child: Padding(
                                     padding: EdgeInsets.all(16),
                                     child: Text('لا تملك صلاحية التصدير',
-                                        style: TextStyle(color: Colors.grey)),
+                                        style: TextStyle(color: SdColors.faint)),
                                   ),
                                 );
                               }
@@ -888,7 +889,7 @@ class _ExportPageState extends State<ExportPage>
                                           255, 36, 117, 43),
                                       iconGradientColors: const [
                                         Color(0xFFFFC107),
-                                        Color(0xFFFF9800),
+                                        SdColors.warning,
                                       ],
                                       onPressed: () => _exportToExcel(
                                         'https://api.ftth.iq/api/customers',
@@ -940,7 +941,7 @@ class _ExportPageState extends State<ExportPage>
                                     child: ExportButton(
                                       title: 'تفاصيل المشترك',
                                       icon: Icons.manage_search_rounded,
-                                      color: Colors.deepPurple,
+                                      color: SdColors.platformBase,
                                       iconGradientColors: const [
                                         Color(0xFFE040FB),
                                         Color(0xFF7C4DFF),
@@ -1114,7 +1115,7 @@ class _ModernProgressBar extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               style: TextButton.styleFrom(
-                foregroundColor: Colors.red.shade700,
+                foregroundColor: SdColors.danger,
               ),
               onPressed: onCancel,
               icon: const Icon(Icons.close_rounded),

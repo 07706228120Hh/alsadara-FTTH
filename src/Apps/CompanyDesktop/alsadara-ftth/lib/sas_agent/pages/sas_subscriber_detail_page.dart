@@ -275,7 +275,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                         style: TextStyle(fontFamily: 'monospace', 
                             fontSize: 18.sp,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF1A1A2E)),
+                            color: SdColors.ink),
                       ),
                     ),
                     if (fullName.isNotEmpty) ...[
@@ -283,7 +283,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                       Text(fullName,
                           style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 12.5.sp,
-                              color: Colors.grey[600],
+                              color: SdColors.muted,
                               fontWeight: FontWeight.w500)),
                     ],
                   ],
@@ -315,24 +315,24 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 15.sp, color: Colors.grey[500]),
+        Icon(icon, size: 15.sp, color: SdColors.faint),
         SizedBox(width: 4.w),
         Text('$label: ',
             style: TextStyle(fontFamily: 'Cairo', 
-                fontSize: 11.5.sp, color: Colors.grey[600])),
+                fontSize: 11.5.sp, color: SdColors.muted)),
         mono
             ? Directionality(
                 textDirection: TextDirection.ltr,
                 child: Text(value,
                     style: TextStyle(fontFamily: 'monospace', 
                         fontSize: 11.5.sp,
-                        color: color ?? const Color(0xFF1A1A2E))),
+                        color: color ?? SdColors.ink)),
               )
             : Text(value,
                 style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.5.sp,
                     fontWeight: FontWeight.w800,
-                    color: color ?? const Color(0xFF1A1A2E))),
+                    color: color ?? SdColors.ink)),
       ],
     );
   }
@@ -372,8 +372,8 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           _actionBtn('تعديل', Icons.edit_rounded, SdColors.primary,
               _busy ? null : _doEdit),
           _actionBtn('إعادة تسمية', Icons.drive_file_rename_outline_rounded,
-              Colors.blueGrey, _busy ? null : _doRename),
-          _actionBtn('Ping', Icons.network_ping_rounded, Colors.blueGrey,
+              SdColors.faint, _busy ? null : _doRename),
+          _actionBtn('Ping', Icons.network_ping_rounded, SdColors.faint,
               _busy ? null : _doPing),
           _actionBtn('استرداد', Icons.receipt_long_rounded,
               SdColors.warning, _busy ? null : _doRefund,
@@ -473,7 +473,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         ]),
         SizedBox(height: 12.h),
         _infoGrid('الشبكة', Icons.lan_rounded,
-            const [Color(0xFF7B1FA2), Color(0xFF9C27B0)], [
+            const [Color(0xFF7B1FA2), SdColors.platformBase], [
           _fv('IP ثابت', d['static_ip'], mono: true),
           _fv('آخر عنوان IP', d['last_ip_address'], mono: true),
           _fv('مصادقة MAC', d['mac_auth']),
@@ -484,7 +484,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         ]),
         SizedBox(height: 12.h),
         _infoGrid('التواريخ والملاحظات', Icons.history_rounded,
-            const [Color(0xFF455A64), Color(0xFF607D8B)], [
+            const [Color(0xFF455A64), SdColors.muted], [
           _fv('آخر اتصال', d['last_online'], mono: true),
           _fv('تاريخ الإنشاء', d['created_at'], mono: true),
           _fv('تاريخ التحديث', d['updated_at'], mono: true),
@@ -515,7 +515,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           if (nonEmpty.isEmpty)
             Text('لا بيانات',
                 style: TextStyle(fontFamily: 'Cairo', 
-                    fontSize: 12.sp, color: Colors.grey[500]))
+                    fontSize: 12.sp, color: SdColors.faint))
           else
             LayoutBuilder(
               builder: (ctx, c) {
@@ -547,7 +547,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       decoration: BoxDecoration(
         color: const Color(0xFFF7F9FC),
         borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.14)),
+        border: Border.all(color: SdColors.faint.withValues(alpha: 0.14)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -556,7 +556,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           Text(f.label,
               style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 10.5.sp,
-                  color: Colors.grey[600],
+                  color: SdColors.muted,
                   fontWeight: FontWeight.w600)),
           SizedBox(height: 3.h),
           f.mono
@@ -569,8 +569,8 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                             fontSize: 12.sp,
                             fontWeight: FontWeight.w700,
                             color: isEmpty
-                                ? Colors.grey[400]
-                                : const Color(0xFF1A1A2E)),
+                                ? SdColors.faint
+                                : SdColors.ink),
                         overflow: TextOverflow.ellipsis),
                   ),
                 )
@@ -578,8 +578,8 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                   style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 12.5.sp,
                       color: isEmpty
-                          ? Colors.grey[400]
-                          : const Color(0xFF1A1A2E),
+                          ? SdColors.faint
+                          : SdColors.ink,
                       fontWeight: FontWeight.w700),
                   overflow: TextOverflow.ellipsis),
         ],
@@ -600,7 +600,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
               color: SdColors.primary.withValues(alpha: 0.04),
               border: Border(
                 bottom:
-                    BorderSide(color: Colors.grey.withValues(alpha: 0.12)),
+                    BorderSide(color: SdColors.faint.withValues(alpha: 0.12)),
               ),
             ),
             child: TabBar(
@@ -614,7 +614,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                 borderRadius: BorderRadius.circular(10),
               ),
               labelColor: Colors.white,
-              unselectedLabelColor: const Color(0xFF64748B),
+              unselectedLabelColor: SdColors.muted,
               labelStyle:
                   TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 12.5),
               unselectedLabelStyle:
@@ -1105,7 +1105,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(children: [
         Text('$label: ',
-            style: TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 13)),
+            style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 13)),
         Flexible(
             child: Text('$value',
                 style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800))),
@@ -1285,7 +1285,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                           decoration: InputDecoration(
                             labelText: 'عدد الأشهر',
                             labelStyle: TextStyle(fontFamily: 'Cairo', 
-                                color: Colors.grey[600], fontSize: 12),
+                                color: SdColors.muted, fontSize: 12),
                             isDense: true,
                             border: OutlineInputBorder(
                                 borderRadius:
@@ -1340,7 +1340,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                           style: TextStyle(fontFamily: 'Cairo', 
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
-                              color: Colors.grey[700])),
+                              color: SdColors.muted)),
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 8,
@@ -1480,7 +1480,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
         children: [
           Text('$label: ',
               style: TextStyle(fontFamily: 'Cairo', 
-                  color: Colors.grey[600], fontSize: 12.5)),
+                  color: SdColors.muted, fontSize: 12.5)),
           Expanded(
             child: mono
                 ? Directionality(
@@ -1491,14 +1491,14 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
                             fontSize: 12.5,
                             fontWeight:
                                 strong ? FontWeight.w800 : FontWeight.w600,
-                            color: color ?? const Color(0xFF1A1A2E))),
+                            color: color ?? SdColors.ink)),
                   )
                 : Text(value,
                     style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12.5,
                         fontWeight:
                             strong ? FontWeight.w800 : FontWeight.w600,
-                        color: color ?? const Color(0xFF1A1A2E))),
+                        color: color ?? SdColors.ink)),
           ),
         ],
       ),
@@ -1514,9 +1514,9 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       label: Text(label,
           style: TextStyle(fontFamily: 'Cairo', 
               fontWeight: FontWeight.w700,
-              color: active ? Colors.white : Colors.grey[700])),
+              color: active ? Colors.white : SdColors.muted)),
       selectedColor: SdColors.primary,
-      backgroundColor: Colors.grey.withValues(alpha: 0.10),
+      backgroundColor: SdColors.faint.withValues(alpha: 0.10),
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm)),
     );
@@ -1544,7 +1544,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           const SizedBox(width: 10),
           Text('جارِ تحميل القائمة…',
               style: TextStyle(fontFamily: 'Cairo', 
-                  fontSize: 12.5, color: Colors.grey[700])),
+                  fontSize: 12.5, color: SdColors.muted)),
         ],
       );
     }
@@ -1576,7 +1576,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
           fontWeight: FontWeight.w700, fontSize: 13, color: Colors.black87),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 12),
+        labelStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 12),
         isDense: true,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm)),
@@ -1617,7 +1617,7 @@ class _SasSubscriberDetailPageState extends State<SasSubscriberDetailPage>
       style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 13),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 11.5),
+        labelStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 11.5),
         isDense: true,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm)),
@@ -1759,7 +1759,7 @@ class _InputDialog<T> extends StatelessWidget {
           style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[600]),
+            labelStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.muted),
             isDense: true,
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(SasUi.radiusSm)),
@@ -1837,7 +1837,7 @@ class _HistoryTabState extends State<_HistoryTab> {
       padding: EdgeInsets.all(10.w),
       itemCount: _rows!.length,
       separatorBuilder: (_, __) =>
-          Divider(height: 1, color: Colors.grey.withValues(alpha: 0.12)),
+          Divider(height: 1, color: SdColors.faint.withValues(alpha: 0.12)),
       itemBuilder: (_, i) {
         final row = _rows![i];
         final event =
@@ -1859,7 +1859,7 @@ class _HistoryTabState extends State<_HistoryTab> {
                   style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5)),
           trailing: Text(date,
               style: TextStyle(fontFamily: 'monospace', 
-                  fontSize: 10.5, color: Colors.grey[500])),
+                  fontSize: 10.5, color: SdColors.faint)),
         );
       },
     );
@@ -2126,7 +2126,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
         labelText: label,
         hintText: hint,
         labelStyle:
-            TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 12.sp),
+            TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 12.sp),
         isDense: true,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
@@ -2142,7 +2142,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
       decoration: InputDecoration(
         labelText: 'المنطقة (تحدّد أجور الصيانة تلقائياً)',
         labelStyle:
-            TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 12.sp),
+            TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 12.sp),
         isDense: true,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
@@ -2177,7 +2177,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
             style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 12.5.sp,
                 fontWeight: FontWeight.w700,
-                color: Colors.grey[700])),
+                color: SdColors.muted)),
         SizedBox(width: 10.w),
         _genderChip('male', 'ذكر'),
         SizedBox(width: 8.w),
@@ -2194,9 +2194,9 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
       label: Text(label,
           style: TextStyle(fontFamily: 'Cairo', 
               fontWeight: FontWeight.w700,
-              color: active ? Colors.white : Colors.grey[700])),
+              color: active ? Colors.white : SdColors.muted)),
       selectedColor: SdColors.primary,
-      backgroundColor: Colors.grey.withValues(alpha: 0.10),
+      backgroundColor: SdColors.faint.withValues(alpha: 0.10),
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
     );
@@ -2208,7 +2208,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(
-            top: BorderSide(color: Colors.grey.withValues(alpha: 0.12))),
+            top: BorderSide(color: SdColors.faint.withValues(alpha: 0.12))),
       ),
       child: Row(
         children: [
@@ -2217,7 +2217,7 @@ class _CitizenInfoTabState extends State<_CitizenInfoTab> {
             onPressed: (!_canManage || _saving) ? null : _save,
             style: FilledButton.styleFrom(
               backgroundColor: SdColors.primary,
-              disabledBackgroundColor: Colors.grey.withValues(alpha: 0.30),
+              disabledBackgroundColor: SdColors.faint.withValues(alpha: 0.30),
               padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 11.h),
             ),
             icon: _saving
@@ -2309,7 +2309,7 @@ class _IndexListTabState extends State<_IndexListTab> {
       padding: EdgeInsets.all(10.w),
       itemCount: _rows!.length,
       separatorBuilder: (_, __) =>
-          Divider(height: 1, color: Colors.grey.withValues(alpha: 0.12)),
+          Divider(height: 1, color: SdColors.faint.withValues(alpha: 0.12)),
       itemBuilder: (_, i) {
         final row = _rows![i];
         return Padding(
@@ -2327,7 +2327,7 @@ class _IndexListTabState extends State<_IndexListTab> {
                         width: 96.w,
                         child: Text(c.$2,
                             style: TextStyle(fontFamily: 'Cairo', 
-                                color: Colors.grey[600],
+                                color: SdColors.muted,
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w600)),
                       ),
@@ -2472,7 +2472,7 @@ class _TrafficTabState extends State<_TrafficTab> {
             style: TextStyle(fontFamily: 'Cairo', 
                 fontWeight: FontWeight.w700,
                 fontSize: 12.sp,
-                color: Colors.grey[700])),
+                color: SdColors.muted)),
         SizedBox(height: 8.h),
         // المصفوفة مفهرسة بيوم الشهر: index 0 = يوم 1. نعرض أيام الشهر الفعلية فقط.
         for (int i = 0; i < n && i < _daysInMonth; i++) _dayRow(i, maxDay),
@@ -2519,14 +2519,14 @@ class _TrafficTabState extends State<_TrafficTab> {
                 style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.sp,
                     fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
-                    color: isToday ? SdColors.primary : Colors.grey[700])),
+                    color: isToday ? SdColors.primary : SdColors.muted)),
           ),
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(6.r),
               child: Stack(
                 children: [
-                  Container(height: 18.h, color: Colors.grey.withValues(alpha: 0.10)),
+                  Container(height: 18.h, color: SdColors.faint.withValues(alpha: 0.10)),
                   FractionallySizedBox(
                     widthFactor: frac == 0 ? 0.001 : frac,
                     child: Container(
@@ -2594,6 +2594,6 @@ Color _statusColor(dynamic status) {
     case 'غير متصل':
       return SdColors.danger;
     default:
-      return Colors.blueGrey;
+      return SdColors.faint;
   }
 }

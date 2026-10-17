@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/task.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class AdvancedDashboardWidget extends StatefulWidget {
   final List<Task> tasks;
@@ -44,7 +45,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.2),
+            color: SdColors.faint.withValues(alpha: 0.2),
             blurRadius: 15,
             offset: Offset(0, 8),
           ),
@@ -57,7 +58,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
             padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.deepPurple.shade600, Colors.purple.shade400],
+                colors: [SdColors.platformBase, SdColors.platformLight],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -113,12 +114,12 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
 
           // شريط التبويب
           Container(
-            color: Colors.grey.shade50,
+            color: SdColors.surfaceAlt,
             child: TabBar(
               controller: _tabController,
-              labelColor: Colors.deepPurple,
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: Colors.deepPurple,
+              labelColor: SdColors.platformBase,
+              unselectedLabelColor: SdColors.faint,
+              indicatorColor: SdColors.platformBase,
               indicatorWeight: 3,
               labelStyle:
                   const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
@@ -167,10 +168,10 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
             children: [
               Expanded(
                   child: _buildKPICard(
-                      'إجمالي', totalTasks, Colors.blue, Icons.assignment)),
+                      'إجمالي', totalTasks, SdColors.info, Icons.assignment)),
               SizedBox(width: 12),
               Expanded(
-                  child: _buildKPICard('مكتملة', completedTasks, Colors.green,
+                  child: _buildKPICard('مكتملة', completedTasks, SdColors.success,
                       Icons.check_circle)),
             ],
           ),
@@ -179,11 +180,11 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
             children: [
               Expanded(
                   child: _buildKPICard('قيد التنفيذ', inProgressTasks,
-                      Colors.orange, Icons.settings)),
+                      SdColors.warning, Icons.settings)),
               SizedBox(width: 12),
               Expanded(
                   child: _buildKPICard(
-                      'مفتوحة', openTasks, Colors.red, Icons.lock_open)),
+                      'مفتوحة', openTasks, SdColors.danger, Icons.lock_open)),
             ],
           ),
 
@@ -199,7 +200,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade700,
+                    color: SdColors.muted,
                   ),
                 ),
                 SizedBox(height: 20),
@@ -212,7 +213,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                         PieChartSectionData(
                           value: completedTasks.toDouble(),
                           title: 'مكتملة\n$completedTasks',
-                          color: Colors.green,
+                          color: SdColors.success,
                           radius: 80,
                           titleStyle: TextStyle(
                             fontSize: 12,
@@ -223,7 +224,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                         PieChartSectionData(
                           value: inProgressTasks.toDouble(),
                           title: 'قيد التنفيذ\n$inProgressTasks',
-                          color: Colors.orange,
+                          color: SdColors.warning,
                           radius: 80,
                           titleStyle: TextStyle(
                             fontSize: 12,
@@ -234,7 +235,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                         PieChartSectionData(
                           value: openTasks.toDouble(),
                           title: 'مفتوحة\n$openTasks',
-                          color: Colors.blue,
+                          color: SdColors.info,
                           radius: 80,
                           titleStyle: TextStyle(
                             fontSize: 12,
@@ -245,7 +246,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                         PieChartSectionData(
                           value: cancelledTasks.toDouble(),
                           title: 'ملغية\n$cancelledTasks',
-                          color: Colors.red,
+                          color: SdColors.danger,
                           radius: 80,
                           titleStyle: TextStyle(
                             fontSize: 12,
@@ -268,7 +269,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
             padding: EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.green.shade400, Colors.green.shade600],
+                colors: [SdColors.success, SdColors.success],
               ),
               borderRadius: BorderRadius.circular(15),
             ),
@@ -320,7 +321,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade700,
+              color: SdColors.muted,
             ),
           ),
           SizedBox(height: 20),
@@ -356,12 +357,12 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                   LineChartBarData(
                     spots: weeklyData,
                     isCurved: true,
-                    color: Colors.blue,
+                    color: SdColors.info,
                     barWidth: 3,
                     dotData: FlDotData(show: true),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: Colors.blue.withValues(alpha: 0.2),
+                      color: SdColors.info.withValues(alpha: 0.2),
                     ),
                   ),
                 ],
@@ -382,7 +383,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                   _getWeeklyGrowth() >= 0
                       ? Icons.trending_up
                       : Icons.trending_down,
-                  _getWeeklyGrowth() >= 0 ? Colors.green : Colors.red,
+                  _getWeeklyGrowth() >= 0 ? SdColors.success : SdColors.danger,
                 ),
               ),
               SizedBox(width: 16),
@@ -392,7 +393,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                   _getWeeklyAverage().toStringAsFixed(1),
                   0,
                   Icons.show_chart,
-                  Colors.blue,
+                  SdColors.info,
                 ),
               ),
             ],
@@ -414,7 +415,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade700,
+              color: SdColors.muted,
             ),
           ),
           SizedBox(height: 20),
@@ -429,10 +430,10 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
               margin: EdgeInsets.symmetric(vertical: 8),
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: SdColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(15),
                 border: Border.all(
-                  color: efficiency >= 80 ? Colors.green : Colors.orange,
+                  color: efficiency >= 80 ? SdColors.success : SdColors.warning,
                   width: 2,
                 ),
               ),
@@ -442,7 +443,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                     children: [
                       CircleAvatar(
                         backgroundColor:
-                            efficiency >= 80 ? Colors.green : Colors.orange,
+                            efficiency >= 80 ? SdColors.success : SdColors.warning,
                         child: Text(
                           entry.key.substring(0, 1),
                           style: TextStyle(
@@ -467,7 +468,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                               '$completedTasks من $totalTasks مهمة',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey.shade600,
+                                color: SdColors.muted,
                               ),
                             ),
                           ],
@@ -478,7 +479,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                             EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color:
-                              efficiency >= 80 ? Colors.green : Colors.orange,
+                              efficiency >= 80 ? SdColors.success : SdColors.warning,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -494,9 +495,9 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                   SizedBox(height: 12),
                   LinearProgressIndicator(
                     value: efficiency / 100,
-                    backgroundColor: Colors.grey.shade300,
+                    backgroundColor: SdColors.edge,
                     valueColor: AlwaysStoppedAnimation(
-                      efficiency >= 80 ? Colors.green : Colors.orange,
+                      efficiency >= 80 ? SdColors.success : SdColors.warning,
                     ),
                   ),
                 ],
@@ -520,7 +521,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade700,
+              color: SdColors.muted,
             ),
           ),
           SizedBox(height: 20),
@@ -572,22 +573,22 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
                   BarChartGroupData(x: 0, barRods: [
                     BarChartRodData(
                         toY: timeAnalysis['morning']!.toDouble(),
-                        color: Colors.orange)
+                        color: SdColors.warning)
                   ]),
                   BarChartGroupData(x: 1, barRods: [
                     BarChartRodData(
                         toY: timeAnalysis['afternoon']!.toDouble(),
-                        color: Colors.blue)
+                        color: SdColors.info)
                   ]),
                   BarChartGroupData(x: 2, barRods: [
                     BarChartRodData(
                         toY: timeAnalysis['evening']!.toDouble(),
-                        color: Colors.purple)
+                        color: SdColors.platformBase)
                   ]),
                   BarChartGroupData(x: 3, barRods: [
                     BarChartRodData(
                         toY: timeAnalysis['night']!.toDouble(),
-                        color: Colors.indigo)
+                        color: SdColors.primary)
                   ]),
                 ],
               ),
@@ -641,7 +642,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
             title,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey.shade600,
+              color: SdColors.muted,
             ),
           ),
         ],
@@ -674,7 +675,7 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
             title,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey.shade600,
+              color: SdColors.muted,
             ),
           ),
           if (change != 0)
@@ -695,27 +696,27 @@ class _AdvancedDashboardWidgetState extends State<AdvancedDashboardWidget>
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.1),
+        color: SdColors.info.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+        border: Border.all(color: SdColors.info.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
-          Icon(icon, color: Colors.blue, size: 24),
+          Icon(icon, color: SdColors.info, size: 24),
           SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.blue,
+              color: SdColors.info,
             ),
           ),
           Text(
             title,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey.shade600,
+              color: SdColors.muted,
             ),
           ),
         ],

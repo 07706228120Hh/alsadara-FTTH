@@ -5,6 +5,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../utils/responsive_helper.dart';
 import '../models/task.dart';
 import '../services/task_api_service.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 // ═══════════════════════════════════════════════════════════════
 //  Premium Dark Theme Constants
@@ -14,8 +15,8 @@ const _bgCard = Color(0xFF111B2E);
 const _navy = Color(0xFF1B2A4A);
 const _navyDark = Color(0xFF0A0F1A);
 const _blue = Color(0xFF4A9FFF);
-const _green = Color(0xFF2ECC71);
-const _red = Color(0xFFFF5252);
+const _green = SdColors.success;
+const _red = SdColors.danger;
 const _amber = Color(0xFFFFB74D);
 const _orange = Color(0xFFFF7043);
 const _purple = Color(0xFFAB47BC);
@@ -742,7 +743,7 @@ class _AuditDashboardPageState extends State<AuditDashboardPage>
             const SizedBox(width: 12),
             ShaderMask(
               shaderCallback: (bounds) => const LinearGradient(
-                colors: [Color(0xFF64B5F6), Color(0xFF42A5F5)],
+                colors: [SdColors.infoTintEdge, Color(0xFF42A5F5)],
               ).createShader(bounds),
               child: const Text('لوحة تحكم التدقيق',
                   style: TextStyle(
@@ -1800,7 +1801,7 @@ class _AuditDashboardPageState extends State<AuditDashboardPage>
       _cyan,
       _teal,
       Color(0xFF795548),
-      Color(0xFF607D8B),
+      SdColors.muted,
       Color(0xFFAD1457),
     ];
     return colors[idx % colors.length];

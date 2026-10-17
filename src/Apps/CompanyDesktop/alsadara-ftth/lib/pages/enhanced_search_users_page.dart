@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'dart:math';
 import '../services/isp_subscribers_api_service.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class EnhancedSearchUsersPage extends StatefulWidget {
   const EnhancedSearchUsersPage({super.key});
@@ -578,13 +579,13 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(content: Text(message), backgroundColor: SdColors.danger),
     );
   }
 
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.green),
+      SnackBar(content: Text(message), backgroundColor: SdColors.success),
     );
   }
 
@@ -596,7 +597,7 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('البحث المحسن عن المستخدمين'),
-        backgroundColor: Colors.blue,
+        backgroundColor: SdColors.info,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -726,7 +727,7 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
                       icon: const Icon(Icons.search),
                       label: const Text('البحث المحسن'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: SdColors.info,
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -737,7 +738,7 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
                     icon: const Icon(Icons.cloud_sync),
                     label: const Text('اختبار الاتصال'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
+                      backgroundColor: SdColors.success,
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -762,17 +763,17 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
 
               if (hasError && !isLoading)
                 Card(
-                  color: Colors.red.shade50,
+                  color: SdColors.dangerTint,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Row(
                       children: [
-                        Icon(Icons.error, color: Colors.red),
+                        Icon(Icons.error, color: SdColors.danger),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Text(
                             errorMessage,
-                            style: TextStyle(color: Colors.red.shade700),
+                            style: TextStyle(color: SdColors.danger),
                           ),
                         ),
                       ],
@@ -821,7 +822,7 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
                               trailing: match['similarity'] != null
                                   ? Chip(
                                       label: Text('${match['similarity']}%'),
-                                      backgroundColor: Colors.blue.shade100,
+                                      backgroundColor: SdColors.infoTint,
                                     )
                                   : null,
                             ),
@@ -834,7 +835,7 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.grey,
+                            color: SdColors.faint,
                           ),
                         ),
                       ),
@@ -847,13 +848,13 @@ class _EnhancedSearchUsersPageState extends State<EnhancedSearchUsersPage> {
   }
 
   Color _getRelationColor(String relation) {
-    if (relation.contains('تطابق مباشر')) return Colors.green;
-    if (relation.contains('الشخص نفسه')) return Colors.purple;
-    if (relation.contains('أخو')) return Colors.blue;
-    if (relation.contains('الأب')) return Colors.orange;
-    if (relation.contains('العم')) return Colors.teal;
-    if (relation.contains('الجد')) return Colors.brown;
-    return Colors.grey;
+    if (relation.contains('تطابق مباشر')) return SdColors.success;
+    if (relation.contains('الشخص نفسه')) return SdColors.platformBase;
+    if (relation.contains('أخو')) return SdColors.info;
+    if (relation.contains('الأب')) return SdColors.warning;
+    if (relation.contains('العم')) return SdColors.accent;
+    if (relation.contains('الجد')) return SdColors.warning;
+    return SdColors.faint;
   }
 
   IconData _getRelationIcon(String relation) {

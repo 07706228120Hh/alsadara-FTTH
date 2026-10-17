@@ -8,7 +8,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../theme/accounting_theme.dart';
 import '../../frontend/frontend.dart';
 import '../../services/sadara_api_service.dart';
 import '../../services/vps_auth_service.dart';
@@ -290,9 +289,9 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         border: Border(
-          bottom: BorderSide(color: AccountingTheme.borderColor),
+          bottom: BorderSide(color: SdColors.divider),
         ),
       ),
       child: Row(
@@ -311,12 +310,12 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AccountingTheme.bgSecondary,
+                  color: SdColors.groundAlt,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AccountingTheme.borderColor),
+                  border: Border.all(color: SdColors.divider),
                 ),
                 child: Icon(Icons.arrow_back_rounded,
-                    size: 18, color: AccountingTheme.textSecondary),
+                    size: 18, color: SdColors.muted),
               ),
             ),
           ),
@@ -333,7 +332,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                colors: [SdColors.primaryLight, SdColors.platformBase],
               ),
               borderRadius: BorderRadius.circular(10),
             ),
@@ -347,7 +346,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AccountingTheme.textPrimary,
+              color: SdColors.ink,
             ),
           ),
           const Spacer(),
@@ -363,19 +362,19 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                   hintText: 'بحث...',
                   hintStyle: const TextStyle(
                     fontSize: 13,
-                    color: AccountingTheme.textMuted,
+                    color: SdColors.faint,
                   ),
                   prefixIcon: const Icon(Icons.search,
-                      size: 18, color: AccountingTheme.textMuted),
+                      size: 18, color: SdColors.faint),
                   filled: true,
-                  fillColor: AccountingTheme.bgPrimary,
+                  fillColor: SdColors.ground,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: AccountingTheme.borderColor),
+                    borderSide: BorderSide(color: SdColors.divider),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: AccountingTheme.borderColor),
+                    borderSide: BorderSide(color: SdColors.divider),
                   ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
@@ -430,9 +429,9 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         border: Border(
-          bottom: BorderSide(color: AccountingTheme.borderColor),
+          bottom: BorderSide(color: SdColors.divider),
         ),
       ),
       child: Row(
@@ -446,19 +445,19 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               decoration: BoxDecoration(
                 color: selectedIndex == 0
-                    ? AccountingTheme.neonBlue.withOpacity(0.12)
-                    : AccountingTheme.bgSecondary,
+                    ? SdColors.primary.withOpacity(0.12)
+                    : SdColors.groundAlt,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: selectedIndex == 0
-                      ? AccountingTheme.neonBlue
-                      : AccountingTheme.borderColor,
+                      ? SdColors.primary
+                      : SdColors.divider,
                   width: selectedIndex == 0 ? 2 : 1,
                 ),
                 boxShadow: selectedIndex == 0
                     ? [
                         BoxShadow(
-                          color: AccountingTheme.neonBlue.withOpacity(0.35),
+                          color: SdColors.primary.withOpacity(0.35),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -471,8 +470,8 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                   Icon(Icons.person_rounded,
                       size: 20,
                       color: selectedIndex == 0
-                          ? AccountingTheme.neonBlue
-                          : AccountingTheme.textMuted),
+                          ? SdColors.primary
+                          : SdColors.faint),
                   const SizedBox(width: 8),
                   Text(
                     'المواطن',
@@ -482,8 +481,8 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                           ? FontWeight.bold
                           : FontWeight.w500,
                       color: selectedIndex == 0
-                          ? AccountingTheme.neonBlue
-                          : AccountingTheme.textMuted,
+                          ? SdColors.primary
+                          : SdColors.faint,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -492,8 +491,8 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: selectedIndex == 0
-                          ? AccountingTheme.neonBlue.withOpacity(0.2)
-                          : AccountingTheme.borderColor.withOpacity(0.5),
+                          ? SdColors.primary.withOpacity(0.2)
+                          : SdColors.divider.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -502,8 +501,8 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: selectedIndex == 0
-                            ? AccountingTheme.neonBlue
-                            : AccountingTheme.textMuted,
+                            ? SdColors.primary
+                            : SdColors.faint,
                       ),
                     ),
                   ),
@@ -516,7 +515,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
           Container(
             width: 1,
             height: 30,
-            color: AccountingTheme.borderColor,
+            color: SdColors.divider,
           ),
           const SizedBox(width: 16),
           // تبويب الوكيل
@@ -527,19 +526,19 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
               decoration: BoxDecoration(
                 color: selectedIndex == 1
-                    ? AccountingTheme.neonPink.withOpacity(0.12)
-                    : AccountingTheme.bgSecondary,
+                    ? SdColors.platformLight.withOpacity(0.12)
+                    : SdColors.groundAlt,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: selectedIndex == 1
-                      ? AccountingTheme.neonPink
-                      : AccountingTheme.borderColor,
+                      ? SdColors.platformLight
+                      : SdColors.divider,
                   width: selectedIndex == 1 ? 2 : 1,
                 ),
                 boxShadow: selectedIndex == 1
                     ? [
                         BoxShadow(
-                          color: AccountingTheme.neonPink.withOpacity(0.35),
+                          color: SdColors.platformLight.withOpacity(0.35),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -552,8 +551,8 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                   Icon(Icons.storefront_rounded,
                       size: 20,
                       color: selectedIndex == 1
-                          ? AccountingTheme.neonPink
-                          : AccountingTheme.textMuted),
+                          ? SdColors.platformLight
+                          : SdColors.faint),
                   const SizedBox(width: 8),
                   Text(
                     'الوكيل',
@@ -563,8 +562,8 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                           ? FontWeight.bold
                           : FontWeight.w500,
                       color: selectedIndex == 1
-                          ? AccountingTheme.neonPink
-                          : AccountingTheme.textMuted,
+                          ? SdColors.platformLight
+                          : SdColors.faint,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -573,8 +572,8 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: selectedIndex == 1
-                          ? AccountingTheme.neonPink.withOpacity(0.2)
-                          : AccountingTheme.borderColor.withOpacity(0.5),
+                          ? SdColors.platformLight.withOpacity(0.2)
+                          : SdColors.divider.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -583,8 +582,8 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: selectedIndex == 1
-                            ? AccountingTheme.neonPink
-                            : AccountingTheme.textMuted,
+                            ? SdColors.platformLight
+                            : SdColors.faint,
                       ),
                     ),
                   ),
@@ -641,28 +640,28 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: AccountingTheme.bgSecondary,
+      color: SdColors.groundAlt,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _buildStatChip('الكل', list.length, AccountingTheme.neonBlue,
+            _buildStatChip('الكل', list.length, SdColors.primary,
                 Icons.list_alt, null),
-            _buildStatChip('جديد', pending, Colors.blue, Icons.hourglass_empty,
+            _buildStatChip('جديد', pending, SdColors.info, Icons.hourglass_empty,
                 ServiceRequestStatus.pending),
-            _buildStatChip('موافق عليه', approved, Colors.teal,
+            _buildStatChip('موافق عليه', approved, SdColors.accent,
                 Icons.check_circle_outline, ServiceRequestStatus.approved),
-            _buildStatChip('تم التعيين', assigned, Colors.purple,
+            _buildStatChip('تم التعيين', assigned, SdColors.platformBase,
                 Icons.person_add, ServiceRequestStatus.assigned),
-            _buildStatChip('قيد التنفيذ', inProgress, Colors.indigo,
+            _buildStatChip('قيد التنفيذ', inProgress, SdColors.primary,
                 Icons.engineering, ServiceRequestStatus.inProgress),
-            _buildStatChip('مكتمل', completed, Colors.green, Icons.check_circle,
+            _buildStatChip('مكتمل', completed, SdColors.success, Icons.check_circle,
                 ServiceRequestStatus.completed),
-            _buildStatChip('معلق', onHold, Colors.amber, Icons.pause_circle,
+            _buildStatChip('معلق', onHold, SdColors.warning, Icons.pause_circle,
                 ServiceRequestStatus.onHold),
-            _buildStatChip('ملغي', cancelled, Colors.grey, Icons.cancel,
+            _buildStatChip('ملغي', cancelled, SdColors.faint, Icons.cancel,
                 ServiceRequestStatus.cancelled),
-            _buildStatChip('مرفوض', rejected, Colors.red, Icons.block,
+            _buildStatChip('مرفوض', rejected, SdColors.danger, Icons.block,
                 ServiceRequestStatus.rejected),
           ],
         ),
@@ -721,7 +720,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
             Icon(
               isAgent ? Icons.storefront_rounded : Icons.person_rounded,
               size: 64,
-              color: AccountingTheme.textMuted,
+              color: SdColors.faint,
             ),
             const SizedBox(height: 16),
             Text(
@@ -732,7 +731,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                       : 'لا توجد طلبات من المواطنين',
               style: TextStyle(
                 fontSize: 16,
-                color: AccountingTheme.textMuted,
+                color: SdColors.faint,
               ),
             ),
           ],
@@ -777,13 +776,13 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.inbox_rounded,
-                size: 64, color: AccountingTheme.textMuted),
+                size: 64, color: SdColors.faint),
             const SizedBox(height: 16),
             Text(
               'لا توجد طلبات',
               style: TextStyle(
                 fontSize: 16,
-                color: AccountingTheme.textMuted,
+                color: SdColors.faint,
               ),
             ),
           ],
@@ -827,7 +826,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
         operationType.contains('تسديد') ||
         operationType.contains('دفع');
     final cardColor =
-        isPayment ? const Color(0xFF22C55E) : const Color(0xFFEF4444);
+        isPayment ? SdColors.success : SdColors.danger;
     final cardBgColor =
         isPayment ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2);
     final cardBorderColor =
@@ -853,16 +852,16 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: (isAgent
-                          ? AccountingTheme.neonPink
-                          : AccountingTheme.neonBlue)
+                          ? SdColors.platformLight
+                          : SdColors.primary)
                       .withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
                   isAgent ? Icons.storefront_rounded : Icons.person_rounded,
                   color: isAgent
-                      ? AccountingTheme.neonPink
-                      : AccountingTheme.neonBlue,
+                      ? SdColors.platformLight
+                      : SdColors.primary,
                   size: 22,
                 ),
               ),
@@ -882,7 +881,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                                   horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color:
-                                    AccountingTheme.neonPink.withOpacity(0.2),
+                                    SdColors.platformLight.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -890,7 +889,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                                 style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
-                                  color: AccountingTheme.neonPink,
+                                  color: SdColors.platformLight,
                                 ),
                               ),
                             ),
@@ -902,7 +901,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
-                                color: AccountingTheme.neonPink,
+                                color: SdColors.platformLight,
                               ),
                             ),
                           if (pageId.isNotEmpty) ...[
@@ -911,7 +910,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                               pageId,
                               style: const TextStyle(
                                 fontSize: 11,
-                                color: AccountingTheme.textMuted,
+                                color: SdColors.faint,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -929,7 +928,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                               child: const Icon(
                                 Icons.copy_rounded,
                                 size: 13,
-                                color: AccountingTheme.textMuted,
+                                color: SdColors.faint,
                               ),
                             ),
                           ],
@@ -1012,14 +1011,14 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                             customerName != 'غير محدد') ...[
                           const SizedBox(width: 8),
                           const Icon(Icons.person_outline,
-                              size: 13, color: AccountingTheme.textMuted),
+                              size: 13, color: SdColors.faint),
                           const SizedBox(width: 3),
                           Flexible(
                             child: Text(
                               customerName,
                               style: const TextStyle(
                                 fontSize: 11,
-                                color: AccountingTheme.textSecondary,
+                                color: SdColors.muted,
                                 fontWeight: FontWeight.w500,
                               ),
                               overflow: TextOverflow.ellipsis,
@@ -1038,7 +1037,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                               );
                             },
                             child: const Icon(Icons.copy_rounded,
-                                size: 12, color: AccountingTheme.textMuted),
+                                size: 12, color: SdColors.faint),
                           ),
                           if (customerPhone.isNotEmpty &&
                               !customerPhone.startsWith('{')) ...[
@@ -1047,7 +1046,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                               customerPhone,
                               style: const TextStyle(
                                 fontSize: 11,
-                                color: AccountingTheme.textMuted,
+                                color: SdColors.faint,
                               ),
                             ),
                             const SizedBox(width: 3),
@@ -1063,7 +1062,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                                 );
                               },
                               child: const Icon(Icons.copy_rounded,
-                                  size: 12, color: AccountingTheme.textMuted),
+                                  size: 12, color: SdColors.faint),
                             ),
                           ],
                         ],
@@ -1073,12 +1072,12 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                             !customerPhone.startsWith('{')) ...[
                           const SizedBox(width: 8),
                           const Icon(Icons.phone_outlined,
-                              size: 12, color: AccountingTheme.textMuted),
+                              size: 12, color: SdColors.faint),
                           const SizedBox(width: 3),
                           Text(
                             customerPhone,
                             style: const TextStyle(
-                              color: AccountingTheme.textMuted,
+                              color: SdColors.faint,
                               fontSize: 12,
                             ),
                           ),
@@ -1093,8 +1092,8 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                             horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(
                           color: (req.agentNetBalance! >= 0
-                                  ? const Color(0xFF22C55E)
-                                  : const Color(0xFFEF4444))
+                                  ? SdColors.success
+                                  : SdColors.danger)
                               .withOpacity(0.2),
                           borderRadius: BorderRadius.circular(6),
                         ),
@@ -1104,8 +1103,8 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: req.agentNetBalance! >= 0
-                                ? const Color(0xFF22C55E)
-                                : const Color(0xFFEF4444),
+                                ? SdColors.success
+                                : SdColors.danger,
                           ),
                         ),
                       ),
@@ -1130,14 +1129,14 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                     _formatDate(req.requestedAt),
                     style: const TextStyle(
                       fontSize: 11,
-                      color: AccountingTheme.textMuted,
+                      color: SdColors.faint,
                     ),
                   ),
                 ],
               ),
               const SizedBox(width: 6),
               const Icon(Icons.chevron_left,
-                  color: AccountingTheme.textMuted, size: 20),
+                  color: SdColors.faint, size: 20),
             ],
           ),
         ),
@@ -1185,15 +1184,15 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                       _buildInfoCard(
                         'معلومات الخدمة',
                         Icons.miscellaneous_services_rounded,
-                        AccountingTheme.neonBlue,
+                        SdColors.primary,
                         [
                           _buildDetailItem(Icons.wifi_rounded, 'الخدمة',
-                              req.serviceName ?? '-', AccountingTheme.neonBlue),
+                              req.serviceName ?? '-', SdColors.primary),
                           _buildDetailItem(
                               Icons.category_rounded,
                               'نوع العملية',
                               operationType,
-                              AccountingTheme.neonPurple),
+                              SdColors.platformBase),
                           _buildDetailItem(
                               Icons.flag_rounded,
                               'الأولوية',
@@ -1201,82 +1200,82 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                               _getPriorityColor(req.priority)),
                           if (details['planName'] != null)
                             _buildDetailItem(Icons.wifi_rounded, 'الباقة',
-                                details['planName'], AccountingTheme.neonBlue),
+                                details['planName'], SdColors.primary),
                           if (details['planSpeed'] != null)
                             _buildDetailItem(
                                 Icons.speed_rounded,
                                 'السرعة',
                                 '${details["planSpeed"]} Mbps',
-                                AccountingTheme.neonPurple),
+                                SdColors.platformBase),
                           if (details['monthlyPrice'] != null)
                             _buildDetailItem(
                                 Icons.calendar_month_rounded,
                                 'السعر الشهري',
                                 '${_formatAmount(double.tryParse(details["monthlyPrice"].toString()) ?? 0)} د.ع',
-                                AccountingTheme.neonGreen),
+                                SdColors.success),
                           if (details['installationFee'] != null)
                             _buildDetailItem(
                                 Icons.construction_rounded,
                                 'رسوم التركيب',
                                 '${_formatAmount(double.tryParse(details["installationFee"].toString()) ?? 0)} د.ع',
-                                AccountingTheme.neonOrange),
+                                SdColors.warning),
                           if (details['subscriptionDuration'] != null)
                             _buildDetailItem(
                                 Icons.date_range_rounded,
                                 'فترة الاشتراك',
                                 _formatDuration(
                                     details['subscriptionDuration']),
-                                AccountingTheme.neonPink),
+                                SdColors.platformLight),
                           if (amount != null)
                             _buildDetailItem(
                                 Icons.payments_rounded,
                                 'المبلغ',
                                 '${_formatAmount(amount)} د.ع',
-                                AccountingTheme.neonGreen),
+                                SdColors.success),
                           if (req.finalCost != null)
                             _buildDetailItem(
                                 Icons.price_check_rounded,
                                 'التكلفة النهائية',
                                 '${_formatAmount(req.finalCost!)} د.ع',
-                                AccountingTheme.success),
+                                SdColors.success),
                         ],
                       ),
                       const SizedBox(height: 12),
                       _buildInfoCard(
                         'التواريخ',
                         Icons.calendar_today_rounded,
-                        AccountingTheme.neonGreen,
+                        SdColors.success,
                         [
                           _buildDetailItem(
                               Icons.schedule_rounded,
                               'تاريخ الطلب',
                               _formatDateFull(req.requestedAt),
-                              AccountingTheme.neonBlue),
+                              SdColors.primary),
                           if (req.assignedAt != null)
                             _buildDetailItem(
                                 Icons.assignment_ind_rounded,
                                 'تاريخ التعيين',
                                 _formatDateFull(req.assignedAt!),
-                                AccountingTheme.neonPurple),
+                                SdColors.platformBase),
                           if (req.completedAt != null)
                             _buildDetailItem(
                                 Icons.check_circle_outline_rounded,
                                 'تاريخ الإكمال',
                                 _formatDateFull(req.completedAt!),
-                                AccountingTheme.success),
+                                SdColors.success),
                           if (req.assignedToName != null)
                             _buildDetailItem(
                                 Icons.person_pin_rounded,
                                 'معين لـ',
                                 req.assignedToName!,
-                                AccountingTheme.neonPink),
+                                SdColors.platformLight),
                           if (req.statusNote != null &&
                               req.statusNote!.isNotEmpty)
                             _buildDetailItem(
                                 Icons.comment_rounded,
                                 'ملاحظة الحالة',
                                 req.statusNote!,
-                                AccountingTheme.neonOrange),
+                                SdColors.warning),
                         ],
                       ),
                     ],
@@ -1290,44 +1289,44 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                     isAgent ? 'معلومات الوكيل والعميل' : 'معلومات المواطن',
                     isAgent ? Icons.storefront_rounded : Icons.person_rounded,
                     isAgent
-                        ? AccountingTheme.neonPink
-                        : AccountingTheme.neonPurple,
+                        ? SdColors.platformLight
+                        : SdColors.platformBase,
                     [
                       _buildDetailItem(
                           Icons.person_outline_rounded,
                           'اسم العميل',
                           details['customerName'] ?? req.citizenName ?? '-',
-                          AccountingTheme.neonBlue),
+                          SdColors.primary),
                       _buildDetailItem(
                           Icons.phone_rounded,
                           'هاتف العميل',
                           details['customerPhone'] ?? req.citizenPhone ?? '-',
-                          AccountingTheme.neonGreen),
+                          SdColors.success),
                       if (isAgent) ...[
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 3),
-                          child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                          child: Divider(height: 1, color: SdColors.divider),
                         ),
                         _buildDetailItem(
                             Icons.badge_rounded,
                             'رقم المعرف',
                             details['pageId'] ?? '-',
-                            AccountingTheme.neonOrange),
+                            SdColors.warning),
                         _buildAgentNameRow(
                             details['agentName'] ?? '-', req.agentId),
                         _buildDetailItem(
                             Icons.business_center_rounded,
                             'نوع الوكيل',
                             details['agentType'] ?? '-',
-                            AccountingTheme.neonPurple),
+                            SdColors.platformBase),
                       ],
                       _buildDetailItem(
                           Icons.source_rounded,
                           'المصدر',
                           isAgent ? 'بوابة الوكيل' : 'بوابة المواطن',
                           isAgent
-                              ? AccountingTheme.neonPink
-                              : AccountingTheme.neonBlue),
+                              ? SdColors.platformLight
+                              : SdColors.primary),
                     ],
                   ),
                 ),
@@ -1340,10 +1339,10 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                       _buildInfoCard(
                         'العنوان',
                         Icons.location_on_rounded,
-                        AccountingTheme.neonOrange,
+                        SdColors.warning,
                         [
                           _buildDetailItem(Icons.map_rounded, 'العنوان',
-                              req.address ?? '-', AccountingTheme.neonOrange),
+                              req.address ?? '-', SdColors.warning),
                           if (details['latitude'] != null && details['longitude'] != null) ...[
                             const SizedBox(height: 8),
                             ClipRRect(
@@ -1371,7 +1370,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                                         ),
                                         width: 40,
                                         height: 40,
-                                        child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+                                        child: const Icon(Icons.location_on, color: SdColors.danger, size: 40),
                                       ),
                                     ]),
                                   ],
@@ -1384,16 +1383,16 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.open_in_new, size: 14, color: Colors.blue[700]),
+                                  Icon(Icons.open_in_new, size: 14, color: SdColors.info),
                                   const SizedBox(width: 4),
-                                  Text('فتح في Google Maps', style: TextStyle(color: Colors.blue[700], fontSize: 12, decoration: TextDecoration.underline)),
+                                  Text('فتح في Google Maps', style: TextStyle(color: SdColors.info, fontSize: 12, decoration: TextDecoration.underline)),
                                 ],
                               ),
                             ),
                           ],
                           if (details['notes'] != null && details['notes'].toString().isNotEmpty)
                             _buildDetailItem(Icons.note_alt_rounded, 'ملاحظات',
-                                details['notes'], AccountingTheme.textMuted),
+                                details['notes'], SdColors.faint),
                         ],
                       ),
                       // معلومات المهمة (FBG, FAT, القسم, الفني)
@@ -1404,53 +1403,53 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                         _buildInfoCard(
                           'تفاصيل المهمة',
                           Icons.engineering_rounded,
-                          AccountingTheme.neonPink,
+                          SdColors.platformLight,
                           [
                             if (details['taskType'] != null)
                               _buildDetailItem(
                                   Icons.category_rounded,
                                   'نوع المهمة',
                                   details['taskType'],
-                                  AccountingTheme.neonPurple),
+                                  SdColors.platformBase),
                             if (details['department'] != null)
                               _buildDetailItem(
                                   Icons.business_rounded,
                                   'القسم',
                                   details['department'],
-                                  AccountingTheme.neonBlue),
+                                  SdColors.primary),
                             if (details['leader'] != null)
                               _buildDetailItem(
                                   Icons.supervisor_account_rounded,
                                   'القائد',
                                   details['leader'],
-                                  AccountingTheme.neonGreen),
+                                  SdColors.success),
                             if (details['technician'] != null)
                               _buildDetailItem(
                                   Icons.engineering_rounded,
                                   'الفني',
                                   details['technician'],
-                                  AccountingTheme.neonPink),
+                                  SdColors.platformLight),
                             if (details['technicianPhone'] != null)
                               _buildDetailItem(
                                   Icons.phone_android_rounded,
                                   'هاتف الفني',
                                   details['technicianPhone'],
-                                  AccountingTheme.neonGreen),
+                                  SdColors.success),
                             if (details['fbg'] != null &&
                                 details['fbg'].toString().isNotEmpty)
                               _buildDetailItem(Icons.dns_rounded, 'FBG',
-                                  details['fbg'], AccountingTheme.neonOrange),
+                                  details['fbg'], SdColors.warning),
                             if (details['fat'] != null &&
                                 details['fat'].toString().isNotEmpty)
                               _buildDetailItem(Icons.cable_rounded, 'FAT',
-                                  details['fat'], AccountingTheme.neonBlue),
+                                  details['fat'], SdColors.primary),
                             if (details['summary'] != null &&
                                 details['summary'].toString().isNotEmpty)
                               _buildDetailItem(
                                   Icons.summarize_rounded,
                                   'الملخص',
                                   details['summary'],
-                                  AccountingTheme.textMuted),
+                                  SdColors.faint),
                           ],
                         ),
                       ],
@@ -1497,19 +1496,19 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF25D366).withOpacity(0.15),
+        color: SdColors.whatsapp.withOpacity(0.15),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF25D366).withOpacity(0.2)),
+        border: Border.all(color: SdColors.whatsapp.withOpacity(0.2)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 20),
+          const Icon(Icons.chat_rounded, color: SdColors.whatsapp, size: 20),
           const SizedBox(width: 8),
           const Text('واتساب',
               style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
-                  color: Color(0xFF25D366))),
+                  color: SdColors.whatsapp)),
           const SizedBox(width: 16),
           if (customerPhone.isNotEmpty)
             _buildWhatsAppButton(
@@ -1556,11 +1555,11 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
   }) {
     return OutlinedButton.icon(
       onPressed: () => _sendWhatsApp(phone, message),
-      icon: Icon(icon, size: 14, color: const Color(0xFF25D366)),
+      icon: Icon(icon, size: 14, color: SdColors.whatsapp),
       label: Text(label,
-          style: const TextStyle(fontSize: 11, color: Color(0xFF25D366))),
+          style: const TextStyle(fontSize: 11, color: SdColors.whatsapp)),
       style: OutlinedButton.styleFrom(
-        side: const BorderSide(color: Color(0xFF25D366), width: 1),
+        side: const BorderSide(color: SdColors.whatsapp, width: 1),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         minimumSize: const Size(0, 30),
@@ -1624,7 +1623,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
                 content: Text('رقم الهاتف غير صحيح'),
-                backgroundColor: Colors.red),
+                backgroundColor: SdColors.danger),
           );
         }
         return;
@@ -1652,7 +1651,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                     content: Text('✅ تم فتح واتساب + نسخ الرسالة للحافظة'),
-                    backgroundColor: Color(0xFF25D366),
+                    backgroundColor: SdColors.whatsapp,
                     duration: Duration(seconds: 3)),
               );
             }
@@ -1667,7 +1666,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('📋 تم نسخ الرسالة للحافظة (واتساب غير متوفر)'),
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               duration: Duration(seconds: 3)),
         );
       }
@@ -1744,8 +1743,8 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                     isAgent ? Icons.storefront_rounded : Icons.person_rounded,
                     isAgent ? 'طلب وكيل' : 'طلب مواطن',
                     isAgent
-                        ? AccountingTheme.neonPink
-                        : AccountingTheme.neonBlue,
+                        ? SdColors.platformLight
+                        : SdColors.primary,
                   ),
                 ],
               ),
@@ -1775,15 +1774,15 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
               alignment: WrapAlignment.start,
               children: [
                 _buildSummaryChip(Icons.wifi_rounded, req.serviceName ?? '-',
-                    AccountingTheme.neonBlue),
+                    SdColors.primary),
                 if (amount != null && amount > 0)
                   _buildSummaryChip(
                       Icons.payments_rounded,
                       '${_formatAmount(amount)} د.ع',
-                      AccountingTheme.neonGreen),
+                      SdColors.success),
                 if (details['planName'] != null)
                   _buildSummaryChip(Icons.speed_rounded, details['planName'],
-                      AccountingTheme.neonPurple),
+                      SdColors.platformBase),
               ],
             ),
           ),
@@ -1886,7 +1885,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
               child: Text(
                 label,
                 style: const TextStyle(
-                  color: AccountingTheme.textMuted,
+                  color: SdColors.faint,
                   fontSize: 12,
                 ),
               ),
@@ -1900,7 +1899,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                 style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 13,
-                  color: AccountingTheme.textPrimary,
+                  color: SdColors.ink,
                 ),
               ),
             ),
@@ -1937,11 +1936,11 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
     if (name.contains('عاجل') ||
         name.contains('urgent') ||
         name.contains('high')) {
-      return AccountingTheme.danger;
+      return SdColors.danger;
     } else if (name.contains('متوسط') || name.contains('medium')) {
-      return AccountingTheme.warning;
+      return SdColors.warning;
     }
-    return AccountingTheme.neonGreen;
+    return SdColors.success;
   }
 
   // ═══════ سجل الحالات Timeline ═══════
@@ -1951,9 +1950,9 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AccountingTheme.bgCard,
+          color: SdColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: SdColors.divider),
         ),
         child: const Center(
           child: Padding(
@@ -1973,18 +1972,18 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AccountingTheme.bgCard,
+          color: SdColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: SdColors.divider),
         ),
         child: Row(
           children: [
             Icon(Icons.info_outline,
-                color: AccountingTheme.textMuted, size: 18),
+                color: SdColors.faint, size: 18),
             const SizedBox(width: 8),
             Text(
               'لا يوجد سجل حالات لهذا الطلب',
-              style: TextStyle(color: AccountingTheme.textMuted, fontSize: 13),
+              style: TextStyle(color: SdColors.faint, fontSize: 13),
             ),
           ],
         ),
@@ -1994,9 +1993,9 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: SdColors.divider),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -2014,11 +2013,11 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AccountingTheme.neonPurple.withOpacity(0.1),
+                  color: SdColors.platformBase.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(Icons.timeline_rounded,
-                    color: AccountingTheme.neonPurple, size: 20),
+                    color: SdColors.platformBase, size: 20),
               ),
               const SizedBox(width: 10),
               Text(
@@ -2026,14 +2025,14 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: AccountingTheme.textPrimary,
+                  color: SdColors.ink,
                 ),
               ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AccountingTheme.neonPurple.withOpacity(0.1),
+                  color: SdColors.platformBase.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -2041,7 +2040,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: AccountingTheme.neonPurple,
+                    color: SdColors.platformBase,
                   ),
                 ),
               ),
@@ -2080,7 +2079,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                             child: Container(
                               width: 2,
                               margin: const EdgeInsets.symmetric(vertical: 4),
-                              color: const Color(0xFFE2E8F0),
+                              color: SdColors.divider,
                             ),
                           ),
                       ],
@@ -2127,7 +2126,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                                 _formatDateTimeFull(item.changedAt),
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: AccountingTheme.textMuted,
+                                  color: SdColors.faint,
                                 ),
                               ),
                             ],
@@ -2138,14 +2137,14 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                             children: [
                               Icon(Icons.person_outline,
                                   size: 14,
-                                  color: AccountingTheme.textSecondary),
+                                  color: SdColors.muted),
                               const SizedBox(width: 4),
                               Text(
                                 item.changedBy ?? 'النظام',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: AccountingTheme.textSecondary,
+                                  color: SdColors.muted,
                                 ),
                               ),
                             ],
@@ -2157,14 +2156,14 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Icon(Icons.notes_rounded,
-                                    size: 14, color: AccountingTheme.textMuted),
+                                    size: 14, color: SdColors.faint),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
                                     item.note!,
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color: AccountingTheme.textMuted,
+                                      color: SdColors.faint,
                                       fontStyle: FontStyle.italic,
                                     ),
                                   ),
@@ -2188,25 +2187,25 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
   Color _getStatusColorByName(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
-        return Colors.blue;
+        return SdColors.info;
       case 'reviewing':
-        return Colors.orange;
+        return SdColors.warning;
       case 'approved':
-        return Colors.teal;
+        return SdColors.accent;
       case 'assigned':
-        return Colors.purple;
+        return SdColors.platformBase;
       case 'inprogress':
-        return Colors.indigo;
+        return SdColors.primary;
       case 'completed':
-        return Colors.green;
+        return SdColors.success;
       case 'cancelled':
-        return Colors.grey;
+        return SdColors.faint;
       case 'rejected':
-        return Colors.red;
+        return SdColors.danger;
       case 'onhold':
-        return Colors.amber;
+        return SdColors.warning;
       default:
-        return Colors.blueGrey;
+        return SdColors.faint;
     }
   }
 
@@ -2245,9 +2244,9 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: SdColors.divider),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
@@ -2275,14 +2274,14 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
-                  color: AccountingTheme.textPrimary,
+                  color: SdColors.ink,
                 ),
               ),
             ],
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+            child: Divider(height: 1, color: SdColors.divider),
           ),
           ...children,
         ],
@@ -2301,7 +2300,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
             child: Text(
               '$label:',
               style: const TextStyle(
-                color: AccountingTheme.textMuted,
+                color: SdColors.faint,
                 fontSize: 13,
               ),
             ),
@@ -2335,7 +2334,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
             child: Text(
               'اسم الوكيل:',
               style: const TextStyle(
-                color: AccountingTheme.textMuted,
+                color: SdColors.faint,
                 fontSize: 13,
               ),
             ),
@@ -2352,11 +2351,11 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                       color: agentId != null
-                          ? AccountingTheme.neonPink
-                          : AccountingTheme.textPrimary,
+                          ? SdColors.platformLight
+                          : SdColors.ink,
                       decoration:
                           agentId != null ? TextDecoration.underline : null,
-                      decorationColor: AccountingTheme.neonPink,
+                      decorationColor: SdColors.platformLight,
                     ),
                   ),
                   if (agentId != null) ...[
@@ -2364,7 +2363,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                     const Icon(
                       Icons.open_in_new_rounded,
                       size: 14,
-                      color: AccountingTheme.neonPink,
+                      color: SdColors.platformLight,
                     ),
                   ],
                 ],
@@ -2409,7 +2408,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
             label: const Text('قبول وتعيين لموظف',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2E7D32),
+              backgroundColor: SdColors.success,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               shape: RoundedRectangleBorder(
@@ -2544,7 +2543,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم حذف الطلب بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
         }
@@ -2572,7 +2571,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل جلب بيانات الأقسام'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -2645,7 +2644,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                 title: Row(
                   children: [
                     const Icon(Icons.check_circle_outline,
-                        color: Color(0xFF2E7D32)),
+                        color: SdColors.success),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -2666,10 +2665,10 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.15),
+                            color: SdColors.info.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(8),
                             border:
-                                Border.all(color: Colors.blue.withOpacity(0.2)),
+                                Border.all(color: SdColors.info.withOpacity(0.2)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2825,7 +2824,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                             child: Text(
                               'لا يوجد فنيين في قسم "$selectedDepartment"',
                               style: TextStyle(
-                                  color: Colors.orange.shade700,
+                                  color: SdColors.warning,
                                   fontWeight: FontWeight.w600),
                             ),
                           ),
@@ -2845,7 +2844,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                     icon: const Icon(Icons.check),
                     label: const Text('قبول وتعيين'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E7D32),
+                      backgroundColor: SdColors.success,
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -2875,7 +2874,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
             SnackBar(
               content: Text(
                   'تم قبول الطلب وتعيينه للفني: ${selectedTechnician ?? "غير محدد"}'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
         }
@@ -2889,7 +2888,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('فشل التعيين'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
@@ -2906,7 +2905,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('تم تحديث الحالة إلى: ${newStatus.nameAr}'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -2925,7 +2924,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -2947,17 +2946,17 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
         padding: const EdgeInsets.all(32),
         constraints: const BoxConstraints(maxWidth: 480),
         decoration: BoxDecoration(
-          color: AccountingTheme.bgCard,
+          color: SdColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: is401
-                ? Colors.orange.withValues(alpha: 0.5)
-                : Colors.red.withValues(alpha: 0.5),
+                ? SdColors.warning.withValues(alpha: 0.5)
+                : SdColors.danger.withValues(alpha: 0.5),
           ),
           boxShadow: [
             BoxShadow(
               color:
-                  (is401 ? Colors.orange : Colors.red).withValues(alpha: 0.15),
+                  (is401 ? SdColors.warning : SdColors.danger).withValues(alpha: 0.15),
               blurRadius: 20,
               spreadRadius: 2,
             ),
@@ -2971,14 +2970,14 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color:
-                    (is401 ? Colors.orange : Colors.red).withValues(alpha: 0.2),
+                    (is401 ? SdColors.warning : SdColors.danger).withValues(alpha: 0.2),
               ),
               child: Icon(
                 is401
                     ? Icons.lock_outline_rounded
                     : Icons.error_outline_rounded,
                 size: 48,
-                color: is401 ? Colors.orange : Colors.red,
+                color: is401 ? SdColors.warning : SdColors.danger,
               ),
             ),
             const SizedBox(height: 20),
@@ -2987,7 +2986,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: is401 ? Colors.orange : Colors.red,
+                color: is401 ? SdColors.warning : SdColors.danger,
               ),
             ),
             const SizedBox(height: 12),
@@ -2996,7 +2995,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                   ? 'يرجى تسجيل الخروج وإعادة الدخول للحصول على جلسة جديدة.\n\nإذا استمرت المشكلة، قد يحتاج السيرفر لتحديث.'
                   : _errorMessage ?? 'خطأ غير معروف',
               style: const TextStyle(
-                color: AccountingTheme.textSecondary,
+                color: SdColors.muted,
                 fontSize: 14,
                 height: 1.6,
               ),
@@ -3011,7 +3010,7 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                   icon: const Icon(Icons.refresh_rounded, size: 18),
                   label: const Text('إعادة المحاولة'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF667eea),
+                    backgroundColor: SdColors.primaryLight,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 12),
@@ -3027,13 +3026,13 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
                     icon: const Icon(Icons.home_rounded, size: 18),
                     label: const Text('العودة للرئيسية'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AccountingTheme.textSecondary,
+                      foregroundColor: SdColors.muted,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      side: BorderSide(color: AccountingTheme.borderColor),
+                      side: BorderSide(color: SdColors.divider),
                     ),
                   ),
               ],
@@ -3043,21 +3042,21 @@ class _SadaraPortalPageState extends State<SadaraPortalPage>
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.15),
+                  color: SdColors.warning.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                   border:
-                      Border.all(color: Colors.orange.withValues(alpha: 0.35)),
+                      Border.all(color: SdColors.warning.withValues(alpha: 0.35)),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.info_outline_rounded,
-                        size: 16, color: Colors.orange),
+                        size: 16, color: SdColors.warning),
                     SizedBox(width: 8),
                     Flexible(
                       child: Text(
                         'حل سريع: اذهب للإعدادات → تسجيل خروج → أعد الدخول',
-                        style: TextStyle(fontSize: 12, color: Colors.orange),
+                        style: TextStyle(fontSize: 12, color: SdColors.warning),
                       ),
                     ),
                   ],

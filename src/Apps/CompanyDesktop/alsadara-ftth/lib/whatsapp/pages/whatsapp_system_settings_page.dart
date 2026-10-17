@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../services/whatsapp_system_settings_service.dart';
 import '../services/whatsapp_permissions_service.dart' as perms;
 import '../../services/ftth_whatsapp_settings_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// صفحة إعدادات نظام الواتساب المستخدم
 class WhatsAppSystemSettingsPage extends StatefulWidget {
@@ -112,11 +112,11 @@ class _WhatsAppSystemSettingsPageState
               const SizedBox(width: 12),
               Text(
                 success ? 'تم حفظ الإعدادات بنجاح' : 'فشل في حفظ الإعدادات',
-                style: GoogleFonts.cairo(),
+                style: TextStyle(fontFamily: 'Cairo'),
               ),
             ],
           ),
-          backgroundColor: success ? Colors.green : Colors.red,
+          backgroundColor: success ? SdColors.success : SdColors.danger,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -132,11 +132,11 @@ class _WhatsAppSystemSettingsPageState
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: Colors.grey.shade100,
+        backgroundColor: SdColors.groundAlt,
         appBar: AppBar(
           title: Text(
             'نظام الواتساب',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
           ),
           backgroundColor: const Color(0xFF7C3AED),
           foregroundColor: Colors.white,
@@ -157,7 +157,7 @@ class _WhatsAppSystemSettingsPageState
                       title: 'نظام التجديد',
                       subtitle: 'يُستخدم عند التجديد اليدوي أو التلقائي',
                       icon: Icons.autorenew_rounded,
-                      color: const Color(0xFF22C55E),
+                      color: SdColors.success,
                       operationType: WhatsAppOperationType.renewal,
                       selectedSystem: _renewalSystem,
                       onChanged: (system) {
@@ -172,7 +172,7 @@ class _WhatsAppSystemSettingsPageState
                       title: 'الإرسال الجماعي',
                       subtitle: 'للتنبيهات والمنتهي والعروض',
                       icon: Icons.campaign_rounded,
-                      color: const Color(0xFF3B82F6),
+                      color: SdColors.info,
                       operationType: WhatsAppOperationType.bulk,
                       selectedSystem: _bulkSystem,
                       onChanged: (system) {
@@ -200,7 +200,8 @@ class _WhatsAppSystemSettingsPageState
                             : const Icon(Icons.save_rounded),
                         label: Text(
                           _isSaving ? 'جاري الحفظ...' : 'حفظ الإعدادات',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -228,7 +229,7 @@ class _WhatsAppSystemSettingsPageState
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.purple.shade400, Colors.purple.shade600],
+          colors: [SdColors.platformLight, SdColors.platformBase],
         ),
         borderRadius: BorderRadius.circular(14),
       ),
@@ -239,7 +240,7 @@ class _WhatsAppSystemSettingsPageState
           Expanded(
             child: Text(
               'حدد النظام المستخدم لكل نوع من العمليات',
-              style: GoogleFonts.cairo(color: Colors.white, fontSize: 13),
+              style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontSize: 13),
             ),
           ),
         ],
@@ -302,7 +303,8 @@ class _WhatsAppSystemSettingsPageState
                     children: [
                       Text(
                         title,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -310,7 +312,8 @@ class _WhatsAppSystemSettingsPageState
                       ),
                       Text(
                         subtitle,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: Colors.white.withOpacity(0.9),
                           fontSize: 11,
                         ),
@@ -361,11 +364,11 @@ class _WhatsAppSystemSettingsPageState
                         color: isSelected
                             ? color.withOpacity(0.1)
                             : isFullyAvailable
-                                ? Colors.grey.shade50
-                                : Colors.grey.shade100,
+                                ? SdColors.surfaceAlt
+                                : SdColors.groundAlt,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSelected ? color : Colors.grey.shade200,
+                          color: isSelected ? color : SdColors.divider,
                           width: isSelected ? 2 : 1,
                         ),
                       ),
@@ -382,7 +385,7 @@ class _WhatsAppSystemSettingsPageState
                               border: Border.all(
                                 color: isSelected
                                     ? color
-                                    : Colors.grey.shade400,
+                                    : SdColors.faint,
                                 width: 2,
                               ),
                             ),
@@ -400,7 +403,7 @@ class _WhatsAppSystemSettingsPageState
                               fontSize: 22,
                               color: isFullyAvailable
                                   ? null
-                                  : Colors.grey.shade400,
+                                  : SdColors.faint,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -410,19 +413,21 @@ class _WhatsAppSystemSettingsPageState
                               children: [
                                 Text(
                                   systemName,
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
                                     color: isFullyAvailable
-                                        ? Colors.grey.shade800
-                                        : Colors.grey.shade400,
+                                        ? SdColors.ink
+                                        : SdColors.faint,
                                   ),
                                 ),
                                 Text(
                                   systemDesc,
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: 11,
-                                    color: Colors.grey.shade500,
+                                    color: SdColors.faint,
                                   ),
                                 ),
                               ],
@@ -437,20 +442,21 @@ class _WhatsAppSystemSettingsPageState
                             ),
                             decoration: BoxDecoration(
                               color: isFullyAvailable
-                                  ? Colors.green.shade50
-                                  : Colors.red.shade50,
+                                  ? SdColors.successTint
+                                  : SdColors.dangerTint,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               isFullyAvailable
                                   ? 'متاح ✓'
                                   : unavailableReason ?? 'غير متاح',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: isFullyAvailable
-                                    ? Colors.green.shade700
-                                    : Colors.red.shade700,
+                                    ? SdColors.success
+                                    : SdColors.danger,
                               ),
                             ),
                           ),
@@ -471,14 +477,14 @@ class _WhatsAppSystemSettingsPageState
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.amber.shade50,
+        color: SdColors.warningTint,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.amber.shade200),
+        border: Border.all(color: SdColors.warningTintEdge),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.lightbulb_outline, color: Colors.amber.shade700, size: 20),
+          Icon(Icons.lightbulb_outline, color: SdColors.warning, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -486,18 +492,20 @@ class _WhatsAppSystemSettingsPageState
               children: [
                 Text(
                   'ملاحظة',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
-                    color: Colors.amber.shade800,
+                    color: SdColors.warning,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'لتفعيل السيرفر أو API، اذهب إلى صفحة الإعدادات وقم بتكوينها أولاً.',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 12,
-                    color: Colors.amber.shade700,
+                    color: SdColors.warning,
                   ),
                 ),
               ],

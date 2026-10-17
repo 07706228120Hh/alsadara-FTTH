@@ -760,7 +760,7 @@ class _CreatorTransactionsDetailPageState
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: Color(0xFF1A237E)),
+              CircularProgressIndicator(color: SdColors.primary),
               SizedBox(height: 16),
               Text('جاري تصدير تفاصيل المعاملات...'),
             ],
@@ -1113,7 +1113,7 @@ class _CreatorTransactionsDetailPageState
               style: TextStyle(
                 fontSize: _fs(18),
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1A237E),
+                color: SdColors.primary,
               ),
             ),
             SizedBox(height: _isPhone ? 10 : 16),
@@ -1948,7 +1948,7 @@ class _CreatorTransactionsDetailPageState
                   style: TextStyle(
                     fontSize: _fs(20),
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A237E),
+                    color: SdColors.primary,
                   ),
                 ),
               ),
@@ -2166,7 +2166,7 @@ class _CreatorTransactionsDetailPageState
               style: TextStyle(
                 fontSize: _fs(14),
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF2C3E50),
+                color: SdColors.ink,
               ),
             ),
           ),
@@ -2285,9 +2285,9 @@ class _CreatorTransactionsDetailPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: SdColors.surfaceAlt,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A237E),
+        backgroundColor: SdColors.primary,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         title: Column(

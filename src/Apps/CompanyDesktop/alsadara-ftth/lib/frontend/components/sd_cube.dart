@@ -45,6 +45,8 @@ class SdIconCube extends StatelessWidget {
           end: Alignment.bottomLeft,
           colors: [t.light, t.base],
         ),
+        // حلقة ذهبية رفيعة — لمسة الفخامة في هوية «كحلي ملكي وذهبي».
+        border: Border.all(color: SdColors.goldLight, width: 1.2),
         boxShadow: SdDepth.cube(t.edge, layers: layers),
       ),
       child: Icon(icon, color: Colors.white, size: size * .5),
@@ -70,7 +72,7 @@ class SdIconCube extends StatelessWidget {
             PositionedDirectional(
               top: -6,
               end: -8,
-              child: SdBadge(count: badge!),
+              child: SdBadge(count: badge!, max: 9999),
             ),
         ],
       ),

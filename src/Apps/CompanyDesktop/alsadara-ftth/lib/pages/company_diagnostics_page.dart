@@ -5,7 +5,6 @@ library;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../services/vps_auth_service.dart';
 import '../services/sadara_api_service.dart';
@@ -287,7 +286,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
             child: ListTile(
               leading: const Icon(Icons.security_rounded, color: SdColors.primary, size: 32),
               title: Text('تشخيص شامل للصلاحيات',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: SdColors.primary)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: SdColors.primary)),
               subtitle: const Text('فحص جميع الصفحات والأزرار وكشف المشاكل'),
               trailing: const Icon(Icons.arrow_forward_ios_rounded, color: SdColors.primary),
               onTap: () => Navigator.push(context,
@@ -616,7 +615,8 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                 Expanded(
                   child: Text(
                     title,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: color,
@@ -846,7 +846,7 @@ class _CompanyDiagnosticsPageState extends State<CompanyDiagnosticsPage>
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: emp['Role'] == 'CompanyAdmin'
-                              ? Colors.amber
+                              ? SdColors.warning
                               : SdColors.info,
                           child: Icon(
                             emp['Role'] == 'CompanyAdmin'

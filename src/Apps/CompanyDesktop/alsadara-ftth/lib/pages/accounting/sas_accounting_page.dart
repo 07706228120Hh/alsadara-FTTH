@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/vps_auth_service.dart';
@@ -218,16 +217,17 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
       width: double.infinity,
       padding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: AccountingTheme.bgCard,
+      color: SdColors.surface,
       child: Row(
         children: [
           const Icon(Icons.date_range,
-              size: 18, color: AccountingTheme.textMuted),
+              size: 18, color: SdColors.faint),
           const SizedBox(width: 8),
           Text(
             label,
-            style: GoogleFonts.cairo(
-                color: AccountingTheme.textSecondary,
+            style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.muted,
                 fontWeight: FontWeight.w600),
           ),
           const Spacer(),
@@ -235,12 +235,12 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
             TextButton.icon(
               onPressed: _clearDateRange,
               icon: const Icon(Icons.clear, size: 16),
-              label: Text('إلغاء', style: GoogleFonts.cairo()),
+              label: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
             ),
           OutlinedButton.icon(
             onPressed: _pickDateRange,
             icon: const Icon(Icons.filter_alt_outlined, size: 18),
-            label: Text('تصفية بالتاريخ', style: GoogleFonts.cairo()),
+            label: Text('تصفية بالتاريخ', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -298,31 +298,31 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
         title: 'عدد العمليات',
         value: _currencyFormat.format(_totalOperations),
         icon: Icons.sync_alt,
-        color: AccountingTheme.neonBlue,
+        color: SdColors.primary,
       ),
       _SummaryCardData(
         title: 'إجمالي المحصّل',
         value: _currencyFormat.format(_totalCollected),
         icon: Icons.payments,
-        color: AccountingTheme.neonGreen,
+        color: SdColors.success,
       ),
       _SummaryCardData(
         title: 'الكلفة الأساسية',
         value: _currencyFormat.format(_totalBasePrice),
         icon: Icons.sell_outlined,
-        color: AccountingTheme.neonOrange,
+        color: SdColors.warning,
       ),
       _SummaryCardData(
         title: 'أجور الصيانة',
         value: _currencyFormat.format(_totalMaintenance),
         icon: Icons.build_circle_outlined,
-        color: AccountingTheme.neonPurple,
+        color: SdColors.platformBase,
       ),
       _SummaryCardData(
         title: 'الخصومات اليدوية',
         value: _currencyFormat.format(_totalManualDiscount),
         icon: Icons.discount_outlined,
-        color: AccountingTheme.neonPink,
+        color: SdColors.platformLight,
       ),
     ];
 
@@ -372,17 +372,19 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
           const SizedBox(height: 12),
           Text(
             c.value,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: AccountingTheme.textPrimary,
+              color: SdColors.ink,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             c.title,
-            style: GoogleFonts.cairo(
-                fontSize: 13, color: AccountingTheme.textMuted),
+            style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 13, color: SdColors.faint),
           ),
         ],
       ),
@@ -403,7 +405,7 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text('لا توجد بيانات',
-                  style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+                  style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
             )
           else
             Wrap(
@@ -416,7 +418,7 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: AccountingTheme.bgSecondary,
+                    color: SdColors.groundAlt,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Column(
@@ -424,15 +426,17 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
                     children: [
                       Text(
                         _collectionTypeLabel(e['type']?.toString()),
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.bold,
-                            color: AccountingTheme.textPrimary),
+                            color: SdColors.ink),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '${_currencyFormat.format(count)} عملية · ${_currencyFormat.format(total)}',
-                        style: GoogleFonts.cairo(
-                            fontSize: 12, color: AccountingTheme.textSecondary),
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 12, color: SdColors.muted),
                       ),
                     ],
                   ),
@@ -458,7 +462,7 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text('لا توجد حركات',
-                  style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+                  style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
             )
           else
             ..._recent.map(_recentRow),
@@ -482,7 +486,7 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgSecondary,
+        color: SdColors.groundAlt,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -494,16 +498,18 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
               children: [
                 Text(
                   username,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.bold,
-                      color: AccountingTheme.textPrimary),
+                      color: SdColors.ink),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   plan,
-                  style: GoogleFonts.cairo(
-                      fontSize: 12, color: AccountingTheme.textMuted),
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 12, color: SdColors.faint),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -515,14 +521,15 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(dateLabel,
-                    style: GoogleFonts.cairo(
-                        fontSize: 11, color: AccountingTheme.textSecondary)),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 11, color: SdColors.muted)),
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    _chip(action, AccountingTheme.neonBlue),
+                    _chip(action, SdColors.primary),
                     const SizedBox(width: 6),
-                    _chip(type, AccountingTheme.neonPurple),
+                    _chip(type, SdColors.platformBase),
                   ],
                 ),
               ],
@@ -531,8 +538,9 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
           const SizedBox(width: 8),
           Text(
             _currencyFormat.format(collected),
-            style: GoogleFonts.cairo(
-                fontWeight: FontWeight.bold, color: AccountingTheme.debitText),
+            style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.bold, color: SdColors.success),
           ),
         ],
       ),
@@ -548,7 +556,7 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
       ),
       child: Text(
         label,
-        style: GoogleFonts.cairo(fontSize: 10, color: color),
+        style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: color),
       ),
     );
   }
@@ -556,14 +564,15 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
   Widget _sectionTitle(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: AccountingTheme.neonBlue),
+        Icon(icon, size: 18, color: SdColors.primary),
         const SizedBox(width: 8),
         Text(
           title,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: AccountingTheme.textPrimary,
+            color: SdColors.ink,
           ),
         ),
       ],

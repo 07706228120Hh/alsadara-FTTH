@@ -10,12 +10,12 @@ library;
 
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../services/firebase_auth_service.dart';
 import '../../services/organizations_service.dart';
 import '../../services/firestore_permissions_service.dart';
 import '../../citizen_portal/citizen_portal.dart';
 import '../login/premium_login_page.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class OrganizationsManagementPage extends StatefulWidget {
   const OrganizationsManagementPage({super.key});
@@ -65,7 +65,7 @@ class _OrganizationsManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('❌ ليس لديك صلاحية الوصول لهذه الصفحة'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
         Navigator.of(context).pushReplacement(
@@ -106,7 +106,7 @@ class _OrganizationsManagementPageState
       debugPrint('❌ خطأ في تحميل الشركات');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -150,21 +150,21 @@ class _OrganizationsManagementPageState
       context: context,
       builder: (context) => AlertDialog(
         title: Text('تأكيد الربط',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
         content: Text(
           'هل أنت متأكد من ربط شركة "$orgName" بنظام المواطن؟\n\n'
           'ملاحظة: سيتم إلغاء ربط أي شركة أخرى تلقائياً.',
-          style: GoogleFonts.cairo(),
+          style: TextStyle(fontFamily: 'Cairo'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: Text('تأكيد الربط', style: GoogleFonts.cairo()),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.success),
+            child: Text('تأكيد الربط', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -184,7 +184,7 @@ class _OrganizationsManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('✅ تم ربط شركة "$orgName" بنظام المواطن بنجاح'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -195,7 +195,7 @@ class _OrganizationsManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ خطأ'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             duration: const Duration(seconds: 5),
           ),
         );
@@ -210,21 +210,21 @@ class _OrganizationsManagementPageState
       context: context,
       builder: (context) => AlertDialog(
         title: Text('تأكيد إلغاء الربط',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
         content: Text(
           'هل أنت متأكد من إلغاء ربط شركة "$orgName" من نظام المواطن؟\n\n'
           'سيتم إخفاء بوابة المواطن من لوحة تحكم الشركة.',
-          style: GoogleFonts.cairo(),
+          style: TextStyle(fontFamily: 'Cairo'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('تأكيد الإلغاء', style: GoogleFonts.cairo()),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
+            child: Text('تأكيد الإلغاء', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -244,7 +244,7 @@ class _OrganizationsManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('✅ تم إلغاء ربط شركة "$orgName" من نظام المواطن'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
       }
@@ -255,7 +255,7 @@ class _OrganizationsManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ خطأ'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             duration: const Duration(seconds: 5),
           ),
         );
@@ -273,7 +273,7 @@ class _OrganizationsManagementPageState
       context: context,
       builder: (context) => AlertDialog(
         title: Text('إضافة شركة جديدة',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
         content: Form(
           key: formKey,
           child: Column(
@@ -283,7 +283,7 @@ class _OrganizationsManagementPageState
                 controller: nameController,
                 decoration: InputDecoration(
                   labelText: 'اسم الشركة *',
-                  labelStyle: GoogleFonts.cairo(),
+                  labelStyle: TextStyle(fontFamily: 'Cairo'),
                   border: const OutlineInputBorder(),
                 ),
                 validator: (value) =>
@@ -294,7 +294,7 @@ class _OrganizationsManagementPageState
                 controller: descController,
                 decoration: InputDecoration(
                   labelText: 'الوصف',
-                  labelStyle: GoogleFonts.cairo(),
+                  labelStyle: TextStyle(fontFamily: 'Cairo'),
                   border: const OutlineInputBorder(),
                 ),
                 maxLines: 3,
@@ -305,7 +305,7 @@ class _OrganizationsManagementPageState
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -317,7 +317,7 @@ class _OrganizationsManagementPageState
                 );
               }
             },
-            child: Text('إضافة', style: GoogleFonts.cairo()),
+            child: Text('إضافة', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -336,7 +336,7 @@ class _OrganizationsManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('✅ تم إنشاء الشركة: $name'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
         await _loadOrganizations();
@@ -344,7 +344,7 @@ class _OrganizationsManagementPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('❌ خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -361,7 +361,7 @@ class _OrganizationsManagementPageState
       context: context,
       builder: (context) => AlertDialog(
         title: Text('تعديل بيانات الشركة',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
         content: Form(
           key: formKey,
           child: Column(
@@ -371,7 +371,7 @@ class _OrganizationsManagementPageState
                 controller: nameController,
                 decoration: InputDecoration(
                   labelText: 'اسم الشركة *',
-                  labelStyle: GoogleFonts.cairo(),
+                  labelStyle: TextStyle(fontFamily: 'Cairo'),
                   border: const OutlineInputBorder(),
                 ),
                 validator: (value) =>
@@ -382,7 +382,7 @@ class _OrganizationsManagementPageState
                 controller: descController,
                 decoration: InputDecoration(
                   labelText: 'الوصف',
-                  labelStyle: GoogleFonts.cairo(),
+                  labelStyle: TextStyle(fontFamily: 'Cairo'),
                   border: const OutlineInputBorder(),
                 ),
                 maxLines: 3,
@@ -393,7 +393,7 @@ class _OrganizationsManagementPageState
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -406,7 +406,7 @@ class _OrganizationsManagementPageState
                 );
               }
             },
-            child: Text('حفظ', style: GoogleFonts.cairo()),
+            child: Text('حفظ', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -426,7 +426,7 @@ class _OrganizationsManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ تم تحديث بيانات الشركة'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
         await _loadOrganizations();
@@ -434,7 +434,7 @@ class _OrganizationsManagementPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('❌ خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -452,7 +452,7 @@ class _OrganizationsManagementPageState
           SnackBar(
             content:
                 Text(currentStatus ? '✅ تم تعطيل الشركة' : '✅ تم تفعيل الشركة'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
         await _loadOrganizations();
@@ -460,7 +460,7 @@ class _OrganizationsManagementPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('❌ خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -479,7 +479,7 @@ class _OrganizationsManagementPageState
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text('إضافة مستخدم جديد',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
           content: Form(
             key: formKey,
             child: SingleChildScrollView(
@@ -490,7 +490,7 @@ class _OrganizationsManagementPageState
                     controller: usernameController,
                     decoration: InputDecoration(
                       labelText: 'اسم المستخدم *',
-                      labelStyle: GoogleFonts.cairo(),
+                      labelStyle: TextStyle(fontFamily: 'Cairo'),
                       border: const OutlineInputBorder(),
                       hintText: 'مثال: ahmed123',
                     ),
@@ -502,7 +502,7 @@ class _OrganizationsManagementPageState
                     controller: passwordController,
                     decoration: InputDecoration(
                       labelText: 'كلمة المرور *',
-                      labelStyle: GoogleFonts.cairo(),
+                      labelStyle: TextStyle(fontFamily: 'Cairo'),
                       border: const OutlineInputBorder(),
                     ),
                     obscureText: true,
@@ -515,7 +515,7 @@ class _OrganizationsManagementPageState
                     controller: displayNameController,
                     decoration: InputDecoration(
                       labelText: 'الاسم الكامل *',
-                      labelStyle: GoogleFonts.cairo(),
+                      labelStyle: TextStyle(fontFamily: 'Cairo'),
                       border: const OutlineInputBorder(),
                       hintText: 'مثال: أحمد محمد',
                     ),
@@ -527,16 +527,16 @@ class _OrganizationsManagementPageState
                     value: selectedRole,
                     decoration: InputDecoration(
                       labelText: 'الدور الوظيفي',
-                      labelStyle: GoogleFonts.cairo(),
+                      labelStyle: TextStyle(fontFamily: 'Cairo'),
                       border: const OutlineInputBorder(),
                     ),
                     items: [
                       DropdownMenuItem(
                           value: 'admin',
-                          child: Text('مدير', style: GoogleFonts.cairo())),
+                          child: Text('مدير', style: TextStyle(fontFamily: 'Cairo'))),
                       DropdownMenuItem(
                           value: 'user',
-                          child: Text('مستخدم', style: GoogleFonts.cairo())),
+                          child: Text('مستخدم', style: TextStyle(fontFamily: 'Cairo'))),
                     ],
                     onChanged: (value) =>
                         setDialogState(() => selectedRole = value!),
@@ -548,7 +548,7 @@ class _OrganizationsManagementPageState
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('إلغاء', style: GoogleFonts.cairo()),
+              child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -563,7 +563,7 @@ class _OrganizationsManagementPageState
                   );
                 }
               },
-              child: Text('إضافة', style: GoogleFonts.cairo()),
+              child: Text('إضافة', style: TextStyle(fontFamily: 'Cairo')),
             ),
           ],
         ),
@@ -592,7 +592,7 @@ class _OrganizationsManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('✅ تم إضافة المستخدم: $username'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
         await _loadOrganizationUsers(orgId);
@@ -600,7 +600,7 @@ class _OrganizationsManagementPageState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('❌ خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -626,7 +626,7 @@ class _OrganizationsManagementPageState
         builder: (context, setDialogState) => AlertDialog(
           title: Text(
             'صلاحيات: $username',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
           ),
           content: SizedBox(
             width: min(400, MediaQuery.of(context).size.width * 0.85),
@@ -699,7 +699,7 @@ class _OrganizationsManagementPageState
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('إلغاء', style: GoogleFonts.cairo()),
+              child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -707,7 +707,7 @@ class _OrganizationsManagementPageState
                 await _updateUserPermissions(
                     orgId, userId, editablePermissions);
               },
-              child: Text('حفظ الصلاحيات', style: GoogleFonts.cairo()),
+              child: Text('حفظ الصلاحيات', style: TextStyle(fontFamily: 'Cairo')),
             ),
           ],
         ),
@@ -748,17 +748,18 @@ class _OrganizationsManagementPageState
       children: [
         Text(
           title,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: Colors.blue[700],
+            color: SdColors.info,
           ),
         ),
         const SizedBox(height: 8),
         ...permissionKeys.map((key) => CheckboxListTile(
               title: Text(
                 permissionNames[key] ?? key,
-                style: GoogleFonts.cairo(fontSize: 14),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 14),
               ),
               value: permissions[key] ?? false,
               onChanged: (value) {
@@ -788,14 +789,14 @@ class _OrganizationsManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ تم تحديث صلاحيات المستخدم'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('❌ خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -814,15 +815,15 @@ class _OrganizationsManagementPageState
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF283593),
-                  Color(0xFF1976D2),
-                  Color(0xFF64B5F6)
+                  SdColors.primaryMid,
+                  SdColors.info,
+                  SdColors.infoTintEdge
                 ],
               ),
             ),
           ),
           title: Text('إدارة الشركات',
-              style: GoogleFonts.cairo(color: Colors.white)),
+              style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -831,8 +832,8 @@ class _OrganizationsManagementPageState
     return Scaffold(
       appBar: AppBar(
         title: Text('إدارة الشركات والمؤسسات',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.blue[700],
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+        backgroundColor: SdColors.info,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -855,8 +856,8 @@ class _OrganizationsManagementPageState
         bottom: TabBar(
           controller: _tabController,
           tabs: [
-            Tab(child: Text('الشركات', style: GoogleFonts.cairo())),
-            Tab(child: Text('المستخدمين', style: GoogleFonts.cairo())),
+            Tab(child: Text('الشركات', style: TextStyle(fontFamily: 'Cairo'))),
+            Tab(child: Text('المستخدمين', style: TextStyle(fontFamily: 'Cairo'))),
           ],
         ),
       ),
@@ -871,14 +872,14 @@ class _OrganizationsManagementPageState
           ? FloatingActionButton.extended(
               onPressed: _showAddOrganizationDialog,
               icon: const Icon(Icons.add),
-              label: Text('إضافة شركة', style: GoogleFonts.cairo()),
+              label: Text('إضافة شركة', style: TextStyle(fontFamily: 'Cairo')),
             )
           : FloatingActionButton.extended(
               onPressed: _currentOrgId != null
                   ? () => _showAddUserDialog(_currentOrgId!)
                   : null,
               icon: const Icon(Icons.person_add),
-              label: Text('إضافة مستخدم', style: GoogleFonts.cairo()),
+              label: Text('إضافة مستخدم', style: TextStyle(fontFamily: 'Cairo')),
             ),
     );
   }
@@ -890,16 +891,16 @@ class _OrganizationsManagementPageState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.business, size: 100, color: Colors.grey[300]),
+            Icon(Icons.business, size: 100, color: SdColors.edge),
             const SizedBox(height: 16),
             Text(
               'لا توجد شركات',
-              style: GoogleFonts.cairo(fontSize: 18, color: Colors.grey),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 18, color: SdColors.faint),
             ),
             const SizedBox(height: 8),
             Text(
               'اضغط على زر "إضافة شركة" للبدء',
-              style: GoogleFonts.cairo(fontSize: 14, color: Colors.grey),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 14, color: SdColors.faint),
             ),
           ],
         ),
@@ -919,7 +920,7 @@ class _OrganizationsManagementPageState
           margin: const EdgeInsets.only(bottom: 12),
           child: ExpansionTile(
             leading: CircleAvatar(
-              backgroundColor: isActive ? Colors.green : Colors.grey,
+              backgroundColor: isActive ? SdColors.success : SdColors.faint,
               child: Icon(
                 isActive ? Icons.business : Icons.business_center_outlined,
                 color: Colors.white,
@@ -927,20 +928,21 @@ class _OrganizationsManagementPageState
             ),
             title: Text(
               org['name'],
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (org['description']?.isNotEmpty ?? false)
                   Text(org['description'],
-                      style: GoogleFonts.cairo(fontSize: 12)),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                 const SizedBox(height: 4),
                 Text(
                   isActive ? '🟢 نشطة' : '🔴 معطلة',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 12,
-                    color: isActive ? Colors.green : Colors.red,
+                    color: isActive ? SdColors.success : SdColors.danger,
                   ),
                 ),
               ],
@@ -948,7 +950,7 @@ class _OrganizationsManagementPageState
             trailing: PopupMenuButton(
               itemBuilder: (context) => [
                 PopupMenuItem(
-                  child: Text('تعديل', style: GoogleFonts.cairo()),
+                  child: Text('تعديل', style: TextStyle(fontFamily: 'Cairo')),
                   onTap: () => Future.delayed(
                     Duration.zero,
                     () => _showEditOrganizationDialog(org),
@@ -957,7 +959,7 @@ class _OrganizationsManagementPageState
                 PopupMenuItem(
                   child: Text(
                     isActive ? 'تعطيل' : 'تفعيل',
-                    style: GoogleFonts.cairo(),
+                    style: TextStyle(fontFamily: 'Cairo'),
                   ),
                   onTap: () => _toggleOrganizationStatus(org['id'], isActive),
                 ),
@@ -976,21 +978,22 @@ class _OrganizationsManagementPageState
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.green[50],
+                          color: SdColors.successTint,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.green[300]!),
+                          border: Border.all(color: SdColors.successTintEdge),
                         ),
                         child: Row(
                           children: [
                             Icon(Icons.verified,
-                                color: Colors.green[700], size: 20),
+                                color: SdColors.success, size: 20),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 '✅ مرتبطة بنظام المواطن',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green[700],
+                                  color: SdColors.success,
                                 ),
                               ),
                             ),
@@ -1009,10 +1012,10 @@ class _OrganizationsManagementPageState
                                     org['id'], org['name']),
                                 icon: const Icon(Icons.link_off),
                                 label: Text('إلغاء الربط بنظام المواطن',
-                                    style: GoogleFonts.cairo()),
+                                    style: TextStyle(fontFamily: 'Cairo')),
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.red,
-                                  side: const BorderSide(color: Colors.red),
+                                  foregroundColor: SdColors.danger,
+                                  side: const BorderSide(color: SdColors.danger),
                                 ),
                               )
                             : ElevatedButton.icon(
@@ -1020,9 +1023,9 @@ class _OrganizationsManagementPageState
                                     org['id'], org['name']),
                                 icon: const Icon(Icons.link),
                                 label: Text('ربط بنظام المواطن',
-                                    style: GoogleFonts.cairo()),
+                                    style: TextStyle(fontFamily: 'Cairo')),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
+                                  backgroundColor: SdColors.success,
                                   foregroundColor: Colors.white,
                                 ),
                               ),
@@ -1039,7 +1042,7 @@ class _OrganizationsManagementPageState
                     const Divider(),
 
                     Text('📊 الإحصائيات:',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -1065,7 +1068,7 @@ class _OrganizationsManagementPageState
                         _loadOrganizationUsers(org['id']);
                       },
                       icon: const Icon(Icons.arrow_forward),
-                      label: Text('عرض المستخدمين', style: GoogleFonts.cairo()),
+                      label: Text('عرض المستخدمين', style: TextStyle(fontFamily: 'Cairo')),
                     ),
                   ],
                 ),
@@ -1081,13 +1084,13 @@ class _OrganizationsManagementPageState
   Widget _buildStatCard(String label, int count, IconData icon) {
     return Column(
       children: [
-        Icon(icon, size: 30, color: Colors.blue[700]),
+        Icon(icon, size: 30, color: SdColors.info),
         const SizedBox(height: 4),
         Text(
           '$count',
-          style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        Text(label, style: GoogleFonts.cairo(fontSize: 12)),
+        Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
       ],
     );
   }
@@ -1099,11 +1102,11 @@ class _OrganizationsManagementPageState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.info_outline, size: 100, color: Colors.grey[300]),
+            Icon(Icons.info_outline, size: 100, color: SdColors.edge),
             const SizedBox(height: 16),
             Text(
               'الرجاء اختيار شركة من التبويب الأول',
-              style: GoogleFonts.cairo(fontSize: 16, color: Colors.grey),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 16, color: SdColors.faint),
             ),
           ],
         ),
@@ -1114,15 +1117,16 @@ class _OrganizationsManagementPageState
       children: [
         Container(
           padding: const EdgeInsets.all(16),
-          color: Colors.blue[50],
+          color: SdColors.infoTint,
           child: Row(
             children: [
-              const Icon(Icons.business, color: Colors.blue),
+              const Icon(Icons.business, color: SdColors.info),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'مستخدمو: ${_selectedOrg?['name'] ?? 'غير محدد'}',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
@@ -1140,12 +1144,12 @@ class _OrganizationsManagementPageState
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.person_outline,
-                          size: 100, color: Colors.grey[300]),
+                          size: 100, color: SdColors.edge),
                       const SizedBox(height: 16),
                       Text(
                         'لا يوجد مستخدمين',
                         style:
-                            GoogleFonts.cairo(fontSize: 18, color: Colors.grey),
+                            TextStyle(fontFamily: 'Cairo', fontSize: 18, color: SdColors.faint),
                       ),
                     ],
                   ),
@@ -1163,7 +1167,7 @@ class _OrganizationsManagementPageState
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: isActive ? Colors.blue : Colors.grey,
+                          backgroundColor: isActive ? SdColors.info : SdColors.faint,
                           child: Text(
                             user['displayName']?[0]?.toUpperCase() ?? '?',
                             style: const TextStyle(color: Colors.white),
@@ -1171,18 +1175,18 @@ class _OrganizationsManagementPageState
                         ),
                         title: Text(
                           user['displayName'] ?? 'بدون اسم',
-                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'اسم المستخدم: ${user['username']}',
-                              style: GoogleFonts.cairo(fontSize: 12),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                             ),
                             Text(
                               'الدور: ${role == 'admin' ? 'مدير' : 'مستخدم'}',
-                              style: GoogleFonts.cairo(fontSize: 12),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                             ),
                           ],
                         ),

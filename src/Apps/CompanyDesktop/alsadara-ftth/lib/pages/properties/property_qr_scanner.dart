@@ -11,7 +11,6 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image/image.dart' as img;
 import 'package:zxing2/qrcode.dart';
 
@@ -141,7 +140,8 @@ class _PropertyQrScannerScreenState extends State<PropertyQrScannerScreen> {
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
           title: Text('مسح رمز QR بالكاميرا',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontWeight: FontWeight.w800, color: Colors.white)),
         ),
         body: _error != null
@@ -165,7 +165,8 @@ class _PropertyQrScannerScreenState extends State<PropertyQrScannerScreen> {
               const SizedBox(height: 16),
               Text(_error!,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: Colors.white, fontWeight: FontWeight.w700)),
               const SizedBox(height: 20),
               FilledButton(
@@ -173,7 +174,8 @@ class _PropertyQrScannerScreenState extends State<PropertyQrScannerScreen> {
                 style: FilledButton.styleFrom(
                     backgroundColor: SdColors.primary),
                 child: Text('رجوع',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.w800, color: Colors.white)),
               ),
             ],
@@ -213,7 +215,8 @@ class _PropertyQrScannerScreenState extends State<PropertyQrScannerScreen> {
                 child: Text(
                   'وجّه الكاميرا نحو رمز QR — يُمسح تلقائياً',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: Colors.white, fontWeight: FontWeight.w600),
                 ),
               ),
@@ -227,7 +230,8 @@ class _PropertyQrScannerScreenState extends State<PropertyQrScannerScreen> {
                 icon: const Icon(Icons.center_focus_strong_rounded,
                     color: Colors.white),
                 label: Text('التقاط الآن',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.w800, color: Colors.white)),
               ),
             ],

@@ -2,7 +2,6 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/auth_service.dart';
@@ -115,14 +114,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         speedY: (rng.nextDouble() - 0.5) * 0.25,
         opacity: rng.nextDouble() * 0.15 + 0.20, // 20-35% شفافية (خلف البطاقات)
         color: [
-          const Color(0xFF3498DB),
-          const Color(0xFF1ABC9C),
-          const Color(0xFF9B59B6),
-          const Color(0xFF2ECC71),
-          const Color(0xFFE67E22),
-          const Color(0xFF5C6BC0),
-          const Color(0xFF2C3E50),
-          const Color(0xFFE74C3C),
+          SdColors.info,
+          SdColors.accent,
+          SdColors.platformBase,
+          SdColors.success,
+          SdColors.warning,
+          SdColors.primarySoft,
+          SdColors.ink,
+          SdColors.danger,
         ][rng.nextInt(8)],
         symbol: _symbols[rng.nextInt(_symbols.length)],
         rotation: rng.nextDouble() * 0.5 - 0.25, // دوران خفيف
@@ -369,7 +368,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                   child: _isLoading
                       ? const Center(
                           child: CircularProgressIndicator(
-                              color: Color(0xFF3498DB)))
+                              color: SdColors.info))
                       : _errorMessage != null
                           ? _buildErrorView()
                           : _buildContent(),
@@ -470,7 +469,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline,
-              color: const Color(0xFFE74C3C), size: ar.iconEmpty),
+              color: SdColors.danger, size: ar.iconEmpty),
           SizedBox(height: ar.spaceXL),
           Text(
             _errorMessage!,
@@ -482,9 +481,9 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             onPressed: _loadDashboard,
             icon: const Icon(Icons.refresh, color: Colors.white),
             label: Text('إعادة المحاولة',
-                style: GoogleFonts.cairo(color: Colors.white)),
+                style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF3498DB),
+              backgroundColor: SdColors.info,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(ar.btnRadius)),
               padding: ar.buttonPadding,
@@ -550,12 +549,12 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             ),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF3498DB), Color(0xFF2C3E50)],
+                colors: [SdColors.info, SdColors.ink],
               ),
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF3498DB).withOpacity(0.30),
+                  color: SdColors.info.withOpacity(0.30),
                   blurRadius: 12,
                   offset: const Offset(0, 3),
                 ),
@@ -572,7 +571,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                 SizedBox(width: isMob ? 5 : 8),
                 Text(
                   'الأقسام',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: Colors.white,
                     fontSize: isMob ? 12 : 14,
                     fontWeight: FontWeight.w700,
@@ -631,25 +631,25 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         value: _formatCurrency(accountBalances['CashAccountBalance']),
         subtitle: 'حساب 1110 وفروعه',
         icon: Icons.savings,
-        color: const Color(0xFF1B5E20),
+        color: SdColors.successEdge,
       ),
       _SummaryItem(
         title: 'رصيد القاصة',
         value: _formatCurrency(accountBalances['CashRegisterBalance']),
         icon: Icons.point_of_sale,
-        color: const Color(0xFF16A085),
+        color: SdColors.accent,
       ),
       _SummaryItem(
         title: 'صندوق الشركة الرئيسي',
         value: _formatCurrency(accountBalances['MainCashBoxBalance']),
         icon: Icons.account_balance,
-        color: const Color(0xFF2C3E50),
+        color: SdColors.ink,
       ),
       _SummaryItem(
         title: 'رصيد الصفحة',
         value: _formatCurrency(accountBalances['PageBalance']),
         icon: Icons.account_balance_wallet,
-        color: const Color(0xFF3498DB),
+        color: SdColors.info,
       ),
       if (_showFtthWallet)
         _SummaryItem(
@@ -662,13 +662,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         title: 'المصاريف',
         value: _formatCurrency(accountBalances['TotalExpenses']),
         icon: Icons.trending_down,
-        color: const Color(0xFFE74C3C),
+        color: SdColors.danger,
       ),
       _SummaryItem(
         title: 'الالتزامات',
         value: _formatCurrency(accountBalances['TotalLiabilities']),
         icon: Icons.assignment_late,
-        color: const Color(0xFFE67E22),
+        color: SdColors.warning,
       ),
       _SummaryItem(
         title: 'رواتب غير مدفوعة',
@@ -681,7 +681,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         title: 'مستحقات المشغلين',
         value: _formatCurrency(accountBalances['OperatorReceivables']),
         icon: Icons.people,
-        color: const Color(0xFF9B59B6),
+        color: SdColors.platformBase,
       ),
       _SummaryItem(
         title: agentIsDebtor
@@ -690,7 +690,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         value: _formatCurrency(agentNet.abs()),
         icon: Icons.support_agent,
         color:
-            agentIsDebtor ? const Color(0xFFE74C3C) : const Color(0xFF2ECC71),
+            agentIsDebtor ? SdColors.danger : SdColors.success,
       ),
       _SummaryItem(
         title: techIsDebtor
@@ -698,14 +698,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             : 'مستحقات الفنيين (دائن)',
         value: _formatCurrency(techNet.abs()),
         icon: Icons.engineering,
-        color: techIsDebtor ? const Color(0xFF8E44AD) : const Color(0xFF27AE60),
+        color: techIsDebtor ? SdColors.platformBase : SdColors.success,
       ),
       _SummaryItem(
         title: 'رواتب مدفوعة',
         value: '$paidCount',
         subtitle: 'من $totalEmployees موظف',
         icon: Icons.check_circle_outline,
-        color: const Color(0xFF4CAF50),
+        color: SdColors.success,
       ),
       _SummaryItem(
         title: 'سلف مدفوعة',
@@ -718,13 +718,13 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         title: 'إيجارات المكاتب',
         value: _formatCurrency(fixedExpenses['OfficeRent']),
         icon: Icons.business,
-        color: const Color(0xFFE67E22),
+        color: SdColors.warning,
       ),
       _SummaryItem(
         title: 'تكلفة المولد',
         value: _formatCurrency(fixedExpenses['GeneratorCost']),
         icon: Icons.flash_on,
-        color: const Color(0xFFF39C12),
+        color: SdColors.warning,
       ),
     ];
 
@@ -830,7 +830,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                 child: Text(
                   item.title,
                   maxLines: 1,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: ar.caption,
                     color: Colors.black,
                     fontWeight: FontWeight.w600,
@@ -847,7 +848,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             fit: BoxFit.scaleDown,
             child: Text(
               item.value,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: ar.financialSmall,
                 fontWeight: FontWeight.bold,
                 color: Colors.black,
@@ -872,7 +874,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
             child: Text(
               item.subtitle!,
               maxLines: 1,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 8,
                 color: item.color.withOpacity(0.8),
                 height: 1.2,
@@ -910,7 +913,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                   child: Text(
                     item.title,
                     maxLines: 1,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 13,
                       color: Colors.black,
                       fontWeight: FontWeight.w600,
@@ -934,7 +938,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                     fit: BoxFit.scaleDown,
                     child: Text(
                       item.value,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
@@ -951,7 +956,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                     child: Text(
                       item.subtitle!,
                       maxLines: 1,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: ar.small,
                         color: item.color.withOpacity(0.7),
                         height: 1.1,
@@ -976,7 +982,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           title: 'حسابات التفعيلات',
           subtitle: 'لوحة متابعة حسابات التفعيلات',
           icon: Icons.wifi_tethering,
-          color: const Color(0xFF00897B),
+          color: SdColors.accent,
           onTap: () => _navigateTo(
               FtthOperatorsDashboardPage(companyId: widget.companyId)),
         ),
@@ -985,7 +991,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           title: 'نظام الساس',
           subtitle: 'ملخّص محاسبة عمليات نظام الساس',
           icon: Icons.router,
-          color: const Color(0xFF009688),
+          color: SdColors.accent,
           onTap: () =>
               _navigateTo(SasAccountingPage(companyId: widget.companyId)),
         ),
@@ -994,7 +1000,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           title: 'كشف الحسابات',
           subtitle: 'عرض كشوفات الحسابات والقيود',
           icon: Icons.account_balance_wallet,
-          color: const Color(0xFF2196F3),
+          color: SdColors.info,
           onTap: () =>
               _navigateTo(ClientAccountsPage(companyId: widget.companyId)),
         ),
@@ -1003,7 +1009,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           title: 'قيد مركب',
           subtitle: 'إدخال قيد محاسبي مركب',
           icon: Icons.post_add,
-          color: const Color(0xFF8E44AD),
+          color: SdColors.platformBase,
           onTap: () => _navigateTo(
               CompoundJournalEntryPage(companyId: widget.companyId)),
         ),
@@ -1013,7 +1019,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           title: 'مراقبة الأموال',
           subtitle: 'أرصدة الصناديق والذمم والإيرادات',
           icon: Icons.account_balance,
-          color: const Color(0xFF5C6BC0),
+          color: SdColors.primarySoft,
           onTap: () =>
               _navigateTo(FundsOverviewPage(companyId: widget.companyId)),
         ),
@@ -1022,7 +1028,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           title: 'المصاريف والإيرادات',
           subtitle: 'تسجيل ومتابعة المصاريف والإيرادات',
           icon: Icons.swap_horiz,
-          color: const Color(0xFF1ABC9C),
+          color: SdColors.accent,
           onTap: () => _showExpensesRevenueDialog(),
         ),
       if (pm.canView('accounting.collections'))
@@ -1030,7 +1036,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           title: 'تحصيلات الفنيين',
           subtitle: 'متابعة تحصيلات الفنيين',
           icon: Icons.engineering,
-          color: const Color(0xFF9B59B6),
+          color: SdColors.platformBase,
           onTap: () =>
               _navigateTo(CollectionsPage(companyId: widget.companyId)),
         ),
@@ -1049,7 +1055,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           title: 'طلبات سحب الأموال',
           subtitle: 'مراجعة وصرف طلبات السحب',
           icon: Icons.money_off,
-          color: const Color(0xFFE74C3C),
+          color: SdColors.danger,
           onTap: () =>
               _navigateTo(WithdrawalRequestsPage(companyId: widget.companyId)),
         ),
@@ -1057,7 +1063,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         title: 'تقارير التسديدات',
         subtitle: 'عرض تقارير التسديدات اليومية',
         icon: Icons.receipt_long,
-        color: const Color(0xFF16A085),
+        color: SdColors.accent,
         onTap: () =>
             _navigateTo(SettlementReportsPage(companyId: widget.companyId)),
       ),
@@ -1066,7 +1072,7 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         title: 'عمليات المحفظة',
         subtitle: 'عرض وتصدير جميع معاملات المحفظة',
         icon: Icons.account_balance_wallet_rounded,
-        color: const Color(0xFF2980B9),
+        color: SdColors.info,
         onTap: () =>
             _navigateTo(WalletTransactionsPage(companyId: widget.companyId)),
       ),
@@ -1138,7 +1144,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                 children: [
                   Text(
                     section.title,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: _textDark,
                       fontSize: isMob ? ar.small : 13,
                       fontWeight: FontWeight.bold,
@@ -1149,7 +1156,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                   if (!isMob)
                     Text(
                       section.subtitle,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         color: _textGray,
                         fontSize: 10,
                         height: 1.2,
@@ -1176,7 +1184,8 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
         child: SimpleDialog(
           title: Text(
             'المصاريف والإيرادات',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontWeight: FontWeight.bold,
               color: _textDark,
             ),
@@ -1195,15 +1204,16 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                     width: ar.btnSmallSize,
                     height: ar.btnSmallSize,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE74C3C).withOpacity(0.12),
+                      color: SdColors.danger.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(ar.btnRadius),
                     ),
                     child: Icon(Icons.receipt,
-                        color: const Color(0xFFE74C3C), size: ar.iconM),
+                        color: SdColors.danger, size: ar.iconM),
                   ),
                   SizedBox(width: ar.spaceL),
                   Text('المصروفات',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: ar.headingSmall,
                           fontWeight: FontWeight.w600)),
                 ],
@@ -1221,15 +1231,16 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
                     width: ar.btnSmallSize,
                     height: ar.btnSmallSize,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1ABC9C).withOpacity(0.12),
+                      color: SdColors.accent.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(ar.btnRadius),
                     ),
                     child: Icon(Icons.trending_up,
-                        color: const Color(0xFF1ABC9C), size: ar.iconM),
+                        color: SdColors.accent, size: ar.iconM),
                   ),
                   SizedBox(width: ar.spaceL),
                   Text('الإيرادات',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: ar.headingSmall,
                           fontWeight: FontWeight.w600)),
                 ],
@@ -1343,10 +1354,10 @@ class _BgGradientPainter extends CustomPainter {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: const [
-          Color(0xFFF5F6FA),
+          SdColors.surfaceAlt,
           Color(0xFFEEF1F8),
           Color(0xFFF0F4FF),
-          Color(0xFFF5F6FA),
+          SdColors.surfaceAlt,
         ],
         stops: [
           0.0,

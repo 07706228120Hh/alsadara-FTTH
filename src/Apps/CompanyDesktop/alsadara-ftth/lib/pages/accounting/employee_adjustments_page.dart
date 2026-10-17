@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../permissions/permissions.dart';
 
@@ -408,7 +407,7 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
 
   void _showAddDialog() {
     if (_employees.isEmpty) {
-      _snack('لا يوجد موظفون — جاري التحميل', AccountingTheme.warning);
+      _snack('لا يوجد موظفون — جاري التحميل', SdColors.warning);
       _loadEmployees();
       return;
     }
@@ -427,9 +426,9 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
         builder: (ctx2, setDialogState) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            backgroundColor: AccountingTheme.bgCard,
+            backgroundColor: SdColors.surface,
             title: const Text('إضافة تعديل جديد',
-                style: TextStyle(color: AccountingTheme.textPrimary)),
+                style: TextStyle(color: SdColors.ink)),
             content: SizedBox(
               width: context.accR.isMobile
                   ? MediaQuery.of(context).size.width * 0.9
@@ -442,9 +441,9 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
                     // اختيار الموظف
                     DropdownButtonFormField<String>(
                       value: selectedUserId,
-                      dropdownColor: AccountingTheme.bgCard,
+                      dropdownColor: SdColors.surface,
                       style: const TextStyle(
-                          color: AccountingTheme.textPrimary),
+                          color: SdColors.ink),
                       decoration: _inputDecor('الموظف'),
                       items: _employees.map((e) {
                         return DropdownMenuItem<String>(
@@ -459,13 +458,13 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
                     // نوع التعديل
                     const Text('النوع',
                         style: TextStyle(
-                            color: AccountingTheme.textMuted, fontSize: 13)),
+                            color: SdColors.faint, fontSize: 13)),
                     const SizedBox(height: 4),
                     Row(
                       children: [0, 1, 2].map((t) {
                         final sel = selectedType == t;
                         final c =
-                            _typeColors[t] ?? AccountingTheme.textMuted;
+                            _typeColors[t] ?? SdColors.faint;
                         return Expanded(
                           child: GestureDetector(
                             onTap: () =>
@@ -478,19 +477,19 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
                               decoration: BoxDecoration(
                                 color: sel
                                     ? c.withValues(alpha: 0.2)
-                                    : AccountingTheme.bgCardHover,
+                                    : SdColors.surfaceAlt,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
                                     color: sel
                                         ? c
-                                        : AccountingTheme.borderColor),
+                                        : SdColors.divider),
                               ),
                               child: Center(
                                 child: Text(_typeLabels[t]!,
                                     style: TextStyle(
                                         color: sel
                                             ? c
-                                            : AccountingTheme.textSecondary,
+                                            : SdColors.muted,
                                         fontWeight: sel
                                             ? FontWeight.bold
                                             : FontWeight.normal,
@@ -513,15 +512,15 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
                     const SizedBox(height: 8),
                     CheckboxListTile(
                       value: isRecurring,
-                      activeColor: AccountingTheme.neonGreen,
+                      activeColor: SdColors.success,
                       onChanged: (v) =>
                           setDialogState(() => isRecurring = v ?? false),
                       title: const Text('تكرار شهري',
                           style:
-                              TextStyle(color: AccountingTheme.textPrimary)),
+                              TextStyle(color: SdColors.ink)),
                       subtitle: const Text('يُطبق تلقائياً كل شهر',
                           style: TextStyle(
-                              color: AccountingTheme.textMuted, fontSize: 12)),
+                              color: SdColors.faint, fontSize: 12)),
                       dense: true,
                       contentPadding: EdgeInsets.zero,
                     ),
@@ -533,20 +532,20 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('إلغاء',
-                    style: TextStyle(color: AccountingTheme.textMuted)),
+                    style: TextStyle(color: SdColors.faint)),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AccountingTheme.neonGreen,
+                    backgroundColor: SdColors.success,
                     foregroundColor: Colors.white),
                 onPressed: () async {
                   if (selectedUserId == null) {
-                    _snack('اختر الموظف', AccountingTheme.warning);
+                    _snack('اختر الموظف', SdColors.warning);
                     return;
                   }
                   final amount = double.tryParse(amountCtrl.text);
                   if (amount == null || amount <= 0) {
-                    _snack('أدخل مبلغ صحيح', AccountingTheme.warning);
+                    _snack('أدخل مبلغ صحيح', SdColors.warning);
                     return;
                   }
                   Navigator.pop(ctx);
@@ -574,15 +573,15 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
                     if (result['success'] == true) {
                       _snack(
                           result['message'] ?? 'تمت الإضافة',
-                          AccountingTheme.success);
+                          SdColors.success);
                       _loadData();
                     } else {
                       _snack(result['message'] ?? 'خطأ',
-                          AccountingTheme.danger);
+                          SdColors.danger);
                       setState(() => _isLoading = false);
                     }
                   } catch (e) {
-                    _snack('خطأ', AccountingTheme.danger);
+                    _snack('خطأ', SdColors.danger);
                     setState(() => _isLoading = false);
                   }
                 },
@@ -613,10 +612,10 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
         builder: (ctx2, setDialogState) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            backgroundColor: AccountingTheme.bgCard,
+            backgroundColor: SdColors.surface,
             title: Text(
                 'تعديل: ${adj['UserName'] ?? ''}',
-                style: const TextStyle(color: AccountingTheme.textPrimary)),
+                style: const TextStyle(color: SdColors.ink)),
             content: SizedBox(
               width: context.accR.isMobile
                   ? MediaQuery.of(context).size.width * 0.85
@@ -628,13 +627,13 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
                   children: [
                     const Text('النوع',
                         style: TextStyle(
-                            color: AccountingTheme.textMuted, fontSize: 13)),
+                            color: SdColors.faint, fontSize: 13)),
                     const SizedBox(height: 4),
                     Row(
                       children: [0, 1, 2].map((t) {
                         final sel = selectedType == t;
                         final c =
-                            _typeColors[t] ?? AccountingTheme.textMuted;
+                            _typeColors[t] ?? SdColors.faint;
                         return Expanded(
                           child: GestureDetector(
                             onTap: () =>
@@ -647,19 +646,19 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
                               decoration: BoxDecoration(
                                 color: sel
                                     ? c.withValues(alpha: 0.2)
-                                    : AccountingTheme.bgCardHover,
+                                    : SdColors.surfaceAlt,
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
                                     color: sel
                                         ? c
-                                        : AccountingTheme.borderColor),
+                                        : SdColors.divider),
                               ),
                               child: Center(
                                 child: Text(_typeLabels[t]!,
                                     style: TextStyle(
                                         color: sel
                                             ? c
-                                            : AccountingTheme.textSecondary,
+                                            : SdColors.muted,
                                         fontWeight: sel
                                             ? FontWeight.bold
                                             : FontWeight.normal,
@@ -681,12 +680,12 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
                     const SizedBox(height: 8),
                     CheckboxListTile(
                       value: isRecurring,
-                      activeColor: AccountingTheme.neonGreen,
+                      activeColor: SdColors.success,
                       onChanged: (v) =>
                           setDialogState(() => isRecurring = v ?? false),
                       title: const Text('تكرار شهري',
                           style:
-                              TextStyle(color: AccountingTheme.textPrimary)),
+                              TextStyle(color: SdColors.ink)),
                       dense: true,
                       contentPadding: EdgeInsets.zero,
                     ),
@@ -698,11 +697,11 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('إلغاء',
-                    style: TextStyle(color: AccountingTheme.textMuted)),
+                    style: TextStyle(color: SdColors.faint)),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AccountingTheme.neonGreen,
+                    backgroundColor: SdColors.success,
                     foregroundColor: Colors.white),
                 onPressed: () async {
                   Navigator.pop(ctx);
@@ -719,15 +718,15 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
                       isRecurring: isRecurring,
                     );
                     if (result['success'] == true) {
-                      _snack('تم التحديث', AccountingTheme.success);
+                      _snack('تم التحديث', SdColors.success);
                       _loadData();
                     } else {
                       _snack(result['message'] ?? 'خطأ',
-                          AccountingTheme.danger);
+                          SdColors.danger);
                       setState(() => _isLoading = false);
                     }
                   } catch (e) {
-                    _snack('خطأ', AccountingTheme.danger);
+                    _snack('خطأ', SdColors.danger);
                     setState(() => _isLoading = false);
                   }
                 },
@@ -746,22 +745,22 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: const Text('تأكيد الحذف',
-              style: TextStyle(color: AccountingTheme.danger)),
+              style: TextStyle(color: SdColors.danger)),
           content: Text(
             'حذف ${_typeLabels[adj['TypeValue'] ?? 0]} بمبلغ ${_fmt(adj['Amount'])} للموظف ${adj['UserName']}؟',
-            style: const TextStyle(color: AccountingTheme.textPrimary),
+            style: const TextStyle(color: SdColors.ink),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('إلغاء',
-                  style: TextStyle(color: AccountingTheme.textMuted)),
+                  style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.danger,
+                  backgroundColor: SdColors.danger,
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -769,10 +768,10 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
                 final result = await AccountingService.instance
                     .deleteEmployeeAdjustment(adj['Id']);
                 if (result['success'] == true) {
-                  _snack('تم الحذف', AccountingTheme.success);
+                  _snack('تم الحذف', SdColors.success);
                   _loadData();
                 } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                  _snack(result['message'] ?? 'خطأ', SdColors.danger);
                   setState(() => _isLoading = false);
                 }
               },
@@ -787,9 +786,9 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
   InputDecoration _inputDecor(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+      labelStyle: const TextStyle(color: SdColors.faint),
       filled: true,
-      fillColor: AccountingTheme.bgCardHover,
+      fillColor: SdColors.surfaceAlt,
       border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -800,16 +799,16 @@ class _EmployeeAdjustmentsPageState extends State<EmployeeAdjustmentsPage> {
       {bool isNum = false, String? hint}) {
     return TextField(
       controller: ctrl,
-      style: const TextStyle(color: AccountingTheme.textPrimary),
+      style: const TextStyle(color: SdColors.ink),
       keyboardType: isNum ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         hintStyle:
-            const TextStyle(color: AccountingTheme.textMuted, fontSize: 12),
-        labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+            const TextStyle(color: SdColors.faint, fontSize: 12),
+        labelStyle: const TextStyle(color: SdColors.faint),
         filled: true,
-        fillColor: AccountingTheme.bgCardHover,
+        fillColor: SdColors.surfaceAlt,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none),

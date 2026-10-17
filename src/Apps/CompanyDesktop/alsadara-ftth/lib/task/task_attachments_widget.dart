@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'dart:convert';
 import 'package:path/path.dart' as path;
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// ويدجت المرفقات — رفع صور/ملفات وعرضها
 class TaskAttachmentsWidget extends StatefulWidget {
@@ -129,7 +130,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         if (mounted) {
           if (response.statusCode == 200 || response.statusCode == 201) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تم رفع المرفق بنجاح'), backgroundColor: Colors.green),
+              const SnackBar(content: Text('تم رفع المرفق بنجاح'), backgroundColor: SdColors.success),
             );
             await _loadAttachments();
           } else {
@@ -150,7 +151,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
+      SnackBar(content: Text(msg), backgroundColor: SdColors.danger),
     );
   }
 
@@ -171,8 +172,8 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.camera_alt, color: Colors.blue),
+                  decoration: BoxDecoration(color: SdColors.infoTint, borderRadius: BorderRadius.circular(8)),
+                  child: const Icon(Icons.camera_alt, color: SdColors.info),
                 ),
                 title: const Text('التقاط صورة'),
                 subtitle: const Text('فتح الكاميرا'),
@@ -184,8 +185,8 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.photo_library, color: Colors.green),
+                  decoration: BoxDecoration(color: SdColors.successTint, borderRadius: BorderRadius.circular(8)),
+                  child: const Icon(Icons.photo_library, color: SdColors.success),
                 ),
                 title: const Text('اختيار من المعرض'),
                 subtitle: const Text('صورة من الجهاز'),
@@ -197,8 +198,8 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(Icons.attach_file, color: Colors.orange),
+                  decoration: BoxDecoration(color: SdColors.warningTint, borderRadius: BorderRadius.circular(8)),
+                  child: const Icon(Icons.attach_file, color: SdColors.warning),
                 ),
                 title: const Text('اختيار ملف'),
                 subtitle: const Text('PDF, Word, Excel, صور'),
@@ -219,9 +220,9 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.purple.withValues(alpha: 0.04),
+        color: SdColors.platformBase.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.purple.withValues(alpha: 0.12)),
+        border: Border.all(color: SdColors.platformBase.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,16 +233,16 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.purple.withValues(alpha: 0.1),
+                  color: SdColors.platformBase.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: const Icon(Icons.attach_file_rounded, size: 14, color: Colors.purple),
+                child: const Icon(Icons.attach_file_rounded, size: 14, color: SdColors.platformBase),
               ),
               const SizedBox(width: 6),
-              const Text('المرفقات', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.purple)),
+              const Text('المرفقات', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SdColors.platformBase)),
               const Spacer(),
               if (_attachments.isNotEmpty)
-                Text('${_attachments.length}', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                Text('${_attachments.length}', style: TextStyle(fontSize: 11, color: SdColors.faint)),
               if (!widget.readOnly) ...[
                 const SizedBox(width: 8),
                 GestureDetector(
@@ -249,7 +250,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.purple,
+                      color: SdColors.platformBase,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: _isUploading
@@ -275,7 +276,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
           else if (_attachments.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text('لا توجد مرفقات', style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+              child: Text('لا توجد مرفقات', style: TextStyle(fontSize: 12, color: SdColors.faint)),
             )
           else
             Wrap(
@@ -305,7 +306,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: SdColors.edge),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -340,7 +341,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
           children: [
             AppBar(
               title: Text(fileName, style: const TextStyle(fontSize: 14)),
-              backgroundColor: Colors.purple,
+              backgroundColor: SdColors.platformBase,
               foregroundColor: Colors.white,
               leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
               automaticallyImplyLeading: false,
@@ -359,7 +360,7 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                      Icon(Icons.broken_image, size: 48, color: SdColors.faint),
                       SizedBox(height: 8),
                       Text('فشل تحميل الصورة'),
                     ],
@@ -385,11 +386,11 @@ class _TaskAttachmentsWidgetState extends State<TaskAttachmentsWidget> {
 
   Color _getFileColor(String ext) {
     switch (ext) {
-      case 'pdf': return Colors.red;
-      case 'doc': case 'docx': return Colors.blue;
-      case 'xls': case 'xlsx': return Colors.green;
-      case 'jpg': case 'jpeg': case 'png': case 'gif': case 'webp': return Colors.purple;
-      default: return Colors.grey;
+      case 'pdf': return SdColors.danger;
+      case 'doc': case 'docx': return SdColors.info;
+      case 'xls': case 'xlsx': return SdColors.success;
+      case 'jpg': case 'jpeg': case 'png': case 'gif': case 'webp': return SdColors.platformBase;
+      default: return SdColors.faint;
     }
   }
 }

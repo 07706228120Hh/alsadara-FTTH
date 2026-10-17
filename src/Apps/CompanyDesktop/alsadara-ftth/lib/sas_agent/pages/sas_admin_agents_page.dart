@@ -237,7 +237,7 @@ Color _verdictColor(SasVerdict v) {
     case SasVerdict.agentSuspicious:
       return SdColors.danger;
     case SasVerdict.noReport:
-      return Colors.grey;
+      return SdColors.faint;
   }
 }
 
@@ -273,7 +273,7 @@ class _AgentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final diff = agent.totals.diff;
     final diffColor = diff == 0
-        ? Colors.grey.shade600
+        ? SdColors.muted
         : (diff > 0 ? SdColors.warning : SdColors.danger);
 
     return Container(
@@ -302,7 +302,7 @@ class _AgentCard extends StatelessWidget {
             style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF1A1A2E)),
+                color: SdColors.ink),
           ),
           subtitle: Padding(
             padding: EdgeInsets.only(top: 3.h),
@@ -312,7 +312,7 @@ class _AgentCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontFamily: 'Cairo', 
-                  fontSize: 11.5.sp, color: Colors.grey[600]),
+                  fontSize: 11.5.sp, color: SdColors.muted),
             ),
           ),
           trailing: Column(
@@ -324,7 +324,7 @@ class _AgentCard extends StatelessWidget {
                   style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 10.5.sp,
                       fontWeight: FontWeight.w700,
-                      color: Colors.grey[700])),
+                      color: SdColors.muted)),
               SizedBox(height: 2.h),
               Text(
                 diff == 0 ? 'فارق 0' : 'فارق ${diff > 0 ? '+' : ''}$diff',
@@ -341,7 +341,7 @@ class _AgentCard extends StatelessWidget {
                 padding: EdgeInsets.symmetric(vertical: 10.h),
                 child: Text('لا حسابات ساس لهذا الوكيل.',
                     style: TextStyle(fontFamily: 'Cairo', 
-                        fontSize: 12.sp, color: Colors.grey[600])),
+                        fontSize: 12.sp, color: SdColors.muted)),
               )
             else
               for (final acc in agent.accounts) _AccountRow(account: acc),
@@ -371,7 +371,7 @@ class _AccountRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: SasUi.pageBg,
         borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.14)),
+        border: Border.all(color: SdColors.faint.withValues(alpha: 0.14)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -388,7 +388,7 @@ class _AccountRow extends StatelessWidget {
                   style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 12.5.sp,
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF1A1A2E)),
+                      color: SdColors.ink),
                 ),
               ),
               SizedBox(width: 8.w),
@@ -401,7 +401,7 @@ class _AccountRow extends StatelessWidget {
               else
                 const SasStatusBadge(
                   label: 'تعذّر جلب المقاطعة',
-                  color: Colors.grey,
+                  color: SdColors.faint,
                   icon: Icons.cloud_off_rounded,
                 ),
             ],
@@ -412,7 +412,7 @@ class _AccountRow extends StatelessWidget {
                 style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 10.5.sp,
                     fontWeight: FontWeight.w700,
-                    color: Colors.grey[600])),
+                    color: SdColors.muted)),
           ],
           if (hasRecon) ...[
             SizedBox(height: 10.h),
@@ -425,7 +425,7 @@ class _AccountRow extends StatelessWidget {
                   recon.diff == 0
                       ? '0'
                       : '${recon.diff > 0 ? '+' : ''}${recon.diff}',
-                  recon.diff == 0 ? Colors.grey.shade600 : color,
+                  recon.diff == 0 ? SdColors.muted : color,
                 ),
               ],
             ),
@@ -434,11 +434,11 @@ class _AccountRow extends StatelessWidget {
               Row(
                 children: [
                   Icon(Icons.schedule_rounded,
-                      size: 13.sp, color: Colors.grey[500]),
+                      size: 13.sp, color: SdColors.faint),
                   SizedBox(width: 4.w),
                   Text('آخر مزامنة: ${_fmtDate(recon.lastSync!)}',
                       style: TextStyle(fontFamily: 'Cairo', 
-                          fontSize: 10.5.sp, color: Colors.grey[600])),
+                          fontSize: 10.5.sp, color: SdColors.muted)),
                 ],
               ),
             ],
@@ -446,7 +446,7 @@ class _AccountRow extends StatelessWidget {
             SizedBox(height: 8.h),
             Text('خدمة الساس غير متاحة حالياً لهذا الحساب — أعد المحاولة لاحقاً.',
                 style: TextStyle(fontFamily: 'Cairo', 
-                    fontSize: 10.5.sp, color: Colors.grey[600], height: 1.4)),
+                    fontSize: 10.5.sp, color: SdColors.muted, height: 1.4)),
           ],
         ],
       ),
@@ -459,7 +459,7 @@ class _AccountRow extends StatelessWidget {
           children: [
             Text(label,
                 style: TextStyle(fontFamily: 'Cairo', 
-                    fontSize: 10.5.sp, color: Colors.grey[600])),
+                    fontSize: 10.5.sp, color: SdColors.muted)),
             SizedBox(height: 1.h),
             Text(value,
                 style: TextStyle(fontFamily: 'Cairo', 

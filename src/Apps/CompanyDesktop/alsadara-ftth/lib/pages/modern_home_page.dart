@@ -17,6 +17,7 @@ import 'accounting/accounting_dashboard_page.dart';
 import '../task/follow_up_page.dart';
 import '../task/audit_dashboard_page.dart';
 import 'my_dashboard_page.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class ModernHomePage extends StatefulWidget {
   final String username;
@@ -52,9 +53,9 @@ class _ModernHomePageState extends State<ModernHomePage>
 
   // الألوان الفخمة
   final Color _primaryColor = const Color(0xFF0F172A); // Slate 900
-  final Color _secondaryColor = const Color(0xFF1E293B); // Slate 800
+  final Color _secondaryColor = SdColors.ink; // Slate 800
   final Color _accentColor = const Color(0xFF38BDF8); // Cyan 400
-  final Color _goldColor = const Color(0xFFF59E0B); // Amber 500
+  final Color _goldColor = SdColors.warning; // Amber 500
   final Color _surfaceColor = const Color(0xFFF8FAFC); // Slate 50
 
   late Timer _timeTimer;
@@ -97,7 +98,7 @@ class _ModernHomePageState extends State<ModernHomePage>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.logout, color: Colors.red),
+            Icon(Icons.logout, color: SdColors.danger),
             SizedBox(width: 10),
             Text('تسجيل الخروج', style: TextStyle(fontFamily: 'Cairo')),
           ],
@@ -108,11 +109,11 @@ class _ModernHomePageState extends State<ModernHomePage>
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('إلغاء',
-                style: TextStyle(color: Colors.grey, fontFamily: 'Cairo')),
+                style: TextStyle(color: SdColors.faint, fontFamily: 'Cairo')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
@@ -407,7 +408,7 @@ class _ModernHomePageState extends State<ModernHomePage>
                   child: InkWell(
                     onTap: _logout,
                     borderRadius: BorderRadius.circular(12),
-                    hoverColor: Colors.red.withOpacity(0.1),
+                    hoverColor: SdColors.danger.withOpacity(0.1),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 16),
@@ -447,7 +448,7 @@ class _ModernHomePageState extends State<ModernHomePage>
                   end: Alignment.bottomRight,
                   colors: [
                     _surfaceColor,
-                    const Color(0xFFE2E8F0), // Slate 200
+                    SdColors.divider, // Slate 200
                   ],
                 ),
               ),
@@ -476,7 +477,7 @@ class _ModernHomePageState extends State<ModernHomePage>
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             fontFamily: 'Cairo',
-                            color: Color(0xFF1E293B),
+                            color: SdColors.ink,
                           ),
                         ),
                         const Spacer(),
@@ -498,7 +499,7 @@ class _ModernHomePageState extends State<ModernHomePage>
                               _currentDate,
                               style: const TextStyle(
                                 fontSize: 12,
-                                color: Color(0xFF64748B),
+                                color: SdColors.muted,
                                 fontFamily: 'Cairo',
                               ),
                             ),
@@ -513,7 +514,7 @@ class _ModernHomePageState extends State<ModernHomePage>
                           decoration: BoxDecoration(
                             color: _surfaceColor,
                             borderRadius: BorderRadius.circular(30),
-                            border: Border.all(color: Colors.grey.shade200),
+                            border: Border.all(color: SdColors.divider),
                           ),
                           child: Row(
                             children: [
@@ -546,7 +547,7 @@ class _ModernHomePageState extends State<ModernHomePage>
                                     widget.permissions,
                                     style: const TextStyle(
                                       fontSize: 11,
-                                      color: Colors.grey,
+                                      color: SdColors.faint,
                                       fontFamily: 'Cairo',
                                     ),
                                   ),
@@ -641,7 +642,7 @@ class _ModernHomePageState extends State<ModernHomePage>
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: const Icon(Icons.waving_hand_rounded,
-                              color: Colors.amber, size: 32),
+                              color: SdColors.warning, size: 32),
                         ),
                         const SizedBox(width: 16),
                         Column(
@@ -699,7 +700,7 @@ class _ModernHomePageState extends State<ModernHomePage>
               fontSize: 20,
               fontWeight: FontWeight.bold,
               fontFamily: 'Cairo',
-              color: Color(0xFF1E293B),
+              color: SdColors.ink,
             ),
           ),
           const SizedBox(height: 16),
@@ -708,19 +709,19 @@ class _ModernHomePageState extends State<ModernHomePage>
             children: [
               Expanded(
                   child: _buildStatCard('المهام المنجزة', '124',
-                      Icons.task_alt_rounded, Colors.green)),
+                      Icons.task_alt_rounded, SdColors.success)),
               const SizedBox(width: 24),
               Expanded(
                   child: _buildStatCard('التذاكر المفتوحة', '18',
-                      Icons.support_agent_rounded, Colors.orange)),
+                      Icons.support_agent_rounded, SdColors.warning)),
               const SizedBox(width: 24),
               Expanded(
                   child: _buildStatCard('الموظفين الحاضرين', '45',
-                      Icons.people_alt_rounded, Colors.blue)),
+                      Icons.people_alt_rounded, SdColors.info)),
               const SizedBox(width: 24),
               Expanded(
                   child: _buildStatCard('الإيرادات اليومية', 'IQD 2.5M',
-                      Icons.account_balance_wallet_rounded, Colors.purple)),
+                      Icons.account_balance_wallet_rounded, SdColors.platformBase)),
             ],
           ),
 
@@ -733,7 +734,7 @@ class _ModernHomePageState extends State<ModernHomePage>
               fontSize: 20,
               fontWeight: FontWeight.bold,
               fontFamily: 'Cairo',
-              color: Color(0xFF1E293B),
+              color: SdColors.ink,
             ),
           ),
           const SizedBox(height: 16),
@@ -797,7 +798,7 @@ class _ModernHomePageState extends State<ModernHomePage>
             offset: const Offset(0, 5),
           ),
         ],
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: SdColors.groundAlt),
       ),
       child: Row(
         children: [
@@ -817,7 +818,7 @@ class _ModernHomePageState extends State<ModernHomePage>
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Color(0xFF64748B),
+                    color: SdColors.muted,
                     fontSize: 14,
                     fontFamily: 'Cairo',
                   ),
@@ -826,7 +827,7 @@ class _ModernHomePageState extends State<ModernHomePage>
                 Text(
                   value,
                   style: const TextStyle(
-                    color: Color(0xFF1E293B),
+                    color: SdColors.ink,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -857,7 +858,7 @@ class _ModernHomePageState extends State<ModernHomePage>
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: SdColors.divider),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -875,7 +876,7 @@ class _ModernHomePageState extends State<ModernHomePage>
                 item.title,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: Color(0xFF1E293B),
+                  color: SdColors.ink,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Cairo',
                   fontSize: 14,

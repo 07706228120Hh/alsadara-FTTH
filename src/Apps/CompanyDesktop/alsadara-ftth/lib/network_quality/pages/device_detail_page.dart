@@ -278,7 +278,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     return SectionCard(
       title: 'يلزم اعتماد الدخول',
       icon: Icons.key_rounded,
-      accent: Colors.orange,
+      accent: SdColors.warning,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

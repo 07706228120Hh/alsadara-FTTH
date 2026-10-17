@@ -233,7 +233,7 @@ class _LiveMonitorPageState extends State<LiveMonitorPage> {
                         drawVerticalLine: false,
                         horizontalInterval: maxY / 4,
                         getDrawingHorizontalLine: (v) => FlLine(
-                            color: Colors.grey.withValues(alpha: 0.12),
+                            color: SdColors.faint.withValues(alpha: 0.12),
                             strokeWidth: 1),
                       ),
                       borderData: FlBorderData(show: false),
@@ -289,31 +289,31 @@ class _LiveMonitorPageState extends State<LiveMonitorPage> {
       (
         label: 'المتوسط',
         value: _fmt(_avg),
-        color: const Color(0xFF3949AB),
+        color: SdColors.primaryLight,
         icon: Icons.timeline_rounded
       ),
       (
         label: 'الأدنى',
         value: _fmt(_min),
-        color: const Color(0xFF2E7D32),
+        color: SdColors.success,
         icon: Icons.south_rounded
       ),
       (
         label: 'الأعلى',
         value: _fmt(_max),
-        color: const Color(0xFFEF6C00),
+        color: SdColors.warning,
         icon: Icons.north_rounded
       ),
       (
         label: 'التذبذب',
         value: _fmt(_jitter),
-        color: const Color(0xFF6A1B9A),
+        color: SdColors.platformBase,
         icon: Icons.ssid_chart_rounded
       ),
       (
         label: 'نسبة الفقد',
         value: '${_lossPercent.toStringAsFixed(0)} %',
-        color: const Color(0xFFC62828),
+        color: SdColors.danger,
         icon: Icons.scatter_plot_rounded
       ),
     ];

@@ -3,12 +3,12 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/energy_dashboard_theme.dart';
 import '../../services/api/api_client.dart';
 import 'widgets/super_admin_widgets.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 class ComprehensiveDashboardPage extends StatefulWidget {
   const ComprehensiveDashboardPage({super.key});
 
@@ -73,17 +73,17 @@ class _ComprehensiveDashboardPageState
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Container(
-        color: EnergyDashboardTheme.bgPrimary,
+        color: SdColors.ground,
         child: const Center(
           child:
-              CircularProgressIndicator(color: EnergyDashboardTheme.neonGreen),
+              CircularProgressIndicator(color: SdColors.success),
         ),
       );
     }
 
     if (_error != null) {
       return Container(
-        color: EnergyDashboardTheme.bgPrimary,
+        color: SdColors.ground,
         child: EnergyDashboardTheme.errorWidget(
           message: _error!,
           onRetry: _loadData,
@@ -102,7 +102,7 @@ class _ComprehensiveDashboardPageState
         data['systemHealth'] as Map<String, dynamic>? ?? {};
 
     return Container(
-      color: EnergyDashboardTheme.bgPrimary,
+      color: SdColors.ground,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -111,12 +111,13 @@ class _ComprehensiveDashboardPageState
             title: 'لوحة التحكم الشاملة',
             subtitle: 'نظرة عامة على كل الشركات والنظام',
             icon: Icons.dashboard_customize_rounded,
-            color: EnergyDashboardTheme.neonGreen,
+            color: SdColors.success,
             onRefresh: _loadData,
             trailing: Text(
               DateFormat('HH:mm').format(DateTime.now()),
-              style: GoogleFonts.cairo(
-                color: EnergyDashboardTheme.textMuted,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.faint,
                 fontSize: 11,
               ),
             ),
@@ -147,7 +148,7 @@ class _ComprehensiveDashboardPageState
                   value: '${companySummary['total'] ?? 0}',
                   subtitle: '${companySummary['active'] ?? 0} نشطة',
                   icon: Icons.business_rounded,
-                  color: EnergyDashboardTheme.neonBlue,
+                  color: SdColors.info,
                 ),
               ),
               const SizedBox(width: 10),
@@ -157,7 +158,7 @@ class _ComprehensiveDashboardPageState
                   value: '${usersSummary['total'] ?? 0}',
                   subtitle: '${usersSummary['activeToday'] ?? 0} نشط اليوم',
                   icon: Icons.people_rounded,
-                  color: EnergyDashboardTheme.neonGreen,
+                  color: SdColors.success,
                 ),
               ),
               const SizedBox(width: 10),
@@ -168,7 +169,7 @@ class _ComprehensiveDashboardPageState
                   subtitle:
                       '${companySummary['expiringIn7Days'] ?? 0} خلال 7 أيام',
                   icon: Icons.timer_off_rounded,
-                  color: EnergyDashboardTheme.danger,
+                  color: SdColors.danger,
                   alert: (companySummary['expired'] ?? 0) > 0,
                 ),
               ),
@@ -179,7 +180,7 @@ class _ComprehensiveDashboardPageState
                   value: '${ordersSummary['today'] ?? 0}',
                   subtitle: '${ordersSummary['thisMonth'] ?? 0} هذا الشهر',
                   icon: Icons.shopping_cart_rounded,
-                  color: EnergyDashboardTheme.neonOrange,
+                  color: SdColors.warning,
                 ),
               ),
             ],
@@ -194,27 +195,27 @@ class _ComprehensiveDashboardPageState
                 child: SASection(
                   title: 'توزيع حالة الشركات',
                   icon: Icons.pie_chart_rounded,
-                  iconColor: EnergyDashboardTheme.neonGreen,
+                  iconColor: SdColors.success,
                   child: _buildBreakdownItems(
                     items: [
                       _BreakdownItem('نشطة', companySummary['active'] ?? 0,
-                          EnergyDashboardTheme.success),
+                          SdColors.success),
                       _BreakdownItem(
                           'تنتهي خلال 7 أيام',
                           companySummary['expiringIn7Days'] ?? 0,
-                          EnergyDashboardTheme.danger),
+                          SdColors.danger),
                       _BreakdownItem(
                           'تنتهي خلال 30 يوم',
                           companySummary['expiringIn30Days'] ?? 0,
-                          EnergyDashboardTheme.warning),
+                          SdColors.warning),
                       _BreakdownItem('منتهية', companySummary['expired'] ?? 0,
-                          EnergyDashboardTheme.danger),
+                          SdColors.danger),
                       _BreakdownItem('معلقة', companySummary['suspended'] ?? 0,
-                          EnergyDashboardTheme.textMuted),
+                          SdColors.faint),
                       _BreakdownItem(
                           'جديدة هذا الشهر',
                           companySummary['newThisMonth'] ?? 0,
-                          EnergyDashboardTheme.neonPurple),
+                          SdColors.platformBase),
                     ],
                     total: companySummary['active'] ?? 1,
                   ),
@@ -225,23 +226,23 @@ class _ComprehensiveDashboardPageState
                 child: SASection(
                   title: 'نشاط المستخدمين',
                   icon: Icons.group_rounded,
-                  iconColor: EnergyDashboardTheme.neonGreen,
+                  iconColor: SdColors.success,
                   child: _buildBreakdownItems(
                     items: [
                       _BreakdownItem('إجمالي المستخدمين',
-                          usersSummary['total'] ?? 0, EnergyDashboardTheme.neonBlue),
+                          usersSummary['total'] ?? 0, SdColors.info),
                       _BreakdownItem(
                           'نشط اليوم',
                           usersSummary['activeToday'] ?? 0,
-                          EnergyDashboardTheme.neonGreen),
+                          SdColors.success),
                       _BreakdownItem(
                           'نشط هذا الأسبوع',
                           usersSummary['activeThisWeek'] ?? 0,
-                          EnergyDashboardTheme.neonOrange),
+                          SdColors.warning),
                       _BreakdownItem(
                           'جدد هذا الشهر',
                           usersSummary['newThisMonth'] ?? 0,
-                          EnergyDashboardTheme.neonPurple),
+                          SdColors.platformBase),
                     ],
                     total: usersSummary['total'] ?? 1,
                   ),
@@ -255,10 +256,10 @@ class _ComprehensiveDashboardPageState
           SASection(
             title: 'حالة الشركات التفصيلية',
             icon: Icons.table_chart_rounded,
-            iconColor: EnergyDashboardTheme.neonBlue,
+            iconColor: SdColors.info,
             trailing: SACountBadge(
               count: companies.length,
-              color: EnergyDashboardTheme.neonBlue,
+              color: SdColors.info,
             ),
             padding: EdgeInsets.zero,
             child: Column(
@@ -278,8 +279,9 @@ class _ComprehensiveDashboardPageState
                     child: Center(
                       child: Text(
                         'لا توجد شركات',
-                        style: GoogleFonts.cairo(
-                            color: EnergyDashboardTheme.textMuted),
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
+                            color: SdColors.faint),
                       ),
                     ),
                   )
@@ -297,14 +299,14 @@ class _ComprehensiveDashboardPageState
           SASection(
             title: 'حالة النظام',
             icon: Icons.monitor_heart_rounded,
-            iconColor: EnergyDashboardTheme.neonGreen,
+            iconColor: SdColors.success,
             trailing: SAStatusBadge(
               text: systemHealth['status'] == 'operational'
                   ? 'يعمل بشكل طبيعي'
                   : 'يوجد مشاكل',
               color: systemHealth['status'] == 'operational'
-                  ? EnergyDashboardTheme.success
-                  : EnergyDashboardTheme.danger,
+                  ? SdColors.success
+                  : SdColors.danger,
               icon: systemHealth['status'] == 'operational'
                   ? Icons.check_circle_rounded
                   : Icons.error_rounded,
@@ -356,16 +358,18 @@ class _ComprehensiveDashboardPageState
                     Expanded(
                       child: Text(
                         item.label,
-                        style: GoogleFonts.cairo(
-                          color: EnergyDashboardTheme.textSecondary,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: SdColors.muted,
                           fontSize: 12,
                         ),
                       ),
                     ),
                     Text(
                       _numberFormat.format(item.value),
-                      style: GoogleFonts.cairo(
-                        color: EnergyDashboardTheme.textPrimary,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.ink,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -381,7 +385,8 @@ class _ComprehensiveDashboardPageState
                         ),
                         child: Text(
                           '${((item.value / total) * 100).toStringAsFixed(0)}%',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             color: item.color,
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
@@ -438,8 +443,9 @@ class _ComprehensiveDashboardPageState
                 children: [
                   Text(
                     company['name']?.toString() ?? '',
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textPrimary,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.ink,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -448,8 +454,9 @@ class _ComprehensiveDashboardPageState
                   ),
                   Text(
                     company['code']?.toString() ?? '',
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textMuted,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.faint,
                       fontSize: 10,
                     ),
                   ),
@@ -473,8 +480,9 @@ class _ComprehensiveDashboardPageState
           children: [
             Text(
               '$currentUsers / $maxUsers',
-              style: GoogleFonts.cairo(
-                color: EnergyDashboardTheme.textSecondary,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.muted,
                 fontSize: 12,
               ),
             ),
@@ -492,8 +500,9 @@ class _ComprehensiveDashboardPageState
         // End date
         Text(
           endDateStr,
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.textSecondary,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.muted,
             fontSize: 12,
           ),
         ),
@@ -511,19 +520,21 @@ class _ComprehensiveDashboardPageState
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: EnergyDashboardTheme.textMuted, size: 14),
+        Icon(icon, color: SdColors.faint, size: 14),
         const SizedBox(width: 4),
         Text(
           '$label: ',
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.textMuted,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.faint,
             fontSize: 11,
           ),
         ),
         Text(
           value,
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.neonGreen,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.success,
             fontSize: 11,
             fontWeight: FontWeight.w600,
           ),

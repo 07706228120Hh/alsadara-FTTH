@@ -1124,12 +1124,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1A237E).withValues(alpha: 0.1),
+                      color: SdColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: const Icon(
                       IconsaxPlusLinear.lock,
-                      color: Color(0xFF1A237E),
+                      color: SdColors.primary,
                       size: 24,
                     ),
                   ),
@@ -1139,7 +1139,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A237E),
+                      color: SdColors.primary,
                     ),
                   ),
                 ],
@@ -1167,7 +1167,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(
-                          color: Color(0xFF1A237E),
+                          color: SdColors.primary,
                           width: 2,
                         ),
                       ),
@@ -1219,7 +1219,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       ? null
                       : () => verifyPassword(passwordController.text),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A237E),
+                    backgroundColor: SdColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -1522,12 +1522,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A237E).withValues(alpha: 0.1),
+                  color: SdColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(50),
                 ),
                 child: Icon(
                   IconsaxPlusBold.user_square,
-                  color: Color(0xFF1A237E),
+                  color: SdColors.primary,
                   size: 24,
                 ),
               ),
@@ -1538,7 +1538,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   style: TextStyle(
                     fontSize: MediaQuery.of(context).size.width < 400 ? 15 : 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A237E),
+                    color: SdColors.primary,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1562,10 +1562,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.green[50]!, Colors.green[100]!],
+                          colors: [SdColors.successTint, SdColors.successTint],
                         ),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green[300]!),
+                        border: Border.all(color: SdColors.successTintEdge),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1574,7 +1574,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             children: [
                               Icon(
                                 IconsaxPlusBold.chart,
-                                color: Colors.green[700],
+                                color: SdColors.success,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -1582,7 +1582,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green[800],
+                                  color: SdColors.success,
                                 ),
                               ),
                             ],
@@ -1624,10 +1624,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Colors.blue[50]!, Colors.blue[100]!],
+                        colors: [SdColors.infoTint, SdColors.infoTint],
                       ),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue[300]!),
+                      border: Border.all(color: SdColors.infoTintEdge),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1636,7 +1636,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           children: [
                             Icon(
                               IconsaxPlusBold.global_search,
-                              color: Colors.blue[700],
+                              color: SdColors.info,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -1645,7 +1645,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.blue[800],
+                                  color: SdColors.info,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -1701,10 +1701,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.purple[50]!, Colors.purple[100]!],
+                          colors: [SdColors.platformTint, SdColors.platformTint],
                         ),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.purple[300]!),
+                        border: Border.all(color: SdColors.platformTintEdge),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1713,7 +1713,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             children: [
                               Icon(
                                 IconsaxPlusBold.verify,
-                                color: Colors.purple[700],
+                                color: SdColors.platformBase,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -1722,7 +1722,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.purple[800],
+                                    color: SdColors.platformBase,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1747,7 +1747,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                       perm,
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.purple[700],
+                                        color: SdColors.platformBase,
                                       ),
                                     ),
                                   ),
@@ -1764,7 +1764,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontStyle: FontStyle.italic,
-                                  color: Colors.purple[600],
+                                  color: SdColors.platformBase,
                                 ),
                               ),
                             ),
@@ -1780,10 +1780,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.orange[50]!, Colors.orange[100]!],
+                          colors: [SdColors.warningTint, SdColors.warningTint],
                         ),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange[300]!),
+                        border: Border.all(color: SdColors.warningTintEdge),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1792,7 +1792,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             children: [
                               Icon(
                                 IconsaxPlusLinear.briefcase,
-                                color: Colors.orange[700],
+                                color: SdColors.warning,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -1801,7 +1801,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.orange[800],
+                                    color: SdColors.warning,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1817,7 +1817,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                       Icon(
                                         IconsaxPlusBold.star_1,
                                         size: 16,
-                                        color: Colors.orange[600],
+                                        color: SdColors.warning,
                                       ),
                                       const SizedBox(width: 8),
                                       Expanded(
@@ -1827,7 +1827,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                           ),
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: Colors.orange[700],
+                                            color: SdColors.warning,
                                           ),
                                         ),
                                       ),
@@ -1847,10 +1847,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Colors.teal[50]!, Colors.teal[100]!],
+                          colors: [SdColors.accentTint, SdColors.accentTint],
                         ),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.teal[300]!),
+                        border: Border.all(color: SdColors.accentTintEdge),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1859,7 +1859,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             children: [
                               Icon(
                                 IconsaxPlusBold.map,
-                                color: Colors.teal[700],
+                                color: SdColors.accent,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -1867,7 +1867,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.teal[800],
+                                  color: SdColors.accent,
                                 ),
                               ),
                             ],
@@ -1886,7 +1886,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.teal[200],
+                                      color: SdColors.accentTintEdge,
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
@@ -1894,7 +1894,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.w600,
-                                        color: Colors.teal[800],
+                                        color: SdColors.accent,
                                       ),
                                     ),
                                   ),
@@ -1909,7 +1909,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontStyle: FontStyle.italic,
-                                  color: Colors.teal[600],
+                                  color: SdColors.accent,
                                 ),
                               ),
                             ),
@@ -1923,10 +1923,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Colors.indigo[50]!, Colors.indigo[100]!],
+                        colors: [SdColors.primaryTint, SdColors.primaryTint],
                       ),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.indigo[300]!),
+                      border: Border.all(color: SdColors.primaryTintEdge),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1935,7 +1935,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           children: [
                             Icon(
                               IconsaxPlusBold.setting_2,
-                              color: Colors.indigo[700],
+                              color: SdColors.primary,
                             ),
                             const SizedBox(width: 8),
                             Text(
@@ -1943,7 +1943,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.indigo[800],
+                                color: SdColors.primary,
                               ),
                             ),
                           ],
@@ -1969,7 +1969,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                     _getPermissionTitle(permission.key),
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.indigo[700],
+                                      color: SdColors.primary,
                                     ),
                                   ),
                                 ),
@@ -2020,7 +2020,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.grey[600]),
+          Icon(icon, size: 16, color: SdColors.muted),
           const SizedBox(width: 8),
           Expanded(
             flex: 2,
@@ -2029,7 +2029,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
+                color: SdColors.muted,
               ),
             ),
           ),
@@ -2041,7 +2041,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF2C3E50),
+                color: SdColors.ink,
               ),
             ),
           ),
@@ -2062,7 +2062,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.grey[600]),
+          Icon(icon, size: 16, color: SdColors.muted),
           const SizedBox(width: 8),
           Expanded(
             flex: 2,
@@ -2071,7 +2071,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
+                color: SdColors.muted,
               ),
             ),
           ),
@@ -2086,7 +2086,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF2C3E50),
+                      color: SdColors.ink,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -2764,7 +2764,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildBottomNav() {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
-      backgroundColor: const Color(0xFF1A237E),
+      backgroundColor: SdColors.primary,
       selectedItemColor: Colors.white,
       unselectedItemColor: Colors.white54,
       currentIndex: 0,
@@ -3026,7 +3026,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ? 'انتهت الجلسة — يرجى إعادة تسجيل الدخول'
             : 'خطأ في البحث — تحقق من الاتصال';
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700, duration: const Duration(seconds: 3)),
+          SnackBar(content: Text(msg), backgroundColor: SdColors.danger, duration: const Duration(seconds: 3)),
         );
       }
     } finally {
@@ -3942,7 +3942,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             border: Border.all(color: const Color(0xFFD5D5D5), width: 2.0),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF3498DB).withValues(alpha: 0.06),
+                color: SdColors.info.withValues(alpha: 0.06),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -4014,7 +4014,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             style: TextStyle(
                               fontSize: pctFont,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF3498DB),
+                              color: SdColors.info,
                             ),
                           ),
                         ),
@@ -4031,7 +4031,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFF3498DB).withValues(alpha: 0.06),
+            color: SdColors.info.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: const Color(0xFFE8E8E8), width: 1),
           ),
@@ -4040,7 +4040,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF3498DB),
+              color: SdColors.info,
             ),
           ),
         ),
@@ -4676,10 +4676,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withValues(alpha: 0.12),
+              color: SdColors.success.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(6),
               border: Border.all(
-                color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                color: SdColors.success.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -5588,8 +5588,8 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
         height: 42,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          border: Border(top: BorderSide(color: Colors.grey.shade300)),
+          color: SdColors.groundAlt,
+          border: Border(top: BorderSide(color: SdColors.edge)),
         ),
         child: Row(
           children: [
@@ -5600,7 +5600,7 @@ class _WhatsAppWebLoginPageState extends State<WhatsAppWebLoginPage> {
                     : 'افتح واتساب بالهاتف > الأجهزة المرتبطة > اربط جهازًا لمسح QR',
                 style: TextStyle(
                   fontSize: 11.5,
-                  color: _loggedIn ? Colors.green.shade700 : null,
+                  color: _loggedIn ? SdColors.success : null,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),

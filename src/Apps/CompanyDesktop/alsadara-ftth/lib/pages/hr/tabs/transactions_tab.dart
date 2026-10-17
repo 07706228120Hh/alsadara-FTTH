@@ -2,8 +2,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../services/employee_profile_service.dart';
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class TransactionsTab extends StatefulWidget {
   final String employeeId;
@@ -29,11 +29,11 @@ class _TransactionsTabState extends State<TransactionsTab> {
   List<Map<String, dynamic>> _transactions = [];
   String _filter = 'all'; // all, charge, payment
 
-  static const _accent = Color(0xFF3498DB);
-  static const _green = Color(0xFF27AE60);
-  static const _red = Color(0xFFE74C3C);
-  static const _orange = Color(0xFFF39C12);
-  static const _gray = Color(0xFF95A5A6);
+  static const _accent = SdColors.info;
+  static const _green = SdColors.success;
+  static const _red = SdColors.danger;
+  static const _orange = SdColors.warning;
+  static const _gray = SdColors.faint;
 
   @override
   void initState() {
@@ -138,10 +138,11 @@ class _TransactionsTabState extends State<TransactionsTab> {
             const SizedBox(height: 4),
             Text(
               _formatCurrency(val),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 14, fontWeight: FontWeight.bold, color: color),
             ),
-            Text(label, style: GoogleFonts.cairo(fontSize: 10, color: _gray)),
+            Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: _gray)),
           ],
         ),
       ),
@@ -174,7 +175,8 @@ class _TransactionsTabState extends State<TransactionsTab> {
       label: Text(label),
       selected: selected,
       selectedColor: _accent,
-      labelStyle: GoogleFonts.cairo(
+      labelStyle: TextStyle(
+          fontFamily: 'Cairo',
           color: selected ? Colors.white : Colors.black87, fontSize: 11),
       onSelected: (_) => setState(() => _filter = val),
     );
@@ -189,7 +191,7 @@ class _TransactionsTabState extends State<TransactionsTab> {
           children: [
             Icon(Icons.receipt_long, size: 48, color: _gray.withOpacity(0.5)),
             const SizedBox(height: 8),
-            Text('لا توجد معاملات', style: GoogleFonts.cairo(color: _gray)),
+            Text('لا توجد معاملات', style: TextStyle(fontFamily: 'Cairo', color: _gray)),
           ],
         ),
       );
@@ -244,15 +246,16 @@ class _TransactionsTabState extends State<TransactionsTab> {
               children: [
                 Text(
                   isCharge ? 'تحصيل' : 'دفعة',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.bold, fontSize: 13),
                 ),
                 if (customer.toString().isNotEmpty)
                   Text('العميل: $customer',
-                      style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: _gray)),
                 if (desc.toString().isNotEmpty)
                   Text(desc.toString(),
-                      style: GoogleFonts.cairo(fontSize: 11, color: _gray),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: _gray),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
               ],
@@ -264,11 +267,12 @@ class _TransactionsTabState extends State<TransactionsTab> {
             children: [
               Text(
                 '${isCharge ? '+' : '-'}${_formatCurrency(amount)}',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.bold, fontSize: 14, color: color),
               ),
               Text(_formatDate(date.toString()),
-                  style: GoogleFonts.cairo(fontSize: 10, color: _gray)),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: _gray)),
             ],
           ),
         ],

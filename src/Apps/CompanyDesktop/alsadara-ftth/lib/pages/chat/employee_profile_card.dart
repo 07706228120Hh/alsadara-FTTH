@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/chat_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// بطاقة ملف الموظف — تظهر عند الضغط على الصورة/الاسم في المحادثة
 class EmployeeProfileCard extends StatefulWidget {
@@ -204,7 +205,7 @@ class _EmployeeProfileCardState extends State<EmployeeProfileCard> {
                 width: 10,
                 height: 10,
                 decoration: BoxDecoration(
-                  color: isActive ? Colors.green : Colors.red,
+                  color: isActive ? SdColors.success : SdColors.danger,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -212,7 +213,7 @@ class _EmployeeProfileCardState extends State<EmployeeProfileCard> {
               Text(
                 isActive ? 'نشط' : 'غير نشط',
                 style: TextStyle(
-                  color: isActive ? Colors.green.shade700 : Colors.red.shade700,
+                  color: isActive ? SdColors.success : SdColors.danger,
                   fontSize: 13,
                 ),
               ),
@@ -340,7 +341,7 @@ class _InfoRow extends StatelessWidget {
             child: Text(label, style: const TextStyle(fontSize: 14)),
           ),
           if (onTap != null)
-            const Icon(Icons.copy, size: 16, color: Colors.grey),
+            const Icon(Icons.copy, size: 16, color: SdColors.faint),
         ],
       ),
     );

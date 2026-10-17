@@ -201,7 +201,7 @@ class _DnsBenchmarkPageState extends State<DnsBenchmarkPage> {
             height: 18,
             child: isFastest
                 ? const Icon(Icons.emoji_events_rounded,
-                    color: Color(0xFFF9A825), size: 18)
+                    color: SdColors.warning, size: 18)
                 : null,
           ),
           IsoSpeedColumn(
@@ -243,7 +243,7 @@ class _DnsBenchmarkPageState extends State<DnsBenchmarkPage> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
             color: isFastest
-                ? const Color(0xFFF9A825).withValues(alpha: 0.6)
+                ? SdColors.warning.withValues(alpha: 0.6)
                 : SdColors.divider,
             width: isFastest ? 1.4 : 1),
       ),
@@ -280,7 +280,7 @@ class _DnsBenchmarkPageState extends State<DnsBenchmarkPage> {
                     if (isFastest) ...[
                       const SizedBox(width: 6),
                       const Icon(Icons.emoji_events_rounded,
-                          color: Color(0xFFF9A825), size: 15),
+                          color: SdColors.warning, size: 15),
                     ],
                   ],
                 ),

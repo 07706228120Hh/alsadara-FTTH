@@ -7,6 +7,7 @@ import 'models/citizen_portal_models.dart';
 import 'services/citizen_portal_service.dart';
 import 'widgets/citizen_card.dart';
 import 'citizen_details_page.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class CitizensListPage extends StatefulWidget {
   const CitizensListPage({super.key});
@@ -120,7 +121,7 @@ class _CitizensListPageState extends State<CitizensListPage> {
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: citizen.isBanned ? Colors.green : Colors.red,
+                backgroundColor: citizen.isBanned ? SdColors.success : SdColors.danger,
               ),
               child: Text(citizen.isBanned ? 'إلغاء الحظر' : 'حظر'),
             ),
@@ -138,7 +139,7 @@ class _CitizensListPageState extends State<CitizensListPage> {
             SnackBar(
               content:
                   Text(citizen.isBanned ? 'تم إلغاء الحظر' : 'تم الحظر بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
         }
@@ -172,7 +173,7 @@ class _CitizensListPageState extends State<CitizensListPage> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade200,
+            color: SdColors.divider,
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -239,7 +240,7 @@ class _CitizensListPageState extends State<CitizensListPage> {
                   icon: const Icon(Icons.person_add),
                   label: const Text('إضافة مواطن'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
+                    backgroundColor: SdColors.accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   ),
@@ -275,7 +276,7 @@ class _CitizensListPageState extends State<CitizensListPage> {
                   icon: const Icon(Icons.person_add, size: 18),
                   label: const Text('إضافة'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
+                    backgroundColor: SdColors.accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
@@ -291,7 +292,7 @@ class _CitizensListPageState extends State<CitizensListPage> {
   Widget _buildContent() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.teal),
+        child: CircularProgressIndicator(color: SdColors.accent),
       );
     }
 
@@ -300,7 +301,7 @@ class _CitizensListPageState extends State<CitizensListPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+            Icon(Icons.error_outline, size: 48, color: SdColors.dangerTintEdge),
             const SizedBox(height: 16),
             Text(_error!),
             const SizedBox(height: 16),
@@ -319,16 +320,16 @@ class _CitizensListPageState extends State<CitizensListPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.people_outline, size: 64, color: Colors.grey.shade300),
+            Icon(Icons.people_outline, size: 64, color: SdColors.edge),
             const SizedBox(height: 16),
             const Text(
               'لا يوجد مواطنين',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+              style: TextStyle(fontSize: 18, color: SdColors.faint),
             ),
             const SizedBox(height: 8),
             const Text(
               'ابدأ بإضافة مواطن جديد',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: SdColors.faint),
             ),
           ],
         ),
@@ -338,7 +339,7 @@ class _CitizensListPageState extends State<CitizensListPage> {
     final isMobile = context.responsive.isMobile;
     return RefreshIndicator(
       onRefresh: _loadCitizens,
-      color: Colors.teal,
+      color: SdColors.accent,
       child: GridView.builder(
         controller: _scrollController,
         padding: EdgeInsets.all(isMobile ? 10 : 16),
@@ -354,7 +355,7 @@ class _CitizensListPageState extends State<CitizensListPage> {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(color: Colors.teal),
+                child: CircularProgressIndicator(color: SdColors.accent),
               ),
             );
           }

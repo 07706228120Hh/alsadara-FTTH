@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // الألوان الأساسية للنظام
-  static const primaryColor = Color(0xFF1A237E);
-  static const secondaryColor = Color(0xFF3949AB);
-  static const accentColor = Color(0xFF64B5F6);
+  // هوية «كحلي ملكي وذهبي» (17-10-2026) — مطابقة لرموز SdColors.
+  static const primaryColor = Color(0xFF132A5E);
+  static const secondaryColor = Color(0xFF1E3A8A);
+  static const accentColor = Color(0xFF0E7490);
 
   // ألوان إضافية
   static const successColor = Color(0xFF4CAF50);
@@ -26,13 +27,13 @@ class AppTheme {
       brightness: brightness,
     );
 
-    // الإطار الموحّد (كحلي رمادي ناعم 3D4466) للحقول والبطاقات والأزرار.
+    // الإطار الموحّد (رمادي مزرق فاتح) للحقول والبطاقات والأزرار.
     // في الوضع الداكن يُستخدم إطار فاتح حتى يبقى مرئياً.
     final outline = BorderSide(
       color: brightness == Brightness.light
-          ? const Color(0xFF3D4466)
-          : Colors.white54,
-      width: 1.2,
+          ? const Color(0xFFE3E8F1)
+          : Colors.white24,
+      width: 1.0,
     );
     final outlineFocus = outline.copyWith(color: colorScheme.primary, width: 2.0);
     RoundedRectangleBorder btnShape() => RoundedRectangleBorder(
@@ -43,6 +44,9 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+      scaffoldBackgroundColor: brightness == Brightness.light
+          ? const Color(0xFFF1F4F9)
+          : null,
       fontFamily: 'Cairo',
 
       // AppBar موحد
@@ -62,10 +66,12 @@ class AppTheme {
 
       // البطاقات
       cardTheme: CardThemeData(
-        elevation: 4,
-        shadowColor:
-            (brightness == Brightness.light ? Colors.grey : Colors.black)
-                .withValues(alpha: brightness == Brightness.light ? 0.2 : 0.3),
+        elevation: 6,
+        color: brightness == Brightness.light ? Colors.white : null,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: brightness == Brightness.light
+            ? const Color(0x330B1B3F)
+            : Colors.black.withValues(alpha: 0.3),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_radius16),
           side: outline,
@@ -137,15 +143,15 @@ class AppTheme {
             ? const Color(0xFFF7FAFC)
             : const Color(0xFF2A2A2A),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radius12),
+          borderRadius: BorderRadius.circular(_radius16),
           borderSide: outline,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radius12),
+          borderRadius: BorderRadius.circular(_radius16),
           borderSide: outline,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radius12),
+          borderRadius: BorderRadius.circular(_radius16),
           borderSide: outlineFocus,
         ),
         disabledBorder: OutlineInputBorder(
@@ -190,9 +196,9 @@ class AppTheme {
 
   // تدرجات لونية مخصصة
   static const List<Color> blueGradient = [
-    Color(0xFF283593),
-    Color(0xFF1976D2),
-    Color(0xFF64B5F6),
+    Color(0xFF0B1B3F),
+    Color(0xFF132A5E),
+    Color(0xFF1E3A8A),
   ];
 
   static const List<Color> greenGradient = [

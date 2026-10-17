@@ -5,10 +5,8 @@ library;
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../services/api/api_client.dart';
 import '../../permissions/permissions.dart';
-import '../../theme/energy_dashboard_theme.dart';
 import '../../frontend/frontend.dart';
 
 /// صفحة إدارة صلاحيات V2 للشركة أو الموظف
@@ -344,16 +342,16 @@ class _PermissionsManagementV2PageState
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: EnergyDashboardTheme.surfaceColor,
+            color: SdColors.surface,
             border: Border(
-                bottom: BorderSide(color: Colors.grey.shade200)),
+                bottom: BorderSide(color: SdColors.divider)),
           ),
           child: Row(
             children: [
               // تبويبات النظامين — SegmentedButton style
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: SdColors.groundAlt,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 padding: const EdgeInsets.all(3),
@@ -364,14 +362,14 @@ class _PermissionsManagementV2PageState
                       index: 0,
                       icon: Icons.home_work_rounded,
                       label: 'النظام الرئيسي',
-                      color: const Color(0xFF9C27B0),
+                      color: SdColors.platformBase,
                     ),
                     const SizedBox(width: 4),
                     _buildTabButton(
                       index: 1,
                       icon: Icons.wifi_rounded,
                       label: 'نظام FTTH',
-                      color: const Color(0xFF2196F3),
+                      color: SdColors.info,
                     ),
                   ],
                 ),
@@ -382,7 +380,7 @@ class _PermissionsManagementV2PageState
                 onPressed: () => _showBulkActionDialog(),
                 icon: const Icon(Icons.checklist_rounded, size: 20),
                 tooltip: 'إجراءات جماعية',
-                color: EnergyDashboardTheme.textMuted,
+                color: SdColors.faint,
               ),
               const SizedBox(width: 4),
               // زر الحفظ
@@ -396,9 +394,9 @@ class _PermissionsManagementV2PageState
                             strokeWidth: 2, color: Colors.white),
                       )
                     : const Icon(Icons.save_rounded, size: 16),
-                label: Text('حفظ', style: GoogleFonts.cairo(fontSize: 12)),
+                label: Text('حفظ', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4CAF50),
+                  backgroundColor: SdColors.success,
                   foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -530,15 +528,16 @@ class _PermissionsManagementV2PageState
             Icon(
               icon,
               size: 20,
-              color: isSelected ? Colors.white : Colors.grey.shade600,
+              color: isSelected ? Colors.white : SdColors.muted,
             ),
             const SizedBox(width: 8),
             Text(
               label,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? Colors.white : Colors.grey.shade600,
+                color: isSelected ? Colors.white : SdColors.muted,
               ),
             ),
           ],
@@ -554,11 +553,11 @@ class _PermissionsManagementV2PageState
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline_rounded,
-              size: 64, color: Colors.red.shade300),
+              size: 64, color: SdColors.dangerTintEdge),
           const SizedBox(height: 16),
           Text(
             _error ?? 'حدث خطأ',
-            style: TextStyle(color: Colors.red.shade700),
+            style: TextStyle(color: SdColors.danger),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -599,15 +598,15 @@ class _PermissionsManagementV2PageState
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF3E0),
+                color: SdColors.warningTint,
                 borderRadius: BorderRadius.circular(8),
                 border:
-                    Border.all(color: const Color(0xFFFF9800).withOpacity(0.3)),
+                    Border.all(color: SdColors.warning.withOpacity(0.3)),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.info_outline,
-                      color: Color(0xFFFF9800), size: 20),
+                      color: SdColors.warning, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -632,11 +631,11 @@ class _PermissionsManagementV2PageState
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.block,
-                            size: 48, color: Colors.grey.shade400),
+                            size: 48, color: SdColors.faint),
                         const SizedBox(height: 12),
                         Text(
                           'لا توجد ميزات مفعلة لهذه الشركة في هذا النظام',
-                          style: TextStyle(color: Colors.grey.shade600),
+                          style: TextStyle(color: SdColors.muted),
                         ),
                       ],
                     ),
@@ -679,11 +678,11 @@ class _PermissionsManagementV2PageState
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: allEnabled
-                                    ? const Color(0xFF4CAF50).withOpacity(0.5)
+                                    ? SdColors.success.withOpacity(0.5)
                                     : someEnabled
-                                        ? const Color(0xFFFF9800)
+                                        ? SdColors.warning
                                             .withOpacity(0.5)
-                                        : Colors.grey.shade200,
+                                        : SdColors.divider,
                               ),
                               boxShadow: [
                                 BoxShadow(
@@ -718,7 +717,7 @@ class _PermissionsManagementV2PageState
                                             ? Icons.expand_more_rounded
                                             : Icons.chevron_left_rounded,
                                         size: 20,
-                                        color: const Color(0xFF9C27B0),
+                                        color: SdColors.platformBase,
                                       )
                                     else
                                       const SizedBox(width: 20),
@@ -728,21 +727,21 @@ class _PermissionsManagementV2PageState
                                       padding: const EdgeInsets.all(5),
                                       decoration: BoxDecoration(
                                         color: allEnabled
-                                            ? const Color(0xFF4CAF50)
+                                            ? SdColors.success
                                                 .withOpacity(0.1)
                                             : someEnabled
-                                                ? const Color(0xFFFF9800)
+                                                ? SdColors.warning
                                                     .withOpacity(0.1)
-                                                : Colors.grey.shade100,
+                                                : SdColors.groundAlt,
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Icon(
                                         parent.icon,
                                         size: 18,
                                         color: allEnabled
-                                            ? const Color(0xFF4CAF50)
+                                            ? SdColors.success
                                             : someEnabled
-                                                ? const Color(0xFFFF9800)
+                                                ? SdColors.warning
                                                 : Colors.grey,
                                       ),
                                     ),
@@ -755,7 +754,8 @@ class _PermissionsManagementV2PageState
                                         children: [
                                           Text(
                                             parent.labelAr,
-                                            style: GoogleFonts.cairo(
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
                                               fontWeight: FontWeight.w600,
                                               fontSize: 12,
                                             ),
@@ -764,11 +764,12 @@ class _PermissionsManagementV2PageState
                                           if (hasChildren)
                                             Text(
                                               '$enabledChildren/${children.length} فرعي',
-                                              style: GoogleFonts.cairo(
+                                              style: TextStyle(
+                                                fontFamily: 'Cairo',
                                                 fontSize: 9,
                                                 color: enabledChildren > 0
-                                                    ? const Color(0xFF27AE60)
-                                                    : const Color(0xFF95A5A6),
+                                                    ? SdColors.success
+                                                    : SdColors.faint,
                                               ),
                                             ),
                                         ],
@@ -867,9 +868,9 @@ class _PermissionsManagementV2PageState
                                                   : Icons
                                                       .check_box_outline_blank_rounded,
                                           color: allEnabled
-                                              ? const Color(0xFF4CAF50)
+                                              ? SdColors.success
                                               : someEnabled
-                                                  ? const Color(0xFFFF9800)
+                                                  ? SdColors.warning
                                                   : Colors.grey,
                                           size: 18,
                                         ),
@@ -889,10 +890,10 @@ class _PermissionsManagementV2PageState
                               margin: const EdgeInsets.only(
                                   right: 24, bottom: 8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF8F9FA),
+                                color: SdColors.surfaceAlt,
                                 borderRadius: BorderRadius.circular(8),
                                 border:
-                                    Border.all(color: const Color(0xFFEEEEEE)),
+                                    Border.all(color: SdColors.divider),
                               ),
                               child: Column(
                                 children: children.map((child) {
@@ -913,7 +914,7 @@ class _PermissionsManagementV2PageState
                                     decoration: const BoxDecoration(
                                       border: Border(
                                           bottom: BorderSide(
-                                              color: Color(0xFFEEEEEE))),
+                                              color: SdColors.divider)),
                                     ),
                                     child: Row(
                                       children: [
@@ -924,14 +925,15 @@ class _PermissionsManagementV2PageState
                                             size: 16,
                                             color:
                                                 childPerms['view'] == true
-                                                    ? const Color(0xFF9C27B0)
-                                                    : Colors.grey.shade400),
+                                                    ? SdColors.platformBase
+                                                    : SdColors.faint),
                                         const SizedBox(width: 8),
                                         // اسم الصلاحية الفرعية
                                         Expanded(
                                           child: Text(
                                             child.labelAr,
-                                            style: GoogleFonts.cairo(
+                                            style: TextStyle(
+                                              fontFamily: 'Cairo',
                                               fontSize: 11,
                                               color:
                                                   childPerms['view'] == true
@@ -1023,9 +1025,9 @@ class _PermissionsManagementV2PageState
                                                       : Icons
                                                           .check_box_outline_blank_rounded,
                                               color: childAllEnabled
-                                                  ? const Color(0xFF4CAF50)
+                                                  ? SdColors.success
                                                   : childSomeEnabled
-                                                      ? const Color(0xFFFF9800)
+                                                      ? SdColors.warning
                                                       : Colors.grey,
                                               size: 16,
                                             ),
@@ -1055,9 +1057,9 @@ class _PermissionsManagementV2PageState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF9C27B0).withOpacity(0.1),
+        color: SdColors.platformBase.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF9C27B0).withOpacity(0.2)),
+        border: Border.all(color: SdColors.platformBase.withOpacity(0.2)),
       ),
       child: Row(
         children: [
@@ -1086,7 +1088,7 @@ class _PermissionsManagementV2PageState
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: Colors.grey.shade700,
+                color: SdColors.muted,
               ),
               textAlign: TextAlign.center,
             ),
@@ -1144,7 +1146,7 @@ class _PermissionsManagementV2PageState
       SnackBar(
         content: Text(
             'تم تطبيق قالب: ${PermissionRegistry.templateNames[templateName]}'),
-        backgroundColor: const Color(0xFF4CAF50),
+        backgroundColor: SdColors.success,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -1158,10 +1160,10 @@ class _PermissionsManagementV2PageState
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF39C12).withOpacity(0.08),
+        color: SdColors.warning.withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
         border:
-            Border.all(color: const Color(0xFFF39C12).withOpacity(0.3)),
+            Border.all(color: SdColors.warning.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1169,13 +1171,14 @@ class _PermissionsManagementV2PageState
           Row(
             children: [
               const Icon(Icons.flash_on_rounded,
-                  color: Color(0xFFF39C12), size: 18),
+                  color: SdColors.warning, size: 18),
               const SizedBox(width: 6),
               Text('قوالب جاهزة — تطبيق سريع',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
-                      color: const Color(0xFFF39C12))),
+                      color: SdColors.warning)),
             ],
           ),
           const SizedBox(height: 8),
@@ -1198,7 +1201,7 @@ class _PermissionsManagementV2PageState
                         size: 16,
                         color: selected
                             ? Colors.white
-                            : const Color(0xFF9C27B0),
+                            : SdColors.platformBase,
                       ),
                       if (isCustom)
                         Positioned(
@@ -1208,7 +1211,7 @@ class _PermissionsManagementV2PageState
                             width: 8,
                             height: 8,
                             decoration: const BoxDecoration(
-                              color: Color(0xFFF39C12),
+                              color: SdColors.warning,
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -1219,7 +1222,8 @@ class _PermissionsManagementV2PageState
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(e.value,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: 11,
                             color:
                                 selected ? Colors.white : Colors.black87,
@@ -1232,19 +1236,19 @@ class _PermissionsManagementV2PageState
                           size: 14,
                           color: selected
                               ? Colors.white70
-                              : Colors.grey.shade500,
+                              : SdColors.faint,
                         ),
                       ),
                     ],
                   ),
                   backgroundColor:
-                      selected ? const Color(0xFF9C27B0) : Colors.white,
+                      selected ? SdColors.platformBase : Colors.white,
                   side: BorderSide(
                       color: selected
-                          ? const Color(0xFF9C27B0)
+                          ? SdColors.platformBase
                           : isCustom
-                              ? const Color(0xFFF39C12)
-                              : Colors.grey.shade300),
+                              ? SdColors.warning
+                              : SdColors.edge),
                   onPressed: () => _applyTemplate(e.key),
                 ),
               );
@@ -1304,19 +1308,20 @@ class _PermissionsManagementV2PageState
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF9C27B0).withOpacity(0.08),
+                      color: SdColors.platformBase.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
                       children: [
                         const Icon(Icons.folder_rounded,
-                            size: 16, color: Color(0xFF9C27B0)),
+                            size: 16, color: SdColors.platformBase),
                         const SizedBox(width: 6),
                         Text(title,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
-                                color: const Color(0xFF9C27B0))),
+                                color: SdColors.platformBase)),
                       ],
                     ),
                   ),
@@ -1369,13 +1374,14 @@ class _PermissionsManagementV2PageState
                                 Icon(parent.icon,
                                     size: 16,
                                     color: enabledCount > 0
-                                        ? const Color(0xFF9C27B0)
+                                        ? SdColors.platformBase
                                         : Colors.grey),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
                                     parent.labelAr,
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
                                         fontSize: 11,
                                         fontWeight:
                                             FontWeight.w600),
@@ -1443,7 +1449,7 @@ class _PermissionsManagementV2PageState
                                                   editPerms[parent
                                                           .key]?[a] ==
                                                       true)
-                                          ? const Color(0xFF9C27B0)
+                                          ? SdColors.platformBase
                                           : Colors.grey,
                                     ),
                                   ),
@@ -1464,11 +1470,12 @@ class _PermissionsManagementV2PageState
                                   const SizedBox(width: 18),
                                   Icon(child.icon,
                                       size: 14,
-                                      color: Colors.grey.shade600),
+                                      color: SdColors.muted),
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(child.labelAr,
-                                        style: GoogleFonts.cairo(
+                                        style: TextStyle(
+                                            fontFamily: 'Cairo',
                                             fontSize: 10,
                                             color: Colors
                                                 .grey.shade700)),
@@ -1559,14 +1566,15 @@ class _PermissionsManagementV2PageState
                   Icon(
                     PermissionRegistry.templateIcons[templateKey] ??
                         Icons.edit_rounded,
-                    color: const Color(0xFF9C27B0),
+                    color: SdColors.platformBase,
                     size: 22,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'تعديل قالب: $templateName',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 14, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -1584,12 +1592,12 @@ class _PermissionsManagementV2PageState
                               content: Text(
                                   'تم إعادة "$templateName" للافتراضي'),
                               backgroundColor:
-                                  const Color(0xFF2196F3),
+                                  SdColors.info,
                             ),
                           );
                         },
                         child: const Icon(Icons.restore_rounded,
-                            size: 20, color: Color(0xFFF39C12)),
+                            size: 20, color: SdColors.warning),
                       ),
                     ),
                 ],
@@ -1605,7 +1613,8 @@ class _PermissionsManagementV2PageState
                         const SizedBox(width: 56),
                         Expanded(
                           child: Text('الميزة',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.grey)),
@@ -1615,7 +1624,8 @@ class _PermissionsManagementV2PageState
                               child: Text(
                                 _actionNames[a] ?? a,
                                 textAlign: TextAlign.center,
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: 8,
                                     fontWeight: FontWeight.bold,
                                     color: _getActionColor(a)),
@@ -1625,10 +1635,11 @@ class _PermissionsManagementV2PageState
                           width: 32,
                           child: Text('الكل',
                               textAlign: TextAlign.center,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 8,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.grey.shade600)),
+                                  color: SdColors.muted)),
                         ),
                       ],
                     ),
@@ -1653,7 +1664,7 @@ class _PermissionsManagementV2PageState
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child:
-                      Text('إلغاء', style: GoogleFonts.cairo()),
+                      Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
                 ),
                 if (isCustom)
                   TextButton(
@@ -1666,13 +1677,14 @@ class _PermissionsManagementV2PageState
                         SnackBar(
                           content: Text(
                               'تم إعادة "$templateName" للافتراضي'),
-                          backgroundColor: const Color(0xFF2196F3),
+                          backgroundColor: SdColors.info,
                         ),
                       );
                     },
                     child: Text('إعادة للافتراضي',
-                        style: GoogleFonts.cairo(
-                            color: const Color(0xFFF39C12))),
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
+                            color: SdColors.warning)),
                   ),
                 ElevatedButton.icon(
                   onPressed: () async {
@@ -1699,15 +1711,15 @@ class _PermissionsManagementV2PageState
                       SnackBar(
                         content: Text(
                             'تم حفظ التعديلات على "$templateName"'),
-                        backgroundColor: const Color(0xFF4CAF50),
+                        backgroundColor: SdColors.success,
                       ),
                     );
                   },
                   icon: const Icon(Icons.save_rounded, size: 16),
                   label: Text('حفظ',
-                      style: GoogleFonts.cairo(fontSize: 12)),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4CAF50),
+                    backgroundColor: SdColors.success,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -1723,19 +1735,19 @@ class _PermissionsManagementV2PageState
   Color _getActionColor(String action) {
     switch (action) {
       case 'view':
-        return const Color(0xFF2196F3);
+        return SdColors.info;
       case 'add':
-        return const Color(0xFF4CAF50);
+        return SdColors.success;
       case 'edit':
-        return const Color(0xFFFF9800);
+        return SdColors.warning;
       case 'delete':
-        return const Color(0xFFF44336);
+        return SdColors.danger;
       case 'export':
-        return const Color(0xFF9C27B0);
+        return SdColors.platformBase;
       case 'import':
-        return const Color(0xFF009688);
+        return SdColors.accent;
       case 'print':
-        return const Color(0xFF607D8B);
+        return SdColors.muted;
       case 'send':
         return const Color(0xFF00BCD4);
       default:
@@ -1750,7 +1762,7 @@ class _PermissionsManagementV2PageState
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.checklist_rounded, color: Color(0xFF9C27B0)),
+            Icon(Icons.checklist_rounded, color: SdColors.platformBase),
             SizedBox(width: 8),
             Text('إجراءات جماعية'),
           ],
@@ -1763,7 +1775,7 @@ class _PermissionsManagementV2PageState
             // تحديد الكل
             ListTile(
               leading:
-                  const Icon(Icons.check_box_rounded, color: Color(0xFF4CAF50)),
+                  const Icon(Icons.check_box_rounded, color: SdColors.success),
               title: const Text('تحديد جميع الصلاحيات'),
               subtitle: const Text('تفعيل جميع الإجراءات لجميع الصلاحيات'),
               onTap: () {
@@ -1787,7 +1799,7 @@ class _PermissionsManagementV2PageState
             // تفعيل العرض فقط
             ListTile(
               leading: const Icon(Icons.visibility_rounded,
-                  color: Color(0xFF2196F3)),
+                  color: SdColors.info),
               title: const Text('العرض فقط'),
               subtitle: const Text('تفعيل صلاحية العرض فقط لجميع الميزات'),
               onTap: () {

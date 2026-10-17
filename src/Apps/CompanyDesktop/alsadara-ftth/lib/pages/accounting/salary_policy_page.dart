@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../permissions/permissions.dart';
 
@@ -272,9 +271,9 @@ class _SalaryPolicyPageState extends State<SalaryPolicyPage> {
         builder: (ctx2, setDialogState) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            backgroundColor: AccountingTheme.bgCard,
+            backgroundColor: SdColors.surface,
             title: Text(isEdit ? 'تعديل السياسة' : 'إنشاء سياسة جديدة',
-                style: const TextStyle(color: AccountingTheme.textPrimary)),
+                style: const TextStyle(color: SdColors.ink)),
             content: SizedBox(
               width: context.accR.isMobile
                   ? MediaQuery.of(context).size.width * 0.9
@@ -287,19 +286,19 @@ class _SalaryPolicyPageState extends State<SalaryPolicyPage> {
                     const SizedBox(height: 12),
                     CheckboxListTile(
                       value: isDefault,
-                      activeColor: AccountingTheme.neonGreen,
+                      activeColor: SdColors.success,
                       onChanged: (v) =>
                           setDialogState(() => isDefault = v ?? false),
                       title: const Text('سياسة افتراضية',
                           style:
-                              TextStyle(color: AccountingTheme.textPrimary)),
+                              TextStyle(color: SdColors.ink)),
                       subtitle: const Text('تُطبق تلقائياً عند توليد الرواتب',
                           style: TextStyle(
-                              color: AccountingTheme.textMuted, fontSize: 12)),
+                              color: SdColors.faint, fontSize: 12)),
                       dense: true,
                       contentPadding: EdgeInsets.zero,
                     ),
-                    const Divider(color: AccountingTheme.borderColor),
+                    const Divider(color: SdColors.divider),
                     const SizedBox(height: 8),
                     _field('خصم لكل دقيقة تأخير', lateMinCtrl, isNum: true),
                     const SizedBox(height: 10),
@@ -325,11 +324,11 @@ class _SalaryPolicyPageState extends State<SalaryPolicyPage> {
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('إلغاء',
-                    style: TextStyle(color: AccountingTheme.textMuted)),
+                    style: TextStyle(color: SdColors.faint)),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AccountingTheme.neonGreen,
+                    backgroundColor: SdColors.success,
                     foregroundColor: Colors.white),
                 onPressed: () async {
                   Navigator.pop(ctx);
@@ -409,14 +408,14 @@ class _SalaryPolicyPageState extends State<SalaryPolicyPage> {
             workDaysPerMonth: workDaysPerMonth);
       }
       if (result['success'] == true) {
-        _snack(result['message'] ?? 'تم الحفظ', AccountingTheme.success);
+        _snack(result['message'] ?? 'تم الحفظ', SdColors.success);
         _loadData();
       } else {
-        _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+        _snack(result['message'] ?? 'خطأ', SdColors.danger);
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      _snack('خطأ', AccountingTheme.danger);
+      _snack('خطأ', SdColors.danger);
       setState(() => _isLoading = false);
     }
   }
@@ -427,20 +426,20 @@ class _SalaryPolicyPageState extends State<SalaryPolicyPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: const Text('تأكيد الحذف',
-              style: TextStyle(color: AccountingTheme.danger)),
+              style: TextStyle(color: SdColors.danger)),
           content: Text('هل تريد حذف سياسة "${policy['Name']}"؟',
-              style: const TextStyle(color: AccountingTheme.textPrimary)),
+              style: const TextStyle(color: SdColors.ink)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('إلغاء',
-                  style: TextStyle(color: AccountingTheme.textMuted)),
+                  style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.danger,
+                  backgroundColor: SdColors.danger,
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -448,10 +447,10 @@ class _SalaryPolicyPageState extends State<SalaryPolicyPage> {
                 final result = await AccountingService.instance
                     .deleteSalaryPolicy(policy['Id']);
                 if (result['success'] == true) {
-                  _snack('تم الحذف', AccountingTheme.success);
+                  _snack('تم الحذف', SdColors.success);
                   _loadData();
                 } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                  _snack(result['message'] ?? 'خطأ', SdColors.danger);
                   setState(() => _isLoading = false);
                 }
               },
@@ -467,13 +466,13 @@ class _SalaryPolicyPageState extends State<SalaryPolicyPage> {
       {bool isNum = false}) {
     return TextField(
       controller: ctrl,
-      style: const TextStyle(color: AccountingTheme.textPrimary),
+      style: const TextStyle(color: SdColors.ink),
       keyboardType: isNum ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+        labelStyle: const TextStyle(color: SdColors.faint),
         filled: true,
-        fillColor: AccountingTheme.bgCardHover,
+        fillColor: SdColors.surfaceAlt,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none),

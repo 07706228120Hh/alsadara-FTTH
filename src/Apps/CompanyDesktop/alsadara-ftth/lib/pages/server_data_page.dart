@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:path_provider/path_provider.dart';
 import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
@@ -304,12 +303,12 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       builder: (ctx) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.article, color: Colors.indigo),
+            const Icon(Icons.article, color: SdColors.primary),
             const SizedBox(width: 8),
             const Expanded(child: Text('سجل العمليات')),
             // زر مسح السجلات
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              icon: const Icon(Icons.delete_outline, color: SdColors.danger),
               tooltip: 'مسح السجلات',
               onPressed: () {
                 setState(() => _logs.clear());
@@ -321,7 +320,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             ),
             // زر نسخ السجلات
             IconButton(
-              icon: const Icon(Icons.copy, color: Colors.blue),
+              icon: const Icon(Icons.copy, color: SdColors.info),
               tooltip: 'نسخ السجلات',
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: _logs.join('\n')));
@@ -345,22 +344,22 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                     Color textColor = Colors.black87;
 
                     if (log.contains('✅') || log.contains('نجاح')) {
-                      bgColor = Colors.green[50]!;
-                      textColor = Colors.green[800]!;
+                      bgColor = SdColors.successTint;
+                      textColor = SdColors.success;
                     } else if (log.contains('❌') ||
                         log.contains('فشل') ||
                         log.contains('خطأ')) {
-                      bgColor = Colors.red[50]!;
-                      textColor = Colors.red[800]!;
+                      bgColor = SdColors.dangerTint;
+                      textColor = SdColors.danger;
                     } else if (log.contains('🔄') || log.contains('جاري')) {
-                      bgColor = Colors.blue[50]!;
-                      textColor = Colors.blue[800]!;
+                      bgColor = SdColors.infoTint;
+                      textColor = SdColors.info;
                     } else if (log.contains('⚠️') || log.contains('تحذير')) {
-                      bgColor = Colors.orange[50]!;
-                      textColor = Colors.orange[800]!;
+                      bgColor = SdColors.warningTint;
+                      textColor = SdColors.warning;
                     } else if (log.contains('📤') || log.contains('URL')) {
-                      bgColor = Colors.purple[50]!;
-                      textColor = Colors.purple[800]!;
+                      bgColor = SdColors.platformTint;
+                      textColor = SdColors.platformBase;
                     }
 
                     return Container(
@@ -665,7 +664,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       builder: (ctx) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.error, color: Colors.red),
+            Icon(Icons.error, color: SdColors.danger),
             SizedBox(width: 8),
             Text('خطأ'),
           ],
@@ -820,7 +819,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ خطأ'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -835,13 +834,13 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.folder_open, color: Colors.blue),
+            const Icon(Icons.folder_open, color: SdColors.info),
             const SizedBox(width: 8),
             const Text('📂 البيانات المحلية'),
             const Spacer(),
             Chip(
               label: Text('$chartCount charts'),
-              backgroundColor: Colors.blue[50],
+              backgroundColor: SdColors.infoTint,
             ),
           ],
         ),
@@ -855,18 +854,18 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
+                  color: SdColors.infoTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue[200]!),
+                  border: Border.all(color: SdColors.infoTintEdge),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue[700]),
+                    Icon(Icons.info_outline, color: SdColors.info),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'المصدر: $sourceFile\nتم تحميل البيانات من ملفات Python المحلية',
-                        style: TextStyle(color: Colors.blue[800]),
+                        style: TextStyle(color: SdColors.info),
                       ),
                     ),
                   ],
@@ -886,10 +885,10 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: ExpansionTile(
                         leading: CircleAvatar(
-                          backgroundColor: Colors.blue[100],
+                          backgroundColor: SdColors.infoTint,
                           child: Text('${index + 1}',
                               style: TextStyle(
-                                  fontSize: 12, color: Colors.blue[700])),
+                                  fontSize: 12, color: SdColors.info)),
                         ),
                         title: Text(entry.key,
                             style:
@@ -1007,7 +1006,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         builder: (context, setDialogState) => AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.login, color: Colors.indigo),
+              Icon(Icons.login, color: SdColors.primary),
               const SizedBox(width: 8),
               const Text('تسجيل الدخول للداشبورد'),
             ],
@@ -1057,7 +1056,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                           const SnackBar(
                             content:
                                 Text('يرجى إدخال اسم المستخدم وكلمة المرور'),
-                            backgroundColor: Colors.red,
+                            backgroundColor: SdColors.danger,
                           ),
                         );
                         return;
@@ -1085,7 +1084,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('✅ تم تسجيل الدخول بنجاح'),
-                                backgroundColor: Colors.green,
+                                backgroundColor: SdColors.success,
                               ),
                             );
                           } else {
@@ -1093,7 +1092,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                               const SnackBar(
                                 content: Text(
                                     'تم تسجيل الدخول لكن فشل جلب Guest Token'),
-                                backgroundColor: Colors.orange,
+                                backgroundColor: SdColors.warning,
                               ),
                             );
                           }
@@ -1102,7 +1101,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                             SnackBar(
                               content: Text(
                                   result.errorMessage ?? 'فشل تسجيل الدخول'),
-                              backgroundColor: Colors.red,
+                              backgroundColor: SdColors.danger,
                             ),
                           );
                         }
@@ -1110,7 +1109,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('خطأ'),
-                            backgroundColor: Colors.red,
+                            backgroundColor: SdColors.danger,
                           ),
                         );
                       } finally {
@@ -1118,7 +1117,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       }
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
+                backgroundColor: SdColors.primary,
                 foregroundColor: Colors.white,
               ),
               child: isLoggingIn
@@ -1154,7 +1153,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('فشل في المصادقة - يرجى تسجيل الدخول'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
             action: SnackBarAction(
               label: 'تسجيل الدخول',
               textColor: Colors.white,
@@ -1293,7 +1292,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في جلب البيانات'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -1309,7 +1308,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           children: [
             Icon(
               success > 0 ? Icons.check_circle : Icons.error,
-              color: success > 0 ? Colors.green : Colors.red,
+              color: success > 0 ? SdColors.success : SdColors.danger,
             ),
             const SizedBox(width: 8),
             const Text('نتائج جلب البيانات'),
@@ -1325,7 +1324,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
+                  color: SdColors.infoTint,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -1337,9 +1336,9 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                             style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.green)),
+                                color: SdColors.success)),
                         const Text('نجاح',
-                            style: TextStyle(color: Colors.green)),
+                            style: TextStyle(color: SdColors.success)),
                       ],
                     ),
                     Column(
@@ -1348,8 +1347,8 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                             style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.red)),
-                        const Text('فشل', style: TextStyle(color: Colors.red)),
+                                color: SdColors.danger)),
+                        const Text('فشل', style: TextStyle(color: SdColors.danger)),
                       ],
                     ),
                     Column(
@@ -1359,9 +1358,9 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                             style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue)),
+                                color: SdColors.info)),
                         const Text('إجمالي السجلات',
-                            style: TextStyle(color: Colors.blue)),
+                            style: TextStyle(color: SdColors.info)),
                       ],
                     ),
                   ],
@@ -1382,16 +1381,16 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: Colors.indigo[100],
+                          backgroundColor: SdColors.primaryTint,
                           child: Text('${chartInfo['slice_id']}',
                               style: TextStyle(
-                                  fontSize: 12, color: Colors.indigo[700])),
+                                  fontSize: 12, color: SdColors.primary)),
                         ),
                         title: Text(entry.key),
                         subtitle: Text(chartInfo['description'] ?? ''),
                         trailing: Chip(
                           label: Text('${chartInfo['rowcount']} سجل'),
-                          backgroundColor: Colors.green[50],
+                          backgroundColor: SdColors.successTint,
                         ),
                       ),
                     );
@@ -1490,7 +1489,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             'الرصيد',
             '${_numFmt.format(balance)} د.ع',
             Icons.account_balance_wallet,
-            const Color(0xFF1565C0),
+            SdColors.info,
           ),
         ),
         const SizedBox(width: 12),
@@ -1499,7 +1498,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             'العمولة',
             '${_numFmt.format(commission)} د.ع',
             Icons.monetization_on,
-            const Color(0xFF2E7D32),
+            SdColors.success,
           ),
         ),
       ],
@@ -1517,7 +1516,8 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('  العملاء',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: SdColors.muted)),
@@ -1530,15 +1530,15 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             const SizedBox(width: 8),
             Expanded(
                 child: _miniCard('نشط', active, Icons.check_circle,
-                    const Color(0xFF2E7D32))),
+                    SdColors.success)),
             const SizedBox(width: 8),
             Expanded(
                 child: _miniCard('منتهي', inactive, Icons.cancel,
-                    const Color(0xFFC62828))),
+                    SdColors.danger)),
             const SizedBox(width: 8),
             Expanded(
                 child: _miniCard('ينتهي قريباً', expiring,
-                    Icons.warning_amber, const Color(0xFFEF6C00))),
+                    Icons.warning_amber, SdColors.warning)),
           ],
         ),
       ],
@@ -1559,7 +1559,8 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('  الاشتراكات',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: SdColors.muted)),
@@ -1572,20 +1573,20 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             const SizedBox(width: 8),
             Expanded(
                 child: _miniCard('نشط', active, Icons.wifi,
-                    const Color(0xFF2E7D32))),
+                    SdColors.success)),
             const SizedBox(width: 8),
             Expanded(
                 child: _miniCard('ينتهي قريباً', expiring,
-                    Icons.access_time, const Color(0xFFEF6C00))),
+                    Icons.access_time, SdColors.warning)),
             const SizedBox(width: 8),
             Expanded(
                 child: _miniCard('منتهي', expired, Icons.wifi_off,
-                    const Color(0xFFC62828))),
+                    SdColors.danger)),
             if (trial > 0) ...[
               const SizedBox(width: 8),
               Expanded(
                   child: _miniCard('تجريبي', trial, Icons.science,
-                      const Color(0xFF6A1B9A))),
+                      SdColors.platformBase)),
             ],
           ],
         ),
@@ -1594,7 +1595,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           children: [
             Expanded(
                 child: _miniCard('متصل (Online)', online,
-                    Icons.signal_wifi_4_bar, const Color(0xFF00695C))),
+                    Icons.signal_wifi_4_bar, SdColors.accent)),
             const SizedBox(width: 8),
             Expanded(
                 child: _miniCard('غير متصل (Offline)', offline,
@@ -1619,25 +1620,25 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           if (c != null)
             Expanded(child: _buildPieChartCard('توزيع العملاء', [
               _PieItem('نشط', (c['totalActive'] ?? 0).toDouble(),
-                  const Color(0xFF4CAF50)),
+                  SdColors.success),
               _PieItem('منتهي', (c['totalInactive'] ?? 0).toDouble(),
-                  const Color(0xFFE53935)),
+                  SdColors.danger),
             ])),
           const SizedBox(width: 12),
           if (s != null)
             Expanded(child: _buildPieChartCard('حالة الاشتراكات', [
               _PieItem('نشط', (s['totalActive'] ?? 0).toDouble(),
-                  const Color(0xFF4CAF50)),
+                  SdColors.success),
               _PieItem('ينتهي قريباً', (s['totalExpiring'] ?? 0).toDouble(),
-                  const Color(0xFFFF9800)),
+                  SdColors.warning),
               _PieItem('منتهي', (s['totalExpired'] ?? 0).toDouble(),
-                  const Color(0xFFE53935)),
+                  SdColors.danger),
             ])),
           const SizedBox(width: 12),
           if (s != null)
             Expanded(child: _buildBarChartCard('حالة الاتصال', [
               _BarItem('متصل', (s['totalOnline'] ?? 0).toDouble(),
-                  const Color(0xFF00897B)),
+                  SdColors.accent),
               _BarItem('غير متصل', (s['totalOffline'] ?? 0).toDouble(),
                   const Color(0xFF78909C)),
             ])),
@@ -1657,7 +1658,8 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 14, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Expanded(
@@ -1704,10 +1706,12 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                                     const SizedBox(width: 6),
                                     Expanded(
                                         child: Text(e.label,
-                                            style: GoogleFonts.cairo(
+                                            style: TextStyle(
+                                                fontFamily: 'Cairo',
                                                 fontSize: 11))),
                                     Text(_numFmt.format(e.value.toInt()),
-                                        style: GoogleFonts.cairo(
+                                        style: TextStyle(
+                                            fontFamily: 'Cairo',
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold)),
                                   ],
@@ -1737,7 +1741,8 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 14, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Expanded(
@@ -1748,7 +1753,8 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipItem: (group, gI, rod, rI) => BarTooltipItem(
                       _numFmt.format(rod.toY.toInt()),
-                      GoogleFonts.cairo(
+                      TextStyle(
+                          fontFamily: 'Cairo',
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 12),
@@ -1766,7 +1772,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                           return const SizedBox.shrink();
                         }
                         return Text(items[i].label,
-                            style: GoogleFonts.cairo(fontSize: 11));
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 11));
                       },
                     ),
                   ),
@@ -1825,23 +1831,24 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                     Row(
                       children: [
                         const Icon(Icons.task_alt,
-                            color: Color(0xFF1565C0), size: 20),
+                            color: SdColors.info, size: 20),
                         const SizedBox(width: 8),
                         Text('المهام',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 15, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const SizedBox(height: 12),
                     _taskRow('مفتوحة', _tasksSummary!['totalOpen'],
-                        const Color(0xFFEF6C00)),
+                        SdColors.warning),
                     _taskRow('مكتملة', _tasksSummary!['totalCompleted'],
-                        const Color(0xFF2E7D32)),
+                        SdColors.success),
                     _taskRow('مستحقة اليوم', _tasksSummary!['totalDueToday'],
-                        const Color(0xFFC62828)),
+                        SdColors.danger),
                     _taskRow('مستحقة هذا الأسبوع',
                         _tasksSummary!['totalDueThisWeek'],
-                        const Color(0xFF6A1B9A)),
+                        SdColors.platformBase),
                     const Divider(),
                     _taskRow('الإجمالي', _tasksSummary!['totalCount'],
                         const Color(0xFF37474F),
@@ -1867,10 +1874,11 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                     Row(
                       children: [
                         const Icon(Icons.assignment,
-                            color: Color(0xFF00695C), size: 20),
+                            color: SdColors.accent, size: 20),
                         const SizedBox(width: 8),
                         Text('الطلبات',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 15, fontWeight: FontWeight.bold)),
                       ],
                     ),
@@ -1879,7 +1887,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       final name = _translateRequestType(
                           r['displayValue'] ?? r['type']?['displayValue'] ?? '');
                       final count = r['totalOpen'] ?? 0;
-                      return _taskRow(name, count, const Color(0xFF00695C));
+                      return _taskRow(name, count, SdColors.accent);
                     }),
                   ],
                 ),
@@ -1902,7 +1910,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
               const CircularProgressIndicator(),
               const SizedBox(height: 12),
               Text('جاري تحميل تحليلات Superset...',
-                  style: GoogleFonts.cairo(fontSize: 13, color: SdColors.faint)),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: SdColors.faint)),
             ],
           ),
         ),
@@ -1925,21 +1933,21 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text('لم يتم تحميل بيانات Superset',
-                        style: GoogleFonts.cairo(fontSize: 13, color: SdColors.faint)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: SdColors.faint)),
                   ),
                   TextButton.icon(
                     icon: const Icon(Icons.refresh, size: 18),
                     label: Text('إعادة المحاولة',
-                        style: GoogleFonts.cairo(fontSize: 12)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                     onPressed: _fetchSupersetCharts,
                   ),
                   const SizedBox(width: 4),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.language, size: 18),
                     label: Text('جلب من السيرفر',
-                        style: GoogleFonts.cairo(fontSize: 12)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: SdColors.info,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     ),
@@ -1991,10 +1999,11 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         // العنوان
         Row(
           children: [
-            const Icon(Icons.analytics, color: Color(0xFF6A1B9A), size: 22),
+            const Icon(Icons.analytics, color: SdColors.platformBase, size: 22),
             const SizedBox(width: 8),
             Text('تحليلات Superset',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 16, fontWeight: FontWeight.bold)),
             const Spacer(),
             IconButton(
@@ -2055,10 +2064,10 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       38: 'الجدد',
     };
     final colors = [
-      const Color(0xFF1565C0), // أزرق — إجمالي
-      const Color(0xFF2E7D32), // أخضر — نشط
-      const Color(0xFFE65100), // برتقالي — غير نشط
-      const Color(0xFFC62828), // أحمر — منتهي
+      SdColors.info, // أزرق — إجمالي
+      SdColors.success, // أخضر — نشط
+      SdColors.warningEdge, // برتقالي — غير نشط
+      SdColors.danger, // أحمر — منتهي
       const Color(0xFF00838F), // تيل — جديد
     ];
     final icons = [
@@ -2112,14 +2121,16 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                   const SizedBox(height: 4),
                   Text(
                     value != null ? _numFmt.format(value) : '—',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
                   Text(label,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 11, color: Colors.white70)),
                 ],
               ),
@@ -2140,7 +2151,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text('لا توجد بيانات إحصائيات المناطق',
-              style: GoogleFonts.cairo(fontSize: 13, color: SdColors.faint)),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: SdColors.faint)),
         ),
       );
     }
@@ -2159,14 +2170,16 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.bar_chart, color: Color(0xFF6A1B9A), size: 20),
+                const Icon(Icons.bar_chart, color: SdColors.platformBase, size: 20),
                 const SizedBox(width: 8),
                 Text('إحصائيات المناطق',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 14, fontWeight: FontWeight.bold)),
                 const Spacer(),
                 Text('${rows.length} منطقة',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 11, color: SdColors.faint)),
               ],
             ),
@@ -2175,11 +2188,11 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _legendDot(const Color(0xFF4CAF50), 'نشط'),
+                _legendDot(SdColors.success, 'نشط'),
                 const SizedBox(width: 16),
-                _legendDot(const Color(0xFFFF9800), 'غير نشط'),
+                _legendDot(SdColors.warning, 'غير نشط'),
                 const SizedBox(width: 16),
-                _legendDot(const Color(0xFFF44336), 'منتهي'),
+                _legendDot(SdColors.danger, 'منتهي'),
               ],
             ),
             const SizedBox(height: 12),
@@ -2198,7 +2211,8 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       final labels = ['نشط', 'غير نشط', 'منتهي'];
                       return BarTooltipItem(
                         '$zone\n${labels[rI]}: ${_numFmt.format(rod.toY.toInt())}',
-                        GoogleFonts.cairo(
+                        TextStyle(
+                            fontFamily: 'Cairo',
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 11),
@@ -2225,7 +2239,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                         return Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(short,
-                              style: GoogleFonts.cairo(fontSize: 9),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 9),
                               textAlign: TextAlign.center),
                         );
                       },
@@ -2237,7 +2251,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       reservedSize: 40,
                       getTitlesWidget: (val, _) => Text(
                           _numFmt.format(val.toInt()),
-                          style: GoogleFonts.cairo(fontSize: 9)),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 9)),
                     ),
                   ),
                   topTitles:
@@ -2267,11 +2281,11 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                         ),
                         rodStackItems: [
                           BarChartRodStackItem(
-                              0, active, const Color(0xFF4CAF50)),
+                              0, active, SdColors.success),
                           BarChartRodStackItem(
-                              active, active + inactive, const Color(0xFFFF9800)),
+                              active, active + inactive, SdColors.warning),
                           BarChartRodStackItem(active + inactive,
-                              active + inactive + expired, const Color(0xFFF44336)),
+                              active + inactive + expired, SdColors.danger),
                         ],
                         color: Colors.transparent,
                       ),
@@ -2307,7 +2321,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             height: 10,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(label, style: GoogleFonts.cairo(fontSize: 11)),
+        Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
       ],
     );
   }
@@ -2322,7 +2336,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Text('لا توجد بيانات تفاصيل المناطق',
-              style: GoogleFonts.cairo(fontSize: 13, color: SdColors.faint)),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: SdColors.faint)),
         ),
       );
     }
@@ -2351,7 +2365,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF00695C),
+              color: SdColors.accent,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
@@ -2362,7 +2376,8 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                 const Icon(Icons.location_on, color: Colors.white, size: 20),
                 const SizedBox(width: 8),
                 Text('جدول المناطق: ${rows.length} منطقة',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         color: Colors.white)),
@@ -2375,21 +2390,23 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             color: SdColors.surfaceAlt,
             child: Row(
               children: [
-                const Icon(Icons.home, color: Color(0xFF00695C), size: 16),
+                const Icon(Icons.home, color: SdColors.accent, size: 16),
                 const SizedBox(width: 4),
                 Text('رئيسية: $mainCount',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF00695C))),
+                        color: SdColors.accent)),
                 const SizedBox(width: 20),
-                const Icon(Icons.apartment, color: Color(0xFFE65100), size: 16),
+                const Icon(Icons.apartment, color: SdColors.warningEdge, size: 16),
                 const SizedBox(width: 4),
                 Text('فرعية: $subCount',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFFE65100))),
+                        color: SdColors.warningEdge)),
               ],
             ),
           ),
@@ -2404,12 +2421,13 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                   dataRowMinHeight: 44,
                   dataRowMaxHeight: 52,
                   headingRowHeight: 40,
-                  headingTextStyle: GoogleFonts.cairo(
+                  headingTextStyle: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF00695C)),
+                      color: SdColors.accent),
                   headingRowColor:
-                      WidgetStatePropertyAll(Colors.teal[50]),
+                      WidgetStatePropertyAll(SdColors.accentTint),
                   columns: const [
                     DataColumn(label: Text('المنطقة')),
                     DataColumn(label: Text('النوع')),
@@ -2427,18 +2445,19 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       cells: [
                         DataCell(Text(
                           row['Zone']?.toString() ?? '',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: const Color(0xFF00695C)),
+                              color: SdColors.accent),
                         )),
                         DataCell(Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: isMain
-                                ? const Color(0xFFE8F5E9)
-                                : const Color(0xFFFFF3E0),
+                                ? SdColors.successTint
+                                : SdColors.warningTint,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
@@ -2448,18 +2467,19 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                                 isMain ? Icons.home : Icons.apartment,
                                 size: 14,
                                 color: isMain
-                                    ? const Color(0xFF2E7D32)
-                                    : const Color(0xFFE65100),
+                                    ? SdColors.success
+                                    : SdColors.warningEdge,
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 isMain ? 'رئيسية' : 'فرعية',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: isMain
-                                      ? const Color(0xFF2E7D32)
-                                      : const Color(0xFFE65100),
+                                      ? SdColors.success
+                                      : SdColors.warningEdge,
                                 ),
                               ),
                             ],
@@ -2467,11 +2487,11 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                         )),
                         DataCell(Text(
                           row['ZoneContractor']?.toString() ?? '',
-                          style: GoogleFonts.cairo(fontSize: 12),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                         )),
                         DataCell(Text(
                           row['MainZoneContractor']?.toString() ?? '',
-                          style: GoogleFonts.cairo(fontSize: 12),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                         )),
                       ],
                     );
@@ -2510,11 +2530,11 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
     final top5 = sortedZones.take(5).map((e) => e.key).toList();
 
     final chartColors = [
-      const Color(0xFF2196F3), // أزرق
-      const Color(0xFF4CAF50), // أخضر
-      const Color(0xFFFF9800), // برتقالي
-      const Color(0xFF9C27B0), // بنفسجي
-      const Color(0xFFF44336), // أحمر
+      SdColors.info, // أزرق
+      SdColors.success, // أخضر
+      SdColors.warning, // برتقالي
+      SdColors.platformBase, // بنفسجي
+      SdColors.danger, // أحمر
     ];
 
     // بناء خطوط المخطط
@@ -2558,11 +2578,13 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('اتجاه المستخدمين اليومي (آخر شهر)',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 14, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             Text('أكبر ${top5.length} مناطق',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 11, color: SdColors.muted)),
             const SizedBox(height: 12),
             SizedBox(
@@ -2704,11 +2726,13 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('اتجاه المستخدمين (طويل المدى)',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 14, fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             Text('مجموع كل المناطق — Active vs Inactive',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 11, color: SdColors.muted)),
             const SizedBox(height: 12),
             SizedBox(
@@ -2719,24 +2743,24 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                     spots: activeSpots,
                     isCurved: true,
                     curveSmoothness: 0.2,
-                    color: const Color(0xFF4CAF50),
+                    color: SdColors.success,
                     barWidth: 2.5,
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(0xFF4CAF50).withOpacity(0.12),
+                      color: SdColors.success.withOpacity(0.12),
                     ),
                   ),
                   LineChartBarData(
                     spots: inactiveSpots,
                     isCurved: true,
                     curveSmoothness: 0.2,
-                    color: const Color(0xFFF44336),
+                    color: SdColors.danger,
                     barWidth: 2.5,
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(0xFFF44336).withOpacity(0.08),
+                      color: SdColors.danger.withOpacity(0.08),
                     ),
                   ),
                 ],
@@ -2797,8 +2821,8 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                     getTooltipItems: (spots) => spots.map((spot) {
                       final labels = ['نشط', 'غير نشط'];
                       final colors = [
-                        const Color(0xFF4CAF50),
-                        const Color(0xFFF44336),
+                        SdColors.success,
+                        SdColors.danger,
                       ];
                       return LineTooltipItem(
                         '${labels[spot.barIndex]}: ${_numFmt.format(spot.y.toInt())}',
@@ -2817,9 +2841,9 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _legendDot(const Color(0xFF4CAF50), 'نشط'),
+                _legendDot(SdColors.success, 'نشط'),
                 const SizedBox(width: 20),
-                _legendDot(const Color(0xFFF44336), 'غير نشط'),
+                _legendDot(SdColors.danger, 'غير نشط'),
               ],
             ),
           ],
@@ -2853,10 +2877,12 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: Colors.white70, fontSize: 12)),
                   Text(value,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.bold)),
@@ -2891,12 +2917,14 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 10, color: SdColors.muted),
                       overflow: TextOverflow.ellipsis),
                   Text(
                     _numFmt.format(value is num ? value : 0),
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: color),
@@ -2923,12 +2951,14 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           const SizedBox(width: 8),
           Expanded(
               child: Text(label,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 13,
                       fontWeight: bold ? FontWeight.bold : FontWeight.normal))),
           Text(
             _numFmt.format(value is num ? value : 0),
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
                 color: color),
@@ -3038,18 +3068,18 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             return ListTile(
               dense: true,
               selected: isSelected,
-              selectedTileColor: Colors.indigo[100],
+              selectedTileColor: SdColors.primaryTint,
               leading: Icon(
                 Icons.description,
                 size: 18,
-                color: isSelected ? Colors.indigo[700] : SdColors.faint,
+                color: isSelected ? SdColors.primary : SdColors.faint,
               ),
               title: Text(
                 fileName,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? Colors.indigo[700] : Colors.black87,
+                  color: isSelected ? SdColors.primary : Colors.black87,
                 ),
               ),
               onTap: () => _loadFile(file.path, fileName),
@@ -3089,9 +3119,9 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
   }
 
   Color _getCategoryColor(String category) {
-    if (category.contains('رسوم')) return Colors.blue;
-    if (category.contains('مناطق')) return Colors.green;
-    if (category.contains('مستخدمين')) return Colors.orange;
+    if (category.contains('رسوم')) return SdColors.info;
+    if (category.contains('مناطق')) return SdColors.success;
+    if (category.contains('مستخدمين')) return SdColors.warning;
     return SdColors.faint;
   }
 
@@ -3114,11 +3144,11 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+            Icon(Icons.error_outline, size: 64, color: SdColors.dangerTintEdge),
             const SizedBox(height: 16),
             Text(
               _errorMessage,
-              style: TextStyle(color: Colors.red[700]),
+              style: TextStyle(color: SdColors.danger),
             ),
           ],
         ),
@@ -3136,7 +3166,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.indigo[700],
+            color: SdColors.primary,
           ),
           child: Row(
             children: [
@@ -3178,7 +3208,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       IconButton(
                         icon: Icon(
                           Icons.table_chart,
-                          color: !_showRawData ? Colors.yellow : Colors.white70,
+                          color: !_showRawData ? SdColors.warning : Colors.white70,
                           size: 20,
                         ),
                         tooltip: 'عرض منظم',
@@ -3187,7 +3217,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       IconButton(
                         icon: Icon(
                           Icons.code,
-                          color: _showRawData ? Colors.yellow : Colors.white70,
+                          color: _showRawData ? SdColors.warning : Colors.white70,
                           size: 20,
                         ),
                         tooltip: 'بيانات خام',
@@ -3321,7 +3351,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.teal[700]!, Colors.teal[500]!],
+              colors: [SdColors.accent, SdColors.accent],
             ),
           ),
           child: Row(
@@ -3381,7 +3411,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             scrollDirection: Axis.horizontal,
             child: SingleChildScrollView(
               child: DataTable(
-                headingRowColor: WidgetStateProperty.all(Colors.teal[50]),
+                headingRowColor: WidgetStateProperty.all(SdColors.accentTint),
                 dataRowMinHeight: 40,
                 dataRowMaxHeight: 60,
                 columnSpacing: 24,
@@ -3394,7 +3424,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                         _getArabicColumnName(col),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.teal,
+                          color: SdColors.accent,
                         ),
                       ),
                     ),
@@ -3408,9 +3438,9 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                   return DataRow(
                     color: WidgetStateProperty.resolveWith((states) {
                       if (index % 2 == 0) {
-                        return isMain ? Colors.blue[50] : SdColors.groundAlt;
+                        return isMain ? SdColors.infoTint : SdColors.groundAlt;
                       }
-                      return isMain ? Colors.blue[100] : null;
+                      return isMain ? SdColors.infoTint : null;
                     }),
                     cells: columns.map((col) {
                       final value = item[col];
@@ -3456,7 +3486,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: isMain ? Colors.blue[100] : Colors.orange[100],
+          color: isMain ? SdColors.infoTint : SdColors.warningTint,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -3465,13 +3495,13 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             Icon(
               isMain ? Icons.home : Icons.account_tree,
               size: 14,
-              color: isMain ? Colors.blue[700] : Colors.orange[700],
+              color: isMain ? SdColors.info : SdColors.warning,
             ),
             const SizedBox(width: 4),
             Text(
               isMain ? 'رئيسية' : 'فرعية',
               style: TextStyle(
-                color: isMain ? Colors.blue[700] : Colors.orange[700],
+                color: isMain ? SdColors.info : SdColors.warning,
                 fontWeight: FontWeight.w500,
                 fontSize: 12,
               ),
@@ -3487,7 +3517,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         style: const TextStyle(
           fontFamily: 'monospace',
           fontWeight: FontWeight.bold,
-          color: Colors.teal,
+          color: SdColors.accent,
         ),
       );
     }
@@ -3521,7 +3551,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('تم نسخ ${data.length} صف'),
-        backgroundColor: Colors.teal,
+        backgroundColor: SdColors.accent,
       ),
     );
   }
@@ -3635,10 +3665,10 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         // ملخص
         Container(
           padding: const EdgeInsets.all(12),
-          color: Colors.purple[50],
+          color: SdColors.platformTint,
           child: Row(
             children: [
-              const Icon(Icons.bar_chart, color: Colors.purple),
+              const Icon(Icons.bar_chart, color: SdColors.platformBase),
               const SizedBox(width: 8),
               Text(
                 'قائمة رسوم بيانية: ${data.length} رسم',
@@ -3680,9 +3710,9 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ExpansionTile(
         leading: CircleAvatar(
-          backgroundColor: Colors.purple[100],
+          backgroundColor: SdColors.platformTint,
           child: Icon(_getChartIcon(chartType),
-              color: Colors.purple[700], size: 20),
+              color: SdColors.platformBase, size: 20),
         ),
         title:
             Text(chartId, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -3728,7 +3758,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
             // رأس الجدول
             Container(
               padding: const EdgeInsets.all(8),
-              color: Colors.indigo[50],
+              color: SdColors.primaryTint,
               child: Row(
                 children: cols
                     .map((c) => Expanded(
@@ -3765,10 +3795,10 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       color = SdColors.faint;
                     } else if (c.toString().contains('Active')) {
                       display = val.toString();
-                      color = Colors.green;
+                      color = SdColors.success;
                     } else if (c.toString().contains('Inactive')) {
                       display = val.toString();
-                      color = Colors.red;
+                      color = SdColors.danger;
                     } else {
                       display = val.toString();
                     }
@@ -3824,10 +3854,10 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
       children: [
         Container(
           padding: const EdgeInsets.all(12),
-          color: Colors.orange[50],
+          color: SdColors.warningTint,
           child: Row(
             children: [
-              const Icon(Icons.analytics, color: Colors.orange),
+              const Icon(Icons.analytics, color: SdColors.warning),
               const SizedBox(width: 8),
               Text(
                 'بيانات رسم بياني: ${data.keys.length} حقل',
@@ -3856,10 +3886,10 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         // ملخص البيانات
         Container(
           padding: const EdgeInsets.all(12),
-          color: Colors.green[50],
+          color: SdColors.successTint,
           child: Row(
             children: [
-              const Icon(Icons.show_chart, color: Colors.green),
+              const Icon(Icons.show_chart, color: SdColors.success),
               const SizedBox(width: 8),
               Text(
                 'بيانات رسم بياني: ${columns.length} أعمدة × ${data.length} صفوف',
@@ -3871,7 +3901,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         // عرض الأعمدة
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          color: Colors.indigo[100],
+          color: SdColors.primaryTint,
           child: Row(
             children: columns
                 .map((col) => Expanded(
@@ -3914,10 +3944,10 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                       textColor = SdColors.faint;
                     } else if (col.contains('Active')) {
                       displayValue = value.toString();
-                      textColor = Colors.green[700];
+                      textColor = SdColors.success;
                     } else if (col.contains('Inactive')) {
                       displayValue = value.toString();
-                      textColor = Colors.red[700];
+                      textColor = SdColors.danger;
                     } else {
                       displayValue = value.toString();
                     }
@@ -3958,12 +3988,12 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
         margin: const EdgeInsets.symmetric(vertical: 4),
         child: ExpansionTile(
           leading: CircleAvatar(
-            backgroundColor: Colors.indigo[100],
+            backgroundColor: SdColors.primaryTint,
             radius: 16,
             child: Text(
               '${index + 1}',
               style: TextStyle(
-                color: Colors.indigo[700],
+                color: SdColors.primary,
                 fontWeight: FontWeight.bold,
                 fontSize: 11,
               ),
@@ -4013,7 +4043,7 @@ class _DashboardProjectPageState extends State<DashboardProjectPage> {
                     entry.key,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.indigo[700],
+                      color: SdColors.primary,
                       fontSize: 14,
                     ),
                   ),

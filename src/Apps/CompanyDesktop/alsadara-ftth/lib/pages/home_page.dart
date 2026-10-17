@@ -5,6 +5,7 @@
 library;
 
 import 'dart:async'; // NEW
+import 'dart:convert'; // لفكّ حقل details في طلبات الوكلاء
 import 'package:flutter/material.dart';
 
 import 'package:alsadara/pages/track_users_map_page.dart';
@@ -48,6 +49,7 @@ import '../permissions/permissions.dart';
 import 'chat/chat_rooms_page.dart';
 import '../services/chat_service.dart';
 import '../services/task_api_service.dart';
+import '../services/sadara_api_service.dart'; // عدّ طلبات الوكلاء (منصة الصدارة)
 import '../services/attendance_api_service.dart';
 import '../widgets/update_dialog.dart'; // فحص التحديث التلقائي
 import '../services/message_log_service.dart'; // التقرير اليومي
@@ -363,11 +365,40 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           debugPrint('❌ خطأ في جلب السحب');
           return <String, dynamic>{};
         }),
+        // 4) ملخّص «اليوم» لعدد المهام المفتوحة اليوم فقط (buckets.open)
+        //    نطاق [بداية اليوم المحلي، بداية الغد المحلي) → UTC، بنفس سياق الدور
+        //    المستخدم في getStatistics أعلاه، ليطابق تماماً شاشة المهام (فلتر اليوم).
+        TaskApiService.instance.getSummary(
+          from: _startOfTodayLocal().toUtc(),
+          to: _startOfTomorrowLocal().toUtc(),
+          department:
+              (widget.permissions == 'ليدر') ? _resolvedDepartments : null,
+          assignee: (widget.permissions != 'مدير' &&
+                  widget.permissions != 'ليدر')
+              ? widget.username
+              : null,
+        ).catchError((e) {
+          debugPrint('❌ خطأ في جلب ملخّص اليوم');
+          return <String, dynamic>{};
+        }),
+        // 5) طلبات الوكلاء الحقيقية = طلبات الخدمة serviceId=11 ومصدرها
+        //    agent_portal — مطابقةً تماماً لعدّاد «الوكيل» في صفحة منصة الصدارة
+        //    (SadaraPortalPage). كان العمود يقرأ Pending من إحصائيات المهام
+        //    (طلبات خدمة معلّقة) فيظهر رقماً خاطئاً لا علاقة له بالوكلاء.
+        SadaraApiService.instance
+            .getServiceRequests(page: 1, pageSize: 200, serviceId: 11)
+            .catchError((e) {
+          debugPrint('❌ خطأ في جلب طلبات الوكلاء');
+          return <dynamic>[];
+        }),
       ]);
 
-      final statsRaw = results[0];
-      final leaveSummaryRaw = results[1];
-      final withdrawalsRaw = results[2];
+      final statsRaw = (results[0] as Map).cast<String, dynamic>();
+      final leaveSummaryRaw = (results[1] as Map).cast<String, dynamic>();
+      final withdrawalsRaw = (results[2] as Map).cast<String, dynamic>();
+      final todaySummaryRaw = (results[3] as Map).cast<String, dynamic>();
+      final agentRequestsRaw =
+          (results[4] is List) ? results[4] as List : const <dynamic>[];
 
       debugPrint('📊 RAW statsRaw=$statsRaw');
       debugPrint('📊 RAW leaveSummaryRaw=$leaveSummaryRaw');
@@ -390,18 +421,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ? withdrawalsRaw['data'] as Map<String, dynamic>
           : withdrawalsRaw;
 
-      // طلبات الوكلاء الجديدة = Pending
-      final pendingAgent = _safeInt(stats, 'Pending', 'pending');
+      // طلبات الوكلاء = عدد طلبات الخدمة (serviceId=11) التي مصدرها agent_portal،
+      // بنفس منطق صفحة منصة الصدارة (SadaraPortalPage._getAgentRequests): نفكّ
+      // حقل details JSON ونطابق source == 'agent_portal'. غير القابل للفكّ أو
+      // بلا مصدر = مواطن (لا يُحتسب هنا).
+      final pendingAgent = _countAgentPortalRequests(agentRequestsRaw);
 
-      // المهام المفتوحة = Total - Completed - Cancelled - Rejected
-      // (أفضل من جمع الحالات لأن بعض الحالات قد لا تكون في الاستجابة)
-      final total = _safeInt(stats, 'Total', 'total');
-      final completed = _safeInt(stats, 'Completed', 'completed');
-      final cancelled = _safeInt(stats, 'Cancelled', 'cancelled');
-      final rejected = _safeInt(stats, 'Rejected', 'rejected');
-      final openTasks = total - completed - cancelled - rejected;
+      // المهام المفتوحة = «المفتوحة اليوم فقط» (buckets.open لنطاق اليوم) —
+      // مطابقةً تماماً لبطاقة «مفتوحة» في شاشة المهام تحت فلتر «اليوم».
+      // المصدر: GET /servicerequests/summary?from&to (العنصر [3] من Future.wait).
+      final todaySummary = (todaySummaryRaw['data'] is Map)
+          ? todaySummaryRaw['data'] as Map
+          : todaySummaryRaw;
+      final todayBuckets = todaySummary['buckets'];
+      final openTasks = (todayBuckets is Map)
+          ? _asInt(todayBuckets['open'], 0)
+          : 0;
       debugPrint(
-          '📊 حساب المهام: total=$total - completed=$completed - cancelled=$cancelled - rejected=$rejected = open=$openTasks');
+          '📊 المهام المفتوحة اليوم (buckets.open) = $openTasks');
 
       // طلبات الموظفين = إجازات معلقة + سحب معلقة
       final pendingLeaves = _safeInt(leaveSummary, 'Pending', 'pending');
@@ -477,6 +514,47 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final v1 = _extractInt(map, key1);
     if (v1 > 0) return v1;
     return _extractInt(map, key2);
+  }
+
+  /// تحويل قيمة ديناميكية إلى int (int أو num أو نص رقمي)، وإلا [fallback].
+  /// يُستخدم لقراءة buckets ملخّص المهام القادمة من الخادم.
+  int _asInt(dynamic v, int fallback) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v) ?? fallback;
+    return fallback;
+  }
+
+  /// بداية اليوم بالوقت المحلي — لنطاق «اليوم» في ملخّص المهام المفتوحة.
+  DateTime _startOfTodayLocal() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
+
+  /// بداية الغد بالوقت المحلي — الحدّ الأعلى (غير شامل) لنطاق «اليوم».
+  DateTime _startOfTomorrowLocal() =>
+      _startOfTodayLocal().add(const Duration(days: 1));
+
+  /// عدّ طلبات الوكلاء ضمن قائمة طلبات الخدمة الخام (serviceId=11):
+  /// الطلب للوكيل إذا كان حقل details يحوي `source == 'agent_portal'`.
+  /// يطابق منطق [SadaraPortalPage] تماماً، فيتطابق العدّاد مع تبويب «الوكيل».
+  int _countAgentPortalRequests(List<dynamic> rows) {
+    var count = 0;
+    for (final row in rows) {
+      if (row is! Map) continue;
+      final details = row['details'] ?? row['Details'];
+      if (details is! String || details.isEmpty) continue;
+      try {
+        final decoded = json.decode(details);
+        if (decoded is Map &&
+            decoded['source']?.toString().toLowerCase() == 'agent_portal') {
+          count++;
+        }
+      } catch (_) {
+        // details غير قابل للفكّ ⇒ يُعامل كمواطن (لا يُحتسب).
+      }
+    }
+    return count;
   }
 
   Future<void> _ensurePermissionsLoaded() async {
@@ -818,11 +896,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 5, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.red,
+                            color: SdColors.danger,
                             borderRadius: BorderRadius.circular(10),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.red.withOpacity(0.4),
+                                color: SdColors.danger.withOpacity(0.4),
                                 blurRadius: 6,
                                 offset: const Offset(0, 2),
                               ),
@@ -856,7 +934,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         child: Text(
                           title,
                           style: TextStyle(
-                            color: const Color(0xFF1A1A2E),
+                            color: SdColors.ink,
                             fontSize: r.menuItemTitleSize,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.2,
@@ -1150,7 +1228,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (_isLoading) {
       return Scaffold(
         body: Container(
-          color: const Color(0xFFF5F6FA),
+          color: SdColors.surfaceAlt,
           child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1162,7 +1240,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF3498DB).withOpacity(0.2),
+                        color: SdColors.info.withOpacity(0.2),
                         blurRadius: 20,
                         spreadRadius: 3,
                       ),
@@ -1183,7 +1261,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: CircularProgressIndicator(
                     strokeWidth: 3,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      Color(0xFF3498DB),
+                      SdColors.info,
                     ),
                   ),
                 ),
@@ -1281,7 +1359,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     scaffoldMessenger.showSnackBar(
                       SnackBar(
                         content: Text('⚠️ $warning\nسيتم تسجيل أي موقع وهمي'),
-                        backgroundColor: Colors.orange.shade700,
+                        backgroundColor: SdColors.warning,
                         duration: const Duration(seconds: 4),
                       ),
                     );
@@ -1294,7 +1372,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     scaffoldMessenger.showSnackBar(
                       const SnackBar(
                         content: Text('✅ مشاركة الموقع تعمل في الخلفية'),
-                        backgroundColor: Colors.green,
+                        backgroundColor: SdColors.success,
                         duration: Duration(seconds: 2),
                       ),
                     );
@@ -1575,7 +1653,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       label: 'طلبات الوكلاء',
       max: maxVal,
       group: SdGroup.field,
-      onTap: () => _navigateToFtth(),
+      // يفتح منصة الوكلاء والمواطنين (منصة الصدارة) بدل لوحة FTTH
+      onTap: () => _navigateTo(const Scaffold(body: SadaraPortalPage())),
     );
     final tasks = SdStatPedestal(
       value: _openTasksCount,
@@ -2008,8 +2087,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: isUrgent
-                            ? [const Color(0xFFC62828), const Color(0xFFE53935)]
-                            : [const Color(0xFFE65100), const Color(0xFFFF6D00)],
+                            ? [SdColors.danger, SdColors.danger]
+                            : [SdColors.warningEdge, const Color(0xFFFF6D00)],
                       ),
                     ),
                     child: Row(
@@ -2065,12 +2144,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   // Footer
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 16, vertical: isMobile ? 8 : 10),
-                    decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey.shade200))),
+                    decoration: BoxDecoration(border: Border(top: BorderSide(color: SdColors.divider))),
                     child: Row(
                       children: [
-                        Icon(Icons.person_outline, size: 13, color: Colors.grey.shade500),
+                        Icon(Icons.person_outline, size: 13, color: SdColors.faint),
                         const SizedBox(width: 4),
-                        Flexible(child: Text(ann['createdBy']?.toString() ?? '', style: TextStyle(fontSize: isMobile ? 11 : 12, color: Colors.grey.shade600), overflow: TextOverflow.ellipsis)),
+                        Flexible(child: Text(ann['createdBy']?.toString() ?? '', style: TextStyle(fontSize: isMobile ? 11 : 12, color: SdColors.muted), overflow: TextOverflow.ellipsis)),
                         const Spacer(),
                         if (blockDismiss)
                           ElevatedButton.icon(
@@ -2084,13 +2163,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             },
                             icon: Icon(Icons.check_circle, size: isMobile ? 16 : 18),
                             label: Text('قرأت وفهمت', style: TextStyle(fontSize: isMobile ? 12 : 14)),
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC62828), foregroundColor: Colors.white),
+                            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger, foregroundColor: Colors.white),
                           )
                         else ...[
                           if (ann['createdAt'] != null) ...[
-                            Icon(Icons.access_time, size: 13, color: Colors.grey.shade500),
+                            Icon(Icons.access_time, size: 13, color: SdColors.faint),
                             const SizedBox(width: 3),
-                            Text(_formatAnnDate(ann['createdAt'].toString()), style: TextStyle(fontSize: isMobile ? 10 : 12, color: Colors.grey.shade600)),
+                            Text(_formatAnnDate(ann['createdAt'].toString()), style: TextStyle(fontSize: isMobile ? 10 : 12, color: SdColors.muted)),
                           ],
                         ],
                       ],
@@ -2144,7 +2223,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         icon: Icons.person_outline,
         group: SdGroup.field,
         permissionKey: 'agent',
-        badge: _pendingAgentRequests,
         onTap: () => _navigateToFtth(),
       ),
       _menuTile(
@@ -2452,7 +2530,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          Icon(icon, color: Colors.blue[600], size: r.iconSizeSmall),
+          Icon(icon, color: SdColors.info, size: r.iconSizeSmall),
           const SizedBox(width: 6),
           Text(
             '$label: ',
@@ -2466,7 +2544,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: Text(
               value,
               style: TextStyle(
-                color: Colors.grey[700],
+                color: SdColors.muted,
                 fontSize: r.captionSize,
               ),
             ),
@@ -2487,7 +2565,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
           title: Row(
             children: [
-              Icon(Icons.logout, color: Colors.red[600]),
+              Icon(Icons.logout, color: SdColors.danger),
               const SizedBox(width: 10),
               const Expanded(child: Text('تأكيد تسجيل الخروج')),
             ],
@@ -2501,7 +2579,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 'إلغاء',
-                style: TextStyle(color: Colors.grey[600]),
+                style: TextStyle(color: SdColors.muted),
               ),
             ),
             ElevatedButton(
@@ -2510,7 +2588,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 _logout();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[600],
+                backgroundColor: SdColors.danger,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -2533,7 +2611,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: const Text('صلاحية غير كافية',
-            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            style: TextStyle(color: SdColors.danger, fontWeight: FontWeight.bold)),
         content: const Text(
           'ليس لديك صلاحية الوصول إلى هذه الصفحة.\nيرجى الاتصال على 07727787789 المسؤول.',
           textAlign: TextAlign.center,
@@ -2562,7 +2640,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('تم تحديث رسائل الصيانة بنجاح'),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           duration: Duration(seconds: 3),
         ),
       );
@@ -2598,7 +2676,7 @@ class PermissionsManagementPanel extends StatelessWidget {
             style: TextStyle(
               fontSize: r.titleSize,
               fontWeight: FontWeight.bold,
-              color: Colors.blue,
+              color: SdColors.info,
             ),
           ),
           const Divider(thickness: 2),
@@ -2609,7 +2687,7 @@ class PermissionsManagementPanel extends StatelessWidget {
           ),
           Text(
             username,
-            style: const TextStyle(color: Colors.blue),
+            style: const TextStyle(color: SdColors.info),
           ),
           const SizedBox(height: 20),
           Expanded(
@@ -2622,7 +2700,7 @@ class PermissionsManagementPanel extends StatelessWidget {
                     '— النظام الأول —',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.amber,
+                      color: SdColors.warning,
                       fontSize: r.subtitleSize,
                     ),
                     textAlign: TextAlign.center,
@@ -2642,7 +2720,7 @@ class PermissionsManagementPanel extends StatelessWidget {
                     '— النظام الثاني (FTTH) —',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: Colors.cyan,
+                      color: SdColors.accent,
                       fontSize: r.subtitleSize,
                     ),
                     textAlign: TextAlign.center,
@@ -2678,7 +2756,7 @@ class PermissionsManagementPanel extends StatelessWidget {
       onChanged: isAdmin ? onChanged : null,
       secondary: Icon(
         value ? Icons.lock_open : Icons.lock_outline,
-        color: value ? Colors.green : Colors.red,
+        color: value ? SdColors.success : SdColors.danger,
       ),
     );
   }
@@ -2713,17 +2791,17 @@ class UserInfoDialog extends StatelessWidget {
       title: Container(
         padding: EdgeInsets.all(r.cardPadding),
         decoration: BoxDecoration(
-          color: Colors.blue[100],
+          color: SdColors.infoTint,
           borderRadius: BorderRadius.circular(15),
         ),
         child: Row(
           children: [
-            Icon(Icons.person_pin, color: Colors.blue, size: r.iconSizeLarge),
+            Icon(Icons.person_pin, color: SdColors.info, size: r.iconSizeLarge),
             const SizedBox(width: 10),
             Text(
               'معلومات المستخدم',
               style: TextStyle(
-                color: Colors.blue,
+                color: SdColors.info,
                 fontWeight: FontWeight.bold,
                 fontSize: r.titleSize,
               ),
@@ -2734,7 +2812,7 @@ class UserInfoDialog extends StatelessWidget {
       content: Container(
         padding: EdgeInsets.all(r.contentPaddingH),
         decoration: BoxDecoration(
-          color: Colors.grey[50],
+          color: SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(15),
         ),
         child: Column(
@@ -2762,7 +2840,7 @@ class UserInfoDialog extends StatelessWidget {
           icon: const Icon(Icons.close),
           label: const Text('إغلاق'),
           style: TextButton.styleFrom(
-            foregroundColor: Colors.red,
+            foregroundColor: SdColors.danger,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           ),
           onPressed: () => Navigator.pop(context),
@@ -2779,10 +2857,10 @@ class UserInfoDialog extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.blue[50],
+            color: SdColors.infoTint,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: Colors.blue[700], size: r.iconSizeMedium),
+          child: Icon(icon, color: SdColors.info, size: r.iconSizeMedium),
         ),
         const SizedBox(width: 15),
         Expanded(
@@ -2792,7 +2870,7 @@ class UserInfoDialog extends StatelessWidget {
               Text(
                 title,
                 style: TextStyle(
-                  color: Colors.grey[600],
+                  color: SdColors.muted,
                   fontSize: r.bodySize,
                 ),
               ),
@@ -3271,10 +3349,10 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
 
   Color _typeColor(String? type) {
     switch (type) {
-      case 'RequestStatusUpdate': return const Color(0xFF1565C0);
-      case 'RequestAssigned': return const Color(0xFF00897B);
-      case 'AgentRequest': return const Color(0xFFEF6C00);
-      case 'ChatMessage': return const Color(0xFF2E7D32);
+      case 'RequestStatusUpdate': return SdColors.info;
+      case 'RequestAssigned': return SdColors.accent;
+      case 'AgentRequest': return SdColors.warning;
+      case 'ChatMessage': return SdColors.success;
       default: return const Color(0xFF546E7A);
     }
   }
@@ -3293,23 +3371,23 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
           Container(
             margin: const EdgeInsets.only(top: 10, bottom: 6),
             width: 40, height: 4,
-            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+            decoration: BoxDecoration(color: SdColors.edge, borderRadius: BorderRadius.circular(2)),
           ),
           // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                const Icon(Icons.notifications_rounded, color: Color(0xFF1A237E), size: 24),
+                const Icon(Icons.notifications_rounded, color: SdColors.primary, size: 24),
                 const SizedBox(width: 8),
-                const Text('الإشعارات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A237E))),
+                const Text('الإشعارات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: SdColors.primary)),
                 const Spacer(),
                 // فلتر غير المقروءة
                 FilterChip(
                   label: Text(_unreadOnly ? 'غير المقروءة' : 'الكل', style: const TextStyle(fontSize: 11)),
                   selected: _unreadOnly,
                   onSelected: (v) { setState(() => _unreadOnly = v); _load(); },
-                  selectedColor: const Color(0xFF1A237E).withValues(alpha: 0.15),
+                  selectedColor: SdColors.primary.withValues(alpha: 0.15),
                   visualDensity: VisualDensity.compact,
                 ),
                 const SizedBox(width: 8),
@@ -3332,9 +3410,9 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.notifications_off_outlined, size: 48, color: Colors.grey.shade300),
+                            Icon(Icons.notifications_off_outlined, size: 48, color: SdColors.edge),
                             const SizedBox(height: 8),
-                            Text('لا توجد إشعارات', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+                            Text('لا توجد إشعارات', style: TextStyle(color: SdColors.faint, fontSize: 14)),
                           ],
                         ),
                       )
@@ -3371,7 +3449,7 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
                                 children: [
                                   Text(body, style: const TextStyle(fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
                                   if (createdAt != null)
-                                    Text(_timeAgo(createdAt), style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                                    Text(_timeAgo(createdAt), style: TextStyle(fontSize: 10, color: SdColors.faint)),
                                 ],
                               ),
                               trailing: !isRead && id != null

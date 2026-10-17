@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/in_app_notification_service.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// ويدجت Overlay يُغلّف الـ child (كل الصفحات)
 /// يعرض بانر متحرك أعلى الشاشة عند وصول إشعار
@@ -226,33 +227,33 @@ class _NotificationBannerState extends State<_NotificationBanner>
       case InAppNotificationType.task:
         return _BannerTypeConfig(
           icon: Icons.task_alt_rounded,
-          bgColor: const Color(0xFF1A237E),
-          borderColor: const Color(0xFF3949AB),
+          bgColor: SdColors.primary,
+          borderColor: SdColors.primaryLight,
           iconBgColor: const Color(0xFF3F51B5),
           textColor: Colors.white,
         );
       case InAppNotificationType.chat:
         return _BannerTypeConfig(
           icon: Icons.chat_rounded,
-          bgColor: const Color(0xFF1B5E20),
-          borderColor: const Color(0xFF43A047),
-          iconBgColor: const Color(0xFF4CAF50),
+          bgColor: SdColors.successEdge,
+          borderColor: SdColors.success,
+          iconBgColor: SdColors.success,
           textColor: Colors.white,
         );
       case InAppNotificationType.agent:
         return _BannerTypeConfig(
           icon: Icons.storefront_rounded,
-          bgColor: const Color(0xFFE65100),
+          bgColor: SdColors.warningEdge,
           borderColor: const Color(0xFFFB8C00),
-          iconBgColor: const Color(0xFFFF9800),
+          iconBgColor: SdColors.warning,
           textColor: Colors.white,
         );
       case InAppNotificationType.citizen:
         return _BannerTypeConfig(
           icon: Icons.person_rounded,
-          bgColor: const Color(0xFF4A148C),
+          bgColor: SdColors.platformEdge,
           borderColor: const Color(0xFF8E24AA),
-          iconBgColor: const Color(0xFF9C27B0),
+          iconBgColor: SdColors.platformBase,
           textColor: Colors.white,
         );
       case InAppNotificationType.system:
@@ -260,7 +261,7 @@ class _NotificationBannerState extends State<_NotificationBanner>
           icon: Icons.notifications_rounded,
           bgColor: const Color(0xFF263238),
           borderColor: const Color(0xFF546E7A),
-          iconBgColor: const Color(0xFF607D8B),
+          iconBgColor: SdColors.muted,
           textColor: Colors.white,
         );
     }

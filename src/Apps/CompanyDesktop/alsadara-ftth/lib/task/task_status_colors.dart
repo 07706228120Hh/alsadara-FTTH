@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// ألوان حالات المهام — مصدر موحّد لكل شاشات المهام.
 ///
@@ -17,18 +18,18 @@ import 'package:intl/intl.dart';
 class TaskStatusColors {
   const TaskStatusColors._();
 
-  static const Color open = Color(0xFF2196F3); // مفتوحة
-  static const Color inProgress = Color(0xFFFF9800); // قيد التنفيذ
-  static const Color completed = Color(0xFF4CAF50); // مكتملة
-  static const Color cancelled = Color(0xFFE53935); // ملغية
+  static const Color open = SdColors.info; // مفتوحة
+  static const Color inProgress = SdColors.warning; // قيد التنفيذ
+  static const Color completed = SdColors.success; // مكتملة
+  static const Color cancelled = SdColors.danger; // ملغية
 
   // حالات ثانوية (يحافظ عليها بعض الشاشات)
-  static const Color underReview = Color(0xFF9B59B6); // قيد المراجعة
-  static const Color approved = Color(0xFF009688); // موافق عليه
-  static const Color assigned = Color(0xFF8E44AD); // معينة
-  static const Color pending = Color(0xFFF39C12); // معلقة
+  static const Color underReview = SdColors.platformBase; // قيد المراجعة
+  static const Color approved = SdColors.accent; // موافق عليه
+  static const Color assigned = SdColors.platformBase; // معينة
+  static const Color pending = SdColors.warning; // معلقة
 
-  static const Color unknown = Color(0xFF95A5A6); // افتراضي
+  static const Color unknown = SdColors.faint; // افتراضي
 
   /// يعيد اللون المناسب للحالة العربية (مع مرادفاتها).
   static Color colorFor(String status) {

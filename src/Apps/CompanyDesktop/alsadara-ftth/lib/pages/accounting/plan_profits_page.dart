@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../services/agent_api_service.dart';
 import '../../services/vps_auth_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 /// صفحة أرباح الباقات - Plan Profits Page
 /// تحديد الربح الصافي لكل باقة إنترنت
 class PlanProfitsPage extends StatefulWidget {
@@ -68,7 +67,7 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'تم الحفظ'),
-            backgroundColor: AccountingTheme.success,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -77,7 +76,7 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('خطأ'),
-              backgroundColor: AccountingTheme.danger),
+              backgroundColor: SdColors.danger),
         );
       }
     }
@@ -101,7 +100,7 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('تم حفظ أرباح $saved باقة'),
-          backgroundColor: AccountingTheme.success,
+          backgroundColor: SdColors.success,
         ),
       );
     }
@@ -114,9 +113,9 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
         appBar: AppBar(
-          backgroundColor: AccountingTheme.bgSidebar,
+          backgroundColor: SdColors.primary,
           iconTheme: const IconThemeData(color: Colors.white),
           leading: IconButton(
             icon: const Icon(Icons.arrow_forward_rounded),
@@ -124,7 +123,8 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
           ),
           title: Text(
             '💰 أرباح الباقات',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: Colors.white,
               fontSize: isMob ? 16 : context.accR.headingSmall,
               fontWeight: FontWeight.bold,
@@ -133,7 +133,7 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
           actions: [
             IconButton(
               icon: const Icon(Icons.save_rounded,
-                  color: AccountingTheme.neonGreen),
+                  color: SdColors.success),
               onPressed: _saveAllProfits,
               tooltip: 'حفظ الكل',
             ),
@@ -161,15 +161,15 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline,
-              size: context.accR.iconEmpty, color: AccountingTheme.danger),
+              size: context.accR.iconEmpty, color: SdColors.danger),
           SizedBox(height: context.accR.spaceXL),
           Text(_errorMessage!,
-              style: GoogleFonts.cairo(fontSize: context.accR.headingSmall)),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: context.accR.headingSmall)),
           SizedBox(height: context.accR.spaceXL),
           ElevatedButton.icon(
             onPressed: _loadData,
             icon: const Icon(Icons.refresh),
-            label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
+            label: Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -184,7 +184,7 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
         child: Text(
           'لا توجد باقات',
           style:
-              GoogleFonts.cairo(fontSize: 16, color: AccountingTheme.textMuted),
+              TextStyle(fontFamily: 'Cairo', fontSize: 16, color: SdColors.faint),
         ),
       );
     }
@@ -195,12 +195,13 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(12),
-          color: AccountingTheme.neonGreen.withOpacity(0.05),
+          color: SdColors.success.withOpacity(0.05),
           child: Text(
             'الربح = المبلغ الصافي بعد خصم التكاليف — العمولة تُحسب كنسبة من الربح',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: 11,
-              color: AccountingTheme.textMuted,
+              color: SdColors.faint,
             ),
             textAlign: TextAlign.center,
           ),
@@ -220,12 +221,12 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
               return Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AccountingTheme.bgCard,
+                  color: SdColors.surface,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: profit > 0
-                        ? AccountingTheme.neonGreen.withOpacity(0.3)
-                        : AccountingTheme.borderColor,
+                        ? SdColors.success.withOpacity(0.3)
+                        : SdColors.divider,
                   ),
                 ),
                 child: Column(
@@ -237,20 +238,21 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: AccountingTheme.neonBlue.withOpacity(0.1),
+                            color: SdColors.primary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Icon(Icons.wifi,
-                              size: 14, color: AccountingTheme.neonBlue),
+                              size: 14, color: SdColors.primary),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             plan['NameAr'] ?? plan['Name'] ?? '',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: AccountingTheme.textPrimary,
+                              color: SdColors.ink,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -259,15 +261,16 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AccountingTheme.neonPurple.withOpacity(0.1),
+                            color: SdColors.platformBase.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             '${plan['SpeedMbps'] ?? '-'} Mbps',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
-                              color: AccountingTheme.neonPurple,
+                              color: SdColors.platformBase,
                             ),
                           ),
                         ),
@@ -283,15 +286,17 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('السعر الشهري',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontSize: 9,
-                                      color: AccountingTheme.textMuted)),
+                                      color: SdColors.faint)),
                               Text(
                                 '${_formatNumber(plan['MonthlyPrice'])} د.ع',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: AccountingTheme.textPrimary,
+                                  color: SdColors.ink,
                                 ),
                               ),
                             ],
@@ -305,18 +310,20 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
                             controller: controller,
                             keyboardType: TextInputType.number,
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: AccountingTheme.neonGreen,
+                              color: SdColors.success,
                             ),
                             decoration: InputDecoration(
                               hintText: '0',
-                              hintStyle: GoogleFonts.cairo(
-                                  color: AccountingTheme.textMuted,
+                              hintStyle: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  color: SdColors.faint,
                                   fontSize: 12),
                               suffixText: 'د.ع',
-                              suffixStyle: GoogleFonts.cairo(fontSize: 9),
+                              suffixStyle: TextStyle(fontFamily: 'Cairo', fontSize: 9),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -337,11 +344,11 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: AccountingTheme.neonBlue.withOpacity(0.1),
+                              color: SdColors.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Icon(Icons.save,
-                                size: 16, color: AccountingTheme.neonBlue),
+                                size: 16, color: SdColors.primary),
                           ),
                         ),
                       ],
@@ -367,18 +374,20 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
           // العنوان + وصف
           Text(
             'تحديد ربح كل باقة',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: context.accR.headingMedium,
               fontWeight: FontWeight.bold,
-              color: AccountingTheme.textPrimary,
+              color: SdColors.ink,
             ),
           ),
           SizedBox(height: context.accR.spaceXS),
           Text(
             'الربح هو المبلغ الصافي بعد خصم التكاليف - العمولة تُحسب كنسبة من هذا الربح',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: context.accR.financialSmall,
-              color: AccountingTheme.textMuted,
+              color: SdColors.faint,
             ),
           ),
           SizedBox(height: context.accR.spaceXL),
@@ -389,14 +398,15 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
                 ? Center(
                     child: Text(
                       'لا توجد باقات',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: context.accR.headingSmall,
-                          color: AccountingTheme.textMuted),
+                          color: SdColors.faint),
                     ),
                   )
                 : Container(
                     decoration: BoxDecoration(
-                      color: AccountingTheme.bgCard,
+                      color: SdColors.surface,
                       borderRadius:
                           BorderRadius.circular(context.accR.cardRadius),
                       boxShadow: [
@@ -415,33 +425,38 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
                           width: double.infinity,
                           child: DataTable(
                             headingRowColor: WidgetStateProperty.all(
-                                AccountingTheme.bgSecondary),
+                                SdColors.groundAlt),
                             columnSpacing: 24,
                             columns: [
                               DataColumn(
                                 label: Text('الباقة',
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
                                         fontWeight: FontWeight.bold)),
                               ),
                               DataColumn(
                                 label: Text('السرعة',
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
                                         fontWeight: FontWeight.bold)),
                               ),
                               DataColumn(
                                 label: Text('السعر الشهري',
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
                                         fontWeight: FontWeight.bold)),
                               ),
                               DataColumn(
                                 label: Text('الربح',
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
                                         fontWeight: FontWeight.bold,
-                                        color: AccountingTheme.neonGreen)),
+                                        color: SdColors.success)),
                               ),
                               DataColumn(
                                 label: Text('إجراء',
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
                                         fontWeight: FontWeight.bold)),
                               ),
                             ],
@@ -451,16 +466,18 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
                               return DataRow(cells: [
                                 DataCell(Text(
                                   plan['NameAr'] ?? plan['Name'] ?? '',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontWeight: FontWeight.w600),
                                 )),
                                 DataCell(Text(
                                   '${plan['SpeedMbps'] ?? '-'} Mbps',
-                                  style: GoogleFonts.cairo(),
+                                  style: TextStyle(fontFamily: 'Cairo'),
                                 )),
                                 DataCell(Text(
                                   '${_formatNumber(plan['MonthlyPrice'])} د.ع',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontWeight: FontWeight.w600),
                                 )),
                                 DataCell(
@@ -470,16 +487,19 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
                                       controller: controller,
                                       keyboardType: TextInputType.number,
                                       textAlign: TextAlign.center,
-                                      style: GoogleFonts.cairo(
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
                                         fontWeight: FontWeight.bold,
-                                        color: AccountingTheme.neonGreen,
+                                        color: SdColors.success,
                                       ),
                                       decoration: InputDecoration(
                                         hintText: '0',
-                                        hintStyle: GoogleFonts.cairo(
-                                            color: AccountingTheme.textMuted),
+                                        hintStyle: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            color: SdColors.faint),
                                         suffixText: 'د.ع',
-                                        suffixStyle: GoogleFonts.cairo(
+                                        suffixStyle: TextStyle(
+                                            fontFamily: 'Cairo',
                                             fontSize: context.accR.small),
                                         border: OutlineInputBorder(
                                           borderRadius:
@@ -496,7 +516,7 @@ class _PlanProfitsPageState extends State<PlanProfitsPage> {
                                 DataCell(
                                   IconButton(
                                     icon: Icon(Icons.save,
-                                        color: AccountingTheme.neonBlue,
+                                        color: SdColors.primary,
                                         size: context.accR.iconM),
                                     tooltip: 'حفظ ربح هذه الباقة',
                                     onPressed: () {

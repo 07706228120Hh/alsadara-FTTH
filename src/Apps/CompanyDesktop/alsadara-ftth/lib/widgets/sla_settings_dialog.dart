@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/departments_data_service.dart';
 import '../services/sadara_api_service.dart';
 import '../services/vps_auth_service.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// حوار إعدادات SLA — لتعديل ساعات SLA لكل نوع مهمة في كل قسم
 class SlaSettingsDialog extends StatefulWidget {
@@ -182,7 +183,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('تم حفظ $successCount تعديل بنجاح'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       } else if (failCount > 0) {
@@ -191,7 +192,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
             content: Text(
               'نجح: $successCount | فشل: $failCount\n${errors.take(3).join('\n')}',
             ),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
             duration: const Duration(seconds: 5),
           ),
         );
@@ -233,7 +234,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
   Widget _buildHeader() {
     return Row(
       children: [
-        Icon(Icons.timer_outlined, color: Colors.indigo.shade700, size: 24),
+        Icon(Icons.timer_outlined, color: SdColors.primary, size: 24),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -245,7 +246,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
               ),
               Text(
                 'تعيين الحد الزمني (بالدقائق) لإنجاز كل نوع مهمة',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 12, color: SdColors.muted),
               ),
             ],
           ),
@@ -254,15 +255,15 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.orange.shade50,
+              color: SdColors.warningTint,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.shade300),
+              border: Border.all(color: SdColors.warningTintEdge),
             ),
             child: Text(
               '$_changesCount تعديل',
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.orange.shade800,
+                color: SdColors.warning,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -295,9 +296,9 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+            Icon(Icons.error_outline, size: 48, color: SdColors.dangerTintEdge),
             const SizedBox(height: 12),
-            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            Text(_errorMessage!, style: const TextStyle(color: SdColors.danger)),
             const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: _loadDepartments,
@@ -311,7 +312,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
 
     if (_departments.isEmpty) {
       return const Center(
-        child: Text('لا توجد أقسام مسجلة', style: TextStyle(color: Colors.grey)),
+        child: Text('لا توجد أقسام مسجلة', style: TextStyle(color: SdColors.faint)),
       );
     }
 
@@ -332,10 +333,10 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isExpanded ? Colors.indigo.shade300 : Colors.grey.shade300,
+          color: isExpanded ? SdColors.primaryTintEdge : SdColors.edge,
           width: isExpanded ? 1.5 : 1,
         ),
-        color: isExpanded ? Colors.indigo.shade50.withValues(alpha: 0.3) : null,
+        color: isExpanded ? SdColors.primaryTint.withValues(alpha: 0.3) : null,
       ),
       child: Column(
         children: [
@@ -357,10 +358,10 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
                 children: [
                   Icon(
                     isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.indigo.shade700,
+                    color: SdColors.primary,
                   ),
                   const SizedBox(width: 8),
-                  Icon(Icons.business, size: 20, color: Colors.indigo.shade400),
+                  Icon(Icons.business, size: 20, color: SdColors.primaryLight),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -368,7 +369,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: dept.isActive ? Colors.black87 : Colors.grey,
+                        color: dept.isActive ? Colors.black87 : SdColors.faint,
                       ),
                     ),
                   ),
@@ -377,8 +378,8 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: configuredCount == activeTasks.length && activeTasks.isNotEmpty
-                          ? Colors.green.shade50
-                          : Colors.grey.shade100,
+                          ? SdColors.successTint
+                          : SdColors.groundAlt,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -387,8 +388,8 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: configuredCount == activeTasks.length && activeTasks.isNotEmpty
-                            ? Colors.green.shade700
-                            : Colors.grey.shade600,
+                            ? SdColors.success
+                            : SdColors.muted,
                       ),
                     ),
                   ),
@@ -402,7 +403,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
             Container(
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(color: Colors.grey.shade200),
+                  top: BorderSide(color: SdColors.divider),
                 ),
               ),
               child: Column(
@@ -415,7 +416,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
               padding: const EdgeInsets.all(12),
               child: Text(
                 'لا توجد مهام في هذا القسم',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                style: TextStyle(fontSize: 12, color: SdColors.faint),
               ),
             ),
         ],
@@ -431,8 +432,8 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: isModified ? Colors.amber.shade50 : null,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+        color: isModified ? SdColors.warningTint : null,
+        border: Border(bottom: BorderSide(color: SdColors.groundAlt)),
       ),
       child: Row(
         children: [
@@ -444,7 +445,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
                 Icon(
                   Icons.task_alt,
                   size: 16,
-                  color: currentValue > 0 ? Colors.green.shade400 : Colors.grey.shade400,
+                  color: currentValue > 0 ? SdColors.success : SdColors.faint,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -475,28 +476,28 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: isModified ? Colors.orange.shade800 : Colors.black87,
+                color: isModified ? SdColors.warning : Colors.black87,
               ),
               decoration: InputDecoration(
                 hintText: '0',
-                hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                hintStyle: TextStyle(color: SdColors.faint, fontSize: 13),
                 suffixText: 'دقيقة',
-                suffixStyle: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                suffixStyle: TextStyle(fontSize: 10, color: SdColors.faint),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+                  borderSide: BorderSide(color: SdColors.edge),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
                   borderSide: BorderSide(
-                    color: isModified ? Colors.orange.shade300 : Colors.grey.shade300,
+                    color: isModified ? SdColors.warningTintEdge : SdColors.edge,
                   ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(6),
-                  borderSide: BorderSide(color: Colors.indigo.shade400, width: 1.5),
+                  borderSide: BorderSide(color: SdColors.primaryLight, width: 1.5),
                 ),
               ),
               onChanged: (value) {
@@ -515,7 +516,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
                 ? IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-                    icon: Icon(Icons.undo, size: 16, color: Colors.grey.shade600),
+                    icon: Icon(Icons.undo, size: 16, color: SdColors.muted),
                     tooltip: 'إرجاع القيمة الأصلية ($originalValue)',
                     onPressed: () {
                       setState(() {
@@ -534,17 +535,17 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
     return Container(
       padding: const EdgeInsets.only(top: 12),
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        border: Border(top: BorderSide(color: SdColors.divider)),
       ),
       child: Row(
         children: [
           // زر تعيين قيمة افتراضية لكل المهام
           TextButton.icon(
             onPressed: _showBulkSetDialog,
-            icon: Icon(Icons.tune, size: 16, color: Colors.indigo.shade600),
+            icon: Icon(Icons.tune, size: 16, color: SdColors.primary),
             label: Text(
               'تعيين الكل',
-              style: TextStyle(fontSize: 12, color: Colors.indigo.shade600),
+              style: TextStyle(fontSize: 12, color: SdColors.primary),
             ),
           ),
           const Spacer(),
@@ -569,7 +570,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
                 : const Icon(Icons.save, size: 18),
             label: Text(_isSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.indigo.shade700,
+              backgroundColor: SdColors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             ),
@@ -591,7 +592,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
           children: [
             Text(
               'أدخل عدد الساعات لتطبيقه على جميع المهام التي لم يتم تعيين SLA لها (القيمة = 0)',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 13, color: SdColors.muted),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -660,7 +661,7 @@ class _SlaSettingsDialogState extends State<SlaSettingsDialog> {
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('إغلاق بدون حفظ', style: TextStyle(color: Colors.white)),
           ),
         ],

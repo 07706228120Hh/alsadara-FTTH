@@ -179,7 +179,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                 child: const Text('إلغاء')),
             TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                style: TextButton.styleFrom(foregroundColor: SdColors.danger),
                 child: const Text('مسح')),
           ],
         ),
@@ -408,7 +408,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                 child: const Text('إلغاء')),
             TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                style: TextButton.styleFrom(foregroundColor: SdColors.danger),
                 child: const Text('حذف الكل')),
           ],
         ),
@@ -429,7 +429,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg, textDirection: TextDirection.rtl),
-      backgroundColor: isError ? Colors.red.shade600 : Colors.green.shade600,
+      backgroundColor: isError ? SdColors.danger : SdColors.success,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -509,7 +509,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Icon(Icons.key_rounded,
-                size: 18, color: Colors.deepPurple.shade400),
+                size: 18, color: SdColors.platformLight),
             const SizedBox(width: 6),
             const Text('بيانات الدخول',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
@@ -545,8 +545,8 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
               label: Text(_testing ? 'جاري...' : 'اختبار الاتصال',
                   style: const TextStyle(fontSize: 12)),
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.deepPurple,
-                side: BorderSide(color: Colors.deepPurple.shade200),
+                foregroundColor: SdColors.platformBase,
+                side: BorderSide(color: SdColors.platformTintEdge),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),
@@ -572,7 +572,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
           suffixIcon: suffixIcon,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           filled: true,
-          fillColor: Colors.grey.shade50,
+          fillColor: SdColors.surfaceAlt,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
         ),
@@ -600,13 +600,13 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Icon(Icons.cloud_sync_rounded, size: 18, color: Colors.green.shade600),
+                Icon(Icons.cloud_sync_rounded, size: 18, color: SdColors.success),
                 const SizedBox(width: 6),
                 const Text('حالة الجهاز الرئيسي',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 const Spacer(),
                 if (isWorking)
-                  _badge(svc.isAutoSyncing ? 'مزامنة تلقائية' : 'جاري الرفع', Colors.green),
+                  _badge(svc.isAutoSyncing ? 'مزامنة تلقائية' : 'جاري الرفع', SdColors.success),
               ]),
               const Divider(height: 16),
 
@@ -616,9 +616,9 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                   width: double.infinity,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.green.shade50,
+                    color: SdColors.successTint,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green.shade200),
+                    border: Border.all(color: SdColors.successTintEdge),
                   ),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
@@ -627,18 +627,18 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           value: svc.progress > 0 ? svc.progress : null,
-                          color: Colors.green.shade600,
+                          color: SdColors.success,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(svc.statusMessage,
-                            style: TextStyle(fontSize: 11, color: Colors.green.shade800, fontWeight: FontWeight.w500),
+                            style: TextStyle(fontSize: 11, color: SdColors.success, fontWeight: FontWeight.w500),
                             overflow: TextOverflow.ellipsis),
                       ),
                       if (svc.progress > 0)
                         Text('${(svc.progress * 100).toInt()}%',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green.shade700)),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: SdColors.success)),
                     ]),
                     const SizedBox(height: 6),
                     ClipRRect(
@@ -646,8 +646,8 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                       child: LinearProgressIndicator(
                         value: svc.progress > 0 ? svc.progress : null,
                         minHeight: 6,
-                        backgroundColor: Colors.green.shade100,
-                        valueColor: AlwaysStoppedAnimation(Colors.green.shade600),
+                        backgroundColor: SdColors.successTint,
+                        valueColor: AlwaysStoppedAnimation(SdColors.success),
                       ),
                     ),
                   ]),
@@ -661,7 +661,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                   width: double.infinity,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: lastResult.success ? Colors.green.shade50 : Colors.red.shade50,
+                    color: lastResult.success ? SdColors.successTint : SdColors.dangerTint,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -669,29 +669,29 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                       Icon(
                         lastResult.success ? Icons.check_circle : Icons.error_outline,
                         size: 16,
-                        color: lastResult.success ? Colors.green.shade700 : Colors.red.shade700,
+                        color: lastResult.success ? SdColors.success : SdColors.danger,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         lastResult.success ? 'آخر رفع ناجح' : 'فشل آخر رفع',
                         style: TextStyle(
                           fontSize: 12, fontWeight: FontWeight.w600,
-                          color: lastResult.success ? Colors.green.shade700 : Colors.red.shade700,
+                          color: lastResult.success ? SdColors.success : SdColors.danger,
                         ),
                       ),
                     ]),
                     if (lastResult.success) ...[
                       const SizedBox(height: 6),
                       Wrap(spacing: 12, children: [
-                        _miniStat('المجموع', lastResult.uploadedCount, Colors.green),
-                        _miniStat('جديد', lastResult.newCount, Colors.blue),
-                        _miniStat('محدّث', lastResult.updatedCount, Colors.orange),
-                        _miniStat('بدون تغيير', lastResult.skippedCount, Colors.grey),
+                        _miniStat('المجموع', lastResult.uploadedCount, SdColors.success),
+                        _miniStat('جديد', lastResult.newCount, SdColors.info),
+                        _miniStat('محدّث', lastResult.updatedCount, SdColors.warning),
+                        _miniStat('بدون تغيير', lastResult.skippedCount, SdColors.faint),
                       ]),
                     ],
                     if (!lastResult.success && lastResult.error != null) ...[
                       const SizedBox(height: 4),
-                      Text(lastResult.error!, style: TextStyle(fontSize: 11, color: Colors.red.shade600)),
+                      Text(lastResult.error!, style: TextStyle(fontSize: 11, color: SdColors.danger)),
                     ],
                   ]),
                 ),
@@ -700,11 +700,11 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
 
               // معلومات المقارنة: سيرفر vs محلي
               Row(children: [
-                Expanded(child: _infoBox('السيرفر', _subscriberCount, Icons.cloud_rounded, Colors.blue)),
+                Expanded(child: _infoBox('السيرفر', _subscriberCount, Icons.cloud_rounded, SdColors.info)),
                 const SizedBox(width: 8),
                 Expanded(child: FutureBuilder<int>(
                   future: LocalDatabaseService.instance.getStatistics().then((s) => s['subscribers'] ?? 0),
-                  builder: (ctx, snap) => _infoBox('المحلي', snap.data ?? 0, Icons.storage_rounded, Colors.teal),
+                  builder: (ctx, snap) => _infoBox('المحلي', snap.data ?? 0, Icons.storage_rounded, SdColors.accent),
                 )),
               ]),
               const SizedBox(height: 10),
@@ -738,7 +738,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         Icon(icon, size: 20, color: color),
         const SizedBox(width: 8),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+          Text(label, style: TextStyle(fontSize: 10, color: SdColors.muted)),
           Text(NumberFormat('#,###').format(count),
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
         ]),
@@ -792,7 +792,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         label: Text(isWorking ? _statusMessage.isNotEmpty ? _statusMessage : 'جاري...' : 'مزامنة الآن (جلب + رفع)',
             style: const TextStyle(fontSize: 12)),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue.shade700,
+          backgroundColor: SdColors.info,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -813,10 +813,10 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               LinearProgressIndicator(value: svc.progress, minHeight: 6,
-                  backgroundColor: Colors.green.shade50, color: Colors.green),
+                  backgroundColor: SdColors.successTint, color: SdColors.success),
               const SizedBox(height: 4),
               Text(svc.statusMessage,
-                  style: const TextStyle(fontSize: 11, color: Colors.green),
+                  style: const TextStyle(fontSize: 11, color: SdColors.success),
                   textAlign: TextAlign.center),
             ],
           );
@@ -838,7 +838,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
             icon: const Icon(Icons.cloud_upload, size: 18),
             label: const Text('رفع البيانات المحلية للسيرفر', style: TextStyle(fontSize: 12)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 10),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -862,7 +862,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Icon(Icons.sync_rounded, size: 18, color: Colors.blue.shade400),
+            Icon(Icons.sync_rounded, size: 18, color: SdColors.info),
             const SizedBox(width: 6),
             const Text('إعدادات المزامنة',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
@@ -872,7 +872,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
             title: Text(
                 _isMasterSync ? 'هذا الجهاز هو المزامن الرئيسي ✅' : 'هذا الجهاز هو المزامن الرئيسي',
                 style: TextStyle(fontSize: 13, fontWeight: _isMasterSync ? FontWeight.bold : FontWeight.normal,
-                    color: _isMasterSync ? Colors.green.shade700 : null)),
+                    color: _isMasterSync ? SdColors.success : null)),
             subtitle: Text(
                 _isMasterSync
                     ? 'يجلب البيانات من FTTH ويرفعها للسيرفر — بقية الأجهزة تقرأ من السيرفر'
@@ -880,7 +880,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                 style: const TextStyle(fontSize: 11)),
             value: _isMasterSync,
             onChanged: (v) => setState(() => _isMasterSync = v),
-            activeColor: Colors.green,
+            activeColor: SdColors.success,
             contentPadding: EdgeInsets.zero,
             dense: true,
           ),
@@ -899,7 +899,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                 style: const TextStyle(fontSize: 11)),
             value: _isMasterSync ? false : _autoSync,
             onChanged: _isMasterSync ? null : (v) => setState(() => _autoSync = v),
-            activeColor: Colors.deepPurple,
+            activeColor: SdColors.platformBase,
             contentPadding: EdgeInsets.zero,
             dense: true,
           ),
@@ -927,21 +927,21 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: SdColors.infoTint,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.shade100),
+              border: Border.all(color: SdColors.infoTint),
             ),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Icon(Icons.schedule_rounded,
-                    size: 16, color: Colors.blue.shade600),
+                    size: 16, color: SdColors.info),
                 const SizedBox(width: 4),
                 Text('الساعات النشطة',
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Colors.blue.shade700)),
+                        color: SdColors.info)),
               ]),
               const SizedBox(height: 8),
               Row(children: [
@@ -996,7 +996,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         decoration: InputDecoration(
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
           filled: true,
-          fillColor: fillColor ?? Colors.grey.shade50,
+          fillColor: fillColor ?? SdColors.surfaceAlt,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
         ),
@@ -1036,13 +1036,13 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Icon(Icons.info_outline_rounded,
-                size: 18, color: Colors.green.shade400),
+                size: 18, color: SdColors.success),
             const SizedBox(width: 6),
             const Text('حالة المزامنة',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const Spacer(),
             if (_isSyncInProgress)
-              _badge('قيد التنفيذ $_syncProgress%', Colors.orange),
+              _badge('قيد التنفيذ $_syncProgress%', SdColors.warning),
           ]),
           const Divider(height: 16),
           _statusRow(
@@ -1052,11 +1052,11 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                       .format(_lastSyncAt!.toLocal())
                   : 'لم تتم بعد',
               icon: Icons.access_time,
-              color: hasSync ? Colors.green : Colors.grey),
+              color: hasSync ? SdColors.success : SdColors.faint),
           const SizedBox(height: 6),
           _statusRow(
               'المشتركين', NumberFormat('#,###').format(_subscriberCount),
-              icon: Icons.people_outline, color: Colors.blue),
+              icon: Icons.people_outline, color: SdColors.info),
           const SizedBox(height: 6),
           _statusRow(
               'الحالة',
@@ -1073,16 +1073,16 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                       ? Icons.error_outline
                       : Icons.check_circle_outline,
               color: _isSyncInProgress
-                  ? Colors.blue
+                  ? SdColors.info
                   : hasError
-                      ? Colors.red
+                      ? SdColors.danger
                       : hasSync
-                          ? Colors.green
-                          : Colors.grey),
+                          ? SdColors.success
+                          : SdColors.faint),
           if (!_isSyncInProgress && _consecutiveFailures > 0) ...[
             const SizedBox(height: 6),
             _statusRow('فشل متتالي', '$_consecutiveFailures',
-                icon: Icons.warning_amber_rounded, color: Colors.orange),
+                icon: Icons.warning_amber_rounded, color: SdColors.warning),
           ],
           if (hasError) ...[
             const SizedBox(height: 6),
@@ -1090,11 +1090,11 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
               width: double.infinity,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                  color: Colors.red.shade50,
+                  color: SdColors.dangerTint,
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.red.shade200)),
+                  border: Border.all(color: SdColors.dangerTintEdge)),
               child: Text(_translateError(_lastSyncError!),
-                  style: TextStyle(fontSize: 11, color: Colors.red.shade700)),
+                  style: TextStyle(fontSize: 11, color: SdColors.danger)),
             ),
           ],
           // ═══ شريط التقدم الحي ═══
@@ -1104,9 +1104,9 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
+                border: Border.all(color: SdColors.infoTintEdge),
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
@@ -1115,20 +1115,20 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       value: _syncProgress > 0 ? _syncProgress / 100.0 : null,
-                      color: Colors.blue.shade600,
+                      color: SdColors.info,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _syncMessage!,
-                      style: TextStyle(fontSize: 11, color: Colors.blue.shade800, fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 11, color: SdColors.info, fontWeight: FontWeight.w500),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Text(
                     '$_syncProgress%',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade700),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: SdColors.info),
                   ),
                 ]),
                 const SizedBox(height: 6),
@@ -1137,15 +1137,15 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                   child: LinearProgressIndicator(
                     value: _syncProgress / 100.0,
                     minHeight: 6,
-                    backgroundColor: Colors.blue.shade100,
-                    valueColor: AlwaysStoppedAnimation(Colors.blue.shade600),
+                    backgroundColor: SdColors.infoTint,
+                    valueColor: AlwaysStoppedAnimation(SdColors.info),
                   ),
                 ),
                 if (_syncFetchedCount > 0 || _syncTotalCount > 0) ...[
                   const SizedBox(height: 4),
                   Text(
                     '${NumberFormat('#,###').format(_syncFetchedCount)} / ${NumberFormat('#,###').format(_syncTotalCount)}',
-                    style: TextStyle(fontSize: 10, color: Colors.blue.shade600),
+                    style: TextStyle(fontSize: 10, color: SdColors.info),
                   ),
                 ],
               ]),
@@ -1157,15 +1157,15 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
               width: double.infinity,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.green.shade50,
+                color: SdColors.successTint,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(children: [
-                Icon(Icons.info_outline, size: 14, color: Colors.green.shade700),
+                Icon(Icons.info_outline, size: 14, color: SdColors.success),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text('المزامنة تتم من هذا الجهاز — السيرفر لا يزامن مباشرة',
-                      style: TextStyle(fontSize: 11, color: Colors.green.shade700)),
+                      style: TextStyle(fontSize: 11, color: SdColors.success)),
                 ),
               ]),
             )
@@ -1187,7 +1187,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                   label: Text(_syncing ? 'جاري...' : 'مزامنة الآن',
                       style: const TextStyle(fontSize: 12)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade600,
+                    backgroundColor: SdColors.info,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
@@ -1204,7 +1204,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                   icon: const Icon(Icons.stop_rounded, size: 18),
                   label: const Text('إلغاء', style: TextStyle(fontSize: 12)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade600,
+                    backgroundColor: SdColors.danger,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
@@ -1251,7 +1251,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
       Icon(icon, size: 16, color: color),
       const SizedBox(width: 6),
       Text('$label: ',
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+          style: TextStyle(fontSize: 12, color: SdColors.muted)),
       Text(value,
           style: TextStyle(
               fontSize: 12, fontWeight: FontWeight.w600, color: color)),
@@ -1277,13 +1277,13 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Icon(Icons.cloud_download_rounded,
-                    size: 18, color: Colors.teal.shade400),
+                    size: 18, color: SdColors.accentLight),
                 const SizedBox(width: 6),
                 const Text('تنزيل للجهاز',
                     style:
                         TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 const Spacer(),
-                if (vps.isSyncing) _badge('جاري التنزيل', Colors.teal),
+                if (vps.isSyncing) _badge('جاري التنزيل', SdColors.accent),
               ]),
               const Divider(height: 16),
               // شريط التقدم
@@ -1294,11 +1294,11 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                     value: vps.isSyncing
                         ? (vps.progress > 0 ? vps.progress : null)
                         : vps.progress,
-                    backgroundColor: Colors.grey.shade200,
+                    backgroundColor: SdColors.divider,
                     valueColor: AlwaysStoppedAnimation(
                       vps.lastResult?.success == false
-                          ? Colors.red
-                          : Colors.teal,
+                          ? SdColors.danger
+                          : SdColors.accent,
                     ),
                     minHeight: 6,
                   ),
@@ -1309,8 +1309,8 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                   style: TextStyle(
                     fontSize: 11,
                     color: vps.lastResult?.success == false
-                        ? Colors.red.shade600
-                        : Colors.teal.shade700,
+                        ? SdColors.danger
+                        : SdColors.accent,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -1327,11 +1327,11 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                             width: 12,
                             height: 12,
                             child: CircularProgressIndicator(
-                                strokeWidth: 1.5, color: Colors.grey.shade400)),
+                                strokeWidth: 1.5, color: SdColors.faint)),
                         const SizedBox(width: 6),
                         Text('جاري فحص السيرفر...',
                             style: TextStyle(
-                                fontSize: 11, color: Colors.grey.shade500)),
+                                fontSize: 11, color: SdColors.faint)),
                       ]),
                     );
                   }
@@ -1341,17 +1341,17 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                       width: double.infinity,
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
+                          color: SdColors.warningTint,
                           borderRadius: BorderRadius.circular(6)),
                       child: Row(children: [
                         Icon(Icons.warning_amber_rounded,
-                            size: 16, color: Colors.orange.shade700),
+                            size: 16, color: SdColors.warning),
                         const SizedBox(width: 6),
                         Expanded(
                             child: Text(check.error ?? 'لا توجد بيانات',
                                 style: TextStyle(
                                     fontSize: 11,
-                                    color: Colors.orange.shade700))),
+                                    color: SdColors.warning))),
                       ]),
                     );
                   }
@@ -1360,24 +1360,24 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                       children: [
                         _statusRow('السيرفر',
                             NumberFormat('#,###').format(check.serverCount),
-                            icon: Icons.cloud_rounded, color: Colors.teal),
+                            icon: Icons.cloud_rounded, color: SdColors.accent),
                         const SizedBox(height: 4),
                         _statusRow('محلي',
                             NumberFormat('#,###').format(check.localCount),
                             icon: Icons.phone_android_rounded,
-                            color: Colors.blue),
+                            color: SdColors.info),
                         if (check.hasNewData) ...[
                           const SizedBox(height: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                                color: Colors.green.shade50,
+                                color: SdColors.successTint,
                                 borderRadius: BorderRadius.circular(4)),
                             child: Text('توجد تحديثات جديدة',
                                 style: TextStyle(
                                     fontSize: 10,
-                                    color: Colors.green.shade700,
+                                    color: SdColors.success,
                                     fontWeight: FontWeight.w600)),
                           ),
                         ],
@@ -1403,7 +1403,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                       label: Text(vps.isSyncing ? 'جاري...' : 'تنزيل',
                           style: const TextStyle(fontSize: 12)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
+                        backgroundColor: SdColors.accent,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
@@ -1421,8 +1421,8 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                     icon: const Icon(Icons.refresh_rounded, size: 16),
                     label: const Text('كامل', style: TextStyle(fontSize: 11)),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.teal,
-                      side: BorderSide(color: Colors.teal.shade200),
+                      foregroundColor: SdColors.accent,
+                      side: BorderSide(color: SdColors.accentTintEdge),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8)),
                     ),
@@ -1458,14 +1458,14 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Icon(Icons.find_replace_rounded,
-                size: 18, color: Colors.orange.shade400),
+                size: 18, color: SdColors.warning),
             const SizedBox(width: 6),
             const Text('البيانات الناقصة',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const Spacer(),
             IconButton(
               icon: Icon(Icons.refresh_rounded,
-                  size: 18, color: Colors.grey.shade500),
+                  size: 18, color: SdColors.faint),
               onPressed: _loadMissingStats,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
@@ -1481,29 +1481,29 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                     width: 12,
                     height: 12,
                     child: CircularProgressIndicator(
-                        strokeWidth: 1.5, color: Colors.grey.shade400)),
+                        strokeWidth: 1.5, color: SdColors.faint)),
                 const SizedBox(width: 6),
                 Text('جاري التحميل...',
                     style:
-                        TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                        TextStyle(fontSize: 11, color: SdColors.faint)),
               ]),
             )
           else ...[
             Wrap(spacing: 16, runSpacing: 6, children: [
-              _missingChip('الكل', total, Colors.blue),
+              _missingChip('الكل', total, SdColors.info),
               _missingChip('بدون FAT', missingFat,
-                  missingFat > 0 ? Colors.orange : Colors.green),
+                  missingFat > 0 ? SdColors.warning : SdColors.success),
               _missingChip('بدون FDT', missingFdt,
-                  missingFdt > 0 ? Colors.orange : Colors.green),
+                  missingFdt > 0 ? SdColors.warning : SdColors.success),
               _missingChip('بدون هاتف', missingPhone,
-                  missingPhone > 0 ? Colors.orange : Colors.green),
+                  missingPhone > 0 ? SdColors.warning : SdColors.success),
               _missingChip('بدون عنوان', missingAddress,
-                  missingAddress > 0 ? Colors.orange : Colors.green),
+                  missingAddress > 0 ? SdColors.warning : SdColors.success),
             ]),
             if (hasMissing && !_refetching) ...[
               const SizedBox(height: 6),
               Text('هذه البيانات قد تكون غير متوفرة في نظام FTTH (مشتركين بدون أجهزة أو حسابات معلّقة)',
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontStyle: FontStyle.italic)),
+                  style: TextStyle(fontSize: 10, color: SdColors.faint, fontStyle: FontStyle.italic)),
             ],
             if (hasMissing) ...[
               const SizedBox(height: 8),
@@ -1512,22 +1512,22 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                   width: double.infinity,
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: SdColors.warningTint,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange.shade200),
+                    border: Border.all(color: SdColors.warningTintEdge),
                   ),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
                       SizedBox(width: 14, height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orange.shade600,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: SdColors.warning,
                           value: _refetchProgress,
                         )),
                       const SizedBox(width: 8),
                       Expanded(child: Text(_refetchStage,
-                          style: TextStyle(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.w500))),
+                          style: TextStyle(fontSize: 11, color: SdColors.warning, fontWeight: FontWeight.w500))),
                       if (_refetchProgress != null)
                         Text('${(_refetchProgress! * 100).toInt()}%',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.orange.shade700)),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: SdColors.warning)),
                     ]),
                     const SizedBox(height: 6),
                     ClipRRect(
@@ -1535,8 +1535,8 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                       child: LinearProgressIndicator(
                         value: _refetchProgress,
                         minHeight: 6,
-                        backgroundColor: Colors.orange.shade100,
-                        valueColor: AlwaysStoppedAnimation(Colors.orange.shade600),
+                        backgroundColor: SdColors.warningTint,
+                        valueColor: AlwaysStoppedAnimation(SdColors.warning),
                       ),
                     ),
                   ]),
@@ -1555,7 +1555,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                     style: const TextStyle(fontSize: 12),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange.shade600,
+                    backgroundColor: SdColors.warning,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
@@ -1568,13 +1568,13 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                 width: double.infinity,
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: SdColors.successTint,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(Icons.check_circle, size: 16, color: Colors.green.shade700),
+                  Icon(Icons.check_circle, size: 16, color: SdColors.success),
                   const SizedBox(width: 6),
-                  Text('لا توجد بيانات ناقصة', style: TextStyle(fontSize: 12, color: Colors.green.shade700)),
+                  Text('لا توجد بيانات ناقصة', style: TextStyle(fontSize: 12, color: SdColors.success)),
                 ]),
               ),
             ],
@@ -1593,7 +1593,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
       ),
       const SizedBox(width: 4),
       Text('$label: ',
-          style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+          style: TextStyle(fontSize: 11, color: SdColors.muted)),
       Text(NumberFormat('#,###').format(count),
           style: TextStyle(
               fontSize: 11, fontWeight: FontWeight.w600, color: color)),
@@ -1614,10 +1614,10 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(children: [
-            Icon(Icons.analytics_rounded, color: Colors.grey.shade400, size: 20),
+            Icon(Icons.analytics_rounded, color: SdColors.faint, size: 20),
             const SizedBox(width: 8),
             Text('لا توجد بيانات — قم بتشغيل المزامنة أولاً',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                style: TextStyle(fontSize: 12, color: SdColors.faint)),
             const Spacer(),
             IconButton(
               icon: const Icon(Icons.refresh, size: 18),
@@ -1651,7 +1651,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Icon(Icons.analytics_rounded, color: Colors.deepPurple, size: 18),
+            const Icon(Icons.analytics_rounded, color: SdColors.platformBase, size: 18),
             const SizedBox(width: 6),
             const Text('نسبة اكتمال البيانات',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -1660,10 +1660,10 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: overallPct >= 90
-                    ? Colors.green.shade50
+                    ? SdColors.successTint
                     : overallPct >= 60
-                        ? Colors.orange.shade50
-                        : Colors.red.shade50,
+                        ? SdColors.warningTint
+                        : SdColors.dangerTint,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -1672,10 +1672,10 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: overallPct >= 90
-                      ? Colors.green.shade700
+                      ? SdColors.success
                       : overallPct >= 60
-                          ? Colors.orange.shade700
-                          : Colors.red.shade700,
+                          ? SdColors.warning
+                          : SdColors.danger,
                 ),
               ),
             ),
@@ -1695,29 +1695,29 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
             child: LinearProgressIndicator(
               value: overallPct / 100,
               minHeight: 8,
-              backgroundColor: Colors.grey.shade200,
+              backgroundColor: SdColors.divider,
               valueColor: AlwaysStoppedAnimation(
-                overallPct >= 90 ? Colors.green : overallPct >= 60 ? Colors.orange : Colors.red,
+                overallPct >= 90 ? SdColors.success : overallPct >= 60 ? SdColors.warning : SdColors.danger,
               ),
             ),
           ),
           const SizedBox(height: 12),
           // تفاصيل كل قسم
-          _progressRow('الاشتراكات', total, total, 100, Colors.blue),
+          _progressRow('الاشتراكات', total, total, 100, SdColors.info),
           const SizedBox(height: 6),
-          _progressRow('التفاصيل (FDT/FAT/GPS)', withDetails, total, detailsPct, Colors.teal),
+          _progressRow('التفاصيل (FDT/FAT/GPS)', withDetails, total, detailsPct, SdColors.accent),
           const SizedBox(height: 6),
-          _progressRow('اسم المستخدم', withUsername, total, usernamePct, Colors.indigo),
+          _progressRow('اسم المستخدم', withUsername, total, usernamePct, SdColors.primary),
           const SizedBox(height: 6),
-          _progressRow('أرقام الهواتف', withPhone, total, phonePct, Colors.deepOrange),
+          _progressRow('أرقام الهواتف', withPhone, total, phonePct, SdColors.warning),
           const SizedBox(height: 10),
           // الحالات
           Row(children: [
-            _statusChip('فعال', active, Colors.green),
+            _statusChip('فعال', active, SdColors.success),
             const SizedBox(width: 8),
-            _statusChip('منتهي', expired, Colors.red),
+            _statusChip('منتهي', expired, SdColors.danger),
             const SizedBox(width: 8),
-            _statusChip('الإجمالي', total, Colors.blue),
+            _statusChip('الإجمالي', total, SdColors.info),
           ]),
         ]),
       ),
@@ -1736,7 +1736,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
           child: LinearProgressIndicator(
             value: total > 0 ? current / total : 0,
             minHeight: 6,
-            backgroundColor: Colors.grey.shade100,
+            backgroundColor: SdColors.groundAlt,
             valueColor: AlwaysStoppedAnimation(color),
           ),
         ),
@@ -1746,7 +1746,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         width: 90,
         child: Text(
           '$current/$total (${pct.toStringAsFixed(0)}%)',
-          style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+          style: TextStyle(fontSize: 10, color: SdColors.muted),
           textAlign: TextAlign.left,
         ),
       ),
@@ -1779,7 +1779,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Icon(Icons.delete_sweep_rounded, color: Colors.red.shade400, size: 18),
+            Icon(Icons.delete_sweep_rounded, color: SdColors.danger, size: 18),
             const SizedBox(width: 6),
             const Text('إدارة بيانات السيرفر',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -1792,10 +1792,10 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
             ))
           else
             Wrap(spacing: 8, runSpacing: 8, children: [
-              _clearButton('أرقام الهواتف', 'phones', Icons.phone_disabled, Colors.orange),
-              _clearButton('تفاصيل الاشتراكات', 'details', Icons.info_outline, Colors.teal),
-              _clearButton('كل الاشتراكات', 'subscriptions', Icons.people_outline, Colors.red),
-              _clearButton('مسح الكل', 'all', Icons.delete_forever, Colors.red.shade800),
+              _clearButton('أرقام الهواتف', 'phones', Icons.phone_disabled, SdColors.warning),
+              _clearButton('تفاصيل الاشتراكات', 'details', Icons.info_outline, SdColors.accent),
+              _clearButton('كل الاشتراكات', 'subscriptions', Icons.people_outline, SdColors.danger),
+              _clearButton('مسح الكل', 'all', Icons.delete_forever, SdColors.danger),
             ]),
         ]),
       ),
@@ -1841,7 +1841,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
         label: Text(_saving ? 'جاري الحفظ...' : 'حفظ الإعدادات',
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.deepPurple,
+          backgroundColor: SdColors.platformBase,
           foregroundColor: Colors.white,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1861,10 +1861,10 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
     if (_syncLogs.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.history_rounded, size: 48, color: Colors.grey.shade300),
+          Icon(Icons.history_rounded, size: 48, color: SdColors.edge),
           const SizedBox(height: 8),
           Text('لا توجد عمليات مزامنة بعد',
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+              style: TextStyle(color: SdColors.faint, fontSize: 14)),
         ]),
       );
     }
@@ -1879,7 +1879,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
             onPressed: _deleteAllLogs,
             icon: const Icon(Icons.delete_sweep_rounded, size: 16),
             label: const Text('حذف الكل', style: TextStyle(fontSize: 11)),
-            style: TextButton.styleFrom(foregroundColor: Colors.red.shade400),
+            style: TextButton.styleFrom(foregroundColor: SdColors.danger),
           ),
         ),
       ),
@@ -1921,7 +1921,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
             Icon(
               success ? Icons.check_circle_rounded : Icons.cancel_rounded,
               size: 18,
-              color: success ? Colors.green : Colors.red,
+              color: success ? SdColors.success : SdColors.danger,
             ),
             const SizedBox(width: 6),
             Text(
@@ -1934,7 +1934,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: success ? Colors.green.shade50 : Colors.red.shade50,
+                color: success ? SdColors.successTint : SdColors.dangerTint,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -1943,7 +1943,7 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                     color:
-                        success ? Colors.green.shade700 : Colors.red.shade700),
+                        success ? SdColors.success : SdColors.danger),
               ),
             ),
             const SizedBox(width: 4),
@@ -1953,30 +1953,30 @@ class _FtthSyncSettingsPageState extends State<FtthSyncSettingsPage>
               child: Padding(
                 padding: const EdgeInsets.all(2),
                 child: Icon(Icons.close_rounded,
-                    size: 16, color: Colors.grey.shade400),
+                    size: 16, color: SdColors.faint),
               ),
             ),
           ]),
           if (success) ...[
             const SizedBox(height: 6),
             Row(children: [
-              _logChip(Icons.people, '$total مشترك', Colors.blue),
+              _logChip(Icons.people, '$total مشترك', SdColors.info),
               const SizedBox(width: 8),
               if (newSubs > 0) ...[
-                _logChip(Icons.person_add, '$newSubs جديد', Colors.green),
+                _logChip(Icons.person_add, '$newSubs جديد', SdColors.success),
                 const SizedBox(width: 8)
               ],
               if (updated > 0)
-                _logChip(Icons.update, '$updated محدث', Colors.orange),
+                _logChip(Icons.update, '$updated محدث', SdColors.warning),
               const Spacer(),
               Text('$durationث',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                  style: TextStyle(fontSize: 11, color: SdColors.faint)),
             ]),
           ],
           if (!success && error != null) ...[
             const SizedBox(height: 4),
             Text(error,
-                style: TextStyle(fontSize: 11, color: Colors.red.shade600),
+                style: TextStyle(fontSize: 11, color: SdColors.danger),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis),
           ],

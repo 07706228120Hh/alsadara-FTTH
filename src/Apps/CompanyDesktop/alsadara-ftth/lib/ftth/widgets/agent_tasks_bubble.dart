@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/ticket_updates_service.dart';
 import '../../widgets/window_close_handler_fixed.dart';
 import '../tickets/tktats_page.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// فقاعة عائمة تعرض عدد تاسكات الوكيل المفتوحة على أي شاشة.
 /// تتبع نفس نمط WhatsAppBottomWindow (static OverlayEntry + rootOverlay).
@@ -212,13 +213,13 @@ class _AgentBubbleWidgetState extends State<_AgentBubbleWidget>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
-              colors: [Colors.orange.shade600, Colors.deepOrange.shade700],
+              colors: [SdColors.warning, SdColors.warning],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.deepOrange.withValues(alpha: 0.4),
+                color: SdColors.warning.withValues(alpha: 0.4),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),

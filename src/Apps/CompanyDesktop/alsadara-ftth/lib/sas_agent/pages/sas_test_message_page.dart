@@ -314,12 +314,12 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF25D366), Color(0xFF128C7E)],
+          colors: [SdColors.whatsapp, SdColors.whatsappEdge],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(SasUi.radius.r),
-        boxShadow: SasUi.cardShadow(const Color(0xFF25D366)),
+        boxShadow: SasUi.cardShadow(SdColors.whatsapp),
       ),
       child: Row(
         children: [
@@ -385,7 +385,7 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
                 TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700, fontSize: 13.sp),
             decoration: InputDecoration(
               hintText: 'مثال: 07701234567',
-              hintStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[400]),
+              hintStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.faint),
               isDense: true,
               prefixIcon: const Icon(Icons.smartphone_rounded),
               border: OutlineInputBorder(
@@ -431,11 +431,11 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
             initialValue: _selectedTemplateId,
             isExpanded: true,
             dropdownColor: Colors.white,
-            iconEnabledColor: const Color(0xFF1A1A2E),
+            iconEnabledColor: SdColors.ink,
             style: TextStyle(fontFamily: 'Cairo', 
               fontWeight: FontWeight.w700,
               fontSize: 13.sp,
-              color: const Color(0xFF1A1A2E),
+              color: SdColors.ink,
             ),
             decoration: InputDecoration(
               isDense: true,
@@ -452,7 +452,7 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
                     style: TextStyle(fontFamily: 'Cairo', 
                       fontWeight: FontWeight.w700,
                       fontSize: 13.sp,
-                      color: const Color(0xFF1A1A2E),
+                      color: SdColors.ink,
                     ),
                   ),
                 ),
@@ -538,7 +538,7 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle:
-            TextStyle(fontFamily: 'Cairo', color: Colors.grey[600], fontSize: 11.5.sp),
+            TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 11.5.sp),
         isDense: true,
         prefixIcon: Icon(icon, size: 18.sp),
         border: OutlineInputBorder(
@@ -566,14 +566,14 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
               color: const Color(0xFFE7FFDB),
               borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
               border: Border.all(
-                  color: const Color(0xFF25D366).withValues(alpha: 0.30)),
+                  color: SdColors.whatsapp.withValues(alpha: 0.30)),
             ),
             child: Text(
               preview.isEmpty ? '— لا محتوى —' : preview,
               style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 12.5.sp,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF1A1A2E),
+                color: SdColors.ink,
                 height: 1.6,
               ),
             ),
@@ -615,7 +615,7 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
                       style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 11.5.sp,
                           fontWeight: FontWeight.w600,
-                          color: Colors.grey[700])),
+                          color: SdColors.muted)),
                 ],
               ],
             ),
@@ -634,8 +634,8 @@ class _SasTestMessagePageState extends State<SasTestMessagePage> {
       child: FilledButton.icon(
         onPressed: enabled ? _send : null,
         style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF25D366),
-          disabledBackgroundColor: Colors.grey.withValues(alpha: 0.30),
+          backgroundColor: SdColors.whatsapp,
+          disabledBackgroundColor: SdColors.faint.withValues(alpha: 0.30),
           padding: EdgeInsets.symmetric(vertical: 14.h),
         ),
         icon: _sending

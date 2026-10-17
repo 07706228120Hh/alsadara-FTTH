@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/accounting_theme.dart';
@@ -125,7 +124,7 @@ class _BudgetPageState extends State<BudgetPage> {
               onPressed: _showAddBudgetDialog,
               icon: const Icon(Icons.add),
               label: Text('إضافة ميزانية',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
               backgroundColor: SdColors.primarySoft,
               foregroundColor: Colors.white,
             )
@@ -133,7 +132,7 @@ class _BudgetPageState extends State<BudgetPage> {
       body: Column(
         children: [
           _buildMonthYearSelector(r),
-          const Divider(height: 1, color: AccountingTheme.borderColor),
+          const Divider(height: 1, color: SdColors.divider),
           Expanded(child: _buildBody(r)),
         ],
       ),
@@ -148,19 +147,20 @@ class _BudgetPageState extends State<BudgetPage> {
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: r.paddingH, vertical: r.spaceS),
-      color: AccountingTheme.bgSecondary,
+      color: SdColors.groundAlt,
       child: Column(
         children: [
           // سطر السنة
           Row(
             children: [
               Icon(Icons.calendar_today,
-                  size: r.iconS, color: AccountingTheme.textSecondary),
+                  size: r.iconS, color: SdColors.muted),
               SizedBox(width: r.spaceS),
               DropdownButton<int>(
                 value: _selectedYear,
-                style: GoogleFonts.cairo(
-                    fontSize: r.body, color: AccountingTheme.textPrimary),
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: r.body, color: SdColors.ink),
                 items: List.generate(11, (i) {
                   final y = 2020 + i;
                   return DropdownMenuItem(value: y, child: Text('$y'));
@@ -176,9 +176,10 @@ class _BudgetPageState extends State<BudgetPage> {
               if (_budgets.isNotEmpty && !_showVariance)
                 Text(
                   '${_budgets.length} سجل',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: r.small,
-                    color: AccountingTheme.textMuted,
+                    color: SdColors.faint,
                   ),
                 ),
             ],
@@ -197,19 +198,20 @@ class _BudgetPageState extends State<BudgetPage> {
                 return ChoiceChip(
                   label: Text(
                     _arabicMonths[i],
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: r.small,
-                      color: selected ? Colors.white : AccountingTheme.textSecondary,
+                      color: selected ? Colors.white : SdColors.muted,
                       fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                   selected: selected,
-                  selectedColor: AccountingTheme.neonPink,
-                  backgroundColor: AccountingTheme.bgCard,
+                  selectedColor: SdColors.platformLight,
+                  backgroundColor: SdColors.surface,
                   side: BorderSide(
                     color: selected
-                        ? AccountingTheme.neonPink
-                        : AccountingTheme.borderColor,
+                        ? SdColors.platformLight
+                        : SdColors.divider,
                   ),
                   onSelected: (_) {
                     setState(() => _selectedMonth = m);
@@ -287,7 +289,7 @@ class _BudgetPageState extends State<BudgetPage> {
                   final isAlt = i.isOdd;
                   return Container(
                     color: isAlt
-                        ? AccountingTheme.tableRowAlt
+                        ? SdColors.surfaceAlt
                         : Colors.transparent,
                     padding: EdgeInsets.symmetric(
                         horizontal: r.tableCellPadH, vertical: r.tableCellPadV),
@@ -297,7 +299,7 @@ class _BudgetPageState extends State<BudgetPage> {
                         _dataCell(b['accountName']?.toString() ?? '', r, flex: 3),
                         _dataCell(_formatNumber(b['budgetAmount']), r,
                             flex: 2,
-                            color: AccountingTheme.neonBlue,
+                            color: SdColors.primary,
                             bold: true),
                         _dataCell(b['notes']?.toString() ?? '', r, flex: 2),
                         Expanded(
@@ -307,7 +309,7 @@ class _BudgetPageState extends State<BudgetPage> {
                             children: [
                               _actionBtn(
                                 icon: Icons.edit,
-                                color: AccountingTheme.neonBlue,
+                                color: SdColors.primary,
                                 tooltip: 'تعديل',
                                 r: r,
                                 onTap: () => _showEditBudgetDialog(b),
@@ -315,7 +317,7 @@ class _BudgetPageState extends State<BudgetPage> {
                               SizedBox(width: r.spaceXS),
                               _actionBtn(
                                 icon: Icons.delete_outline,
-                                color: AccountingTheme.danger,
+                                color: SdColors.danger,
                                 tooltip: 'حذف',
                                 r: r,
                                 onTap: () => _confirmDelete(b),
@@ -340,8 +342,9 @@ class _BudgetPageState extends State<BudgetPage> {
       flex: flex,
       child: Text(
         text,
-        style: GoogleFonts.cairo(
-          color: AccountingTheme.tableHeaderText,
+        style: TextStyle(
+          fontFamily: 'Cairo',
+          color: SdColors.surface,
           fontSize: r.tableHeaderFont,
           fontWeight: FontWeight.bold,
         ),
@@ -356,8 +359,9 @@ class _BudgetPageState extends State<BudgetPage> {
       flex: flex,
       child: Text(
         text,
-        style: GoogleFonts.cairo(
-          color: color ?? AccountingTheme.textPrimary,
+        style: TextStyle(
+          fontFamily: 'Cairo',
+          color: color ?? SdColors.ink,
           fontSize: r.tableCellFont,
           fontWeight: bold ? FontWeight.bold : FontWeight.normal,
         ),
@@ -438,8 +442,8 @@ class _BudgetPageState extends State<BudgetPage> {
                       final v = _varianceData[i];
                       final overBudget = v['overBudget'] == true;
                       final rowColor = overBudget
-                          ? AccountingTheme.danger.withValues(alpha: 0.06)
-                          : AccountingTheme.success.withValues(alpha: 0.06);
+                          ? SdColors.danger.withValues(alpha: 0.06)
+                          : SdColors.success.withValues(alpha: 0.06);
                       return Container(
                         color: rowColor,
                         padding: EdgeInsets.symmetric(
@@ -456,16 +460,16 @@ class _BudgetPageState extends State<BudgetPage> {
                             _dataCell(_formatNumber(v['variance']), r,
                                 flex: 2,
                                 color: overBudget
-                                    ? AccountingTheme.danger
-                                    : AccountingTheme.success,
+                                    ? SdColors.danger
+                                    : SdColors.success,
                                 bold: true),
                             _dataCell(
                               '${(v['variancePercent'] as num).toStringAsFixed(1)}%',
                               r,
                               flex: 1,
                               color: overBudget
-                                  ? AccountingTheme.danger
-                                  : AccountingTheme.success,
+                                  ? SdColors.danger
+                                  : SdColors.success,
                             ),
                           ],
                         ),
@@ -503,19 +507,20 @@ class _BudgetPageState extends State<BudgetPage> {
         children: [
           Text(
             'المخطط مقابل الفعلي',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: r.headingSmall,
               fontWeight: FontWeight.bold,
-              color: AccountingTheme.textPrimary,
+              color: SdColors.ink,
             ),
           ),
           SizedBox(height: r.spaceM),
           // مفتاح الألوان
           Row(
             children: [
-              _legendDot(AccountingTheme.neonBlue, 'المخطط', r),
+              _legendDot(SdColors.primary, 'المخطط', r),
               SizedBox(width: r.spaceL),
-              _legendDot(AccountingTheme.neonOrange, 'الفعلي', r),
+              _legendDot(SdColors.warning, 'الفعلي', r),
             ],
           ),
           SizedBox(height: r.spaceM),
@@ -530,7 +535,8 @@ class _BudgetPageState extends State<BudgetPage> {
                       final label = rodIndex == 0 ? 'المخطط' : 'الفعلي';
                       return BarTooltipItem(
                         '$label\n${_formatNumber(rod.toY)}',
-                        GoogleFonts.cairo(
+                        TextStyle(
+                            fontFamily: 'Cairo',
                             color: Colors.white, fontSize: r.small),
                       );
                     },
@@ -552,9 +558,10 @@ class _BudgetPageState extends State<BudgetPage> {
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             code,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: r.caption,
-                                color: AccountingTheme.textMuted),
+                                color: SdColors.faint),
                           ),
                         );
                       },
@@ -567,9 +574,10 @@ class _BudgetPageState extends State<BudgetPage> {
                       getTitlesWidget: (value, meta) {
                         return Text(
                           _formatNumber(value),
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: r.caption,
-                              color: AccountingTheme.textMuted),
+                              color: SdColors.faint),
                         );
                       },
                     ),
@@ -583,7 +591,7 @@ class _BudgetPageState extends State<BudgetPage> {
                   show: true,
                   drawVerticalLine: false,
                   getDrawingHorizontalLine: (_) => FlLine(
-                    color: AccountingTheme.borderColor,
+                    color: SdColors.divider,
                     strokeWidth: 1,
                   ),
                 ),
@@ -595,14 +603,14 @@ class _BudgetPageState extends State<BudgetPage> {
                     barRods: [
                       BarChartRodData(
                         toY: (v['budget'] as num).toDouble(),
-                        color: AccountingTheme.neonBlue,
+                        color: SdColors.primary,
                         width: 14,
                         borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(4)),
                       ),
                       BarChartRodData(
                         toY: (v['actual'] as num).toDouble(),
-                        color: AccountingTheme.neonOrange,
+                        color: SdColors.warning,
                         width: 14,
                         borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(4)),
@@ -633,8 +641,9 @@ class _BudgetPageState extends State<BudgetPage> {
         SizedBox(width: r.spaceXS),
         Text(
           label,
-          style: GoogleFonts.cairo(
-              fontSize: r.small, color: AccountingTheme.textSecondary),
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: r.small, color: SdColors.muted),
         ),
       ],
     );
@@ -662,14 +671,15 @@ class _BudgetPageState extends State<BudgetPage> {
         child: StatefulBuilder(
           builder: (ctx, setDialogState) {
             return AlertDialog(
-              backgroundColor: AccountingTheme.bgCard,
+              backgroundColor: SdColors.surface,
               shape: RoundedRectangleBorder(
                   borderRadius:
                       BorderRadius.circular(AccountingTheme.radiusLarge)),
               title: Text(
                 'إضافة ميزانية تقديرية',
-                style: GoogleFonts.cairo(
-                  color: AccountingTheme.textPrimary,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.ink,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -681,8 +691,9 @@ class _BudgetPageState extends State<BudgetPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('الحساب',
-                          style: GoogleFonts.cairo(
-                              color: AccountingTheme.textSecondary,
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.muted,
                               fontSize: 13)),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<dynamic>(
@@ -690,10 +701,11 @@ class _BudgetPageState extends State<BudgetPage> {
                         isExpanded: true,
                         decoration: InputDecoration(
                           hintText: 'اختر الحساب',
-                          hintStyle: GoogleFonts.cairo(
-                              color: AccountingTheme.textMuted),
+                          hintStyle: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.faint),
                           filled: true,
-                          fillColor: AccountingTheme.bgSecondary,
+                          fillColor: SdColors.groundAlt,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(
                                 AccountingTheme.radiusMedium),
@@ -702,8 +714,9 @@ class _BudgetPageState extends State<BudgetPage> {
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 12),
                         ),
-                        style: GoogleFonts.cairo(
-                            color: AccountingTheme.textPrimary, fontSize: 13),
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
+                            color: SdColors.ink, fontSize: 13),
                         items: leafAccounts.map<DropdownMenuItem<dynamic>>((a) {
                           final code = a['Code'] ?? a['code'] ?? '';
                           final name = a['Name'] ?? a['name'] ?? '';
@@ -718,22 +731,25 @@ class _BudgetPageState extends State<BudgetPage> {
                       ),
                       const SizedBox(height: 16),
                       Text('المبلغ المخطط',
-                          style: GoogleFonts.cairo(
-                              color: AccountingTheme.textSecondary,
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.muted,
                               fontSize: 13)),
                       const SizedBox(height: 6),
                       TextField(
                         controller: amountController,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        style: GoogleFonts.cairo(
-                            color: AccountingTheme.textPrimary),
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
+                            color: SdColors.ink),
                         decoration: InputDecoration(
                           hintText: '0',
-                          hintStyle: GoogleFonts.cairo(
-                              color: AccountingTheme.textMuted),
+                          hintStyle: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.faint),
                           filled: true,
-                          fillColor: AccountingTheme.bgSecondary,
+                          fillColor: SdColors.groundAlt,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(
                                 AccountingTheme.radiusMedium),
@@ -745,21 +761,24 @@ class _BudgetPageState extends State<BudgetPage> {
                       ),
                       const SizedBox(height: 16),
                       Text('ملاحظات',
-                          style: GoogleFonts.cairo(
-                              color: AccountingTheme.textSecondary,
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.muted,
                               fontSize: 13)),
                       const SizedBox(height: 6),
                       TextField(
                         controller: notesController,
                         maxLines: 2,
-                        style: GoogleFonts.cairo(
-                            color: AccountingTheme.textPrimary),
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
+                            color: SdColors.ink),
                         decoration: InputDecoration(
                           hintText: 'ملاحظات اختيارية...',
-                          hintStyle: GoogleFonts.cairo(
-                              color: AccountingTheme.textMuted),
+                          hintStyle: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.faint),
                           filled: true,
-                          fillColor: AccountingTheme.bgSecondary,
+                          fillColor: SdColors.groundAlt,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(
                                 AccountingTheme.radiusMedium),
@@ -777,11 +796,11 @@ class _BudgetPageState extends State<BudgetPage> {
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: Text('إلغاء',
-                      style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+                      style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5C6BC0),
+                    backgroundColor: SdColors.primarySoft,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(
@@ -790,14 +809,14 @@ class _BudgetPageState extends State<BudgetPage> {
                   onPressed: () async {
                     if (selectedAccount == null) {
                       AccountingTheme.showSnack(
-                          context, 'يرجى اختيار الحساب', AccountingTheme.warning);
+                          context, 'يرجى اختيار الحساب', SdColors.warning);
                       return;
                     }
                     final amount =
                         double.tryParse(amountController.text.trim());
                     if (amount == null || amount <= 0) {
                       AccountingTheme.showSnack(
-                          context, 'يرجى إدخال مبلغ صحيح', AccountingTheme.warning);
+                          context, 'يرجى إدخال مبلغ صحيح', SdColors.warning);
                       return;
                     }
                     await BudgetService.instance.setBudget(
@@ -823,11 +842,11 @@ class _BudgetPageState extends State<BudgetPage> {
                     );
                     if (ctx.mounted) Navigator.pop(ctx);
                     AccountingTheme.showSnack(
-                        context, 'تم حفظ الميزانية بنجاح', AccountingTheme.success);
+                        context, 'تم حفظ الميزانية بنجاح', SdColors.success);
                     _loadData();
                   },
                   child: Text('حفظ',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                 ),
               ],
             );
@@ -852,14 +871,15 @@ class _BudgetPageState extends State<BudgetPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           shape: RoundedRectangleBorder(
               borderRadius:
                   BorderRadius.circular(AccountingTheme.radiusLarge)),
           title: Text(
             'تعديل ميزانية: ${budget['accountName']}',
-            style: GoogleFonts.cairo(
-              color: AccountingTheme.textPrimary,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.ink,
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),
@@ -871,21 +891,22 @@ class _BudgetPageState extends State<BudgetPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('المبلغ المخطط',
-                    style: GoogleFonts.cairo(
-                        color: AccountingTheme.textSecondary, fontSize: 13)),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.muted, fontSize: 13)),
                 const SizedBox(height: 6),
                 TextField(
                   controller: amountController,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   style:
-                      GoogleFonts.cairo(color: AccountingTheme.textPrimary),
+                      TextStyle(fontFamily: 'Cairo', color: SdColors.ink),
                   decoration: InputDecoration(
                     hintText: '0',
                     hintStyle:
-                        GoogleFonts.cairo(color: AccountingTheme.textMuted),
+                        TextStyle(fontFamily: 'Cairo', color: SdColors.faint),
                     filled: true,
-                    fillColor: AccountingTheme.bgSecondary,
+                    fillColor: SdColors.groundAlt,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(
                           AccountingTheme.radiusMedium),
@@ -897,20 +918,21 @@ class _BudgetPageState extends State<BudgetPage> {
                 ),
                 const SizedBox(height: 16),
                 Text('ملاحظات',
-                    style: GoogleFonts.cairo(
-                        color: AccountingTheme.textSecondary, fontSize: 13)),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.muted, fontSize: 13)),
                 const SizedBox(height: 6),
                 TextField(
                   controller: notesController,
                   maxLines: 2,
                   style:
-                      GoogleFonts.cairo(color: AccountingTheme.textPrimary),
+                      TextStyle(fontFamily: 'Cairo', color: SdColors.ink),
                   decoration: InputDecoration(
                     hintText: 'ملاحظات اختيارية...',
                     hintStyle:
-                        GoogleFonts.cairo(color: AccountingTheme.textMuted),
+                        TextStyle(fontFamily: 'Cairo', color: SdColors.faint),
                     filled: true,
-                    fillColor: AccountingTheme.bgSecondary,
+                    fillColor: SdColors.groundAlt,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(
                           AccountingTheme.radiusMedium),
@@ -927,11 +949,11 @@ class _BudgetPageState extends State<BudgetPage> {
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('إلغاء',
-                  style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+                  style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AccountingTheme.neonBlue,
+                backgroundColor: SdColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(
@@ -942,7 +964,7 @@ class _BudgetPageState extends State<BudgetPage> {
                     double.tryParse(amountController.text.trim());
                 if (amount == null || amount <= 0) {
                   AccountingTheme.showSnack(
-                      context, 'يرجى إدخال مبلغ صحيح', AccountingTheme.warning);
+                      context, 'يرجى إدخال مبلغ صحيح', SdColors.warning);
                   return;
                 }
                 await BudgetService.instance.setBudget(
@@ -959,11 +981,11 @@ class _BudgetPageState extends State<BudgetPage> {
                 );
                 if (ctx.mounted) Navigator.pop(ctx);
                 AccountingTheme.showSnack(
-                    context, 'تم تحديث الميزانية بنجاح', AccountingTheme.success);
+                    context, 'تم تحديث الميزانية بنجاح', SdColors.success);
                 _loadData();
               },
               child: Text('تحديث',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -982,7 +1004,7 @@ class _BudgetPageState extends State<BudgetPage> {
       message:
           'هل تريد حذف ميزانية "${budget['accountName']}" لشهر ${_arabicMonths[_selectedMonth - 1]}؟',
       confirmLabel: 'حذف',
-      confirmColor: AccountingTheme.danger,
+      confirmColor: SdColors.danger,
     );
     if (confirmed == true) {
       await BudgetService.instance.deleteBudget(
@@ -993,7 +1015,7 @@ class _BudgetPageState extends State<BudgetPage> {
       );
       if (mounted) {
         AccountingTheme.showSnack(
-            context, 'تم حذف الميزانية', AccountingTheme.success);
+            context, 'تم حذف الميزانية', SdColors.success);
       }
       _loadData();
     }

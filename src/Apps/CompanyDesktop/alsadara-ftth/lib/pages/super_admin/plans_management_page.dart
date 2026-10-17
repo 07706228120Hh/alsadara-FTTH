@@ -4,8 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/sadara_api_service.dart';
-import '../../theme/energy_dashboard_theme.dart';
-
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 class PlansManagementPage extends StatefulWidget {
   const PlansManagementPage({super.key});
 
@@ -53,7 +52,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Container(
-        color: EnergyDashboardTheme.bgPrimary,
+        color: SdColors.ground,
         child: Column(
           children: [
             _buildToolbar(),
@@ -68,21 +67,21 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         border: Border(
           bottom: BorderSide(
-            color: EnergyDashboardTheme.bgCardHover,
+            color: SdColors.surfaceAlt,
           ),
         ),
       ),
       child: Row(
         children: [
-          Icon(Icons.wifi_rounded, color: EnergyDashboardTheme.neonBlue),
+          Icon(Icons.wifi_rounded, color: SdColors.info),
           const SizedBox(width: 12),
           const Text(
             'إدارة باقات الإنترنت والأسعار',
             style: TextStyle(
-              color: EnergyDashboardTheme.textPrimary,
+              color: SdColors.ink,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -90,7 +89,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
           const Spacer(),
           IconButton(
             onPressed: _loadPlans,
-            icon: Icon(Icons.refresh, color: EnergyDashboardTheme.textMuted),
+            icon: Icon(Icons.refresh, color: SdColors.faint),
             tooltip: 'تحديث',
           ),
           const SizedBox(width: 8),
@@ -99,7 +98,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
             icon: const Icon(Icons.add, size: 18),
             label: const Text('باقة جديدة'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: EnergyDashboardTheme.neonBlue,
+              backgroundColor: SdColors.info,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
@@ -112,7 +111,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
   Widget _buildContent() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: EnergyDashboardTheme.neonBlue),
+        child: CircularProgressIndicator(color: SdColors.info),
       );
     }
 
@@ -121,10 +120,10 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const Icon(Icons.error_outline, size: 48, color: SdColors.danger),
             const SizedBox(height: 12),
             Text(_error!,
-                style: const TextStyle(color: EnergyDashboardTheme.textMuted)),
+                style: const TextStyle(color: SdColors.faint)),
             const SizedBox(height: 12),
             ElevatedButton(
                 onPressed: _loadPlans, child: const Text('إعادة المحاولة')),
@@ -139,11 +138,11 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.wifi_off,
-                size: 64, color: EnergyDashboardTheme.textMuted),
+                size: 64, color: SdColors.faint),
             const SizedBox(height: 16),
             const Text('لا توجد باقات',
                 style: TextStyle(
-                    color: EnergyDashboardTheme.textMuted, fontSize: 16)),
+                    color: SdColors.faint, fontSize: 16)),
             const SizedBox(height: 12),
             ElevatedButton.icon(
               onPressed: () => _showPlanDialog(),
@@ -186,17 +185,17 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
     try {
       planColor = Color(int.parse(colorHex.replaceFirst('#', '0xFF')));
     } catch (_) {
-      planColor = EnergyDashboardTheme.neonBlue;
+      planColor = SdColors.info;
     }
 
     return Container(
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isActive
               ? planColor.withOpacity(0.3)
-              : EnergyDashboardTheme.bgCardHover,
+              : SdColors.surfaceAlt,
           width: isFeatured ? 2 : 1,
         ),
       ),
@@ -223,12 +222,12 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.2),
+                              color: SdColors.danger.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Text('معطلة',
                                 style:
-                                    TextStyle(color: Colors.red, fontSize: 11)),
+                                    TextStyle(color: SdColors.danger, fontSize: 11)),
                           ),
                         if (badge != null && badge.isNotEmpty) ...[
                           if (!isActive) const SizedBox(width: 6),
@@ -250,7 +249,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
                     ),
                     PopupMenuButton<String>(
                       icon: Icon(Icons.more_vert,
-                          color: EnergyDashboardTheme.textMuted, size: 20),
+                          color: SdColors.faint, size: 20),
                       onSelected: (action) {
                         if (action == 'edit') _showPlanDialog(plan: plan);
                         if (action == 'delete') _deletePlan(plan);
@@ -261,7 +260,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
                         const PopupMenuItem(
                             value: 'delete',
                             child: Text('حذف',
-                                style: TextStyle(color: Colors.red))),
+                                style: TextStyle(color: SdColors.danger))),
                       ],
                     ),
                   ],
@@ -272,7 +271,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
                 Text(
                   nameAr,
                   style: TextStyle(
-                    color: EnergyDashboardTheme.textPrimary,
+                    color: SdColors.ink,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -300,10 +299,10 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
                   _buildPriceRow('السعر الشهري', monthlyPrice, planColor),
                   const SizedBox(height: 8),
                   _buildPriceRow('رسوم التركيب', installationFee,
-                      EnergyDashboardTheme.textMuted),
+                      SdColors.faint),
                   const Divider(height: 20),
                   _buildPriceRow(
-                      'المجموع', monthlyPrice + installationFee, Colors.green,
+                      'المجموع', monthlyPrice + installationFee, SdColors.success,
                       isBold: true),
                 ],
               ),
@@ -321,7 +320,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
       children: [
         Text(label,
             style:
-                TextStyle(color: EnergyDashboardTheme.textMuted, fontSize: 13)),
+                TextStyle(color: SdColors.faint, fontSize: 13)),
         Text(
           '${amount.toStringAsFixed(0)} د.ع',
           style: TextStyle(
@@ -349,7 +348,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
               child: const Text('إلغاء')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('حذف', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -363,13 +362,13 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-                content: Text('تم حذف الباقة'), backgroundColor: Colors.green),
+                content: Text('تم حذف الباقة'), backgroundColor: SdColors.success),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+            SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
           );
         }
       }
@@ -443,9 +442,9 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.15),
+                        color: SdColors.info.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                        border: Border.all(color: SdColors.info.withOpacity(0.2)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,7 +452,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
                           const Text('الأسعار (د.ع)',
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.blue)),
+                                  color: SdColors.info)),
                           const SizedBox(height: 8),
                           Row(
                             children: [
@@ -523,7 +522,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                           content: Text('يرجى ملء الحقول المطلوبة'),
-                          backgroundColor: Colors.orange),
+                          backgroundColor: SdColors.warning),
                     );
                     return;
                   }
@@ -560,7 +559,7 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
                         SnackBar(
                           content: Text(
                               isEdit ? 'تم تحديث الباقة' : 'تم إضافة الباقة'),
-                          backgroundColor: Colors.green,
+                          backgroundColor: SdColors.success,
                         ),
                       );
                     }
@@ -569,13 +568,13 @@ class _PlansManagementPageState extends State<PlansManagementPage> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content: Text('خطأ'),
-                            backgroundColor: Colors.red),
+                            backgroundColor: SdColors.danger),
                       );
                     }
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: EnergyDashboardTheme.neonBlue,
+                  backgroundColor: SdColors.info,
                   foregroundColor: Colors.white,
                 ),
                 child: Text(isEdit ? 'حفظ التعديلات' : 'إضافة'),

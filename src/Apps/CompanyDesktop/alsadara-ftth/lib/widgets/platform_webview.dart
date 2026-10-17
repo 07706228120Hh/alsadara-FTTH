@@ -6,6 +6,7 @@ import 'package:webview_flutter/webview_flutter.dart' as mobile_webview;
 import 'package:webview_windows/webview_windows.dart' as windows_webview;
 import 'package:url_launcher/url_launcher.dart';
 import '../services/ftth_cf_clearance.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class PlatformWebView extends StatefulWidget {
   final String url;
@@ -137,7 +138,7 @@ class _PlatformWebViewState extends State<PlatformWebView> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل في فتح المتصفح الخارجي'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -157,7 +158,7 @@ class _PlatformWebViewState extends State<PlatformWebView> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
-        backgroundColor: Colors.blue,
+        backgroundColor: SdColors.info,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -211,12 +212,12 @@ class _PlatformWebViewState extends State<PlatformWebView> {
             const Icon(
               Icons.error_outline,
               size: 64,
-              color: Colors.red,
+              color: SdColors.danger,
             ),
             const SizedBox(height: 16),
             Text(
               _error!,
-              style: const TextStyle(fontSize: 16, color: Colors.red),
+              style: const TextStyle(fontSize: 16, color: SdColors.danger),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -228,7 +229,7 @@ class _PlatformWebViewState extends State<PlatformWebView> {
                   icon: const Icon(Icons.open_in_browser),
                   label: const Text('فتح في متصفح خارجي'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: SdColors.info,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -244,7 +245,7 @@ class _PlatformWebViewState extends State<PlatformWebView> {
                   icon: const Icon(Icons.refresh),
                   label: const Text('إعادة المحاولة'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: SdColors.success,
                     foregroundColor: Colors.white,
                   ),
                 ),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:fl_chart/fl_chart.dart';
 import '../../services/accounting_service.dart';
@@ -225,8 +224,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ في التصدير', style: GoogleFonts.cairo()),
-          backgroundColor: AccountingTheme.danger,
+          content: Text('خطأ في التصدير', style: TextStyle(fontFamily: 'Cairo')),
+          backgroundColor: SdColors.danger,
         ),
       );
     }
@@ -266,7 +265,7 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
                 child: _isLoading
                     ? const Center(
                         child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
+                            color: SdColors.success))
                     : _errorMessage != null
                         ? Center(
                             child: SdEmptyState(
@@ -345,20 +344,21 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
         decoration: BoxDecoration(
           color: isSelected
               ? SdColors.primary
-              : AccountingTheme.bgSecondary,
+              : SdColors.groundAlt,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
                 ? SdColors.primary
-                : AccountingTheme.borderColor,
+                : SdColors.divider,
           ),
         ),
         child: Text(
           label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: isMob ? 11 : ar.small,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? Colors.white : AccountingTheme.textSecondary,
+            color: isSelected ? Colors.white : SdColors.muted,
           ),
         ),
       ),
@@ -422,7 +422,7 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
     return Container(
       padding: EdgeInsets.all(isMob ? 10 : 16),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
         boxShadow: AccountingTheme.cardShadow,
       ),
@@ -434,10 +434,11 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
             children: [
               Text(
                 'مقارنة الإيرادات والمصروفات',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: isMob ? 13 : ar.headingSmall,
                   fontWeight: FontWeight.bold,
-                  color: AccountingTheme.textPrimary,
+                  color: SdColors.ink,
                 ),
               ),
               const Spacer(),
@@ -463,7 +464,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
                       final label = rodIndex == 0 ? 'إيرادات' : 'مصروفات';
                       return BarTooltipItem(
                         '$label\n${_fmtCurrency(rod.toY)}',
-                        GoogleFonts.cairo(
+                        TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: ar.caption,
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -487,9 +489,10 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
                         }
                         return Text(
                           _fmtShort(value),
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: isMob ? 8 : 10,
-                            color: AccountingTheme.textMuted,
+                            color: SdColors.faint,
                           ),
                         );
                       },
@@ -510,9 +513,10 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             _monthAbbrev(key),
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: isMob ? 8 : 10,
-                              color: AccountingTheme.textMuted,
+                              color: SdColors.faint,
                             ),
                           ),
                         );
@@ -577,9 +581,10 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
         const SizedBox(width: 4),
         Text(
           label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: isMob ? 10 : ar.small,
-            color: AccountingTheme.textSecondary,
+            color: SdColors.muted,
           ),
         ),
       ],
@@ -694,7 +699,7 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
     return Container(
       padding: EdgeInsets.all(isMob ? 10 : ar.cardPad),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
         boxShadow: AccountingTheme.cardShadow,
         border: Border.all(color: color.withOpacity(0.2)),
@@ -709,9 +714,10 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 10 : ar.small,
-                    color: AccountingTheme.textMuted,
+                    color: SdColors.faint,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -721,7 +727,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
           SizedBox(height: isMob ? 4 : 8),
           Text(
             _fmtCurrency(value),
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: isMob ? 14 : ar.financialMedium,
               fontWeight: FontWeight.bold,
               color: color,
@@ -752,7 +759,7 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
         boxShadow: AccountingTheme.cardShadow,
       ),
@@ -787,7 +794,7 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
         vertical: isMob ? 8 : ar.tableCellPadV + 4,
       ),
       decoration: const BoxDecoration(
-        color: AccountingTheme.tableHeaderBg,
+        color: SdColors.primary,
       ),
       child: Row(
         children: [
@@ -807,10 +814,11 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
       flex: flex,
       child: Text(
         text,
-        style: GoogleFonts.cairo(
+        style: TextStyle(
+          fontFamily: 'Cairo',
           fontSize: isMob ? 10 : ar.tableHeaderFont,
           fontWeight: FontWeight.bold,
-          color: AccountingTheme.tableHeaderText,
+          color: SdColors.surface,
         ),
         textAlign: TextAlign.center,
       ),
@@ -831,9 +839,9 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
         vertical: isMob ? 8 : ar.tableCellPadV + 2,
       ),
       decoration: BoxDecoration(
-        color: isEven ? Colors.transparent : AccountingTheme.tableRowAlt,
+        color: isEven ? Colors.transparent : SdColors.surfaceAlt,
         border: const Border(
-          bottom: BorderSide(color: AccountingTheme.borderColor, width: 0.5),
+          bottom: BorderSide(color: SdColors.divider, width: 0.5),
         ),
       ),
       child: Row(
@@ -843,10 +851,11 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
             flex: 2,
             child: Text(
               data['month'] as String,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 fontWeight: FontWeight.w600,
-                color: AccountingTheme.textPrimary,
+                color: SdColors.ink,
               ),
               textAlign: TextAlign.center,
             ),
@@ -855,7 +864,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(revenue),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 color: _clrRevenue,
                 fontWeight: FontWeight.w500,
@@ -867,7 +877,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(expenses),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 color: _clrExpenses,
                 fontWeight: FontWeight.w500,
@@ -890,7 +901,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
               ),
               child: Text(
                 _fmtCurrency(netIncome),
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: isMob ? 10 : ar.tableCellFont,
                   fontWeight: FontWeight.bold,
                   color: netIncome >= 0 ? _clrRevenue : _clrExpenses,
@@ -918,7 +930,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
                         const SizedBox(width: 2),
                         Text(
                           '${changePercent.abs().toStringAsFixed(1)}%',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: ar.tableCellFont,
                             fontWeight: FontWeight.w600,
                             color: changePercent >= 0
@@ -930,9 +943,10 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
                     )
                   : Text(
                       '-',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: ar.tableCellFont,
-                        color: AccountingTheme.textMuted,
+                        color: SdColors.faint,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -950,9 +964,9 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
         vertical: isMob ? 10 : ar.tableCellPadV + 4,
       ),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgSecondary,
+        color: SdColors.groundAlt,
         border: const Border(
-          top: BorderSide(color: AccountingTheme.borderColor, width: 1.5),
+          top: BorderSide(color: SdColors.divider, width: 1.5),
         ),
       ),
       child: Row(
@@ -962,10 +976,11 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
             flex: 2,
             child: Text(
               'الإجمالي',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 11 : ar.tableCellFont + 1,
                 fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
+                color: SdColors.ink,
               ),
               textAlign: TextAlign.center,
             ),
@@ -974,7 +989,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(totalRevenue),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 fontWeight: FontWeight.bold,
                 color: _clrRevenue,
@@ -986,7 +1002,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(totalExpenses),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 fontWeight: FontWeight.bold,
                 color: _clrExpenses,
@@ -998,7 +1015,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(totalNetIncome),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 fontWeight: FontWeight.bold,
                 color: totalNetIncome >= 0 ? _clrRevenue : _clrExpenses,
@@ -1011,9 +1029,10 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
             Expanded(
               child: Text(
                 '-',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: ar.tableCellFont,
-                  color: AccountingTheme.textMuted,
+                  color: SdColors.faint,
                 ),
                 textAlign: TextAlign.center,
               ),

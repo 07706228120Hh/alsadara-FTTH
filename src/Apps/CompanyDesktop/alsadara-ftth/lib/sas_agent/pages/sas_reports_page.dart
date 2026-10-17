@@ -211,7 +211,7 @@ class SasReportsPage extends StatelessWidget {
 
   Widget _hint(String text) => Text(
         text,
-        style: TextStyle(fontFamily: 'Cairo', fontSize: 12.sp, color: Colors.grey[600]),
+        style: TextStyle(fontFamily: 'Cairo', fontSize: 12.sp, color: SdColors.muted),
       );
 
   Widget _tile(
@@ -244,19 +244,19 @@ class SasReportsPage extends StatelessWidget {
                         style: TextStyle(fontFamily: 'Cairo', 
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF1A1A2E))),
+                            color: SdColors.ink)),
                     if (subtitle != null) ...[
                       SizedBox(height: 2.h),
                       Text(subtitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontFamily: 'Cairo', 
-                              fontSize: 11.sp, color: Colors.grey[600])),
+                              fontSize: 11.sp, color: SdColors.muted)),
                     ],
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_left_rounded, color: Colors.grey),
+              const Icon(Icons.chevron_left_rounded, color: SdColors.faint),
             ],
           ),
         ),
@@ -544,7 +544,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
         SizedBox(height: 6.h),
         Text('ملاحظة: التصفية الزمنية تخصّ «التفعيلات» فقط.',
             style:
-                TextStyle(fontFamily: 'Cairo', fontSize: 10.5.sp, color: Colors.grey[600])),
+                TextStyle(fontFamily: 'Cairo', fontSize: 10.5.sp, color: SdColors.muted)),
         SizedBox(height: 10.h),
         if (_activationsLoading)
           Padding(
@@ -612,7 +612,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
             onPressed:
                 (_activationsLoading || atCurrent) ? null : () => _shiftMonth(1),
             icon: const Icon(Icons.chevron_left_rounded),
-            color: atCurrent ? Colors.grey[350] : SdColors.primary,
+            color: atCurrent ? SdColors.faint : SdColors.primary,
           ),
         ],
       ),
@@ -628,7 +628,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
       style: TextStyle(fontFamily: 'Cairo', 
           fontSize: 12.5.sp,
           fontWeight: FontWeight.w700,
-          color: const Color(0xFF1A1A2E)),
+          color: SdColors.ink),
       items: [
         for (var m = 1; m <= 12; m++)
           DropdownMenuItem(
@@ -659,7 +659,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
       style: TextStyle(fontFamily: 'Cairo', 
           fontSize: 12.5.sp,
           fontWeight: FontWeight.w700,
-          color: const Color(0xFF1A1A2E)),
+          color: SdColors.ink),
       items: [
         for (final y in years)
           DropdownMenuItem(value: y, child: Text('$y')),
@@ -797,7 +797,7 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
             Expanded(
                 child: Text(msg,
                     style: TextStyle(fontFamily: 'Cairo', 
-                        fontSize: 12.5.sp, color: Colors.grey[800]))),
+                        fontSize: 12.5.sp, color: SdColors.ink))),
           ],
         ),
       );
@@ -805,18 +805,18 @@ class _SasAggregateReportsPageState extends State<SasAggregateReportsPage> {
   Widget _inlineEmpty(String msg) => Container(
         padding: EdgeInsets.all(14.w),
         decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.06),
+          color: SdColors.faint.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.20)),
+          border: Border.all(color: SdColors.faint.withValues(alpha: 0.20)),
         ),
         child: Row(
           children: [
-            Icon(Icons.inbox_rounded, color: Colors.grey[400], size: 20.sp),
+            Icon(Icons.inbox_rounded, color: SdColors.faint, size: 20.sp),
             SizedBox(width: 8.w),
             Expanded(
                 child: Text(msg,
                     style: TextStyle(fontFamily: 'Cairo', 
-                        fontSize: 12.5.sp, color: Colors.grey[600]))),
+                        fontSize: 12.5.sp, color: SdColors.muted))),
           ],
         ),
       );

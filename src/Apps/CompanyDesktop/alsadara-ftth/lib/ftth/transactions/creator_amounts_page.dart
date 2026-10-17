@@ -12,6 +12,7 @@ import 'package:excel/excel.dart' as ExcelLib;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'creator_transactions_detail_page.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 //صفحة اسماء المنشاة للعمليات  الحسابة
 class CreatorAmountsPage extends StatefulWidget {
@@ -258,7 +259,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(color: Color(0xFF1A237E)),
+              CircularProgressIndicator(color: SdColors.primary),
               SizedBox(height: 16),
               Text('جاري تصدير بيانات المنشآت...'),
             ],
@@ -393,14 +394,14 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.sort, color: Colors.blue[700], size: 20),
+              Icon(Icons.sort, color: SdColors.info, size: 20),
               const SizedBox(width: 8),
               Text(
                 'خيارات الترتيب',
                 style: TextStyle(
                   fontSize: _fs(16),
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue[700],
+                  color: SdColors.info,
                 ),
               ),
             ],
@@ -420,14 +421,14 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
             children: [
               Icon(
                 isAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                color: Colors.grey[600],
+                color: SdColors.muted,
                 size: 16,
               ),
               const SizedBox(width: 4),
               Text(
                 isAscending ? 'تصاعدي' : 'تنازلي',
                 style: TextStyle(
-                  color: Colors.grey[600],
+                  color: SdColors.muted,
                   fontSize: 12,
                 ),
               ),
@@ -440,7 +441,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                   });
                   _sortEntries();
                 },
-                activeThumbColor: const Color(0xFF1A237E),
+                activeThumbColor: SdColors.primary,
               ),
             ],
           ),
@@ -461,10 +462,10 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1A237E) : Colors.grey[100],
+          color: isSelected ? SdColors.primary : SdColors.groundAlt,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? const Color(0xFF1A237E) : Colors.grey[300]!,
+            color: isSelected ? SdColors.primary : SdColors.edge,
             width: 1,
           ),
         ),
@@ -474,13 +475,13 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
             Icon(
               icon,
               size: 16,
-              color: isSelected ? Colors.white : Colors.grey[600],
+              color: isSelected ? Colors.white : SdColors.muted,
             ),
             const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey[700],
+                color: isSelected ? Colors.white : SdColors.muted,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 fontSize: 12,
               ),
@@ -610,17 +611,17 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                   height: _isPhone ? 32 : 40,
                   decoration: BoxDecoration(
                     color: isPositive
-                        ? Colors.green[100]
+                        ? SdColors.successTint
                         : isNegative
-                            ? Colors.red[100]
-                            : Colors.grey[100],
+                            ? SdColors.dangerTint
+                            : SdColors.groundAlt,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isPositive
-                          ? Colors.green[300]!
+                          ? SdColors.successTintEdge
                           : isNegative
-                              ? Colors.red[300]!
-                              : Colors.grey[300]!,
+                              ? SdColors.dangerTintEdge
+                              : SdColors.edge,
                       width: 1.5,
                     ),
                   ),
@@ -629,10 +630,10 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                         ? Icons.person_off
                         : Icons.person,
                     color: isPositive
-                        ? Colors.green[700]
+                        ? SdColors.success
                         : isNegative
-                            ? Colors.red[700]
-                            : Colors.grey[700],
+                            ? SdColors.danger
+                            : SdColors.muted,
                     size: _isPhone ? 16 : 20,
                   ),
                 ),
@@ -658,7 +659,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: creatorName == 'بدون منشأة'
-                                        ? Colors.orange[800]
+                                        ? SdColors.warning
                                         : Colors.black87,
                                     fontSize: _fs(14),
                                   ),
@@ -671,14 +672,14 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                                     Icon(
                                       Icons.numbers,
                                       size: _isPhone ? 10 : 12,
-                                      color: Colors.grey[600],
+                                      color: SdColors.muted,
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
                                       'رقم ${index + 1}',
                                       style: TextStyle(
                                         fontSize: _fs(11),
-                                        color: Colors.grey[600],
+                                        color: SdColors.muted,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
@@ -742,24 +743,24 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                         end: Alignment.bottomRight,
                         colors: [
                           isPositive
-                              ? Colors.green[50]!
+                              ? SdColors.successTint
                               : isNegative
-                                  ? Colors.red[50]!
-                                  : Colors.grey[50]!,
+                                  ? SdColors.dangerTint
+                                  : SdColors.surfaceAlt,
                           isPositive
-                              ? Colors.green[100]!
+                              ? SdColors.successTint
                               : isNegative
-                                  ? Colors.red[100]!
-                                  : Colors.grey[100]!,
+                                  ? SdColors.dangerTint
+                                  : SdColors.groundAlt,
                         ],
                       ),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: isPositive
-                            ? Colors.green[300]!
+                            ? SdColors.successTintEdge
                             : isNegative
-                                ? Colors.red[300]!
-                                : Colors.grey[300]!,
+                                ? SdColors.dangerTintEdge
+                                : SdColors.edge,
                         width: 1,
                       ),
                       boxShadow: [
@@ -791,10 +792,10 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                                   fontWeight: FontWeight
                                       .w900, // نفس سمك خط المربعات الأخرى
                                   color: isPositive
-                                      ? Colors.green[800]
+                                      ? SdColors.success
                                       : isNegative
-                                          ? Colors.red[800]
-                                          : Colors.grey[800],
+                                          ? SdColors.danger
+                                          : SdColors.ink,
                                   fontSize:
                                       _fs(16), // تكبير حجم المبلغ في المجموع النهائي
                                 ),
@@ -810,10 +811,10 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                                   horizontal: 4, vertical: 1),
                               decoration: BoxDecoration(
                                 color: isPositive
-                                    ? Colors.green[200]
+                                    ? SdColors.successTintEdge
                                     : isNegative
-                                        ? Colors.red[200]
-                                        : Colors.grey[200],
+                                        ? SdColors.dangerTintEdge
+                                        : SdColors.divider,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -822,10 +823,10 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                                   fontSize: 10, // زيادة من 8 إلى 10
                                   fontWeight: FontWeight.w900,
                                   color: isPositive
-                                      ? Colors.green[800]
+                                      ? SdColors.success
                                       : isNegative
-                                          ? Colors.red[800]
-                                          : Colors.grey[800],
+                                          ? SdColors.danger
+                                          : SdColors.ink,
                                 ),
                               ),
                             ),
@@ -842,13 +843,13 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
+                    color: SdColors.divider,
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: Icon(
                     Icons.arrow_forward_ios,
                     size: 12,
-                    color: Colors.grey[600],
+                    color: SdColors.muted,
                   ),
                 ),
               ],
@@ -862,9 +863,9 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: SdColors.surfaceAlt,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1A237E),
+        backgroundColor: SdColors.primary,
         elevation: 0,
         toolbarHeight:
             _isPhone ? 56 : 68, // زيادة ارتفاع الشريط أكثر لتجنب التداخل مع مربع البحث
@@ -902,13 +903,13 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                 Container(
                   padding: EdgeInsets.all(_isPhone ? 4 : 6), // تكبير إطار الأيقونة
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A237E)
+                    color: SdColors.primary
                         .withValues(alpha: 0.1), // خلفية أزرق فاتح
                     borderRadius: BorderRadius.circular(10), // حواف مدورة أكثر
                   ),
                   child: Icon(
                     Icons.account_balance_wallet,
-                    color: const Color(0xFF1A237E), // لون أزرق داكن للأيقونة
+                    color: SdColors.primary, // لون أزرق داكن للأيقونة
                     size: _isPhone ? 16 : 22, // تكبير الأيقونة أكثر
                   ),
                 ),
@@ -971,7 +972,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
             width: double.infinity,
             padding: EdgeInsets.all(_isPhone ? 10 : 16),
             decoration: const BoxDecoration(
-              color: Color(0xFF1A237E),
+              color: SdColors.primary,
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(20),
                 bottomRight: Radius.circular(20),
@@ -984,11 +985,11 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'البحث في أسماء المنشآت...',
-                    hintStyle: TextStyle(color: Colors.grey[400]),
-                    prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+                    hintStyle: TextStyle(color: SdColors.faint),
+                    prefixIcon: Icon(Icons.search, color: SdColors.faint),
                     suffixIcon: searchQuery.isNotEmpty
                         ? IconButton(
-                            icon: Icon(Icons.clear, color: Colors.grey[400]),
+                            icon: Icon(Icons.clear, color: SdColors.faint),
                             onPressed: () {
                               _searchController.clear();
                               setState(() {
@@ -1041,7 +1042,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                           Icon(
                             Icons.search_off,
                             size: _isPhone ? 56 : 80,
-                            color: Colors.grey[400],
+                            color: SdColors.faint,
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -1051,7 +1052,7 @@ class _CreatorAmountsPageState extends State<CreatorAmountsPage> {
                             style: TextStyle(
                               fontSize: _fs(18),
                               fontWeight: FontWeight.w600,
-                              color: Colors.grey[600],
+                              color: SdColors.muted,
                             ),
                           ),
                         ],

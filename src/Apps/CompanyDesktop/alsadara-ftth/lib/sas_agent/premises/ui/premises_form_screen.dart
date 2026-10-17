@@ -252,7 +252,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
       initialValue: _gov,
       isExpanded: true,
       style: TextStyle(fontFamily: 'Cairo', 
-          fontWeight: FontWeight.w600, color: const Color(0xFF1A1A2E)),
+          fontWeight: FontWeight.w600, color: SdColors.ink),
       decoration: InputDecoration(
         labelText: 'المحافظة',
         labelStyle: TextStyle(fontFamily: 'Cairo', ),
@@ -277,7 +277,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
         Row(
           children: [
             Icon(hasLoc ? Icons.place_rounded : Icons.location_off_rounded,
-                color: hasLoc ? SdColors.success : Colors.grey),
+                color: hasLoc ? SdColors.success : SdColors.faint),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -286,7 +286,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
                     : 'لم يُحدَّد الموقع بعد',
                 style: TextStyle(fontFamily: 'Cairo', 
                     fontWeight: FontWeight.w700,
-                    color: hasLoc ? const Color(0xFF1A1A2E) : Colors.grey[600]),
+                    color: hasLoc ? SdColors.ink : SdColors.muted),
               ),
             ),
             FilledButton.icon(
@@ -331,7 +331,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
             style: TextStyle(fontFamily: 'Cairo', 
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
-                color: Colors.grey[700])),
+                color: SdColors.muted)),
       );
 
   Widget _choiceRow(
@@ -348,7 +348,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
                     fontSize: 12.5,
                     color: value == e.key
                         ? Colors.white
-                        : const Color(0xFF475569))),
+                        : SdColors.muted)),
             selected: value == e.key,
             showCheckmark: false,
             backgroundColor: Colors.white,
@@ -356,7 +356,7 @@ class _PremisesFormScreenState extends State<PremisesFormScreen> {
             side: BorderSide(
                 color: value == e.key
                     ? SdColors.primary
-                    : Colors.grey.withValues(alpha: 0.25)),
+                    : SdColors.faint.withValues(alpha: 0.25)),
             onSelected: (_) => onSet(e.key),
           ),
       ],

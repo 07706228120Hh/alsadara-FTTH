@@ -160,15 +160,15 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
   Color _getStatusColor(CompanyStatus status) {
     switch (status) {
       case CompanyStatus.active:
-        return const Color(0xFF10B981);
+        return SdColors.success;
       case CompanyStatus.warning:
         return const Color(0xFFf7971e);
       case CompanyStatus.critical:
         return const Color(0xFFeb3349);
       case CompanyStatus.expired:
-        return Colors.red;
+        return SdColors.danger;
       case CompanyStatus.suspended:
-        return Colors.grey;
+        return SdColors.faint;
     }
   }
 
@@ -269,7 +269,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgLightCard,
+        color: SdColors.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
@@ -291,7 +291,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   gradient: EnergyDashboardTheme.primaryGradient,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: EnergyDashboardTheme.glowShadow(
-                      EnergyDashboardTheme.primary.withOpacity(0.2)),
+                      SdColors.info.withOpacity(0.2)),
                 ),
                 child: const Icon(Icons.business_rounded,
                     color: Colors.white, size: 22),
@@ -305,7 +305,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   Text(
                     'إدارة الشركات',
                     style: TextStyle(
-                      color: EnergyDashboardTheme.textDark,
+                      color: SdColors.ink,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -313,7 +313,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   Text(
                     '${_companies.length} شركة مسجلة',
                     style: TextStyle(
-                      color: EnergyDashboardTheme.textMedium,
+                      color: SdColors.muted,
                       fontSize: 12,
                     ),
                   ),
@@ -327,10 +327,10 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: EnergyDashboardTheme.success.withOpacity(0.1),
+                  color: SdColors.success.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                      color: EnergyDashboardTheme.success.withOpacity(0.3)),
+                      color: SdColors.success.withOpacity(0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -339,12 +339,12 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                       width: 7,
                       height: 7,
                       decoration: BoxDecoration(
-                        color: EnergyDashboardTheme.success,
+                        color: SdColors.success,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
                             color:
-                                EnergyDashboardTheme.success.withOpacity(0.5),
+                                SdColors.success.withOpacity(0.5),
                             blurRadius: 4,
                           ),
                         ],
@@ -354,7 +354,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                     Text(
                       'VPS متصل',
                       style: TextStyle(
-                        color: EnergyDashboardTheme.success,
+                        color: SdColors.success,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
@@ -374,13 +374,13 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: EnergyDashboardTheme.bgSecondary,
+                      color: SdColors.groundAlt,
                       borderRadius: BorderRadius.circular(10),
                       border:
-                          Border.all(color: EnergyDashboardTheme.borderColor),
+                          Border.all(color: SdColors.divider),
                     ),
                     child: Icon(Icons.refresh_rounded,
-                        size: 20, color: EnergyDashboardTheme.textMuted),
+                        size: 20, color: SdColors.faint),
                   ),
                 ),
               ),
@@ -393,7 +393,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: const Text('إضافة شركة', style: TextStyle(fontSize: 13)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: EnergyDashboardTheme.primary,
+                  backgroundColor: SdColors.info,
                   foregroundColor: Colors.white,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -412,27 +412,27 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
           Row(
             children: [
               _buildPremiumStatChip('الكل', stats['total']!, Icons.apps_rounded,
-                  EnergyDashboardTheme.primary, null),
+                  SdColors.info, null),
               const SizedBox(width: 8),
               _buildPremiumStatChip(
                   'نشطة',
                   stats['active']!,
                   Icons.check_circle_rounded,
-                  EnergyDashboardTheme.success,
+                  SdColors.success,
                   CompanyStatus.active),
               const SizedBox(width: 8),
               _buildPremiumStatChip(
                   'تحذير',
                   stats['warning']!,
                   Icons.schedule_rounded,
-                  EnergyDashboardTheme.warning,
+                  SdColors.warning,
                   CompanyStatus.warning),
               const SizedBox(width: 8),
               _buildPremiumStatChip(
                   'حرج',
                   stats['critical']!,
                   Icons.warning_rounded,
-                  EnergyDashboardTheme.danger,
+                  SdColors.danger,
                   CompanyStatus.critical),
               const SizedBox(width: 8),
               _buildPremiumStatChip(
@@ -446,7 +446,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   'معلقة',
                   stats['suspended']!,
                   Icons.pause_circle_rounded,
-                  EnergyDashboardTheme.textLight,
+                  SdColors.faint,
                   CompanyStatus.suspended),
             ],
           ),
@@ -472,7 +472,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             decoration: BoxDecoration(
               color: isSelected
                   ? color.withOpacity(0.12)
-                  : EnergyDashboardTheme.bgLightCard,
+                  : SdColors.surface,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: isSelected ? color : color.withOpacity(0.2),
@@ -498,7 +498,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: isSelected ? color : EnergyDashboardTheme.textDark,
+                    color: isSelected ? color : SdColors.ink,
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -509,7 +509,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                     fontWeight: FontWeight.w500,
                     color: isSelected
                         ? color.withOpacity(0.8)
-                        : EnergyDashboardTheme.textMedium,
+                        : SdColors.muted,
                   ),
                 ),
               ],
@@ -527,9 +527,9 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.surfaceColor,
+        color: SdColors.surface,
         border: Border(
-          bottom: BorderSide(color: EnergyDashboardTheme.borderColor),
+          bottom: BorderSide(color: SdColors.divider),
         ),
       ),
       child: Column(
@@ -544,7 +544,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: EnergyDashboardTheme.primaryColor.withOpacity(0.1),
+                      color: SdColors.info.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                           color: Colors.black.withOpacity(0.3), width: 1.5),
@@ -557,7 +557,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                       ],
                     ),
                     child: const Icon(Icons.business_rounded,
-                        color: EnergyDashboardTheme.primaryColor, size: 22),
+                        color: SdColors.info, size: 22),
                   ),
                   const SizedBox(width: 12),
                   const Column(
@@ -566,7 +566,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                       Text(
                         'إدارة الشركات',
                         style: TextStyle(
-                          color: EnergyDashboardTheme.textPrimary,
+                          color: SdColors.ink,
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -574,7 +574,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                       Text(
                         'عرض وإدارة جميع الشركات المسجلة',
                         style: TextStyle(
-                          color: EnergyDashboardTheme.textMuted,
+                          color: SdColors.faint,
                           fontSize: 12,
                         ),
                       ),
@@ -591,7 +591,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.green.shade50, Colors.green.shade100],
+                    colors: [SdColors.successTint, SdColors.successTint],
                   ),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
@@ -608,13 +608,13 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.cloud_done_rounded,
-                        size: 16, color: Colors.green.shade700),
+                        size: 16, color: SdColors.success),
                     const SizedBox(width: 6),
                     Text(
                       'VPS متصل',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.green.shade700,
+                        color: SdColors.success,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -633,7 +633,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: EnergyDashboardTheme.backgroundColor,
+                      color: SdColors.ground,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                           color: Colors.black.withOpacity(0.3), width: 1.5),
@@ -646,7 +646,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                       ],
                     ),
                     child: const Icon(Icons.refresh_rounded,
-                        size: 20, color: EnergyDashboardTheme.textSecondary),
+                        size: 20, color: SdColors.muted),
                   ),
                 ),
               ),
@@ -661,7 +661,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                       color: Colors.black.withOpacity(0.3), width: 1.5),
                   boxShadow: [
                     BoxShadow(
-                      color: EnergyDashboardTheme.primaryColor.withOpacity(0.3),
+                      color: SdColors.info.withOpacity(0.3),
                       blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
@@ -672,7 +672,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   icon: const Icon(Icons.add_rounded, size: 20),
                   label: const Text('إضافة شركة'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: EnergyDashboardTheme.primaryColor,
+                    backgroundColor: SdColors.info,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 14),
@@ -698,14 +698,14 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   'نشطة',
                   stats['active']!,
                   Icons.check_circle_rounded,
-                  const Color(0xFF10B981),
+                  SdColors.success,
                   CompanyStatus.active),
               const SizedBox(width: 10),
               _buildStatChip('تحذير', stats['warning']!, Icons.schedule_rounded,
-                  const Color(0xFFf59e0b), CompanyStatus.warning),
+                  SdColors.warning, CompanyStatus.warning),
               const SizedBox(width: 10),
               _buildStatChip('حرج', stats['critical']!, Icons.warning_rounded,
-                  const Color(0xFFef4444), CompanyStatus.critical),
+                  SdColors.danger, CompanyStatus.critical),
               const SizedBox(width: 10),
               _buildStatChip('منتهية', stats['expired']!, Icons.cancel_rounded,
                   const Color(0xFFdc2626), CompanyStatus.expired),
@@ -714,7 +714,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   'معلقة',
                   stats['suspended']!,
                   Icons.pause_circle_rounded,
-                  const Color(0xFF64748b),
+                  SdColors.muted,
                   CompanyStatus.suspended),
             ],
           ),
@@ -740,7 +740,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             decoration: BoxDecoration(
               color: isSelected
                   ? color.withOpacity(0.15)
-                  : EnergyDashboardTheme.backgroundColor,
+                  : SdColors.ground,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected ? color : Colors.black.withOpacity(0.3),
@@ -784,7 +784,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                       style: TextStyle(
                         color: isSelected
                             ? color
-                            : EnergyDashboardTheme.textSecondary,
+                            : SdColors.muted,
                         fontSize: 11,
                       ),
                     ),
@@ -831,12 +831,12 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
         Row(
           children: [
             Icon(Icons.analytics_outlined,
-                color: EnergyDashboardTheme.primaryColor, size: 20),
+                color: SdColors.info, size: 20),
             const SizedBox(width: 8),
             const Text(
               'الإحصائيات',
               style: TextStyle(
-                color: EnergyDashboardTheme.textPrimary,
+                color: SdColors.ink,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -859,7 +859,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               title: 'نشطة',
               value: stats['active'].toString(),
               icon: Icons.check_circle_rounded,
-              gradient: const [Color(0xFF10B981), Color(0xFF34D399)],
+              gradient: const [SdColors.success, Color(0xFF34D399)],
               onTap: () => setState(() => _statusFilter = CompanyStatus.active),
             ),
             _buildStatCard(
@@ -890,7 +890,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               title: 'معلقة',
               value: stats['suspended'].toString(),
               icon: Icons.pause_circle_rounded,
-              gradient: const [Color(0xFF64748B), Color(0xFF94A3B8)],
+              gradient: const [SdColors.muted, Color(0xFF94A3B8)],
               onTap: () =>
                   setState(() => _statusFilter = CompanyStatus.suspended),
             ),
@@ -928,11 +928,11 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
           decoration: BoxDecoration(
             color: isSelected
                 ? gradient[0].withOpacity(0.1)
-                : EnergyDashboardTheme.surfaceColor,
+                : SdColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color:
-                  isSelected ? gradient[0] : EnergyDashboardTheme.borderColor,
+                  isSelected ? gradient[0] : SdColors.divider,
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -964,7 +964,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               Text(
                 title,
                 style: TextStyle(
-                  color: EnergyDashboardTheme.textSecondary,
+                  color: SdColors.muted,
                   fontSize: 11,
                 ),
               ),
@@ -980,10 +980,10 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgLightCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: EnergyDashboardTheme.borderColor.withOpacity(0.5)),
+            color: SdColors.divider.withOpacity(0.5)),
       ),
       child: Row(
         children: [
@@ -994,13 +994,13 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               decoration: InputDecoration(
                 hintText: 'البحث بالاسم أو الكود...',
                 hintStyle: TextStyle(
-                  color: EnergyDashboardTheme.textMuted,
+                  color: SdColors.faint,
                   fontSize: 13,
                 ),
                 prefixIcon: Icon(Icons.search_rounded,
-                    color: EnergyDashboardTheme.primary, size: 20),
+                    color: SdColors.info, size: 20),
                 filled: true,
-                fillColor: EnergyDashboardTheme.bgSecondary.withOpacity(0.5),
+                fillColor: SdColors.groundAlt.withOpacity(0.5),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide.none,
@@ -1012,7 +1012,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: BorderSide(
-                    color: EnergyDashboardTheme.primary.withOpacity(0.5),
+                    color: SdColors.info.withOpacity(0.5),
                     width: 1.5,
                   ),
                 ),
@@ -1042,21 +1042,21 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: EnergyDashboardTheme.danger.withOpacity(0.08),
+                    color: SdColors.danger.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                        color: EnergyDashboardTheme.danger.withOpacity(0.2)),
+                        color: SdColors.danger.withOpacity(0.2)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.clear_rounded,
-                          size: 14, color: EnergyDashboardTheme.danger),
+                          size: 14, color: SdColors.danger),
                       const SizedBox(width: 4),
                       Text(
                         'مسح',
                         style: TextStyle(
-                          color: EnergyDashboardTheme.danger,
+                          color: SdColors.danger,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1075,24 +1075,24 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  EnergyDashboardTheme.primary.withOpacity(0.08),
-                  EnergyDashboardTheme.neonPurple.withOpacity(0.15),
+                  SdColors.info.withOpacity(0.08),
+                  SdColors.platformBase.withOpacity(0.15),
                 ],
               ),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                  color: EnergyDashboardTheme.primary.withOpacity(0.15)),
+                  color: SdColors.info.withOpacity(0.15)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.business_rounded,
-                    size: 14, color: EnergyDashboardTheme.primary),
+                    size: 14, color: SdColors.info),
                 const SizedBox(width: 6),
                 Text(
                   '${_filteredCompanies.length} شركة',
                   style: TextStyle(
-                    color: EnergyDashboardTheme.primary,
+                    color: SdColors.info,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1119,7 +1119,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
               Icon(
                 Icons.business_outlined,
                 size: 64,
-                color: Colors.grey[400],
+                color: SdColors.faint,
               ),
               const SizedBox(height: 16),
               Text(
@@ -1128,7 +1128,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                     : 'لا توجد شركات',
                 style: TextStyle(
                   fontSize: 18,
-                  color: Colors.grey[600],
+                  color: SdColors.muted,
                 ),
               ),
               if (_searchQuery.isEmpty && _statusFilter == null) ...[
@@ -1138,7 +1138,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   icon: const Icon(Icons.add),
                   label: const Text('إضافة شركة'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: EnergyDashboardTheme.primaryColor,
+                    backgroundColor: SdColors.info,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -1187,12 +1187,12 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const Icon(Icons.error_outline, size: 64, color: SdColors.danger),
           const SizedBox(height: 16),
           Text(
             _errorMessage!,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, color: Colors.red),
+            style: const TextStyle(fontSize: 16, color: SdColors.danger),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
@@ -1267,7 +1267,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.warning, color: Colors.red),
+            Icon(Icons.warning, color: SdColors.danger),
             SizedBox(width: 8),
             Text('حذف الشركة'),
           ],
@@ -1281,17 +1281,17 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
+                color: SdColors.dangerTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red),
+                  Icon(Icons.error_outline, color: SdColors.danger),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'هذا الإجراء لا يمكن التراجع عنه!',
-                      style: TextStyle(color: Colors.red),
+                      style: TextStyle(color: SdColors.danger),
                     ),
                   ),
                 ],
@@ -1306,7 +1306,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('حذف'),
           ),
         ],
@@ -1349,7 +1349,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: company.isActive ? Colors.orange : Colors.green,
+              backgroundColor: company.isActive ? SdColors.warning : SdColors.success,
             ),
             child: Text(company.isActive ? 'تعطيل' : 'تفعيل'),
           ),
@@ -1430,7 +1430,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
     return ElevatedButton(
       onPressed: () => Navigator.pop(context, days),
       style: ElevatedButton.styleFrom(
-        backgroundColor: EnergyDashboardTheme.primaryColor,
+        backgroundColor: SdColors.info,
         foregroundColor: Colors.white,
       ),
       child: Text(label),
@@ -1444,7 +1444,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.link, color: Colors.teal),
+            Icon(Icons.link, color: SdColors.accent),
             SizedBox(width: 8),
             Text('ربط بوابة المواطن'),
           ],
@@ -1458,17 +1458,17 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.teal.shade50,
+                color: SdColors.accentTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.teal),
+                  Icon(Icons.info_outline, color: SdColors.accent),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'سيتم إلغاء ربط أي شركة أخرى مرتبطة حالياً',
-                      style: TextStyle(color: Colors.teal),
+                      style: TextStyle(color: SdColors.accent),
                     ),
                   ),
                 ],
@@ -1486,7 +1486,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             icon: const Icon(Icons.link),
             label: const Text('ربط'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
+              backgroundColor: SdColors.accent,
               foregroundColor: Colors.white,
             ),
           ),
@@ -1523,7 +1523,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.link_off, color: Colors.orange),
+            Icon(Icons.link_off, color: SdColors.warning),
             SizedBox(width: 8),
             Text('إلغاء الربط'),
           ],
@@ -1540,7 +1540,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             icon: const Icon(Icons.link_off),
             label: const Text('إلغاء الربط'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               foregroundColor: Colors.white,
             ),
           ),
@@ -1578,7 +1578,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.login, color: Color(0xFF1a237e)),
+            Icon(Icons.login, color: SdColors.primary),
             SizedBox(width: 8),
             Text('الدخول للشركة'),
           ],
@@ -1592,17 +1592,17 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue),
+                  Icon(Icons.info_outline, color: SdColors.info),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'ستحصل على جميع صلاحيات المدير',
-                      style: TextStyle(color: Colors.blue),
+                      style: TextStyle(color: SdColors.info),
                     ),
                   ),
                 ],
@@ -1620,7 +1620,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             icon: const Icon(Icons.login),
             label: const Text('دخول'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1a237e),
+              backgroundColor: SdColors.primary,
               foregroundColor: Colors.white,
             ),
           ),
@@ -1706,7 +1706,7 @@ class _UnifiedCompanyCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
-            color: EnergyDashboardTheme.bgLightCard,
+            color: SdColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isLinkedToCitizen
@@ -1796,7 +1796,7 @@ class _UnifiedCompanyCard extends StatelessWidget {
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
-                                    color: EnergyDashboardTheme.textPrimary,
+                                    color: SdColors.ink,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1843,14 +1843,14 @@ class _UnifiedCompanyCard extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: EnergyDashboardTheme.primaryColor
+                                  color: SdColors.info
                                       .withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   company.code,
                                   style: const TextStyle(
-                                    color: EnergyDashboardTheme.primaryColor,
+                                    color: SdColors.info,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -1860,13 +1860,13 @@ class _UnifiedCompanyCard extends StatelessWidget {
                                 const SizedBox(width: 12),
                                 Icon(Icons.email_outlined,
                                     size: 14,
-                                    color: EnergyDashboardTheme.textMuted),
+                                    color: SdColors.faint),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
                                     company.email!,
                                     style: TextStyle(
-                                      color: EnergyDashboardTheme.textSecondary,
+                                      color: SdColors.muted,
                                       fontSize: 12,
                                     ),
                                     overflow: TextOverflow.ellipsis,
@@ -1879,21 +1879,21 @@ class _UnifiedCompanyCard extends StatelessWidget {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: Colors.teal.withOpacity(0.1),
+                                    color: SdColors.accent.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                        color: Colors.teal.withOpacity(0.3)),
+                                        color: SdColors.accent.withOpacity(0.3)),
                                   ),
                                   child: const Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(Icons.people_alt_rounded,
-                                          size: 12, color: Colors.teal),
+                                          size: 12, color: SdColors.accent),
                                       SizedBox(width: 4),
                                       Text(
                                         'مرتبطة',
                                         style: TextStyle(
-                                          color: Colors.teal,
+                                          color: SdColors.accent,
                                           fontSize: 10,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -1916,10 +1916,10 @@ class _UnifiedCompanyCard extends StatelessWidget {
                           horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color:
-                            EnergyDashboardTheme.bgSecondary.withOpacity(0.5),
+                            SdColors.groundAlt.withOpacity(0.5),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color: EnergyDashboardTheme.borderColor
+                            color: SdColors.divider
                                 .withOpacity(0.5)),
                       ),
                       child: Row(
@@ -1928,35 +1928,35 @@ class _UnifiedCompanyCard extends StatelessWidget {
                             Icons.calendar_month_rounded,
                             dateFormat.format(company.subscriptionEndDate),
                             color: company.daysRemaining <= 30
-                                ? Colors.orange
+                                ? SdColors.warning
                                 : null,
                           ),
                           Container(
                             height: 30,
                             width: 1,
                             margin: const EdgeInsets.symmetric(horizontal: 12),
-                            color: EnergyDashboardTheme.borderColor,
+                            color: SdColors.divider,
                           ),
                           _buildCompactInfo(
                             Icons.hourglass_bottom_rounded,
                             '${company.daysRemaining} يوم',
                             color: company.daysRemaining <= 7
-                                ? Colors.red
+                                ? SdColors.danger
                                 : company.daysRemaining <= 30
-                                    ? Colors.orange
-                                    : Colors.green,
+                                    ? SdColors.warning
+                                    : SdColors.success,
                           ),
                           Container(
                             height: 30,
                             width: 1,
                             margin: const EdgeInsets.symmetric(horizontal: 12),
-                            color: EnergyDashboardTheme.borderColor,
+                            color: SdColors.divider,
                           ),
                           _buildCompactInfo(
                             Icons.groups_rounded,
                             '${company.employeeCount}/${company.maxUsers}',
                             color: company.employeeCount >= company.maxUsers
-                                ? Colors.red
+                                ? SdColors.danger
                                 : null,
                           ),
                         ],
@@ -1969,12 +1969,12 @@ class _UnifiedCompanyCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: EnergyDashboardTheme.primary.withOpacity(0.08),
+                        color: SdColors.info.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(
                         Icons.arrow_forward_ios_rounded,
-                        color: EnergyDashboardTheme.primaryColor,
+                        color: SdColors.info,
                         size: 14,
                       ),
                     ),
@@ -1993,14 +1993,14 @@ class _UnifiedCompanyCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon,
-            size: 16, color: color ?? EnergyDashboardTheme.textSecondary),
+            size: 16, color: color ?? SdColors.muted),
         const SizedBox(width: 6),
         Text(
           value,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: color ?? EnergyDashboardTheme.textPrimary,
+            color: color ?? SdColors.ink,
           ),
         ),
       ],
@@ -2211,14 +2211,14 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color(0xFF1a1a2e),
+              SdColors.ink,
               const Color(0xFF16213e),
             ],
           ),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.purple.withOpacity(0.3),
+              color: SdColors.platformBase.withOpacity(0.3),
               blurRadius: 30,
               spreadRadius: 5,
             ),
@@ -2229,7 +2229,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
             ),
           ],
           border: Border.all(
-            color: Colors.purple.withOpacity(0.3),
+            color: SdColors.platformBase.withOpacity(0.3),
             width: 1,
           ),
         ),
@@ -2251,13 +2251,13 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.purple.withOpacity(0.2),
-            Colors.blue.withOpacity(0.1),
+            SdColors.platformBase.withOpacity(0.2),
+            SdColors.info.withOpacity(0.1),
           ],
         ),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border(
-          bottom: BorderSide(color: Colors.purple.withOpacity(0.2)),
+          bottom: BorderSide(color: SdColors.platformBase.withOpacity(0.2)),
         ),
       ),
       child: Row(
@@ -2267,12 +2267,12 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.purple, Colors.purple.shade700],
+                colors: [SdColors.platformBase, SdColors.platformBase],
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.purple.withOpacity(0.4),
+                  color: SdColors.platformBase.withOpacity(0.4),
                   blurRadius: 15,
                   offset: const Offset(0, 5),
                 ),
@@ -2302,21 +2302,21 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.2),
+                        color: SdColors.success.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
                         border:
-                            Border.all(color: Colors.green.withOpacity(0.5)),
+                            Border.all(color: SdColors.success.withOpacity(0.5)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.verified_rounded,
-                              color: Colors.green.shade400, size: 14),
+                              color: SdColors.success, size: 14),
                           const SizedBox(width: 4),
                           Text(
                             'نشطة',
                             style: TextStyle(
-                              color: Colors.green.shade400,
+                              color: SdColors.success,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
@@ -2344,14 +2344,14 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.2),
+                        color: SdColors.info.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         widget.company.code,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.blue.shade300,
+                          color: SdColors.infoTintEdge,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -2385,12 +2385,12 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
         controller: _tabController,
         indicator: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.purple, Colors.purple.shade700],
+            colors: [SdColors.platformBase, SdColors.platformBase],
           ),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.purple.withOpacity(0.3),
+              color: SdColors.platformBase.withOpacity(0.3),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -2453,9 +2453,9 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
       controller: _tabController,
       children: [
         _buildPermissionsGrid(
-            _firstSystemPermissions, _firstSystemFeatures, Colors.blue),
+            _firstSystemPermissions, _firstSystemFeatures, SdColors.info),
         _buildPermissionsGrid(
-            _secondSystemPermissions, _secondSystemFeatures, Colors.teal),
+            _secondSystemPermissions, _secondSystemFeatures, SdColors.accent),
       ],
     );
   }
@@ -2562,7 +2562,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
             icon: const Icon(Icons.check_circle_rounded, size: 18),
             label: const Text('تفعيل الكل'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.withOpacity(0.8),
+              backgroundColor: SdColors.success.withOpacity(0.8),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(
@@ -2582,7 +2582,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
             icon: const Icon(Icons.remove_circle_rounded, size: 18),
             label: const Text('إلغاء الكل'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.withOpacity(0.8),
+              backgroundColor: SdColors.danger.withOpacity(0.8),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               shape: RoundedRectangleBorder(
@@ -2666,15 +2666,15 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: isEnabled
-                          ? Colors.green.withOpacity(0.2)
-                          : Colors.red.withOpacity(0.1),
+                          ? SdColors.success.withOpacity(0.2)
+                          : SdColors.danger.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       isEnabled
                           ? Icons.check_circle_rounded
                           : Icons.cancel_rounded,
-                      color: isEnabled ? Colors.green : Colors.red.shade300,
+                      color: isEnabled ? SdColors.success : SdColors.dangerTintEdge,
                       size: 20,
                     ),
                   ),
@@ -2769,14 +2769,14 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                 : const Icon(Icons.save_rounded, size: 20),
             label: Text(_isLoading ? 'جاري الحفظ...' : 'حفظ الصلاحيات'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple,
+              backgroundColor: SdColors.platformBase,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               elevation: 8,
-              shadowColor: Colors.purple.withOpacity(0.5),
+              shadowColor: SdColors.platformBase.withOpacity(0.5),
             ),
           ),
         ],
@@ -2820,7 +2820,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                 Text('تم حفظ الصلاحيات بنجاح'),
               ],
             ),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: SdColors.success,
             behavior: SnackBarBehavior.floating,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -2836,7 +2836,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                 Expanded(child: Text(response.message ?? 'فشل حفظ الصلاحيات')),
               ],
             ),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: SdColors.danger,
             behavior: SnackBarBehavior.floating,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -2857,7 +2857,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
               Expanded(child: Text('حدث خطأ')),
             ],
           ),
-          backgroundColor: Colors.red.shade600,
+          backgroundColor: SdColors.danger,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

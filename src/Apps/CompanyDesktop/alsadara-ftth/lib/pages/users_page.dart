@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class UsersPage extends StatefulWidget {
   final String permissions; // إضافة معامل الصلاحيات
@@ -206,9 +207,9 @@ class _UsersPageState extends State<UsersPage> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.blue[900]!,
-                Colors.blue[700]!,
-                Colors.blue[500]!,
+                SdColors.infoEdge,
+                SdColors.info,
+                SdColors.info,
               ],
             ),
           ),
@@ -266,7 +267,7 @@ class _UsersPageState extends State<UsersPage> {
               ? Center(
                   child: Text(
                     errorMessage!,
-                    style: const TextStyle(color: Colors.red, fontSize: 16),
+                    style: const TextStyle(color: SdColors.danger, fontSize: 16),
                   ),
                 )
               : Column(
@@ -320,14 +321,14 @@ class _UsersPageState extends State<UsersPage> {
                                             _showEditUserDialog(context, index),
                                         child: const Text(
                                           'تعديل',
-                                          style: TextStyle(color: Colors.blue),
+                                          style: TextStyle(color: SdColors.info),
                                         ),
                                       ),
                                       TextButton(
                                         onPressed: () => deleteUser(index),
                                         child: const Text(
                                           'حذف',
-                                          style: TextStyle(color: Colors.red),
+                                          style: TextStyle(color: SdColors.danger),
                                         ),
                                       ),
                                     ],

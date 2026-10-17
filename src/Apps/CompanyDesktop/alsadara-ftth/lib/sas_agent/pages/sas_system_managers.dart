@@ -110,7 +110,7 @@ class _SasSystemManagersState extends State<SasSystemManagers> {
                     style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 12.5.sp,
                         fontWeight: FontWeight.w700,
-                        color: Colors.grey[700])),
+                        color: SdColors.muted)),
               ),
             );
           }
@@ -157,12 +157,12 @@ class _SasSystemManagersState extends State<SasSystemManagers> {
                         if (name.isNotEmpty)
                           Text(name,
                               style: TextStyle(fontFamily: 'Cairo', 
-                                  fontSize: 11.5.sp, color: Colors.grey[600])),
+                                  fontSize: 11.5.sp, color: SdColors.muted)),
                       ],
                     ),
                   ),
-                  if (!enabled) const SasStatusBadge(label: 'معطّل', color: Colors.grey),
-                  const Icon(Icons.more_vert_rounded, color: Colors.grey),
+                  if (!enabled) const SasStatusBadge(label: 'معطّل', color: SdColors.faint),
+                  const Icon(Icons.more_vert_rounded, color: SdColors.faint),
                 ],
               ),
               SizedBox(height: 8.h),
@@ -174,7 +174,7 @@ class _SasSystemManagersState extends State<SasSystemManagers> {
                       icon: Icons.people_rounded,
                       label: 'المشتركون',
                       value: '${m['users_count'] ?? 0}',
-                      color: const Color(0xFF009688)),
+                      color: SdColors.accent),
                   SasInfoChip(
                       icon: Icons.account_balance_wallet_rounded,
                       label: 'الرصيد',
@@ -259,7 +259,7 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
                 height: 4.h,
                 margin: EdgeInsets.only(bottom: 12.h),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.3),
+                  color: SdColors.faint.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(4.r),
                 ),
               ),
@@ -282,7 +282,7 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
                       if (name.isNotEmpty)
                         Text(name,
                             style: TextStyle(fontFamily: 'Cairo', 
-                                fontSize: 11.5.sp, color: Colors.grey[600])),
+                                fontSize: 11.5.sp, color: SdColors.muted)),
                     ],
                   ),
                 ),
@@ -306,7 +306,7 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
                     const Color(0xFFFF7043),
                     () => _points('deductRewardPoints', 'خصم نقاط مكافأة')),
                 _act('سداد دين', Icons.receipt_long_rounded,
-                    const Color(0xFF009688),
+                    SdColors.accent,
                     () => _amount('payDebt', 'سداد دين')),
                 _act('تعديل', Icons.edit_rounded, SdColors.primaryLight,
                     _edit),

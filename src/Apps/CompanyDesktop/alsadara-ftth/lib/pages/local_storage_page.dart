@@ -734,7 +734,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.delete_outline, color: Colors.red),
+            Icon(Icons.delete_outline, color: SdColors.danger),
             SizedBox(width: 8),
             Text('خيارات المسح'),
           ],
@@ -743,28 +743,28 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.people_outline, color: Colors.blue),
+              leading: const Icon(Icons.people_outline, color: SdColors.info),
               title: const Text('مسح الاشتراكات'),
               subtitle: const Text('حذف قائمة المشتركين فقط'),
               onTap: () => Navigator.pop(context, 'subscriptions'),
             ),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.router_outlined, color: Colors.purple),
+              leading: const Icon(Icons.router_outlined, color: SdColors.platformBase),
               title: const Text('مسح تفاصيل الاشتراكات'),
               subtitle: const Text('FDT، FAT، MAC، IP، GPS'),
               onTap: () => Navigator.pop(context, 'addresses'),
             ),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.phone_disabled, color: Colors.green),
+              leading: const Icon(Icons.phone_disabled, color: SdColors.success),
               title: const Text('مسح أرقام الهواتف'),
               subtitle: const Text('إزالة أرقام الهواتف فقط'),
               onTap: () => Navigator.pop(context, 'phones'),
             ),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              leading: const Icon(Icons.delete_forever, color: SdColors.danger),
               title: const Text('مسح الكل'),
               subtitle: const Text('حذف جميع البيانات'),
               onTap: () => Navigator.pop(context, 'all'),
@@ -810,7 +810,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.warning, color: Colors.orange),
+            const Icon(Icons.warning, color: SdColors.warning),
             const SizedBox(width: 8),
             Text(title),
           ],
@@ -823,7 +823,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('مسح', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -876,7 +876,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.warning, color: Colors.orange),
+            Icon(Icons.warning, color: SdColors.warning),
             SizedBox(width: 8),
             Text('تأكيد المسح'),
           ],
@@ -890,7 +890,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('مسح', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -1049,7 +1049,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             builder: (context) => AlertDialog(
               title: const Row(
                 children: [
-                  Icon(Icons.check_circle, color: Colors.green),
+                  Icon(Icons.check_circle, color: SdColors.success),
                   SizedBox(width: 8),
                   Text('تم التصدير بنجاح'),
                 ],
@@ -1124,7 +1124,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.data_object, color: Colors.purple),
+                  const Icon(Icons.data_object, color: SdColors.platformBase),
                   const SizedBox(width: 8),
                   Text(
                     'البيانات الخام (${allSubscribers.length} سجل، ${sortedKeys.length} حقل)',
@@ -1181,7 +1181,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     child: DataTable(
                       columnSpacing: 12,
                       headingRowColor:
-                          WidgetStateProperty.all(Colors.purple[50]),
+                          WidgetStateProperty.all(SdColors.platformTint),
                       columns: sortedKeys
                           .map((key) => DataColumn(
                                 label: Text(
@@ -1328,7 +1328,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.delete_forever, color: Colors.red),
+            Icon(Icons.delete_forever, color: SdColors.danger),
             SizedBox(width: 8),
             Text('تأكيد الحذف'),
           ],
@@ -1344,7 +1344,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('حذف', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -1392,7 +1392,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
           return AlertDialog(
             title: Row(
               children: [
-                const Icon(Icons.settings, color: Color(0xFF1A237E)),
+                const Icon(Icons.settings, color: SdColors.primary),
                 const SizedBox(width: 8),
                 const Text('إعدادات الجلب'),
               ],
@@ -1407,7 +1407,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     // ===== إعدادات جلب البيانات (الاشتراكات) =====
                     _buildSettingsSection(
                       title: '📋 جلب البيانات (الاشتراكات)',
-                      color: Colors.blue,
+                      color: SdColors.info,
                       pageSize: subPageSize,
                       parallelPages: subParallel,
                       onPageSizeChanged: (v) =>
@@ -1421,9 +1421,9 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade50,
+                        color: SdColors.successTint,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.green.shade200),
+                        border: Border.all(color: SdColors.successTintEdge),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1431,13 +1431,13 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                           Row(
                             children: [
                               Icon(Icons.phone,
-                                  color: Colors.green.shade700, size: 20),
+                                  color: SdColors.success, size: 20),
                               const SizedBox(width: 8),
                               Text(
                                 'جلب رقم الهاتف',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green.shade700,
+                                  color: SdColors.success,
                                 ),
                               ),
                             ],
@@ -1453,7 +1453,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                             max: 500,
                             divisions: 499,
                             label: '$detailsParallel طلب',
-                            activeColor: Colors.green,
+                            activeColor: SdColors.success,
                             onChanged: (v) => setDialogState(
                                 () => detailsParallel = v.toInt()),
                           ),
@@ -1472,9 +1472,9 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.purple.shade50,
+                        color: SdColors.platformTint,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.purple.shade200),
+                        border: Border.all(color: SdColors.platformTintEdge),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1482,13 +1482,13 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                           Row(
                             children: [
                               Icon(Icons.router,
-                                  color: Colors.purple.shade700, size: 20),
+                                  color: SdColors.platformBase, size: 20),
                               const SizedBox(width: 8),
                               Text(
                                 'جلب الاشتراكات (FDT، FAT، MAC)',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.purple.shade700,
+                                  color: SdColors.platformBase,
                                 ),
                               ),
                             ],
@@ -1504,7 +1504,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                             max: 200,
                             divisions: 15,
                             label: '$addressesPageSize مشترك',
-                            activeColor: Colors.purple,
+                            activeColor: SdColors.platformBase,
                             onChanged: (v) => setDialogState(
                                 () => addressesPageSize = v.toInt()),
                           ),
@@ -1519,14 +1519,14 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                             max: 20,
                             divisions: 19,
                             label: '$addressesParallel طلب',
-                            activeColor: Colors.purple,
+                            activeColor: SdColors.platformBase,
                             onChanged: (v) => setDialogState(
                                 () => addressesParallel = v.toInt()),
                           ),
                           Text(
                             '⚡ هذه الطريقة أسرع: 150 مشترك في طلب واحد!',
                             style: TextStyle(
-                                fontSize: 11, color: Colors.purple.shade700),
+                                fontSize: 11, color: SdColors.platformBase),
                           ),
                         ],
                       ),
@@ -1537,20 +1537,20 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: SdColors.infoTint,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
                           Icon(Icons.info_outline,
-                              color: Colors.blue.shade700, size: 20),
+                              color: SdColors.info, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'زيادة القيم تسرع الجلب لكن قد تستهلك موارد أكثر',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.blue.shade700,
+                                color: SdColors.info,
                               ),
                             ),
                           ),
@@ -1757,7 +1757,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        backgroundColor: isError ? SdColors.danger : SdColors.success,
         duration: const Duration(seconds: 3),
       ),
     );
@@ -1770,7 +1770,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.red),
+            const Icon(Icons.error_outline, color: SdColors.danger),
             const SizedBox(width: 8),
             Expanded(child: Text(title)),
           ],
@@ -1811,7 +1811,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('تم نسخ الخطأ'),
-                  backgroundColor: Colors.green,
+                  backgroundColor: SdColors.success,
                   duration: Duration(seconds: 1),
                 ),
               );
@@ -1845,7 +1845,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.amber,
+                  color: SdColors.warning,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -1878,7 +1878,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.green.shade400,
+                    color: SdColors.success,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
@@ -1901,7 +1901,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             ],
           ],
         ),
-        backgroundColor: const Color(0xFF1A237E),
+        backgroundColor: SdColors.primary,
         foregroundColor: Colors.white,
         actions: [
           // زر الاستيراد - يظهر فقط عند وجود الصلاحية
@@ -1912,13 +1912,13 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               },
               icon: Icon(
                 _showImportCard ? Icons.cloud_off : Icons.cloud_download,
-                color: _showImportCard ? Colors.amber : Colors.white,
+                color: _showImportCard ? SdColors.warning : Colors.white,
                 size: 20,
               ),
               label: Text(
                 'استيراد',
                 style: TextStyle(
-                  color: _showImportCard ? Colors.amber : Colors.white,
+                  color: _showImportCard ? SdColors.warning : Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1942,13 +1942,13 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     width: 16, height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
+                      valueColor: const AlwaysStoppedAnimation<Color>(SdColors.warning),
                     ),
                   ),
                   const SizedBox(width: 6),
                   Text(
                     'جاري المزامنة...',
-                    style: const TextStyle(fontSize: 11, color: Colors.amber),
+                    style: const TextStyle(fontSize: 11, color: SdColors.warning),
                   ),
                 ],
               ),
@@ -2032,7 +2032,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
     final percentage = _syncTotal > 0 ? (_syncCurrent / _syncTotal * 100) : 0.0;
 
     return Container(
-      color: const Color(0xFF1A237E).withValues(alpha: 0.1),
+      color: SdColors.primary.withValues(alpha: 0.1),
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
@@ -2052,7 +2052,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               ),
               TextButton(
                 onPressed: _cancelSync,
-                child: const Text('إلغاء', style: TextStyle(color: Colors.red)),
+                child: const Text('إلغاء', style: TextStyle(color: SdColors.danger)),
               ),
             ],
           ),
@@ -2060,7 +2060,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
           LinearProgressIndicator(
             value: _syncTotal > 0 ? _syncCurrent / _syncTotal : null,
             backgroundColor: SdColors.divider,
-            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF1A237E)),
+            valueColor: const AlwaysStoppedAnimation<Color>(SdColors.primary),
           ),
           const SizedBox(height: 4),
           Row(
@@ -2103,7 +2103,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.blue.shade300, width: 1.5),
+        side: BorderSide(color: SdColors.infoTintEdge, width: 1.5),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -2131,13 +2131,13 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                               horizontal: 8, vertical: 10),
                           decoration: BoxDecoration(
                             color: _showOnlyWithoutPhone
-                                ? Colors.orange.withValues(alpha: 0.2)
-                                : Colors.orange.withValues(alpha: 0.05),
+                                ? SdColors.warning.withValues(alpha: 0.2)
+                                : SdColors.warning.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: _showOnlyWithoutPhone
-                                  ? Colors.orange
-                                  : Colors.orange.shade300,
+                                  ? SdColors.warning
+                                  : SdColors.warningTintEdge,
                               width: _showOnlyWithoutPhone ? 2.5 : 1.5,
                             ),
                           ),
@@ -2150,8 +2150,8 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                                     : Icons.no_cell,
                                 size: 16,
                                 color: _showOnlyWithoutPhone
-                                    ? Colors.orange.shade800
-                                    : Colors.orange.shade400,
+                                    ? SdColors.warning
+                                    : SdColors.warning,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -2183,13 +2183,13 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                               horizontal: 8, vertical: 10),
                           decoration: BoxDecoration(
                             color: _showOnlyWithoutDetails
-                                ? Colors.purple.withValues(alpha: 0.2)
-                                : Colors.purple.withValues(alpha: 0.05),
+                                ? SdColors.platformBase.withValues(alpha: 0.2)
+                                : SdColors.platformBase.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: _showOnlyWithoutDetails
-                                  ? Colors.purple
-                                  : Colors.purple.shade300,
+                                  ? SdColors.platformBase
+                                  : SdColors.platformTintEdge,
                               width: _showOnlyWithoutDetails ? 2.5 : 1.5,
                             ),
                           ),
@@ -2202,8 +2202,8 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                                     : Icons.info_outline,
                                 size: 16,
                                 color: _showOnlyWithoutDetails
-                                    ? Colors.purple.shade800
-                                    : Colors.purple.shade400,
+                                    ? SdColors.platformBase
+                                    : SdColors.platformLight,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -2229,10 +2229,10 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 10),
                           decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.1),
+                            color: SdColors.danger.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: Colors.red.shade400,
+                              color: SdColors.danger,
                               width: 1.5,
                             ),
                           ),
@@ -2242,7 +2242,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                               Icon(
                                 Icons.delete_forever,
                                 size: 16,
-                                color: Colors.red.shade600,
+                                color: SdColors.danger,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -2278,9 +2278,9 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         ? _vpsSyncService.statusMessage
                         : 'مزامنة من السيرفر'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
+                      backgroundColor: SdColors.accent,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.teal.shade200,
+                      disabledBackgroundColor: SdColors.accentTintEdge,
                       disabledForegroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
@@ -2294,7 +2294,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   icon: const Icon(Icons.refresh, size: 18),
                   label: const Text('كامل'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal.shade700,
+                    backgroundColor: SdColors.accent,
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: SdColors.faint,
                     padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
@@ -2307,8 +2307,8 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                 padding: const EdgeInsets.only(top: 8),
                 child: LinearProgressIndicator(
                   value: _vpsSyncService.progress > 0 ? _vpsSyncService.progress : null,
-                  backgroundColor: Colors.teal.shade100,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.teal.shade600),
+                  backgroundColor: SdColors.accentTint,
+                  valueColor: AlwaysStoppedAnimation<Color>(SdColors.accent),
                 ),
               ),
             const SizedBox(height: 8),
@@ -2328,7 +2328,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         icon: const Icon(Icons.cloud_download, size: 16),
                         label: const Text('الاشتراكات', style: TextStyle(fontSize: 11)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1A237E),
+                          backgroundColor: SdColors.primary,
                           foregroundColor: Colors.white,
                           disabledBackgroundColor: SdColors.faint,
                           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -2344,7 +2344,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         icon: const Icon(Icons.router, size: 16),
                         label: const Text('التفاصيل', style: TextStyle(fontSize: 11)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.purple,
+                          backgroundColor: SdColors.platformBase,
                           foregroundColor: Colors.white,
                           disabledBackgroundColor: SdColors.faint,
                           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -2360,7 +2360,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         icon: const Icon(Icons.phone, size: 16),
                         label: const Text('الهاتف', style: TextStyle(fontSize: 11)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: SdColors.success,
                           foregroundColor: Colors.white,
                           disabledBackgroundColor: SdColors.faint,
                           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -2376,12 +2376,12 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.cyan.shade50,
+                color: SdColors.accentTint,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.cyan.shade400, width: 2),
+                border: Border.all(color: SdColors.accentLight, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.cyan.withValues(alpha: 0.2),
+                    color: SdColors.accent.withValues(alpha: 0.2),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -2393,13 +2393,13 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   Row(
                     children: [
                       Icon(Icons.cloud_sync,
-                          color: Colors.cyan.shade700, size: 18),
+                          color: SdColors.accent, size: 18),
                       const SizedBox(width: 8),
                       Text(
                         'جلب في الخلفية (يمكنك متابعة العمل)',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.cyan.shade700,
+                          color: SdColors.accent,
                           fontSize: 12,
                         ),
                       ),
@@ -2419,7 +2419,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                           label: const Text('الاشتراكات',
                               style: TextStyle(fontSize: 11)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1A237E),
+                            backgroundColor: SdColors.primary,
                             foregroundColor: Colors.white,
                             disabledBackgroundColor: SdColors.faint,
                             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -2440,7 +2440,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                           label: const Text('تفاصيل الاشتراكات',
                               style: TextStyle(fontSize: 10)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.purple,
+                            backgroundColor: SdColors.platformBase,
                             foregroundColor: Colors.white,
                             disabledBackgroundColor: SdColors.faint,
                             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -2460,7 +2460,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                           label: const Text('رقم الهاتف',
                               style: TextStyle(fontSize: 11)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
+                            backgroundColor: SdColors.success,
                             foregroundColor: Colors.white,
                             disabledBackgroundColor: SdColors.faint,
                             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -2483,7 +2483,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                     return Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: SdColors.infoTint,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -2688,15 +2688,15 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
   Color _getStatusColor(String? status) {
     switch (status?.toLowerCase()) {
       case 'active':
-        return Colors.green;
+        return SdColors.success;
       case 'inactive':
-        return Colors.orange;
+        return SdColors.warning;
       case 'expired':
-        return Colors.red;
+        return SdColors.danger;
       case 'suspended':
         return SdColors.faint;
       default:
-        return Colors.blue;
+        return SdColors.info;
     }
   }
 
@@ -2721,14 +2721,14 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A237E).withValues(alpha: 0.1),
+                color: SdColors.primary.withValues(alpha: 0.1),
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(8)),
               ),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.red),
+                    icon: const Icon(Icons.close, color: SdColors.danger),
                     onPressed: _toggleSelectionMode,
                     tooltip: 'إلغاء التحديد',
                     padding: EdgeInsets.zero,
@@ -2745,14 +2745,14 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         _selectAll();
                       }
                     },
-                    activeColor: const Color(0xFF1A237E),
+                    activeColor: SdColors.primary,
                   ),
                   Text(
                     'محدد (${_selectedIds.length})',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A237E),
+                      color: SdColors.primary,
                     ),
                   ),
                   const Spacer(),
@@ -2763,7 +2763,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                       icon: const Icon(Icons.delete, size: 16),
                       label: Text('حذف (${_selectedIds.length})'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
+                        backgroundColor: SdColors.danger,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 6),
@@ -2774,7 +2774,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             ),
           // رأس الجدول الثابت - صف العناوين
           Container(
-            color: const Color(0xFF1A237E),
+            color: SdColors.primary,
             child: Row(
               children: [
                 // مربع التحديد
@@ -2797,7 +2797,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                           }
                         });
                       },
-                      checkColor: const Color(0xFF1A237E),
+                      checkColor: SdColors.primary,
                       fillColor: WidgetStateProperty.all(Colors.white),
                     ),
                   )
@@ -2827,7 +2827,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               color: SdColors.surfaceAlt,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                  color: const Color(0xFF1A237E).withValues(alpha: 0.3),
+                  color: SdColors.primary.withValues(alpha: 0.3),
                   width: 1.5),
               boxShadow: [
                 BoxShadow(
@@ -2873,12 +2873,12 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
           ),
           // شريط عداد النتائج
           Container(
-            color: const Color(0xFF1A237E).withValues(alpha: 0.05),
+            color: SdColors.primary.withValues(alpha: 0.05),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
                 Icon(Icons.analytics_outlined,
-                    size: 18, color: const Color(0xFF1A237E)),
+                    size: 18, color: SdColors.primary),
                 const SizedBox(width: 8),
                 Text(
                   'عدد النتائج: ',
@@ -2892,7 +2892,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A237E),
+                    color: SdColors.primary,
                   ),
                 ),
                 if (_filteredSubscribers.length != _subscribers.length) ...[
@@ -2923,21 +2923,21 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.orange.shade100,
+                        color: SdColors.warningTint,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.orange.shade300),
+                        border: Border.all(color: SdColors.warningTintEdge),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.clear_all,
-                              size: 14, color: Colors.orange.shade800),
+                              size: 14, color: SdColors.warning),
                           const SizedBox(width: 4),
                           Text(
                             'مسح الفلاتر',
                             style: TextStyle(
                               fontSize: 11,
-                              color: Colors.orange.shade800,
+                              color: SdColors.warning,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -3036,7 +3036,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         ? Icons.arrow_upward
                         : Icons.arrow_downward)
                     : Icons.unfold_more,
-                color: isCurrentSort ? Colors.amber : Colors.white70,
+                color: isCurrentSort ? SdColors.warning : Colors.white70,
                 size: 14,
               ),
             ],
@@ -3079,19 +3079,19 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                    color: const Color(0xFF1A237E).withValues(alpha: 0.4),
+                    color: SdColors.primary.withValues(alpha: 0.4),
                     width: 1.5),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(
-                    color: const Color(0xFF1A237E).withValues(alpha: 0.3),
+                    color: SdColors.primary.withValues(alpha: 0.3),
                     width: 1),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide:
-                    const BorderSide(color: Color(0xFF1A237E), width: 2),
+                    const BorderSide(color: SdColors.primary, width: 2),
               ),
               suffixIcon: controller.text.isNotEmpty
                   ? IconButton(
@@ -3129,7 +3129,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             boxShadow: [
               BoxShadow(
                 color: hasSelection
-                    ? const Color(0xFF1A237E).withValues(alpha: 0.15)
+                    ? SdColors.primary.withValues(alpha: 0.15)
                     : Colors.black.withValues(alpha: 0.08),
                 blurRadius: 3,
                 offset: const Offset(0, 1),
@@ -3142,13 +3142,13 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             child: Container(
               decoration: BoxDecoration(
                 color: hasSelection
-                    ? const Color(0xFF1A237E).withValues(alpha: 0.1)
+                    ? SdColors.primary.withValues(alpha: 0.1)
                     : Colors.white,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: hasSelection
-                      ? const Color(0xFF1A237E)
-                      : const Color(0xFF1A237E).withValues(alpha: 0.3),
+                      ? SdColors.primary
+                      : SdColors.primary.withValues(alpha: 0.3),
                   width: hasSelection ? 2 : 1,
                 ),
               ),
@@ -3161,7 +3161,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                       style: TextStyle(
                         fontSize: 11,
                         color: hasSelection
-                            ? const Color(0xFF1A237E)
+                            ? SdColors.primary
                             : Colors.black87,
                         fontWeight:
                             hasSelection ? FontWeight.bold : FontWeight.normal,
@@ -3176,7 +3176,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         _loadSubscribers();
                       },
                       child: const Icon(Icons.clear,
-                          size: 14, color: Color(0xFF1A237E)),
+                          size: 14, color: SdColors.primary),
                     )
                   else
                     const Icon(Icons.arrow_drop_down,
@@ -3292,7 +3292,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                             }
                           });
                         },
-                        activeColor: const Color(0xFF1A237E),
+                        activeColor: SdColors.primary,
                         controlAffinity: ListTileControlAffinity.leading,
                       );
                     },
@@ -3316,7 +3316,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A237E),
+                backgroundColor: SdColors.primary,
               ),
               child: const Text('تطبيق', style: TextStyle(color: Colors.white)),
             ),
@@ -3351,7 +3351,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             boxShadow: [
               BoxShadow(
                 color: hasFilter
-                    ? const Color(0xFF1A237E).withValues(alpha: 0.15)
+                    ? SdColors.primary.withValues(alpha: 0.15)
                     : Colors.black.withValues(alpha: 0.08),
                 blurRadius: 3,
                 offset: const Offset(0, 1),
@@ -3364,13 +3364,13 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
             child: Container(
               decoration: BoxDecoration(
                 color: hasFilter
-                    ? const Color(0xFF1A237E).withValues(alpha: 0.1)
+                    ? SdColors.primary.withValues(alpha: 0.1)
                     : Colors.white,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: hasFilter
-                      ? const Color(0xFF1A237E)
-                      : const Color(0xFF1A237E).withValues(alpha: 0.3),
+                      ? SdColors.primary
+                      : SdColors.primary.withValues(alpha: 0.3),
                   width: hasFilter ? 2 : 1,
                 ),
               ),
@@ -3380,7 +3380,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   Icon(Icons.date_range,
                       size: 14,
                       color:
-                          hasFilter ? const Color(0xFF1A237E) : Colors.black54),
+                          hasFilter ? SdColors.primary : Colors.black54),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
@@ -3388,7 +3388,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                       style: TextStyle(
                         fontSize: 10,
                         color: hasFilter
-                            ? const Color(0xFF1A237E)
+                            ? SdColors.primary
                             : Colors.black87,
                         fontWeight:
                             hasFilter ? FontWeight.bold : FontWeight.normal,
@@ -3406,7 +3406,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         _loadSubscribers();
                       },
                       child: const Icon(Icons.clear,
-                          size: 14, color: Color(0xFF1A237E)),
+                          size: 14, color: SdColors.primary),
                     )
                   else
                     Icon(Icons.arrow_drop_down,
@@ -3436,7 +3436,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
         builder: (context, setDialogState) => AlertDialog(
           title: Row(
             children: [
-              const Icon(Icons.date_range, color: Color(0xFF1A237E)),
+              const Icon(Icons.date_range, color: SdColors.primary),
               const SizedBox(width: 8),
               const Text('فلتر تاريخ الانتهاء', style: TextStyle(fontSize: 16)),
             ],
@@ -3457,7 +3457,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         : 'غير محدد',
                     style: TextStyle(
                       color: tempFrom != null
-                          ? const Color(0xFF1A237E)
+                          ? SdColors.primary
                           : SdColors.faint,
                       fontWeight: tempFrom != null
                           ? FontWeight.bold
@@ -3485,7 +3485,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                       if (tempFrom != null)
                         IconButton(
                           icon: const Icon(Icons.clear,
-                              size: 18, color: Colors.red),
+                              size: 18, color: SdColors.danger),
                           onPressed: () =>
                               setDialogState(() => tempFrom = null),
                         ),
@@ -3505,7 +3505,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                         : 'غير محدد',
                     style: TextStyle(
                       color: tempTo != null
-                          ? const Color(0xFF1A237E)
+                          ? SdColors.primary
                           : SdColors.faint,
                       fontWeight:
                           tempTo != null ? FontWeight.bold : FontWeight.normal,
@@ -3532,7 +3532,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                       if (tempTo != null)
                         IconButton(
                           icon: const Icon(Icons.clear,
-                              size: 18, color: Colors.red),
+                              size: 18, color: SdColors.danger),
                           onPressed: () => setDialogState(() => tempTo = null),
                         ),
                     ],
@@ -3598,7 +3598,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                 Navigator.pop(context);
               },
               child: const Text('مسح الفلتر',
-                  style: TextStyle(color: Colors.orange)),
+                  style: TextStyle(color: SdColors.warning)),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -3614,7 +3614,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1A237E),
+                backgroundColor: SdColors.primary,
               ),
               child: const Text('تطبيق', style: TextStyle(color: Colors.white)),
             ),
@@ -3653,7 +3653,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
 
     return Material(
       color: isSelected
-          ? const Color(0xFF1A237E).withValues(alpha: 0.15)
+          ? SdColors.primary.withValues(alpha: 0.15)
           : (index.isEven ? SdColors.groundAlt : Colors.white),
       child: InkWell(
         onTap: () {
@@ -3684,7 +3684,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
                   child: Checkbox(
                     value: isSelected,
                     onChanged: (value) => _toggleSelection(subscriptionId),
-                    activeColor: const Color(0xFF1A237E),
+                    activeColor: SdColors.primary,
                   ),
                 )
               else
@@ -3718,12 +3718,12 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               // المنطقة
               _buildTableCell(zoneName.isNotEmpty ? zoneName : '-',
                   flex: 2,
-                  color: zoneName.isEmpty ? SdColors.faint : Colors.blue.shade700),
+                  color: zoneName.isEmpty ? SdColors.faint : SdColors.info),
               // FAT
               _buildTableCell(fatName.isNotEmpty ? fatName : '-',
                   flex: 2,
                   color:
-                      fatName.isEmpty ? SdColors.faint : Colors.purple.shade700),
+                      fatName.isEmpty ? SdColors.faint : SdColors.platformBase),
               // الحالة
               Expanded(
                 flex: 1,
@@ -3755,7 +3755,7 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
               // اسم المستخدم
               _buildTableCell(username.isNotEmpty ? username : '-',
                   flex: 2,
-                  color: username.isEmpty ? SdColors.faint : Colors.teal.shade700),
+                  color: username.isEmpty ? SdColors.faint : SdColors.accent),
             ],
           ),
         ),
@@ -3835,10 +3835,10 @@ class _LocalStoragePageState extends State<LocalStoragePage> {
       final now = DateTime.now();
       final diff = date.difference(now).inDays;
 
-      if (diff < 0) return Colors.red.shade700; // منتهي
-      if (diff <= 3) return Colors.orange.shade700; // قريب جداً
-      if (diff <= 7) return Colors.amber.shade700; // قريب
-      return Colors.green.shade700; // آمن
+      if (diff < 0) return SdColors.danger; // منتهي
+      if (diff <= 3) return SdColors.warning; // قريب جداً
+      if (diff <= 7) return SdColors.warning; // قريب
+      return SdColors.success; // آمن
     } catch (e) {
       return SdColors.faint;
     }

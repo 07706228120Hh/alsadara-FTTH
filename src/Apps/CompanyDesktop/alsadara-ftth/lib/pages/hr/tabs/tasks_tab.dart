@@ -2,8 +2,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../services/employee_profile_service.dart';
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class TasksTab extends StatefulWidget {
   final String employeeId;
@@ -29,12 +29,12 @@ class _TasksTabState extends State<TasksTab> {
   List<Map<String, dynamic>> _tasks = [];
   String _filter = 'all'; // all, pending, inProgress, completed, overdue
 
-  static const _accent = Color(0xFF3498DB);
-  static const _green = Color(0xFF27AE60);
-  static const _red = Color(0xFFE74C3C);
-  static const _orange = Color(0xFFF39C12);
-  static const _purple = Color(0xFF8E44AD);
-  static const _gray = Color(0xFF95A5A6);
+  static const _accent = SdColors.info;
+  static const _green = SdColors.success;
+  static const _red = SdColors.danger;
+  static const _orange = SdColors.warning;
+  static const _purple = SdColors.platformBase;
+  static const _gray = SdColors.faint;
 
   @override
   void initState() {
@@ -143,10 +143,11 @@ class _TasksTabState extends State<TasksTab> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text('$val$suffix',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 16, fontWeight: FontWeight.bold, color: c)),
           const SizedBox(width: 6),
-          Text(label, style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
+          Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: _gray)),
         ],
       ),
     );
@@ -179,7 +180,8 @@ class _TasksTabState extends State<TasksTab> {
               ),
               selected: selected,
               selectedColor: _accent,
-              labelStyle: GoogleFonts.cairo(
+              labelStyle: TextStyle(
+                  fontFamily: 'Cairo',
                   color: selected ? Colors.white : Colors.black87,
                   fontSize: 11),
               onSelected: (_) => setState(() => _filter = f.$1),
@@ -199,7 +201,7 @@ class _TasksTabState extends State<TasksTab> {
             Icon(Icons.task_outlined, size: 48, color: _gray.withValues(alpha: 0.5)),
             const SizedBox(height: 8),
             Text('لا توجد مهام',
-                style: GoogleFonts.cairo(color: _gray, fontSize: 14)),
+                style: TextStyle(fontFamily: 'Cairo', color: _gray, fontSize: 14)),
           ],
         ),
       );
@@ -244,7 +246,8 @@ class _TasksTabState extends State<TasksTab> {
                   child: Text(title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.bold, fontSize: 14)),
                 ),
                 _statusBadge(status, statusColor),
@@ -261,19 +264,19 @@ class _TasksTabState extends State<TasksTab> {
                   const Icon(Icons.person_outline, size: 14, color: _gray),
                   const SizedBox(width: 4),
                   Text('بواسطة: $assignedBy',
-                      style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: _gray)),
                   const SizedBox(width: 16),
                 ],
                 if (dueDate.toString().isNotEmpty) ...[
                   const Icon(Icons.event, size: 14, color: _gray),
                   const SizedBox(width: 4),
                   Text(_formatDate(dueDate.toString()),
-                      style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: _gray)),
                 ],
                 const Spacer(),
                 if (createdAt.toString().isNotEmpty)
                   Text(_formatDate(createdAt.toString()),
-                      style: GoogleFonts.cairo(fontSize: 10, color: _gray)),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: _gray)),
               ],
             ),
           ],
@@ -291,7 +294,8 @@ class _TasksTabState extends State<TasksTab> {
       ),
       child: Text(
         _getStatusLabel(status),
-        style: GoogleFonts.cairo(
+        style: TextStyle(
+            fontFamily: 'Cairo',
             color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
@@ -319,7 +323,8 @@ class _TasksTabState extends State<TasksTab> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+              fontFamily: 'Cairo',
               color: c, fontSize: 9, fontWeight: FontWeight.bold)),
     );
   }

@@ -217,22 +217,22 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
       builder: (_) => Directionality(textDirection: TextDirection.rtl, child: SafeArea(
         child: Padding(padding: const EdgeInsets.symmetric(vertical: 12),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: SdColors.edge, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 12),
             Text('اختر مصدر الصورة', style: TextStyle(fontSize: _isPhone ? 15 : 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             ListTile(
-              leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10)),
-                child: Icon(Icons.camera_alt, color: Colors.blue.shade700)),
+              leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: SdColors.infoTint, borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.camera_alt, color: SdColors.info)),
               title: const Text('الكاميرا', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text('التقاط صورة جديدة', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              subtitle: Text('التقاط صورة جديدة', style: TextStyle(fontSize: 12, color: SdColors.muted)),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
-              leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(10)),
-                child: Icon(Icons.photo_library, color: Colors.green.shade700)),
+              leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: SdColors.successTint, borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.photo_library, color: SdColors.success)),
               title: const Text('المعرض', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text('اختيار صورة موجودة', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              subtitle: Text('اختيار صورة موجودة', style: TextStyle(fontSize: 12, color: SdColors.muted)),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             const SizedBox(height: 8),
@@ -432,10 +432,10 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
       textDirection: TextDirection.rtl,
       child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(children: [Icon(Icons.check_circle, color: Colors.green, size: 28), SizedBox(width: 10),
+        title: const Row(children: [Icon(Icons.check_circle, color: SdColors.success, size: 28), SizedBox(width: 10),
           Expanded(child: Text('تم تقديم الطلب بنجاح', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)))]),
         content: Text('تم التحقق من OTP وتقديم الطلب.\nسيتم مراجعته من قبل الإدارة.',
-            textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.6)),
+            textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: SdColors.muted, height: 1.6)),
         actions: [ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: _primary, foregroundColor: Colors.white),
           onPressed: () { Navigator.pop(context); Navigator.pop(context, true); },
@@ -446,7 +446,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
 
   void _showSnackBar(String msg, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg, textDirection: TextDirection.rtl),
-      backgroundColor: isError ? Colors.red.shade700 : Colors.green.shade700, behavior: SnackBarBehavior.floating));
+      backgroundColor: isError ? SdColors.danger : SdColors.success, behavior: SnackBarBehavior.floating));
   }
 
   Future<void> _pickDate(TextEditingController c) async {
@@ -467,7 +467,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
           Text('ارسم توقيعك أدناه', style: TextStyle(fontSize: phone ? 14 : 16, fontWeight: FontWeight.bold)),
           SizedBox(height: phone ? 8 : 12),
           Container(height: sigHeight, width: double.infinity,
-            decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade400)),
+            decoration: BoxDecoration(color: SdColors.groundAlt, borderRadius: BorderRadius.circular(10), border: Border.all(color: SdColors.faint)),
             child: GestureDetector(
               onPanStart: (d) { currentStroke = [d.localPosition]; setDlg(() {}); },
               onPanUpdate: (d) { currentStroke?.add(d.localPosition); setDlg(() {}); },
@@ -477,7 +477,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
           SizedBox(height: phone ? 8 : 12),
           Row(children: [
             ElevatedButton(onPressed: tempStrokes.isEmpty ? null : () { setState(() { _signatureStrokes = tempStrokes; _signed = true; }); Navigator.pop(ctx); },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, padding: EdgeInsets.symmetric(horizontal: phone ? 12 : 16, vertical: phone ? 8 : 10)),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger, foregroundColor: Colors.white, padding: EdgeInsets.symmetric(horizontal: phone ? 12 : 16, vertical: phone ? 8 : 10)),
               child: Text('حفظ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: phone ? 13 : 14))),
             SizedBox(width: phone ? 6 : 8),
             OutlinedButton(onPressed: () => setDlg(() { tempStrokes.clear(); currentStroke = null; }),
@@ -505,11 +505,11 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
           ? const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [CircularProgressIndicator(), SizedBox(height: 16), Text('جاري تحميل البيانات...')]))
           : _lookupsLoadFailed
           ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.wifi_off, size: 48, color: Colors.red.shade300),
+              Icon(Icons.wifi_off, size: 48, color: SdColors.dangerTintEdge),
               const SizedBox(height: 12),
-              Text('فشل تحميل البيانات', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red.shade700)),
+              Text('فشل تحميل البيانات', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: SdColors.danger)),
               const SizedBox(height: 6),
-              Text('تحقق من الاتصال أو أعد المحاولة', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+              Text('تحقق من الاتصال أو أعد المحاولة', style: TextStyle(fontSize: 13, color: SdColors.muted)),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: _ensureTokenAndLoad,
@@ -533,17 +533,17 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
     return Container(color: Colors.white, padding: EdgeInsets.symmetric(vertical: _isPhone ? 8 : 12, horizontal: _isPhone ? 4 : 8),
       child: Row(children: List.generate(3, (i) {
         final isActive = i == _currentStep; final isDone = i < _currentStep;
-        final color = isDone ? Colors.green : (isActive ? _accent : Colors.grey.shade400);
+        final color = isDone ? SdColors.success : (isActive ? _accent : SdColors.faint);
         return Expanded(child: Column(mainAxisSize: MainAxisSize.min, children: [
           Row(children: [
-            if (i > 0) Expanded(child: Container(height: 2, color: i <= _currentStep ? _accent : Colors.grey.shade300)),
+            if (i > 0) Expanded(child: Container(height: 2, color: i <= _currentStep ? _accent : SdColors.edge)),
             CircleAvatar(radius: r, backgroundColor: color,
               child: isDone ? Icon(Icons.check, size: r, color: Colors.white) : Icon(icons[i], size: r, color: Colors.white)),
-            if (i < 2) Expanded(child: Container(height: 2, color: i < _currentStep ? _accent : Colors.grey.shade300)),
+            if (i < 2) Expanded(child: Container(height: 2, color: i < _currentStep ? _accent : SdColors.edge)),
           ]),
           const SizedBox(height: 3),
           Text(steps[i], style: TextStyle(fontSize: _isPhone ? 8 : 10, fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-              color: isActive ? _primary : Colors.grey.shade600), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+              color: isActive ? _primary : SdColors.muted), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
         ]));
       })));
   }
@@ -573,7 +573,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
             width: double.infinity, height: _isPhone ? 36 : 42,
             child: ElevatedButton.icon(
               onPressed: _scanBothSides,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white,
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.accent, foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
               icon: Icon(Icons.document_scanner, size: _isPhone ? 16 : 18),
               label: FittedBox(fit: BoxFit.scaleDown, child: Text('فحص الهوية واستخراج البيانات', style: TextStyle(fontSize: _isPhone ? 12 : 14, fontWeight: FontWeight.bold))),
@@ -583,7 +583,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
         if (_scanning)
           Padding(padding: const EdgeInsets.only(top: 8), child: Row(children: [
             const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-            const SizedBox(width: 8), Text('جاري فحص الهوية...', style: TextStyle(fontSize: _isPhone ? 11 : 12, color: Colors.teal)),
+            const SizedBox(width: 8), Text('جاري فحص الهوية...', style: TextStyle(fontSize: _isPhone ? 11 : 12, color: SdColors.accent)),
           ])),
       ]),
       SizedBox(height: g),
@@ -601,19 +601,19 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
           decoration: InputDecoration(labelText: 'رقم الهوية (12 رقم)', labelStyle: TextStyle(fontSize: _isPhone ? 11 : 13), counterText: '',
             contentPadding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 12, vertical: _isPhone ? 8 : 10),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade800, width: 1.2)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: SdColors.ink, width: 1.2)),
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _accent, width: 2)),
-            filled: true, fillColor: Colors.grey.shade50,
+            filled: true, fillColor: SdColors.surfaceAlt,
             suffixIcon: _validatingId
                 ? Padding(padding: EdgeInsets.all(_isPhone ? 10 : 12), child: SizedBox(width: 16, height: 16, child: const CircularProgressIndicator(strokeWidth: 2)))
-                : _idValid == true ? Icon(Icons.check_circle, color: Colors.green, size: _isPhone ? 18 : 22)
-                : _idValid == false ? Icon(Icons.cancel, color: Colors.red, size: _isPhone ? 18 : 22)
+                : _idValid == true ? Icon(Icons.check_circle, color: SdColors.success, size: _isPhone ? 18 : 22)
+                : _idValid == false ? Icon(Icons.cancel, color: SdColors.danger, size: _isPhone ? 18 : 22)
                 : null,
           ),
         ),
         if (_idValid != null) ...[
           const SizedBox(height: 4),
-          Text(_idValidMsg ?? '', style: TextStyle(fontSize: _isPhone ? 10 : 11, color: _idValid! ? Colors.green.shade700 : Colors.red.shade700)),
+          Text(_idValidMsg ?? '', style: TextStyle(fontSize: _isPhone ? 10 : 11, color: _idValid! ? SdColors.success : SdColors.danger)),
         ],
         SizedBox(height: g),
         TextFormField(controller: _familyNumber, maxLength: 18,
@@ -623,9 +623,9 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
           decoration: InputDecoration(labelText: 'رقم السجل العائلي (18 خانة)', labelStyle: TextStyle(fontSize: _isPhone ? 11 : 13), counterText: '',
             contentPadding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 12, vertical: _isPhone ? 8 : 10),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade800, width: 1.2)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: SdColors.ink, width: 1.2)),
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _accent, width: 2)),
-            filled: true, fillColor: Colors.grey.shade50)),
+            filled: true, fillColor: SdColors.surfaceAlt)),
         SizedBox(height: g),
         _dateTf(_birthday, 'تاريخ الميلاد', req: true),
         SizedBox(height: g),
@@ -636,18 +636,18 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
           decoration: InputDecoration(labelText: 'مكان الإصدار', labelStyle: TextStyle(fontSize: _isPhone ? 11 : 13),
             contentPadding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 12, vertical: _isPhone ? 8 : 10),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade800, width: 1.2)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: SdColors.ink, width: 1.2)),
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _accent, width: 2)),
-            filled: true, fillColor: Colors.grey.shade50,
+            filled: true, fillColor: SdColors.surfaceAlt,
             suffixIcon: _placeOfIssue.text.isNotEmpty ? IconButton(icon: Icon(Icons.clear, size: _isPhone ? 16 : 18), onPressed: () => setState(() => _placeOfIssue.clear())) : null,
           )),
         SizedBox(height: g),
         if (_idValid != null) ...[
           const SizedBox(height: 8),
           Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(
-            color: _idValid! ? Colors.green.shade50 : Colors.red.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: _idValid! ? Colors.green : Colors.red)),
-            child: Row(children: [Icon(_idValid! ? Icons.check_circle : Icons.cancel, color: _idValid! ? Colors.green : Colors.red, size: 18), const SizedBox(width: 6),
-              Expanded(child: Text(_idValidMsg ?? '', style: TextStyle(fontSize: 12, color: _idValid! ? Colors.green.shade800 : Colors.red.shade800)))])),
+            color: _idValid! ? SdColors.successTint : SdColors.dangerTint, borderRadius: BorderRadius.circular(8), border: Border.all(color: _idValid! ? SdColors.success : SdColors.danger)),
+            child: Row(children: [Icon(_idValid! ? Icons.check_circle : Icons.cancel, color: _idValid! ? SdColors.success : SdColors.danger, size: 18), const SizedBox(width: 6),
+              Expanded(child: Text(_idValidMsg ?? '', style: TextStyle(fontSize: 12, color: _idValid! ? SdColors.success : SdColors.danger)))])),
         ],
       ]),
       SizedBox(height: g),
@@ -688,7 +688,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
       // ─── الموقع ───
       _card(icon: Icons.location_on, title: 'عنوان الاشتراك', children: [
         // خريطة
-        Container(height: _isPhone ? 160 : 200, decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade400)),
+        Container(height: _isPhone ? 160 : 200, decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: SdColors.faint)),
           clipBehavior: Clip.antiAlias,
           child: Stack(children: [
             FlutterMap(mapController: _mapController, options: MapOptions(initialCenter: _mapCenter, initialZoom: 14,
@@ -696,14 +696,14 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
               children: [
                 TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', userAgentPackageName: 'com.sadara.ftth'),
                 MarkerLayer(markers: [Marker(point: _mapCenter, width: 40, height: 40,
-                  child: const Icon(Icons.location_pin, color: Colors.red, size: 40))]),
+                  child: const Icon(Icons.location_pin, color: SdColors.danger, size: 40))]),
               ]),
             Positioned(bottom: 10, left: 10, child: FloatingActionButton.small(
-              onPressed: _getGpsLocation, backgroundColor: Colors.white, child: const Icon(Icons.my_location, color: Colors.blue))),
+              onPressed: _getGpsLocation, backgroundColor: Colors.white, child: const Icon(Icons.my_location, color: SdColors.info))),
           ])),
         const SizedBox(height: 6),
         Text('موقع GPS: ${_mapCenter.latitude.toStringAsFixed(6)}, ${_mapCenter.longitude.toStringAsFixed(6)}',
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+            style: TextStyle(fontSize: 11, color: SdColors.muted)),
         SizedBox(height: g),
         _zoneSearchDropdown(),
         SizedBox(height: g),
@@ -714,19 +714,19 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
           child: Container(
             padding: EdgeInsets.symmetric(horizontal: 12, vertical: _isPhone ? 8 : 10),
             decoration: BoxDecoration(
-              color: _showAddressDetails ? _accent.withValues(alpha: 0.08) : Colors.grey.shade100,
+              color: _showAddressDetails ? _accent.withValues(alpha: 0.08) : SdColors.groundAlt,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _showAddressDetails ? _accent.withValues(alpha: 0.4) : Colors.grey.shade300),
+              border: Border.all(color: _showAddressDetails ? _accent.withValues(alpha: 0.4) : SdColors.edge),
             ),
             child: Row(children: [
-              Icon(_showAddressDetails ? Icons.expand_less : Icons.expand_more, size: _isPhone ? 18 : 20, color: _showAddressDetails ? _accent : Colors.grey.shade600),
+              Icon(_showAddressDetails ? Icons.expand_less : Icons.expand_more, size: _isPhone ? 18 : 20, color: _showAddressDetails ? _accent : SdColors.muted),
               SizedBox(width: _isPhone ? 6 : 8),
               Expanded(child: Text(
                 _showAddressDetails ? 'إخفاء تفاصيل العنوان' : 'تفاصيل العنوان (حي، شارع، دار، شقة)',
-                style: TextStyle(fontSize: _isPhone ? 12 : 13, fontWeight: FontWeight.w500, color: _showAddressDetails ? _accent : Colors.grey.shade700),
+                style: TextStyle(fontSize: _isPhone ? 12 : 13, fontWeight: FontWeight.w500, color: _showAddressDetails ? _accent : SdColors.muted),
               )),
               Text('${_neighborhood.text}/${_street.text}/${_house.text}',
-                style: TextStyle(fontSize: _isPhone ? 10 : 11, color: Colors.grey.shade500)),
+                style: TextStyle(fontSize: _isPhone ? 10 : 11, color: SdColors.faint)),
             ]),
           ),
         ),
@@ -756,7 +756,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
             value: _selectedPlanName, isExpanded: true,
             validator: (v) => v == null ? 'مطلوب' : null,
             decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), filled: true, fillColor: Colors.grey.shade50,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), filled: true, fillColor: SdColors.surfaceAlt,
               hintText: 'اختر الخطة', hintStyle: TextStyle(fontSize: _isPhone ? 11 : 13)),
             items: _plans.map((p) {
               final name = p['planName']?.toString() ?? p['displayValue']?.toString() ?? '-';
@@ -775,7 +775,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
           DropdownButtonFormField<String>(
             value: _selectedInstallOptionId, isExpanded: true,
             decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), filled: true, fillColor: Colors.grey.shade50,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), filled: true, fillColor: SdColors.surfaceAlt,
               hintText: 'اختر', hintStyle: TextStyle(fontSize: _isPhone ? 11 : 13)),
             items: _installationOptions.map((o) {
               final id = o['id']?.toString() ?? '';
@@ -816,22 +816,22 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
       _card(icon: Icons.draw, title: 'التوقيع على العقد', children: [
         if (_contractHtml != null) ...[
           Container(height: _isPhone ? 70 : 100, width: double.infinity, padding: EdgeInsets.all(_isPhone ? 6 : 8),
-            decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
+            decoration: BoxDecoration(color: SdColors.surfaceAlt, borderRadius: BorderRadius.circular(8), border: Border.all(color: SdColors.edge)),
             child: SingleChildScrollView(child: Text(_contractHtml!.replaceAll(RegExp(r'<[^>]*>'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim(),
-              style: TextStyle(fontSize: _isPhone ? 8 : 9, color: Colors.grey.shade700, height: 1.4), textDirection: TextDirection.ltr))),
+              style: TextStyle(fontSize: _isPhone ? 8 : 9, color: SdColors.muted, height: 1.4), textDirection: TextDirection.ltr))),
           const SizedBox(height: 8),
         ],
         if (_signed)
-          Container(padding: EdgeInsets.all(_isPhone ? 8 : 10), decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.green)),
-            child: Row(children: [Icon(Icons.check_circle, color: Colors.green, size: _isPhone ? 18 : 20), const SizedBox(width: 8),
-              Expanded(child: Text('تم التوقيع', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: _isPhone ? 13 : 14))),
+          Container(padding: EdgeInsets.all(_isPhone ? 8 : 10), decoration: BoxDecoration(color: SdColors.successTint, borderRadius: BorderRadius.circular(8), border: Border.all(color: SdColors.success)),
+            child: Row(children: [Icon(Icons.check_circle, color: SdColors.success, size: _isPhone ? 18 : 20), const SizedBox(width: 8),
+              Expanded(child: Text('تم التوقيع', style: TextStyle(color: SdColors.success, fontWeight: FontWeight.bold, fontSize: _isPhone ? 13 : 14))),
               TextButton(onPressed: () => setState(() { _signed = false; _signatureStrokes = []; }), child: Text('إعادة', style: TextStyle(fontSize: _isPhone ? 11 : 12)))]))
         else
           SizedBox(width: double.infinity, height: _isPhone ? 36 : 40, child: ElevatedButton.icon(
             onPressed: _showSignatureDialog,
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo.shade700, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             icon: Icon(Icons.draw, size: _isPhone ? 16 : 18), label: Text('انقر هنا للتوقيع', style: TextStyle(fontWeight: FontWeight.bold, fontSize: _isPhone ? 13 : 14)))),
-        if (!_signed) Padding(padding: const EdgeInsets.only(top: 4), child: Text('يجب التوقيع قبل الإرسال', style: TextStyle(fontSize: _isPhone ? 10 : 11, color: Colors.red.shade400))),
+        if (!_signed) Padding(padding: const EdgeInsets.only(top: 4), child: Text('يجب التوقيع قبل الإرسال', style: TextStyle(fontSize: _isPhone ? 10 : 11, color: SdColors.danger))),
       ]),
     ]);
   }
@@ -840,12 +840,12 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
   Widget _buildOtpStep(double pad) {
     return Center(child: Padding(padding: EdgeInsets.symmetric(horizontal: pad, vertical: _isPhone ? 20 : 40),
       child: _card(icon: Icons.sms, title: 'التحقق من رقم الهاتف', children: [
-        Text('تم إرسال رمز OTP إلى ${_phone.text}', style: TextStyle(fontSize: _isPhone ? 12 : 14, color: Colors.grey.shade600)),
+        Text('تم إرسال رمز OTP إلى ${_phone.text}', style: TextStyle(fontSize: _isPhone ? 12 : 14, color: SdColors.muted)),
         SizedBox(height: _isPhone ? 12 : 16), _tf(_otpController, 'رمز OTP', req: true, keyboard: TextInputType.number, dir: TextDirection.ltr),
         SizedBox(height: _isPhone ? 12 : 16),
         SizedBox(width: double.infinity, height: _isPhone ? 42 : 48, child: ElevatedButton.icon(
           onPressed: _verifyingOtp ? null : _verifyOtp,
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade700, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+          style: ElevatedButton.styleFrom(backgroundColor: SdColors.success, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
           icon: _verifyingOtp ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.check),
           label: Text(_verifyingOtp ? 'جاري التحقق...' : 'تأكيد OTP', style: TextStyle(fontSize: _isPhone ? 14 : 16, fontWeight: FontWeight.bold)))),
       ])));
@@ -862,7 +862,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
             icon: Icon(Icons.arrow_forward, size: _isPhone ? 16 : 18), label: Text('السابق', style: TextStyle(fontWeight: FontWeight.bold, fontSize: _isPhone ? 13 : 14)))),
         if (_currentStep > 0) SizedBox(width: _isPhone ? 8 : 12),
         Expanded(child: ElevatedButton.icon(onPressed: _isSubmitting || (_currentStep == 0 && !_isStep1Complete) ? null : _onNext,
-          style: ElevatedButton.styleFrom(backgroundColor: _currentStep == 2 ? Colors.green.shade700 : _primary, foregroundColor: Colors.white,
+          style: ElevatedButton.styleFrom(backgroundColor: _currentStep == 2 ? SdColors.success : _primary, foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: EdgeInsets.symmetric(vertical: vPad), elevation: 2),
           icon: _isSubmitting ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
               : Icon(_currentStep == 2 ? Icons.send : Icons.arrow_back, size: _isPhone ? 16 : 18),
@@ -889,9 +889,9 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
   Widget _card({required IconData icon, required String title, required List<Widget> children}) {
     final p = _isPhone ? 12.0 : 16.0;
     return Card(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_isPhone ? 10 : 14),
-        side: BorderSide(color: Colors.grey.shade800, width: 1)), elevation: 1,
+        side: BorderSide(color: SdColors.ink, width: 1)), elevation: 1,
       child: Padding(padding: EdgeInsets.all(p), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [Icon(icon, color: Colors.indigo.shade700, size: _isPhone ? 18 : 20), const SizedBox(width: 8),
+        Row(children: [Icon(icon, color: SdColors.primary, size: _isPhone ? 18 : 20), const SizedBox(width: 8),
           Expanded(child: Text(title, style: TextStyle(fontSize: _isPhone ? 14 : 16, fontWeight: FontWeight.bold)))]),
         Divider(height: _isPhone ? 16 : 20), ...children,
       ])));
@@ -907,13 +907,13 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
       decoration: InputDecoration(labelText: label, labelStyle: TextStyle(fontSize: lfs),
         contentPadding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 12, vertical: vp),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade800, width: 1.2)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: SdColors.ink, width: 1.2)),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _accent, width: 2)),
-        filled: true, fillColor: Colors.grey.shade50,
+        filled: true, fillColor: SdColors.surfaceAlt,
         suffixIcon: withBla ? InkWell(onTap: () => setState(() { c.text = c.text == 'بلا' ? '' : 'بلا'; }), borderRadius: BorderRadius.circular(8),
           child: Container(margin: const EdgeInsets.all(4), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: c.text == 'بلا' ? _accent.withValues(alpha: 0.15) : Colors.grey.shade200, borderRadius: BorderRadius.circular(6)),
-            child: Text('بلا', style: TextStyle(fontSize: _isPhone ? 10 : 11, fontWeight: FontWeight.bold, color: c.text == 'بلا' ? _accent : Colors.grey.shade600)))) : null));
+            decoration: BoxDecoration(color: c.text == 'بلا' ? _accent.withValues(alpha: 0.15) : SdColors.divider, borderRadius: BorderRadius.circular(6)),
+            child: Text('بلا', style: TextStyle(fontSize: _isPhone ? 10 : 11, fontWeight: FontWeight.bold, color: c.text == 'بلا' ? _accent : SdColors.muted)))) : null));
   }
 
   Widget _tfPhone(TextEditingController c, String label) {
@@ -925,9 +925,9 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
       decoration: InputDecoration(labelText: label, labelStyle: TextStyle(fontSize: lfs), counterText: '',
         contentPadding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 12, vertical: _isPhone ? 8 : 10),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade800, width: 1.2)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: SdColors.ink, width: 1.2)),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _accent, width: 2)),
-        filled: true, fillColor: Colors.grey.shade50));
+        filled: true, fillColor: SdColors.surfaceAlt));
   }
 
   // حالة التواريخ — نحفظها في state بدل متغيرات محلية
@@ -961,13 +961,13 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
     final dec = InputDecoration(
       contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade400, width: 1)),
-      filled: true, fillColor: Colors.grey.shade50, isDense: true,
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SdColors.faint, width: 1)),
+      filled: true, fillColor: SdColors.surfaceAlt, isDense: true,
     );
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: TextStyle(fontSize: _isPhone ? 11 : 12, fontWeight: FontWeight.w600)),
-        if (c.text.isNotEmpty) Text(c.text, style: TextStyle(fontSize: _isPhone ? 9 : 10, color: Colors.grey.shade500)),
+        if (c.text.isNotEmpty) Text(c.text, style: TextStyle(fontSize: _isPhone ? 9 : 10, color: SdColors.faint)),
         SizedBox(height: _isPhone ? 3 : 4),
         Row(children: [
           Expanded(flex: 2, child: DropdownButtonFormField<int>(
@@ -999,7 +999,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
     if (value.trim().isEmpty) return const SizedBox.shrink();
     final fs = _isPhone ? 11.0 : 12.0;
     return Padding(padding: EdgeInsets.symmetric(vertical: _isPhone ? 2 : 3), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      SizedBox(width: _isPhone ? 65 : 80, child: Text('$label:', style: TextStyle(color: Colors.grey.shade600, fontSize: fs, fontWeight: FontWeight.w500))),
+      SizedBox(width: _isPhone ? 65 : 80, child: Text('$label:', style: TextStyle(color: SdColors.muted, fontSize: fs, fontWeight: FontWeight.w500))),
       Expanded(child: Text(value.trim(), style: TextStyle(fontSize: fs, fontWeight: FontWeight.w500)))]));
   }
 
@@ -1012,7 +1012,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
       Text(label, style: TextStyle(fontSize: _isPhone ? 11 : 13, fontWeight: FontWeight.w600)), const SizedBox(height: 4),
       DropdownButtonFormField<String>(value: value, isExpanded: true, validator: validator,
         decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), filled: true, fillColor: Colors.grey.shade50, hintText: hint, hintStyle: TextStyle(fontSize: _isPhone ? 11 : 13)),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)), filled: true, fillColor: SdColors.surfaceAlt, hintText: hint, hintStyle: TextStyle(fontSize: _isPhone ? 11 : 13)),
         items: uniqueItems, onChanged: onChanged)]);
   }
 
@@ -1035,11 +1035,11 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
         style: TextStyle(fontSize: _isPhone ? 12 : 14, color: _dark),
         decoration: InputDecoration(
           hintText: _selectedZoneId ?? 'ابحث عن المنطقة...',
-          hintStyle: TextStyle(fontSize: _isPhone ? 11 : 13, color: _selectedZoneId != null ? _dark : Colors.grey),
+          hintStyle: TextStyle(fontSize: _isPhone ? 11 : 13, color: _selectedZoneId != null ? _dark : SdColors.faint),
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: _selectedZoneId != null ? Colors.green : Colors.grey.shade800, width: 1.2)),
-          filled: true, fillColor: _selectedZoneId != null ? Colors.green.shade50 : Colors.grey.shade50,
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: _selectedZoneId != null ? SdColors.success : SdColors.ink, width: 1.2)),
+          filled: true, fillColor: _selectedZoneId != null ? SdColors.successTint : SdColors.surfaceAlt,
           prefixIcon: const Icon(Icons.search, size: 20),
           suffixIcon: _selectedZoneId != null ? IconButton(icon: const Icon(Icons.clear, size: 18), onPressed: () => setState(() { _selectedZoneId = null; _zoneSearch.clear(); })) : null,
         ),
@@ -1049,7 +1049,7 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
           constraints: BoxConstraints(maxHeight: _isPhone ? 120 : 150),
           margin: const EdgeInsets.only(top: 4),
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade400),
+            border: Border.all(color: SdColors.faint),
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4))]),
           child: ListView.builder(
             shrinkWrap: true, itemCount: filtered.length > 20 ? 20 : filtered.length,
@@ -1075,13 +1075,13 @@ class _CustomerOnboardingPageState extends State<CustomerOnboardingPage> {
     final fs = _isPhone ? 11.0 : 13.0;
     return InkWell(onTap: uploading ? null : onTap, borderRadius: BorderRadius.circular(10),
       child: Container(padding: EdgeInsets.all(p), decoration: BoxDecoration(borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: fileName != null ? Colors.green.shade300 : Colors.grey.shade300), color: fileName != null ? Colors.green.shade50 : Colors.grey.shade50),
+        border: Border.all(color: fileName != null ? SdColors.successTintEdge : SdColors.edge), color: fileName != null ? SdColors.successTint : SdColors.surfaceAlt),
         child: Row(children: [
-          Icon(fileName != null ? Icons.check_circle : Icons.upload_file, color: fileName != null ? Colors.green : Colors.grey, size: _isPhone ? 18 : 22),
+          Icon(fileName != null ? Icons.check_circle : Icons.upload_file, color: fileName != null ? SdColors.success : SdColors.faint, size: _isPhone ? 18 : 22),
           SizedBox(width: _isPhone ? 6 : 10),
-          Expanded(child: Text(fileName ?? label, style: TextStyle(fontSize: fs, color: fileName != null ? Colors.green.shade800 : Colors.grey.shade600), overflow: TextOverflow.ellipsis)),
+          Expanded(child: Text(fileName ?? label, style: TextStyle(fontSize: fs, color: fileName != null ? SdColors.success : SdColors.muted), overflow: TextOverflow.ellipsis)),
           if (fileName == null && !uploading) Text('اختيار', style: TextStyle(fontSize: _isPhone ? 10 : 12, color: _accent, fontWeight: FontWeight.w600)),
-          if (onDelete != null && fileName != null) IconButton(icon: Icon(Icons.close, size: _isPhone ? 16 : 18, color: Colors.red.shade400), onPressed: onDelete, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+          if (onDelete != null && fileName != null) IconButton(icon: Icon(Icons.close, size: _isPhone ? 16 : 18, color: SdColors.danger), onPressed: onDelete, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
         ])));
   }
 }

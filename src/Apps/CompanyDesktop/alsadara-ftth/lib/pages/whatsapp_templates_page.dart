@@ -70,7 +70,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                 const SizedBox(width: 12),
                 Text(
                   'تم حفظ ${WhatsAppTemplatesService.templateNames[type]}',
-                  style: GoogleFonts.cairo(),
+                  style: TextStyle(fontFamily: 'Cairo'),
                 ),
               ],
             ),
@@ -88,7 +88,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
               children: [
                 const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 12),
-                Text('فشل حفظ القالب', style: GoogleFonts.cairo()),
+                Text('فشل حفظ القالب', style: TextStyle(fontFamily: 'Cairo')),
               ],
             ),
             backgroundColor: SdColors.danger,
@@ -123,7 +123,8 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
               const SizedBox(height: 24),
               Text(
                 'إعادة تعيين القالب',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: SdColors.ink,
@@ -133,7 +134,8 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
               Text(
                 'هل تريد إعادة تعيين "${WhatsAppTemplatesService.templateNames[type]}" للقالب الافتراضي؟',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 15,
                   color: SdColors.muted,
                 ),
@@ -150,7 +152,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: Text('إلغاء', style: GoogleFonts.cairo()),
+                      child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -166,7 +168,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                         ),
                         elevation: 0,
                       ),
-                      child: Text('إعادة تعيين', style: GoogleFonts.cairo()),
+                      child: Text('إعادة تعيين', style: TextStyle(fontFamily: 'Cairo')),
                     ),
                   ),
                 ],
@@ -187,7 +189,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
               children: [
                 const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 12),
-                Text('تم إعادة تعيين القالب', style: GoogleFonts.cairo()),
+                Text('تم إعادة تعيين القالب', style: TextStyle(fontFamily: 'Cairo')),
               ],
             ),
             backgroundColor: SdColors.warning,
@@ -225,26 +227,26 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
   Color _getTemplateColor(WhatsAppTemplateType type) {
     switch (type) {
       case WhatsAppTemplateType.renewal:
-        return const Color(0xFF2E7D32);
+        return SdColors.success;
       case WhatsAppTemplateType.expiringSoon:
-        return const Color(0xFFEF6C00);
+        return SdColors.warning;
       case WhatsAppTemplateType.expired:
-        return const Color(0xFFC62828);
+        return SdColors.danger;
       case WhatsAppTemplateType.notification:
-        return const Color(0xFF1565C0);
+        return SdColors.info;
     }
   }
 
   List<Color> _getTemplateGradient(WhatsAppTemplateType type) {
     switch (type) {
       case WhatsAppTemplateType.renewal:
-        return [const Color(0xFF2E7D32), const Color(0xFF1B5E20)];
+        return [SdColors.success, SdColors.successEdge];
       case WhatsAppTemplateType.expiringSoon:
-        return [const Color(0xFFEF6C00), const Color(0xFFA84300)];
+        return [SdColors.warning, const Color(0xFFA84300)];
       case WhatsAppTemplateType.expired:
-        return [const Color(0xFFC62828), const Color(0xFF7F0000)];
+        return [SdColors.danger, const Color(0xFF7F0000)];
       case WhatsAppTemplateType.notification:
-        return [const Color(0xFF1565C0), const Color(0xFF0D47A1)];
+        return [SdColors.info, const Color(0xFF0D47A1)];
     }
   }
 
@@ -302,7 +304,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+          colors: [SdColors.primary, SdColors.primaryLight],
         ),
       ),
       child: Center(
@@ -323,7 +325,8 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
             const SizedBox(height: 24),
             Text(
               'جاري تحميل القوالب...',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -340,7 +343,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
       expandedHeight: 140,
       floating: false,
       pinned: true,
-      backgroundColor: const Color(0xFF1A237E),
+      backgroundColor: SdColors.primary,
       elevation: 0,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
@@ -349,8 +352,8 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color(0xFF1A237E),
-                Color(0xFF3949AB),
+                SdColors.primary,
+                SdColors.primaryLight,
               ],
             ),
           ),
@@ -387,7 +390,8 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                         children: [
                           Text(
                             'قوالب الرسائل',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -395,7 +399,8 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                           ),
                           Text(
                             'تخصيص رسائل التجديد والإشعارات',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 11,
                               color: Colors.white.withValues(alpha: 0.85),
                             ),
@@ -446,7 +451,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                   children: [
                     Icon(Icons.restore_rounded, color: SdColors.danger),
                     const SizedBox(width: 12),
-                    Text('إعادة تعيين الكل', style: GoogleFonts.cairo()),
+                    Text('إعادة تعيين الكل', style: TextStyle(fontFamily: 'Cairo')),
                   ],
                 ),
               ),
@@ -479,7 +484,8 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
               const SizedBox(height: 24),
               Text(
                 'إعادة تعيين الكل',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: SdColors.ink,
@@ -489,7 +495,8 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
               Text(
                 'هل تريد إعادة تعيين جميع القوالب للقيم الافتراضية؟\nلا يمكن التراجع عن هذا الإجراء.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 15,
                   color: SdColors.muted,
                 ),
@@ -506,7 +513,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: Text('إلغاء', style: GoogleFonts.cairo()),
+                      child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -523,7 +530,7 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                         elevation: 0,
                       ),
                       child:
-                          Text('إعادة تعيين الكل', style: GoogleFonts.cairo()),
+                          Text('إعادة تعيين الكل', style: TextStyle(fontFamily: 'Cairo')),
                     ),
                   ),
                 ],
@@ -551,7 +558,8 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
           Expanded(
             child: Text(
               'تُستخدم هذه القوالب في الإرسال الجماعي وإشعارات المشتركين',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 color: Colors.white,
                 fontSize: 11,
               ),
@@ -614,7 +622,8 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                     children: [
                       Text(
                         name,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: SdColors.ink,
@@ -624,7 +633,8 @@ class _WhatsAppTemplatesPageState extends State<WhatsAppTemplatesPage>
                         template.length > 60
                             ? '${template.substring(0, 60)}...'
                             : template,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 11,
                           color: SdColors.faint,
                         ),
@@ -797,7 +807,8 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                     children: [
                       Text(
                         'تعديل ${WhatsAppTemplatesService.templateNames[widget.type]}',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -807,7 +818,8 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                         WhatsAppTemplatesService
                                 .templateDescriptions[widget.type] ??
                             '',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 11,
                         ),
@@ -841,8 +853,8 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
               labelColor: widget.color,
               unselectedLabelColor: SdColors.muted,
               labelStyle:
-                  GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
-              unselectedLabelStyle: GoogleFonts.cairo(fontSize: 14),
+                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 14),
+              unselectedLabelStyle: TextStyle(fontFamily: 'Cairo', fontSize: 14),
               tabs: const [
                 Tab(
                   icon: Icon(Icons.edit_rounded, size: 20),
@@ -890,7 +902,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                     },
                     icon: const Icon(Icons.refresh_rounded, size: 18),
                     label: Text('الافتراضي',
-                        style: GoogleFonts.cairo(fontSize: 13)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -926,7 +938,7 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                         : const Icon(Icons.save_rounded, size: 18),
                     label: Text(
                       _isSaving ? 'جاري الحفظ...' : 'حفظ القالب',
-                      style: GoogleFonts.cairo(fontSize: 13),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: widget.color,
@@ -968,7 +980,8 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                   const SizedBox(width: 8),
                   Text(
                     'المتغيرات (اضغط للإضافة):',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                       color: SdColors.muted,
@@ -1016,7 +1029,8 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
                       ),
                       child: Text(
                         description,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: widget.color,
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
@@ -1046,11 +1060,11 @@ class _TemplateEditorSheetState extends State<_TemplateEditorSheet>
               textDirection: TextDirection.rtl,
               decoration: InputDecoration(
                 hintText: 'اكتب نص القالب هنا...',
-                hintStyle: GoogleFonts.cairo(color: SdColors.faint),
+                hintStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.faint),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.all(16),
               ),
-              style: GoogleFonts.cairo(fontSize: 14, height: 1.7),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 14, height: 1.7),
             ),
           ),
         ),

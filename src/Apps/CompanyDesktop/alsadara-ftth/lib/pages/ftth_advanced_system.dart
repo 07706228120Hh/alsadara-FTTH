@@ -13,6 +13,7 @@ import 'package:http/http.dart' as http;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_windows/webview_windows.dart' as windows_webview;
 import 'package:url_launcher/url_launcher.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// النظام الثالث - نظام إدارة داشبورد FTTH المتقدم
 class FTTHAdvancedSystemPage extends StatelessWidget {
@@ -23,13 +24,13 @@ class FTTHAdvancedSystemPage extends StatelessWidget {
     return Theme(
       data: ThemeData(
         primarySwatch: Colors.blue,
-        primaryColor: const Color(0xFF667eea),
+        primaryColor: SdColors.primaryLight,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF667eea),
+          seedColor: SdColors.primaryLight,
           brightness: Brightness.light,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF667eea),
+          backgroundColor: SdColors.primaryLight,
           foregroundColor: Colors.white,
           elevation: 0,
           centerTitle: true,
@@ -42,7 +43,7 @@ class FTTHAdvancedSystemPage extends StatelessWidget {
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF667eea),
+            backgroundColor: SdColors.primaryLight,
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -65,7 +66,7 @@ class FTTHAdvancedSystemPage extends StatelessWidget {
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
-              color: Colors.grey.shade300,
+              color: SdColors.edge,
             ),
           ),
           focusedBorder: OutlineInputBorder(
@@ -528,8 +529,8 @@ class _AdvancedSplashScreenState extends State<AdvancedSplashScreen>
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
             colors: [
-              Color(0xFF667eea),
-              Color(0xFF764ba2),
+              SdColors.primaryLight,
+              SdColors.platformBase,
             ],
           ),
         ),
@@ -556,7 +557,7 @@ class _AdvancedSplashScreenState extends State<AdvancedSplashScreen>
                   child: const Icon(
                     Icons.dashboard,
                     size: 60,
-                    color: Color(0xFF667eea),
+                    color: SdColors.primaryLight,
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -667,8 +668,8 @@ class _AdvancedLoginPageState extends State<AdvancedLoginPage> {
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
             colors: [
-              Color(0xFF667eea),
-              Color(0xFF764ba2),
+              SdColors.primaryLight,
+              SdColors.platformBase,
             ],
           ),
         ),
@@ -691,7 +692,7 @@ class _AdvancedLoginPageState extends State<AdvancedLoginPage> {
                         const Icon(
                           Icons.dashboard,
                           size: 80,
-                          color: Color(0xFF667eea),
+                          color: SdColors.primaryLight,
                         ),
                         const SizedBox(height: 20),
                         const Text(
@@ -699,7 +700,7 @@ class _AdvancedLoginPageState extends State<AdvancedLoginPage> {
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF667eea),
+                            color: SdColors.primaryLight,
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -756,13 +757,13 @@ class _AdvancedLoginPageState extends State<AdvancedLoginPage> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.red[50],
-                              border: Border.all(color: Colors.red[300]!),
+                              color: SdColors.dangerTint,
+                              border: Border.all(color: SdColors.dangerTintEdge),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               _errorMessage!,
-                              style: TextStyle(color: Colors.red[700]),
+                              style: TextStyle(color: SdColors.danger),
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -787,7 +788,7 @@ class _AdvancedLoginPageState extends State<AdvancedLoginPage> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.blue[50],
+                            color: SdColors.infoTint,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(
@@ -996,7 +997,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF283593), Color(0xFF1976D2), Color(0xFF64B5F6)],
+              colors: [SdColors.primaryMid, SdColors.info, SdColors.infoTintEdge],
             ),
           ),
         ),
@@ -1087,19 +1088,19 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
               padding: const EdgeInsets.all(12),
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: Colors.orange[100],
+                color: SdColors.warningTint,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange[300]!),
+                border: Border.all(color: SdColors.warningTintEdge),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.science, color: Colors.orange[700], size: 20),
+                  Icon(Icons.science, color: SdColors.warning, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '🔧 الوضع التجريبي نشط - البيانات المعروضة للاختبار فقط',
                       style: TextStyle(
-                        color: Colors.orange[700],
+                        color: SdColors.warning,
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -1114,7 +1115,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                colors: [SdColors.primaryLight, SdColors.platformBase],
               ),
               borderRadius: BorderRadius.circular(15),
               boxShadow: [
@@ -1220,7 +1221,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
                 subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: SdColors.muted,
                 ),
               ),
             ],
@@ -1243,7 +1244,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
           children: [
             const Row(
               children: [
-                Icon(Icons.link, color: Color(0xFF667eea)),
+                Icon(Icons.link, color: SdColors.primaryLight),
                 SizedBox(width: 8),
                 Text(
                   'الروابط المفيدة',
@@ -1278,7 +1279,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
     required IconData icon,
   }) {
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFF667eea)),
+      leading: Icon(icon, color: SdColors.primaryLight),
       title: Text(title),
       trailing: const Icon(Icons.open_in_new),
       onTap: () => _openExternalUrl(url),
@@ -1301,7 +1302,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
             children: [
               const Row(
                 children: [
-                  Icon(Icons.person, color: Color(0xFF667eea), size: 30),
+                  Icon(Icons.person, color: SdColors.primaryLight, size: 30),
                   SizedBox(width: 12),
                   Text(
                     'الملف الشخصي',
@@ -1345,7 +1346,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
               label,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[700],
+                color: SdColors.muted,
               ),
             ),
           ),
@@ -1377,7 +1378,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
             children: [
               const Row(
                 children: [
-                  Icon(Icons.security, color: Color(0xFF667eea), size: 30),
+                  Icon(Icons.security, color: SdColors.primaryLight, size: 30),
                   SizedBox(width: 12),
                   Text(
                     'إدارة التوكنات',
@@ -1456,7 +1457,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
             label,
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Colors.grey[700],
+              color: SdColors.muted,
             ),
           ),
           const SizedBox(height: 8),
@@ -1464,8 +1465,8 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.grey[100],
-              border: Border.all(color: Colors.grey.shade300),
+              color: SdColors.groundAlt,
+              border: Border.all(color: SdColors.edge),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -1497,22 +1498,22 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: SdColors.edge),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: const Color(0xFF667eea), size: 20),
+              Icon(icon, color: SdColors.primaryLight, size: 20),
               const SizedBox(width: 8),
               Text(
                 title,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey[700],
+                  color: SdColors.muted,
                 ),
               ),
             ],
@@ -1547,7 +1548,7 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.settings, color: Color(0xFF667eea), size: 30),
+                      Icon(Icons.settings, color: SdColors.primaryLight, size: 30),
                       SizedBox(width: 12),
                       Text(
                         'إعدادات النظام',
@@ -1598,14 +1599,14 @@ class _AdvancedDashboardPageState extends State<AdvancedDashboardPage>
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFF667eea), size: 20),
+          Icon(icon, color: SdColors.primaryLight, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               title,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[700],
+                color: SdColors.muted,
               ),
             ),
           ),
@@ -1747,7 +1748,7 @@ class _AdvancedWebViewPageState extends State<AdvancedWebViewPage> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF283593), Color(0xFF1976D2), Color(0xFF64B5F6)],
+              colors: [SdColors.primaryMid, SdColors.info, SdColors.infoTintEdge],
             ),
           ),
         ),
@@ -1845,9 +1846,9 @@ class _AdvancedWebViewPageState extends State<AdvancedWebViewPage> {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[200]!),
+                border: Border.all(color: SdColors.infoTintEdge),
               ),
               child: Column(
                 children: [

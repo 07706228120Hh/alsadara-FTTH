@@ -8,6 +8,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/device_registration_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class DevicePermissionsPage extends StatefulWidget {
   const DevicePermissionsPage({super.key});
@@ -83,7 +84,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, textAlign: TextAlign.right),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
       ),
     );
   }
@@ -93,7 +94,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, textAlign: TextAlign.right),
-        backgroundColor: Colors.green,
+        backgroundColor: SdColors.success,
       ),
     );
   }
@@ -149,7 +150,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
               children: [
                 Text('كود تفعيل جديد'),
                 SizedBox(width: 8),
-                Icon(Icons.key, color: Colors.orange),
+                Icon(Icons.key, color: SdColors.warning),
               ],
             ),
             content: Column(
@@ -158,23 +159,23 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
                 const Text(
                   'شارك هذا الكود مع المستخدم لتسجيل جهازه',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(color: SdColors.faint),
                 ),
                 const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
+                    color: SdColors.info.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border:
-                        Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                        Border.all(color: SdColors.info.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.copy, color: Colors.blue),
+                        icon: const Icon(Icons.copy, color: SdColors.info),
                         onPressed: () {
                           Clipboard.setData(
                             ClipboardData(text: _generatedCode?.code ?? ''),
@@ -208,14 +209,14 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
                     Icon(
                       Icons.timer,
                       size: 16,
-                      color: _remainingSeconds < 60 ? Colors.red : Colors.grey,
+                      color: _remainingSeconds < 60 ? SdColors.danger : SdColors.faint,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       'صالح لمدة ${_formatTime(_remainingSeconds)}',
                       style: TextStyle(
                         color:
-                            _remainingSeconds < 60 ? Colors.red : Colors.grey,
+                            _remainingSeconds < 60 ? SdColors.danger : SdColors.faint,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -259,7 +260,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
           children: [
             Text('تسجيل هذا الجهاز'),
             SizedBox(width: 8),
-            Icon(Icons.add_circle, color: Colors.green),
+            Icon(Icons.add_circle, color: SdColors.success),
           ],
         ),
         content: Column(
@@ -354,7 +355,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: device.isActive ? Colors.orange : Colors.green,
+              backgroundColor: device.isActive ? SdColors.warning : SdColors.success,
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(action),
@@ -390,7 +391,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
           children: [
             Text('حذف الجهاز'),
             SizedBox(width: 8),
-            Icon(Icons.delete_forever, color: Colors.red),
+            Icon(Icons.delete_forever, color: SdColors.danger),
           ],
         ),
         content: Column(
@@ -401,7 +402,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
             const SizedBox(height: 8),
             const Text(
               'سيحتاج المستخدم لكود تفعيل جديد لإعادة تسجيل الجهاز',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+              style: TextStyle(color: SdColors.faint, fontSize: 12),
             ),
           ],
         ),
@@ -411,7 +412,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
             child: const Text('إلغاء'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('حذف', style: TextStyle(color: Colors.white)),
           ),
@@ -446,7 +447,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           centerTitle: true,
-          backgroundColor: const Color(0xFF1E3A5F),
+          backgroundColor: SdColors.primaryEdge,
           foregroundColor: Colors.white,
           elevation: 2,
           actions: [
@@ -485,12 +486,12 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
           children: [
             Row(
               children: [
-                const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                const Icon(Icons.info_outline, color: SdColors.info, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'الأجهزة المعتمدة فقط يمكنها تخزين بيانات المشتركين محلياً',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    style: TextStyle(color: SdColors.muted, fontSize: 13),
                   ),
                 ),
               ],
@@ -504,7 +505,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
                     icon: const Icon(Icons.key),
                     label: const Text('توليد كود تفعيل'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
+                      backgroundColor: SdColors.warning,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
@@ -534,20 +535,20 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.devices_other, size: 80, color: Colors.grey[300]),
+          Icon(Icons.devices_other, size: 80, color: SdColors.edge),
           const SizedBox(height: 16),
           Text(
             'لا توجد أجهزة مسجلة',
             style: TextStyle(
               fontSize: 18,
-              color: Colors.grey[600],
+              color: SdColors.muted,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'ولّد كود تفعيل لتسجيل جهاز جديد',
-            style: TextStyle(color: Colors.grey[400]),
+            style: TextStyle(color: SdColors.faint),
           ),
         ],
       ),
@@ -566,7 +567,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
           _buildSectionHeader(
             'الأجهزة النشطة',
             Icons.check_circle,
-            Colors.green,
+            SdColors.success,
             activeDevices.length,
           ),
           ...activeDevices.map((d) => _buildDeviceCard(d)),
@@ -578,7 +579,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
           _buildSectionHeader(
             'الأجهزة الموقوفة',
             Icons.block,
-            Colors.grey,
+            SdColors.faint,
             inactiveDevices.length,
           ),
           ...inactiveDevices.map((d) => _buildDeviceCard(d)),
@@ -633,7 +634,7 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isCurrentDevice
-            ? const BorderSide(color: Colors.blue, width: 2)
+            ? const BorderSide(color: SdColors.info, width: 2)
             : BorderSide.none,
       ),
       child: Padding(
@@ -646,8 +647,8 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
               height: 48,
               decoration: BoxDecoration(
                 color: device.isActive
-                    ? Colors.green.withValues(alpha: 0.1)
-                    : Colors.grey.withValues(alpha: 0.1),
+                    ? SdColors.success.withValues(alpha: 0.1)
+                    : SdColors.faint.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -683,13 +684,13 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
+                            color: SdColors.info.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(
                             'هذا الجهاز',
                             style: TextStyle(
-                              color: Colors.blue,
+                              color: SdColors.info,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
@@ -701,14 +702,14 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
                   Text(
                     '${device.platformName} • سجله: ${device.registeredByName}',
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: SdColors.muted,
                       fontSize: 12,
                     ),
                   ),
                   Text(
                     'آخر استخدام: ${_formatDate(device.lastUsed ?? device.registeredAt)}',
                     style: TextStyle(
-                      color: Colors.grey[500],
+                      color: SdColors.faint,
                       fontSize: 11,
                     ),
                   ),
@@ -722,14 +723,14 @@ class _DevicePermissionsPageState extends State<DevicePermissionsPage> {
                 IconButton(
                   icon: Icon(
                     device.isActive ? Icons.block : Icons.check_circle,
-                    color: device.isActive ? Colors.orange : Colors.green,
+                    color: device.isActive ? SdColors.warning : SdColors.success,
                     size: 20,
                   ),
                   onPressed: () => _toggleDeviceStatus(device),
                   tooltip: device.isActive ? 'إيقاف' : 'تفعيل',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                  icon: const Icon(Icons.delete, color: SdColors.danger, size: 20),
                   onPressed: () => _deleteDevice(device),
                   tooltip: 'حذف',
                 ),

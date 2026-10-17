@@ -1,5 +1,6 @@
 // lib/widgets/dashboard_card.dart
 import 'package:flutter/material.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class DashboardCard extends StatelessWidget {
   final String title;
@@ -37,7 +38,7 @@ class DashboardCard extends StatelessWidget {
               end: Alignment.bottomRight,
               colors: [
                 Colors.white,
-                Colors.blueGrey.withValues(alpha: 0.1),
+                SdColors.faint.withValues(alpha: 0.1),
               ],
             ),
           ),
@@ -53,11 +54,11 @@ class DashboardCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.blueGrey.withValues(alpha: 0.1),
+                          color: SdColors.faint.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child:
-                            Icon(icon, size: 32, color: Colors.blueGrey[800]),
+                            Icon(icon, size: 32, color: SdColors.ink),
                       ),
                       const SizedBox(width: 12),
                       Text(
@@ -65,14 +66,14 @@ class DashboardCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blueGrey[800],
+                          color: SdColors.ink,
                         ),
                       ),
                     ],
                   ),
                   IconButton(
                     icon: const Icon(Icons.bar_chart),
-                    color: Colors.blueGrey[800],
+                    color: SdColors.ink,
                     onPressed: onTap,
                   ),
                 ],
@@ -84,7 +85,7 @@ class DashboardCard extends StatelessWidget {
                     colors[entry.key] ?? Colors.black,
                   )),
               const Divider(height: 24),
-              _buildStatRow('الإجمالي', total, Colors.blueGrey[800]!),
+              _buildStatRow('الإجمالي', total, SdColors.ink),
             ],
           ),
         ),

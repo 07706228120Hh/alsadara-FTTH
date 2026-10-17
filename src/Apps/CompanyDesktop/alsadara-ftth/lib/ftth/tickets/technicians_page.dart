@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../permissions/permissions.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// صفحة محلية لإدارة فني التوصيل (اسم + رقم)
 /// يتم حفظ البيانات محلياً في SharedPreferences تحت المفتاح 'local_technicians_list'
@@ -69,12 +70,12 @@ class _TechniciansPageState extends State<TechniciansPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.blueGrey.shade100,
+                color: SdColors.groundAlt,
                 borderRadius: BorderRadius.circular(50),
               ),
               child: Icon(
                 existing == null ? Icons.person_add : Icons.edit,
-                color: Colors.blueGrey.shade700,
+                color: SdColors.muted,
               ),
             ),
             const SizedBox(width: 12),
@@ -130,7 +131,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('يرجى إدخال الاسم ورقم الهاتف'),
-                    backgroundColor: Colors.red,
+                    backgroundColor: SdColors.danger,
                   ),
                 );
                 return;
@@ -151,7 +152,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
                   content: Text(existing == null
                       ? 'تم إضافة الفني بنجاح'
                       : 'تم تحديث بيانات الفني'),
-                  backgroundColor: Colors.green,
+                  backgroundColor: SdColors.success,
                 ),
               );
             },
@@ -177,10 +178,10 @@ class _TechniciansPageState extends State<TechniciansPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.red.shade100,
+                color: SdColors.dangerTint,
                 borderRadius: BorderRadius.circular(50),
               ),
-              child: Icon(Icons.warning, color: Colors.red.shade700),
+              child: Icon(Icons.warning, color: SdColors.danger),
             ),
             const SizedBox(width: 12),
             const Text('تأكيد الحذف'),
@@ -199,12 +200,12 @@ class _TechniciansPageState extends State<TechniciansPage> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('تم حذف الفني بنجاح'),
-                  backgroundColor: Colors.orange,
+                  backgroundColor: SdColors.warning,
                 ),
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
@@ -238,7 +239,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+              colors: [SdColors.primary, SdColors.primaryLight],
             ),
           ),
         ),
@@ -254,7 +255,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
       floatingActionButton: PermissionManager.instance.canAdd('technicians')
           ? FloatingActionButton.extended(
               onPressed: () => _addOrEdit(),
-              backgroundColor: const Color(0xFF1A237E),
+              backgroundColor: SdColors.primary,
               icon: const Icon(Icons.add, color: Colors.white),
               label: const Text('إضافة فني',
                   style: TextStyle(color: Colors.white)),
@@ -270,13 +271,13 @@ class _TechniciansPageState extends State<TechniciansPage> {
                       Container(
                         padding: const EdgeInsets.all(32),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: SdColors.groundAlt,
                           borderRadius: BorderRadius.circular(100),
                         ),
                         child: Icon(
                           Icons.engineering,
                           size: 80,
-                          color: Colors.grey.shade400,
+                          color: SdColors.faint,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -285,7 +286,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade600,
+                          color: SdColors.muted,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -293,7 +294,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
                         'أضف الفنيين لتسهيل التواصل معهم',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey.shade500,
+                          color: SdColors.faint,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -301,7 +302,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
                         ElevatedButton.icon(
                           onPressed: () => _addOrEdit(),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1A237E),
+                            backgroundColor: SdColors.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 24, vertical: 12),
@@ -328,7 +329,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(15),
                           gradient: LinearGradient(
-                            colors: [Colors.white, Colors.grey.shade50],
+                            colors: [Colors.white, SdColors.surfaceAlt],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -340,7 +341,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
                             height: 55,
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+                                colors: [SdColors.primary, SdColors.primaryLight],
                               ),
                               borderRadius: BorderRadius.circular(50),
                             ),
@@ -370,7 +371,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
                           subtitle: Row(
                             children: [
                               const Icon(Icons.phone,
-                                  size: 16, color: Colors.grey),
+                                  size: 16, color: SdColors.faint),
                               const SizedBox(width: 4),
                               Text(
                                 tech['phone'] ?? '',
@@ -383,13 +384,13 @@ class _TechniciansPageState extends State<TechniciansPage> {
                             children: [
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.green.shade50,
+                                  color: SdColors.successTint,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: IconButton(
                                   tooltip: 'اتصال',
                                   icon: Icon(Icons.call,
-                                      size: 20, color: Colors.green.shade700),
+                                      size: 20, color: SdColors.success),
                                   onPressed: () async {
                                     final phone = tech['phone'] ?? '';
                                     if (phone.isNotEmpty) {
@@ -409,7 +410,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
                               const SizedBox(width: 4),
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
+                                  color: SdColors.infoTint,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: PermissionManager.instance
@@ -418,7 +419,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
                                         tooltip: 'تعديل',
                                         icon: Icon(Icons.edit,
                                             size: 20,
-                                            color: Colors.blue.shade700),
+                                            color: SdColors.info),
                                         onPressed: () => _addOrEdit(
                                             existing: tech, index: i),
                                       )
@@ -427,7 +428,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
                               const SizedBox(width: 4),
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.red.shade50,
+                                  color: SdColors.dangerTint,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: PermissionManager.instance
@@ -436,7 +437,7 @@ class _TechniciansPageState extends State<TechniciansPage> {
                                         tooltip: 'حذف',
                                         icon: Icon(Icons.delete_forever,
                                             size: 20,
-                                            color: Colors.red.shade700),
+                                            color: SdColors.danger),
                                         onPressed: () => _delete(i),
                                       )
                                     : const SizedBox.shrink(),

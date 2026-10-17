@@ -5,7 +5,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/employee_profile_service.dart';
 import '../../permissions/permissions.dart';
@@ -270,7 +269,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
           backgroundColor: _getRoleColor(role),
           child: Text(
             name.isNotEmpty ? name[0].toUpperCase() : '?',
-            style: GoogleFonts.cairo(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ),
         const SizedBox(width: 14),
@@ -279,7 +278,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(name, style: GoogleFonts.cairo(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+              Text(name, style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
               Row(
                 children: [
                   _headerChip(_getRoleLabel(role), _getRoleColor(role)),
@@ -296,12 +295,12 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
           _buildPhoneBadge(phone, false),
           const SizedBox(width: 8),
         ],
-        _headerActionBtn(icon: Icons.key_rounded, tooltip: 'تغيير كلمة المرور', color: const Color(0xFFFF9800), onTap: () => _showPasswordDialog()),
+        _headerActionBtn(icon: Icons.key_rounded, tooltip: 'تغيير كلمة المرور', color: SdColors.warning, onTap: () => _showPasswordDialog()),
         const SizedBox(width: 4),
         _headerActionBtn(icon: Icons.link_rounded, tooltip: 'ربط حساب FTTH', color: const Color(0xFFCDDC39), onTap: () => _openFtthLinking()),
         const SizedBox(width: 4),
         if (_pm.canDelete('users')) ...[
-          _headerActionBtn(icon: Icons.delete_outline_rounded, tooltip: 'حذف الموظف', color: const Color(0xFFFF5252), onTap: () => _deleteEmployee()),
+          _headerActionBtn(icon: Icons.delete_outline_rounded, tooltip: 'حذف الموظف', color: SdColors.danger, onTap: () => _deleteEmployee()),
           const SizedBox(width: 4),
         ],
         _headerActionBtn(icon: Icons.refresh_rounded, tooltip: 'تحديث', color: Colors.white70, onTap: _loadFullProfile),
@@ -331,7 +330,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
               backgroundColor: _getRoleColor(role),
               child: Text(
                 name.isNotEmpty ? name[0].toUpperCase() : '?',
-                style: GoogleFonts.cairo(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(width: 8),
@@ -340,7 +339,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(name, style: GoogleFonts.cairo(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                  Text(name, style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
                   Row(
                     children: [
                       _headerChip(_getRoleLabel(role), _getRoleColor(role)),
@@ -367,10 +366,10 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
               spacing: 3,
               runSpacing: 3,
               children: [
-                _headerActionBtn(icon: Icons.key_rounded, tooltip: 'كلمة المرور', color: const Color(0xFFFF9800), onTap: () => _showPasswordDialog(), small: true),
+                _headerActionBtn(icon: Icons.key_rounded, tooltip: 'كلمة المرور', color: SdColors.warning, onTap: () => _showPasswordDialog(), small: true),
                 _headerActionBtn(icon: Icons.link_rounded, tooltip: 'ربط FTTH', color: const Color(0xFFCDDC39), onTap: () => _openFtthLinking(), small: true),
                 if (_pm.canDelete('users'))
-                  _headerActionBtn(icon: Icons.delete_outline_rounded, tooltip: 'حذف', color: const Color(0xFFFF5252), onTap: () => _deleteEmployee(), small: true),
+                  _headerActionBtn(icon: Icons.delete_outline_rounded, tooltip: 'حذف', color: SdColors.danger, onTap: () => _deleteEmployee(), small: true),
                 _headerActionBtn(icon: Icons.refresh_rounded, tooltip: 'تحديث', color: Colors.white70, onTap: _loadFullProfile, small: true),
               ],
             ),
@@ -384,18 +383,18 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
     return Container(
       padding: EdgeInsets.symmetric(horizontal: small ? 7 : 12, vertical: small ? 3 : 6),
       decoration: BoxDecoration(
-        color: isActive ? Colors.green.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+        color: isActive ? SdColors.success.withOpacity(0.2) : SdColors.danger.withOpacity(0.2),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isActive ? Colors.green : Colors.red, width: 1),
+        border: Border.all(color: isActive ? SdColors.success : SdColors.danger, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(isActive ? Icons.check_circle : Icons.cancel, color: isActive ? Colors.green : Colors.red, size: small ? 11 : 14),
+          Icon(isActive ? Icons.check_circle : Icons.cancel, color: isActive ? SdColors.success : SdColors.danger, size: small ? 11 : 14),
           SizedBox(width: small ? 2 : 4),
           Text(
             isActive ? 'نشط' : 'معطل',
-            style: GoogleFonts.cairo(color: isActive ? Colors.green : Colors.red, fontSize: small ? 10 : 12, fontWeight: FontWeight.bold),
+            style: TextStyle(fontFamily: 'Cairo', color: isActive ? SdColors.success : SdColors.danger, fontSize: small ? 10 : 12, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -491,17 +490,18 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF9800).withOpacity(0.1),
+                    color: SdColors.warning.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.key_rounded,
-                      color: Color(0xFFFF9800), size: 20),
+                      color: SdColors.warning, size: 20),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'كلمة مرور $empName',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold, fontSize: 16),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -518,21 +518,22 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3E0),
+                      color: SdColors.warningTint,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFFFE0B2)),
+                      border: Border.all(color: SdColors.warningTintEdge),
                     ),
                     child: Row(
                       children: [
                         const Icon(Icons.info_outline,
-                            color: Color(0xFFFF9800), size: 18),
+                            color: SdColors.warning, size: 18),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('كلمة المرور الحالية:',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontSize: 11,
                                       color: const Color(0xFF795548))),
                               const SizedBox(height: 2),
@@ -563,7 +564,8 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                     ),
                   ),
                 Text('كلمة المرور الجديدة:',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 8),
                 TextField(
@@ -571,7 +573,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                   obscureText: !showPassword,
                   decoration: InputDecoration(
                     hintText: 'أدخل كلمة المرور الجديدة',
-                    hintStyle: GoogleFonts.cairo(fontSize: 13),
+                    hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 13),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10)),
                     prefixIcon: const Icon(Icons.lock_outline, size: 20),
@@ -591,7 +593,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('إغلاق', style: GoogleFonts.cairo()),
+                child: Text('إغلاق', style: TextStyle(fontFamily: 'Cairo')),
               ),
               ElevatedButton.icon(
                 onPressed: isSaving || passwordController.text.isEmpty
@@ -611,7 +613,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('تم تغيير كلمة المرور بنجاح',
-                                    style: GoogleFonts.cairo()),
+                                    style: TextStyle(fontFamily: 'Cairo')),
                                 backgroundColor: SdColors.success,
                               ),
                             );
@@ -637,9 +639,9 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.save_rounded, size: 18),
-                label: Text('حفظ', style: GoogleFonts.cairo()),
+                label: Text('حفظ', style: TextStyle(fontFamily: 'Cairo')),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF9800),
+                  backgroundColor: SdColors.warning,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
@@ -672,20 +674,20 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
           ),
           title: Row(
             children: [
-              Icon(Icons.warning_rounded, color: Colors.red.shade400),
+              Icon(Icons.warning_rounded, color: SdColors.danger),
               const SizedBox(width: 8),
               Text('تأكيد الحذف',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
             ],
           ),
           content: Text(
             'هل أنت متأكد من حذف الموظف "$empName"؟\nهذا الإجراء لا يمكن التراجع عنه.',
-            style: GoogleFonts.cairo(),
+            style: TextStyle(fontFamily: 'Cairo'),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text('إلغاء', style: GoogleFonts.cairo()),
+              child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
@@ -694,7 +696,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
-              child: Text('حذف', style: GoogleFonts.cairo(color: Colors.white)),
+              child: Text('حذف', style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
             ),
           ],
         ),
@@ -712,7 +714,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
         if (response.isSuccess && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('تم حذف الموظف بنجاح', style: GoogleFonts.cairo()),
+              content: Text('تم حذف الموظف بنجاح', style: TextStyle(fontFamily: 'Cairo')),
               backgroundColor: SdColors.success,
             ),
           );
@@ -721,7 +723,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(response.message ?? 'فشل في حذف الموظف',
-                  style: GoogleFonts.cairo()),
+                  style: TextStyle(fontFamily: 'Cairo')),
               backgroundColor: SdColors.danger,
             ),
           );
@@ -746,7 +748,7 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
       ),
       child: Text(
         text,
-        style: GoogleFonts.cairo(color: Colors.white, fontSize: isSmall ? 9 : 11),
+        style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontSize: isSmall ? 9 : 11),
         overflow: TextOverflow.ellipsis,
       ),
     );
@@ -766,11 +768,12 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
         indicatorWeight: isSmall ? 2 : 3,
         tabAlignment: TabAlignment.start,
         labelPadding: EdgeInsets.symmetric(horizontal: isSmall ? 8 : 16),
-        labelStyle: GoogleFonts.cairo(
+        labelStyle: TextStyle(
+          fontFamily: 'Cairo',
           fontWeight: FontWeight.bold,
           fontSize: isSmall ? 11 : 13,
         ),
-        unselectedLabelStyle: GoogleFonts.cairo(fontSize: isSmall ? 11 : 13),
+        unselectedLabelStyle: TextStyle(fontFamily: 'Cairo', fontSize: isSmall ? 11 : 13),
         tabs: _visibleTabs
             .map((t) => Tab(
                   height: isSmall ? 36 : null,
@@ -881,19 +884,19 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
   Color _getRoleColor(String role) {
     switch (role) {
       case 'SuperAdmin':
-        return const Color(0xFFE74C3C);
+        return SdColors.danger;
       case 'CompanyAdmin':
-        return const Color(0xFF8E44AD);
+        return SdColors.platformBase;
       case 'Manager':
-        return const Color(0xFF2980B9);
+        return SdColors.info;
       case 'TechnicalLeader':
-        return const Color(0xFF16A085);
+        return SdColors.accent;
       case 'Technician':
-        return const Color(0xFF27AE60);
+        return SdColors.success;
       case 'Viewer':
-        return const Color(0xFF95A5A6);
+        return SdColors.faint;
       case 'Employee':
-        return const Color(0xFF3498DB);
+        return SdColors.info;
       default:
         return const Color(0xFF7F8C8D);
     }

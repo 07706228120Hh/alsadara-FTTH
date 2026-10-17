@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class AuthenticatedPage extends StatefulWidget {
   final Widget child;
@@ -49,7 +50,7 @@ class _AuthenticatedPageState extends State<AuthenticatedPage> {
         return AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.warning, color: Colors.orange),
+              Icon(Icons.warning, color: SdColors.warning),
               SizedBox(width: 10),
               Text('انتهت الجلسة'),
             ],
@@ -68,7 +69,7 @@ class _AuthenticatedPageState extends State<AuthenticatedPage> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF1565C0),
+                backgroundColor: SdColors.info,
               ),
               child: Text(
                 'موافق',

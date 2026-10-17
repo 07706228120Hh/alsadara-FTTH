@@ -81,7 +81,7 @@ class _ScanResult {
   String error = '';
 }
 
-const _indigo = Color(0xFF1a237e);
+const _indigo = SdColors.primary;
 
 // ════════════════════════════════════════════════════════════
 // الصفحة الرئيسية — Wizard إعداد الراوتر
@@ -940,7 +940,7 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
                     final done = (i ~/ 2) < _step;
                     return Expanded(child: Container(height: 3, margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
-                        color: done ? const Color(0xFF2E7D32) : SdColors.divider,
+                        color: done ? SdColors.success : SdColors.divider,
                         borderRadius: BorderRadius.circular(2),
                       )));
                   }
@@ -956,8 +956,8 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
                         height: active ? (_isMobile ? 30 : 36) : (_isMobile ? 24 : 30),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: active ? const LinearGradient(colors: [Color(0xFF1a237e), Color(0xFF3949ab)]) : null,
-                          color: active ? null : (done ? const Color(0xFF2E7D32) : SdColors.divider),
+                          gradient: active ? const LinearGradient(colors: [SdColors.primary, SdColors.primaryLight]) : null,
+                          color: active ? null : (done ? SdColors.success : SdColors.divider),
                           boxShadow: active ? [BoxShadow(color: _indigo.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))] : null,
                         ),
                         child: Center(
@@ -968,7 +968,7 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
                       ),
                       const SizedBox(height: 5),
                       Text(_steps[idx], style: TextStyle(fontSize: _isMobile ? 8 : 10, fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-                          color: active ? _indigo : (done ? const Color(0xFF2E7D32) : SdColors.faint)),
+                          color: active ? _indigo : (done ? SdColors.success : SdColors.faint)),
                         overflow: TextOverflow.ellipsis),
                     ]),
                   );
@@ -1067,20 +1067,20 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [const Color(0xFF2E7D32).withValues(alpha: 0.08), const Color(0xFF2E7D32).withValues(alpha: 0.03)]),
+                      gradient: LinearGradient(colors: [SdColors.success.withValues(alpha: 0.08), SdColors.success.withValues(alpha: 0.03)]),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.3)),
+                      border: Border.all(color: SdColors.success.withValues(alpha: 0.3)),
                     ),
                     child: Row(children: [
-                      CircleAvatar(radius: _isPhone ? 14 : 18, backgroundColor: const Color(0xFF2E7D32).withValues(alpha: 0.15),
-                        child: Text(_selectedSub!.name.isNotEmpty ? _selectedSub!.name[0] : '?', style: TextStyle(fontWeight: FontWeight.w800, color: const Color(0xFF2E7D32), fontSize: _rfs(16)))),
+                      CircleAvatar(radius: _isPhone ? 14 : 18, backgroundColor: SdColors.success.withValues(alpha: 0.15),
+                        child: Text(_selectedSub!.name.isNotEmpty ? _selectedSub!.name[0] : '?', style: TextStyle(fontWeight: FontWeight.w800, color: SdColors.success, fontSize: _rfs(16)))),
                       const SizedBox(width: 10),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(_selectedSub!.name, style: TextStyle(fontWeight: FontWeight.w800, fontSize: _rfs(14), color: const Color(0xFF1B5E20))),
+                        Text(_selectedSub!.name, style: TextStyle(fontWeight: FontWeight.w800, fontSize: _rfs(14), color: SdColors.successEdge)),
                         Text('${_selectedSub!.phone}${_selectedSub!.pppoeUser.isNotEmpty ? "  •  ${_selectedSub!.pppoeUser}" : ""}',
                             style: TextStyle(fontSize: 11, color: SdColors.successEdge, fontFamily: 'monospace')),
                       ])),
-                      const Icon(Icons.check_circle_rounded, size: 22, color: Color(0xFF2E7D32)),
+                      const Icon(Icons.check_circle_rounded, size: 22, color: SdColors.success),
                     ]),
                   ),
                 ],
@@ -1150,15 +1150,15 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: _isPhone ? 10 : 14, vertical: _isPhone ? 8 : 10),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [const Color(0xFF2E7D32).withValues(alpha: 0.08), const Color(0xFF2E7D32).withValues(alpha: 0.02)]),
+                  gradient: LinearGradient(colors: [SdColors.success.withValues(alpha: 0.08), SdColors.success.withValues(alpha: 0.02)]),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.3)),
+                  border: Border.all(color: SdColors.success.withValues(alpha: 0.3)),
                 ),
                 child: Row(children: [
-                  Icon(Icons.auto_fix_high, size: _isPhone ? 16 : 18, color: const Color(0xFF2E7D32)),
+                  Icon(Icons.auto_fix_high, size: _isPhone ? 16 : 18, color: SdColors.success),
                   const SizedBox(width: 8),
                   Expanded(child: Text('${_selectedDevice!.matchedProfile!.brand} — يدعم الإعداد التلقائي',
-                      style: TextStyle(fontSize: _rfs(13), fontWeight: FontWeight.w700, color: const Color(0xFF1B5E20)))),
+                      style: TextStyle(fontSize: _rfs(13), fontWeight: FontWeight.w700, color: SdColors.successEdge))),
                 ]),
               )
             else if (_selectedDevice!.matchedProfile != null)
@@ -1266,11 +1266,11 @@ class _OfflineRouterSetupPageState extends State<OfflineRouterSetupPage> {
       Container(
         padding: EdgeInsets.symmetric(horizontal: mob ? 8 : 12, vertical: 6),
         decoration: BoxDecoration(
-          color: _loggedIn ? const Color(0xFF2E7D32).withValues(alpha: 0.08) : SdColors.warningTint,
+          color: _loggedIn ? SdColors.success.withValues(alpha: 0.08) : SdColors.warningTint,
           border: Border(bottom: BorderSide(color: SdColors.divider)),
         ),
         child: Row(children: [
-          Icon(_loggedIn ? Icons.lock_open : Icons.info_outline, size: 14, color: _loggedIn ? const Color(0xFF2E7D32) : SdColors.warning),
+          Icon(_loggedIn ? Icons.lock_open : Icons.info_outline, size: 14, color: _loggedIn ? SdColors.success : SdColors.warning),
           const SizedBox(width: 6),
           Expanded(child: Text(
             _loggedIn

@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'search_users_page.dart';
 import 'enhanced_search_users_page.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class SearchComparisonPage extends StatelessWidget {
   const SearchComparisonPage({super.key});
@@ -16,7 +17,7 @@ class SearchComparisonPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('مقارنة أنظمة البحث'),
-        backgroundColor: Colors.indigo,
+        backgroundColor: SdColors.primary,
         foregroundColor: Colors.white,
       ),
       body: Padding(
@@ -30,7 +31,7 @@ class SearchComparisonPage extends StatelessWidget {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.indigo,
+                color: SdColors.primary,
               ),
             ),
             const SizedBox(height: 20),
@@ -58,7 +59,7 @@ class SearchComparisonPage extends StatelessWidget {
                             Icon(
                               Icons.search,
                               size: 32,
-                              color: Colors.blue.shade600,
+                              color: SdColors.info,
                             ),
                             const SizedBox(width: 12),
                             const Expanded(
@@ -67,7 +68,7 @@ class SearchComparisonPage extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
+                                  color: SdColors.info,
                                 ),
                               ),
                             ),
@@ -86,22 +87,22 @@ class SearchComparisonPage extends StatelessWidget {
                         _buildFeatureItem(
                           Icons.check_circle_outline,
                           'مطابقة حرفية دقيقة',
-                          Colors.green,
+                          SdColors.success,
                         ),
                         _buildFeatureItem(
                           Icons.check_circle_outline,
                           'بحث عن العلاقات العائلية',
-                          Colors.green,
+                          SdColors.success,
                         ),
                         _buildFeatureItem(
                           Icons.check_circle_outline,
                           'سرعة في المعالجة',
-                          Colors.green,
+                          SdColors.success,
                         ),
                         _buildFeatureItem(
                           Icons.check_circle_outline,
                           'واجهة بسيطة',
-                          Colors.green,
+                          SdColors.success,
                         ),
                         const SizedBox(height: 16),
                         const Text(
@@ -115,22 +116,22 @@ class SearchComparisonPage extends StatelessWidget {
                         _buildFeatureItem(
                           Icons.cancel_outlined,
                           'لا يتعامل مع الأخطاء الإملائية',
-                          Colors.red,
+                          SdColors.danger,
                         ),
                         _buildFeatureItem(
                           Icons.cancel_outlined,
                           'حساس للمسافات الزائدة',
-                          Colors.red,
+                          SdColors.danger,
                         ),
                         _buildFeatureItem(
                           Icons.cancel_outlined,
                           'لا يدعم البحث الجزئي',
-                          Colors.red,
+                          SdColors.danger,
                         ),
                         _buildFeatureItem(
                           Icons.cancel_outlined,
                           'إعدادات ثابتة',
-                          Colors.red,
+                          SdColors.danger,
                         ),
                       ],
                     ),
@@ -144,7 +145,7 @@ class SearchComparisonPage extends StatelessWidget {
             Expanded(
               child: Card(
                 elevation: 4,
-                color: Colors.green.shade50,
+                color: SdColors.successTint,
                 child: InkWell(
                   onTap: () {
                     Navigator.push(
@@ -164,7 +165,7 @@ class SearchComparisonPage extends StatelessWidget {
                             Icon(
                               Icons.auto_awesome,
                               size: 32,
-                              color: Colors.green.shade600,
+                              color: SdColors.success,
                             ),
                             const SizedBox(width: 12),
                             const Expanded(
@@ -173,7 +174,7 @@ class SearchComparisonPage extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green,
+                                  color: SdColors.success,
                                 ),
                               ),
                             ),
@@ -192,42 +193,42 @@ class SearchComparisonPage extends StatelessWidget {
                         _buildFeatureItem(
                           Icons.star,
                           'مطابقة ذكية مع خوارزميات التشابه',
-                          Colors.amber,
+                          SdColors.warning,
                         ),
                         _buildFeatureItem(
                           Icons.star,
                           'يتعامل مع الأخطاء الإملائية',
-                          Colors.amber,
+                          SdColors.warning,
                         ),
                         _buildFeatureItem(
                           Icons.star,
                           'بحث جزئي ومرن',
-                          Colors.amber,
+                          SdColors.warning,
                         ),
                         _buildFeatureItem(
                           Icons.star,
                           'عرض نسبة التشابه',
-                          Colors.amber,
+                          SdColors.warning,
                         ),
                         _buildFeatureItem(
                           Icons.star,
                           'إعدادات قابلة للتخصيص',
-                          Colors.amber,
+                          SdColors.warning,
                         ),
                         _buildFeatureItem(
                           Icons.star,
                           'ترتيب النتائج حسب الصلة',
-                          Colors.amber,
+                          SdColors.warning,
                         ),
                         _buildFeatureItem(
                           Icons.star,
                           'تطبيع النصوص العربية',
-                          Colors.amber,
+                          SdColors.warning,
                         ),
                         _buildFeatureItem(
                           Icons.star,
                           'واجهة متقدمة مع ألوان وأيقونات',
-                          Colors.amber,
+                          SdColors.warning,
                         ),
                       ],
                     ),
@@ -248,7 +249,7 @@ class SearchComparisonPage extends StatelessWidget {
             const SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: SdColors.edge),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -293,15 +294,15 @@ class SearchComparisonPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
+                border: Border.all(color: SdColors.infoTintEdge),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.lightbulb,
-                    color: Colors.blue.shade600,
+                    color: SdColors.info,
                   ),
                   const SizedBox(width: 12),
                   const Expanded(
@@ -333,7 +334,7 @@ class SearchComparisonPage extends StatelessWidget {
               text,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey.shade700,
+                color: SdColors.muted,
               ),
             ),
           ),
@@ -350,9 +351,9 @@ class SearchComparisonPage extends StatelessWidget {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: isHeader ? Colors.grey.shade100 : Colors.white,
+        color: isHeader ? SdColors.groundAlt : Colors.white,
         border: Border(
-          bottom: BorderSide(color: Colors.grey.shade300),
+          bottom: BorderSide(color: SdColors.edge),
         ),
       ),
       child: Row(
@@ -374,7 +375,7 @@ class SearchComparisonPage extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 border: Border(
-                  left: BorderSide(color: Colors.grey.shade300),
+                  left: BorderSide(color: SdColors.edge),
                 ),
               ),
               child: Text(
@@ -391,7 +392,7 @@ class SearchComparisonPage extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 border: Border(
-                  left: BorderSide(color: Colors.grey.shade300),
+                  left: BorderSide(color: SdColors.edge),
                 ),
               ),
               child: Text(
@@ -399,7 +400,7 @@ class SearchComparisonPage extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
-                  color: isHeader ? null : Colors.green.shade700,
+                  color: isHeader ? null : SdColors.success,
                 ),
               ),
             ),

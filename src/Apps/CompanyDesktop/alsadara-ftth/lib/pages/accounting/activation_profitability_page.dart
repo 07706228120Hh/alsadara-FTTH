@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
-import '../../theme/accounting_theme.dart';
 import '../../services/api/api_config.dart';
 import '../../frontend/frontend.dart';
 
@@ -113,7 +111,7 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
   Widget _buildDateFilter() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      color: AccountingTheme.bgCard,
+      color: SdColors.surface,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -142,8 +140,8 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
                 }
               },
               icon: const Icon(Icons.date_range, size: 16),
-              label: Text('مخصص', style: GoogleFonts.cairo(fontSize: 11.5)),
-              style: TextButton.styleFrom(foregroundColor: AccountingTheme.info),
+              label: Text('مخصص', style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5)),
+              style: TextButton.styleFrom(foregroundColor: SdColors.info),
             ),
           ],
         ),
@@ -153,10 +151,10 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
 
   Widget _dateChip(String label, int days) {
     return ChoiceChip(
-      label: Text(label, style: GoogleFonts.cairo(fontSize: 11.5, color: AccountingTheme.textSecondary)),
+      label: Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5, color: SdColors.muted)),
       selected: false,
-      backgroundColor: AccountingTheme.bgCardHover,
-      side: const BorderSide(color: AccountingTheme.borderColor),
+      backgroundColor: SdColors.surfaceAlt,
+      side: const BorderSide(color: SdColors.divider),
       onSelected: (_) {
         final now = DateTime.now();
         if (days == -1) {
@@ -182,12 +180,12 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
         spacing: 8,
         runSpacing: 8,
         children: [
-          _summaryCard('ما دفعه المشتركون', _fmt(s['TotalPaidBySubscribers'] ?? s['totalPaidBySubscribers']), AccountingTheme.neonBlue),
-          _summaryCard('تكلفة المحفظة', _fmt(s['TotalWalletCost'] ?? s['totalWalletCost']), AccountingTheme.warning),
-          _summaryCard('إيراد الاشتراكات', _fmt(s['TotalSubscriptionRevenue'] ?? s['totalSubscriptionRevenue']), AccountingTheme.info),
-          _summaryCard('إيراد الصيانة', _fmt(s['TotalMaintenanceRevenue'] ?? s['totalMaintenanceRevenue']), Colors.orange),
-          _summaryCard('ربح الخصم', _fmt(s['TotalDiscountProfit'] ?? s['totalDiscountProfit']), AccountingTheme.neonGreen),
-          _summaryCard('إجمالي الربح', _fmt(s['TotalProfit'] ?? s['totalProfit']), AccountingTheme.success),
+          _summaryCard('ما دفعه المشتركون', _fmt(s['TotalPaidBySubscribers'] ?? s['totalPaidBySubscribers']), SdColors.primary),
+          _summaryCard('تكلفة المحفظة', _fmt(s['TotalWalletCost'] ?? s['totalWalletCost']), SdColors.warning),
+          _summaryCard('إيراد الاشتراكات', _fmt(s['TotalSubscriptionRevenue'] ?? s['totalSubscriptionRevenue']), SdColors.info),
+          _summaryCard('إيراد الصيانة', _fmt(s['TotalMaintenanceRevenue'] ?? s['totalMaintenanceRevenue']), SdColors.warning),
+          _summaryCard('ربح الخصم', _fmt(s['TotalDiscountProfit'] ?? s['totalDiscountProfit']), SdColors.success),
+          _summaryCard('إجمالي الربح', _fmt(s['TotalProfit'] ?? s['totalProfit']), SdColors.success),
         ],
       ),
     );
@@ -200,16 +198,16 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
       width: cardWidth,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.cairo(color: AccountingTheme.textMuted, fontSize: 11.5)),
+          Text(label, style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 11.5)),
           const SizedBox(height: 4),
-          Text('$value د.ع', style: GoogleFonts.cairo(color: color, fontSize: 16, fontWeight: FontWeight.bold)),
+          Text('$value د.ع', style: TextStyle(fontFamily: 'Cairo', color: color, fontSize: 16, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -220,12 +218,12 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: DataTable(
-          headingRowColor: WidgetStateProperty.all(AccountingTheme.bgCardHover),
-          dataRowColor: WidgetStateProperty.all(AccountingTheme.bgCard),
+          headingRowColor: WidgetStateProperty.all(SdColors.surfaceAlt),
+          dataRowColor: WidgetStateProperty.all(SdColors.surface),
           columnSpacing: 16,
           horizontalMargin: 12,
-          headingTextStyle: GoogleFonts.cairo(color: AccountingTheme.textPrimary, fontSize: 11.5, fontWeight: FontWeight.bold),
-          dataTextStyle: GoogleFonts.cairo(color: AccountingTheme.textSecondary, fontSize: 11.5),
+          headingTextStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.ink, fontSize: 11.5, fontWeight: FontWeight.bold),
+          dataTextStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 11.5),
           columns: const [
             DataColumn(label: Text('التاريخ')),
             DataColumn(label: Text('العميل')),
@@ -249,12 +247,12 @@ class _ActivationProfitabilityPageState extends State<ActivationProfitabilityPag
               DataCell(Text(d['ZoneName'] ?? d['zoneName'] ?? '')),
               DataCell(Text(_opType(d['OperationType'] ?? d['operationType'] ?? ''))),
               DataCell(Text(_fmt(d['PaidBySubscriber'] ?? d['paidBySubscriber']))),
-              DataCell(Text(_fmt(d['WalletCost'] ?? d['walletCost']), style: TextStyle(color: AccountingTheme.warning))),
-              DataCell(Text(_fmt(d['MaintenanceFee'] ?? d['maintenanceFee']), style: const TextStyle(color: Colors.orange))),
+              DataCell(Text(_fmt(d['WalletCost'] ?? d['walletCost']), style: TextStyle(color: SdColors.warning))),
+              DataCell(Text(_fmt(d['MaintenanceFee'] ?? d['maintenanceFee']), style: const TextStyle(color: SdColors.warning))),
               DataCell(Text(_fmt(d['DiscountProfit'] ?? d['discountProfit']),
-                  style: TextStyle(color: profit >= 0 ? AccountingTheme.neonGreen : AccountingTheme.danger))),
+                  style: TextStyle(color: profit >= 0 ? SdColors.success : SdColors.danger))),
               DataCell(Text(_fmt(d['TotalProfit'] ?? d['totalProfit']),
-                  style: TextStyle(color: profit >= 0 ? AccountingTheme.success : AccountingTheme.danger, fontWeight: FontWeight.bold))),
+                  style: TextStyle(color: profit >= 0 ? SdColors.success : SdColors.danger, fontWeight: FontWeight.bold))),
             ]);
           }).toList(),
         ),

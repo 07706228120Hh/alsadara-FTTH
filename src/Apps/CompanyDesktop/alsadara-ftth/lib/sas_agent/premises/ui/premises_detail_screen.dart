@@ -284,7 +284,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
               style: TextStyle(fontFamily: 'Cairo', 
                   fontWeight: FontWeight.w800,
                   fontSize: 14,
-                  color: Colors.grey[700])),
+                  color: SdColors.muted)),
           const SizedBox(height: 12),
           if (p.qrPayload.isNotEmpty)
             Container(
@@ -306,7 +306,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
                     color: SdColors.primary),
                 dataModuleStyle: const QrDataModuleStyle(
                     dataModuleShape: QrDataModuleShape.square,
-                    color: Color(0xFF1A1A2E)),
+                    color: SdColors.ink),
               ),
             ),
           const SizedBox(height: 14),
@@ -316,14 +316,14 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
                 fontWeight: FontWeight.w900,
                 fontSize: 20,
                 letterSpacing: 1,
-                color: const Color(0xFF1A1A2E)),
+                color: SdColors.ink),
           ),
           if (p.iqpinDisplay.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text('IQ-Pin: ${p.iqpinDisplay}',
                   style: TextStyle(fontFamily: 'Cairo', 
-                      color: Colors.grey[700], fontWeight: FontWeight.w700)),
+                      color: SdColors.muted, fontWeight: FontWeight.w700)),
             ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
@@ -369,7 +369,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
                     style: TextStyle(fontFamily: 'Cairo', 
                         fontWeight: FontWeight.w800,
                         fontSize: 15,
-                        color: const Color(0xFF1A1A2E))),
+                        color: SdColors.ink)),
               ),
               if (_canManage)
                 TextButton.icon(
@@ -392,7 +392,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
       return Container(
         height: 150,
         decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.08),
+          color: SdColors.faint.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Center(
@@ -412,20 +412,20 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
     return Container(
       height: 150,
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.08),
+        color: SdColors.faint.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.18)),
+        border: Border.all(color: SdColors.faint.withValues(alpha: 0.18)),
       ),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.image_outlined,
-                size: 40, color: Colors.grey.withValues(alpha: 0.6)),
+                size: 40, color: SdColors.faint.withValues(alpha: 0.6)),
             const SizedBox(height: 6),
             Text('لا توجد صورة',
                 style: TextStyle(fontFamily: 'Cairo', 
-                    color: Colors.grey[500], fontWeight: FontWeight.w600)),
+                    color: SdColors.faint, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
@@ -518,7 +518,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
               child: Text(
                 'لا اشتراكات مرتبطة بعد — اربط اشتراكاً واحداً أو أكثر بهذا العقار.',
                 style: TextStyle(fontFamily: 'Cairo', 
-                    color: Colors.grey[600], fontWeight: FontWeight.w600),
+                    color: SdColors.muted, fontWeight: FontWeight.w600),
               ),
             )
           else
@@ -539,7 +539,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
           height: 8,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: s.online ? SdColors.success : Colors.grey,
+            color: s.online ? SdColors.success : SdColors.faint,
           ),
         ),
         const SizedBox(width: 10),
@@ -551,7 +551,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
               Text(s.username,
                   style: TextStyle(fontFamily: 'Cairo', 
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF1A1A2E))),
+                      color: SdColors.ink)),
               if ([s.name, s.profile].any((x) => x.trim().isNotEmpty))
                 Text(
                   [s.name, s.profile]
@@ -560,7 +560,7 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontFamily: 'Cairo', 
-                      fontSize: 12, color: Colors.grey[600]),
+                      fontSize: 12, color: SdColors.muted),
                 ),
             ],
           ),
@@ -587,13 +587,13 @@ class _PremisesDetailScreenState extends State<PremisesDetailScreen> {
             width: 110,
             child: Text(k,
                 style: TextStyle(fontFamily: 'Cairo', 
-                    color: Colors.grey[600], fontWeight: FontWeight.w600)),
+                    color: SdColors.muted, fontWeight: FontWeight.w600)),
           ),
           Expanded(
             child: Text(v,
                 style: TextStyle(fontFamily: 'Cairo', 
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1A1A2E))),
+                    color: SdColors.ink)),
           ),
         ],
       ),
@@ -689,7 +689,7 @@ class _LinkSheetState extends State<_LinkSheet> {
             width: 44,
             height: 5,
             decoration: BoxDecoration(
-              color: Colors.grey.withValues(alpha: 0.35),
+              color: SdColors.faint.withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(3),
             ),
           ),
@@ -717,7 +717,7 @@ class _LinkSheetState extends State<_LinkSheet> {
               style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
               decoration: InputDecoration(
                 hintText: 'ابحث باسم المستخدم / الاسم / الهاتف',
-                hintStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[500]),
+                hintStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.faint),
                 prefixIcon: const Icon(Icons.search_rounded,
                     color: SdColors.primary),
                 suffixIcon: IconButton(
@@ -770,7 +770,7 @@ class _LinkSheetState extends State<_LinkSheet> {
                 Text('${r['username'] ?? _refOf(r)}',
                     style: TextStyle(fontFamily: 'Cairo', 
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF1A1A2E))),
+                        color: SdColors.ink)),
                 if ([r['name'], r['phone']]
                     .any((x) => (x ?? '').toString().trim().isNotEmpty))
                   Text(
@@ -778,7 +778,7 @@ class _LinkSheetState extends State<_LinkSheet> {
                         .where((x) => (x ?? '').toString().trim().isNotEmpty)
                         .join(' · '),
                     style: TextStyle(fontFamily: 'Cairo', 
-                        fontSize: 12, color: Colors.grey[600]),
+                        fontSize: 12, color: SdColors.muted),
                   ),
               ],
             ),

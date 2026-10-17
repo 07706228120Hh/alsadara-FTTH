@@ -3,11 +3,10 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../../theme/energy_dashboard_theme.dart';
 import '../../services/api_service.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 class SubscriptionLogsPage extends StatefulWidget {
   const SubscriptionLogsPage({super.key});
 
@@ -123,8 +122,8 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            EnergyDashboardTheme.bgPrimary,
-            EnergyDashboardTheme.bgSecondary,
+            SdColors.ground,
+            SdColors.groundAlt,
           ],
         ),
       ),
@@ -137,7 +136,7 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
             child: _isLoading
                 ? const Center(
                     child: CircularProgressIndicator(
-                      color: EnergyDashboardTheme.neonGreen,
+                      color: SdColors.success,
                     ),
                   )
                 : _error != null
@@ -160,18 +159,18 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  EnergyDashboardTheme.neonGreen.withOpacity(0.2),
-                  EnergyDashboardTheme.neonBlue.withOpacity(0.2),
+                  SdColors.success.withOpacity(0.2),
+                  SdColors.info.withOpacity(0.2),
                 ],
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: EnergyDashboardTheme.neonGreen.withOpacity(0.3),
+                color: SdColors.success.withOpacity(0.3),
               ),
             ),
             child: const Icon(
               Icons.receipt_long_rounded,
-              color: EnergyDashboardTheme.neonGreen,
+              color: SdColors.success,
               size: 28,
             ),
           ),
@@ -181,16 +180,18 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
             children: [
               Text(
                 'سجلات الاشتراكات',
-                style: GoogleFonts.cairo(
-                  color: EnergyDashboardTheme.textPrimary,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.ink,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 'عمليات التجديد والشراء والتفعيل',
-                style: GoogleFonts.cairo(
-                  color: EnergyDashboardTheme.textSecondary,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.muted,
                   fontSize: 14,
                 ),
               ),
@@ -201,7 +202,7 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
             onPressed: _loadData,
             icon: const Icon(
               Icons.refresh_rounded,
-              color: EnergyDashboardTheme.neonBlue,
+              color: SdColors.info,
             ),
             tooltip: 'تحديث',
           ),
@@ -219,28 +220,28 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
             'إجمالي العمليات',
             '${_stats?['totalOperations'] ?? 0}',
             Icons.analytics_rounded,
-            EnergyDashboardTheme.neonGreen,
+            SdColors.success,
           ),
           const SizedBox(width: 16),
           _buildStatCard(
             'التجديدات',
             '${_stats?['renewals'] ?? 0}',
             Icons.autorenew_rounded,
-            EnergyDashboardTheme.neonBlue,
+            SdColors.info,
           ),
           const SizedBox(width: 16),
           _buildStatCard(
             'المشتريات',
             '${_stats?['purchases'] ?? 0}',
             Icons.shopping_cart_rounded,
-            EnergyDashboardTheme.neonPurple,
+            SdColors.platformBase,
           ),
           const SizedBox(width: 16),
           _buildStatCard(
             'الإيرادات',
             '${NumberFormat('#,###').format(_stats?['totalRevenue'] ?? 0)} د.ع',
             Icons.attach_money_rounded,
-            EnergyDashboardTheme.neonOrange,
+            SdColors.warning,
           ),
         ],
       ),
@@ -253,7 +254,7 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: EnergyDashboardTheme.bgCard,
+          color: SdColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: color.withOpacity(0.3),
@@ -282,15 +283,17 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textSecondary,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.muted,
                     fontSize: 12,
                   ),
                 ),
                 Text(
                   value,
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -308,9 +311,9 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
       margin: const EdgeInsets.all(24),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Row(
         children: [
@@ -319,17 +322,18 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
               value: _selectedOperationType,
               decoration: InputDecoration(
                 labelText: 'نوع العملية',
-                labelStyle: GoogleFonts.cairo(
-                  color: EnergyDashboardTheme.textSecondary,
+                labelStyle: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.muted,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 filled: true,
-                fillColor: EnergyDashboardTheme.bgPrimary,
+                fillColor: SdColors.ground,
               ),
-              dropdownColor: EnergyDashboardTheme.bgCard,
-              style: GoogleFonts.cairo(color: EnergyDashboardTheme.textPrimary),
+              dropdownColor: SdColors.surface,
+              style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink),
               items: const [
                 DropdownMenuItem(value: null, child: Text('الكل')),
                 DropdownMenuItem(value: 'renewal', child: Text('تجديد')),
@@ -362,25 +366,27 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
               child: InputDecorator(
                 decoration: InputDecoration(
                   labelText: 'من تاريخ',
-                  labelStyle: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textSecondary,
+                  labelStyle: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.muted,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   filled: true,
-                  fillColor: EnergyDashboardTheme.bgPrimary,
+                  fillColor: SdColors.ground,
                   suffixIcon: const Icon(
                     Icons.calendar_today,
-                    color: EnergyDashboardTheme.textSecondary,
+                    color: SdColors.muted,
                   ),
                 ),
                 child: Text(
                   _fromDate != null
                       ? DateFormat('yyyy-MM-dd').format(_fromDate!)
                       : 'اختر',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink,
                   ),
                 ),
               ),
@@ -405,25 +411,27 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
               child: InputDecorator(
                 decoration: InputDecoration(
                   labelText: 'إلى تاريخ',
-                  labelStyle: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textSecondary,
+                  labelStyle: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.muted,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   filled: true,
-                  fillColor: EnergyDashboardTheme.bgPrimary,
+                  fillColor: SdColors.ground,
                   suffixIcon: const Icon(
                     Icons.calendar_today,
-                    color: EnergyDashboardTheme.textSecondary,
+                    color: SdColors.muted,
                   ),
                 ),
                 child: Text(
                   _toDate != null
                       ? DateFormat('yyyy-MM-dd').format(_toDate!)
                       : 'اختر',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink,
                   ),
                 ),
               ),
@@ -442,10 +450,10 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
               _loadData();
             },
             icon: const Icon(Icons.clear_all),
-            label: Text('مسح الفلاتر', style: GoogleFonts.cairo()),
+            label: Text('مسح الفلاتر', style: TextStyle(fontFamily: 'Cairo')),
             style: ElevatedButton.styleFrom(
-              backgroundColor: EnergyDashboardTheme.bgSecondary,
-              foregroundColor: EnergyDashboardTheme.textPrimary,
+              backgroundColor: SdColors.groundAlt,
+              foregroundColor: SdColors.ink,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -466,13 +474,14 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
             Icon(
               Icons.inbox_rounded,
               size: 64,
-              color: EnergyDashboardTheme.textMuted,
+              color: SdColors.faint,
             ),
             const SizedBox(height: 16),
             Text(
               'لا توجد سجلات',
-              style: GoogleFonts.cairo(
-                color: EnergyDashboardTheme.textSecondary,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.muted,
                 fontSize: 18,
               ),
             ),
@@ -484,15 +493,15 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
           headingRowColor: WidgetStateProperty.all(
-            EnergyDashboardTheme.bgSecondary,
+            SdColors.groundAlt,
           ),
           dataRowColor: WidgetStateProperty.all(Colors.transparent),
           columns: [
@@ -515,8 +524,9 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
     return DataColumn(
       label: Text(
         label,
-        style: GoogleFonts.cairo(
-          color: EnergyDashboardTheme.textPrimary,
+        style: TextStyle(
+          fontFamily: 'Cairo',
+          color: SdColors.ink,
           fontWeight: FontWeight.bold,
         ),
       ),
@@ -526,10 +536,10 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
   DataRow _buildDataRow(Map<String, dynamic> log) {
     final operationType = log['operationType'] ?? '';
     final operationColor = switch (operationType) {
-      'renewal' => EnergyDashboardTheme.neonGreen,
-      'purchase' => EnergyDashboardTheme.neonBlue,
-      'change' => EnergyDashboardTheme.neonOrange,
-      _ => EnergyDashboardTheme.textSecondary,
+      'renewal' => SdColors.success,
+      'purchase' => SdColors.info,
+      'change' => SdColors.warning,
+      _ => SdColors.muted,
     };
     final operationLabel = switch (operationType) {
       'renewal' => 'تجديد',
@@ -546,7 +556,7 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
                   DateTime.parse(log['activationDate']).toLocal(),
                 )
               : '-',
-          style: GoogleFonts.cairo(color: EnergyDashboardTheme.textSecondary),
+          style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted),
         )),
         DataCell(Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -554,12 +564,13 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
           children: [
             Text(
               log['customerName'] ?? '-',
-              style: GoogleFonts.cairo(color: EnergyDashboardTheme.textPrimary),
+              style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink),
             ),
             Text(
               log['phoneNumber'] ?? '',
-              style: GoogleFonts.cairo(
-                color: EnergyDashboardTheme.textMuted,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.faint,
                 fontSize: 11,
               ),
             ),
@@ -567,16 +578,17 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
         )),
         DataCell(Text(
           log['subscriptionId'] ?? '-',
-          style: GoogleFonts.cairo(color: EnergyDashboardTheme.textSecondary),
+          style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted),
         )),
         DataCell(Text(
           log['planName'] ?? '-',
-          style: GoogleFonts.cairo(color: EnergyDashboardTheme.textPrimary),
+          style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink),
         )),
         DataCell(Text(
           '${NumberFormat('#,###').format(log['planPrice'] ?? 0)} د.ع',
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.neonGreen,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.success,
             fontWeight: FontWeight.bold,
           ),
         )),
@@ -589,7 +601,8 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
           ),
           child: Text(
             operationLabel,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: operationColor,
               fontSize: 12,
               fontWeight: FontWeight.bold,
@@ -598,17 +611,17 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
         )),
         DataCell(Text(
           log['activatedBy'] ?? '-',
-          style: GoogleFonts.cairo(color: EnergyDashboardTheme.textSecondary),
+          style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted),
         )),
         DataCell(Row(
           children: [
             if (log['isPrinted'] == true)
               const Icon(Icons.print,
-                  size: 16, color: EnergyDashboardTheme.neonGreen),
+                  size: 16, color: SdColors.success),
             const SizedBox(width: 4),
             if (log['isWhatsAppSent'] == true)
               const Icon(Icons.message,
-                  size: 16, color: EnergyDashboardTheme.neonGreen),
+                  size: 16, color: SdColors.success),
           ],
         )),
       ],
@@ -625,7 +638,7 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
         children: [
           Text(
             'إجمالي: $_totalRecords سجل',
-            style: GoogleFonts.cairo(color: EnergyDashboardTheme.textSecondary),
+            style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted),
           ),
           const SizedBox(width: 24),
           IconButton(
@@ -636,17 +649,17 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
                   }
                 : null,
             icon: const Icon(Icons.chevron_right),
-            color: EnergyDashboardTheme.neonBlue,
+            color: SdColors.info,
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: EnergyDashboardTheme.bgCard,
+              color: SdColors.surface,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               'صفحة $_currentPage من $totalPages',
-              style: GoogleFonts.cairo(color: EnergyDashboardTheme.textPrimary),
+              style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink),
             ),
           ),
           IconButton(
@@ -657,7 +670,7 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
                   }
                 : null,
             icon: const Icon(Icons.chevron_left),
-            color: EnergyDashboardTheme.neonBlue,
+            color: SdColors.info,
           ),
         ],
       ),
@@ -672,21 +685,23 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
           Icon(
             Icons.error_outline,
             size: 64,
-            color: Colors.red.shade400,
+            color: SdColors.danger,
           ),
           const SizedBox(height: 16),
           Text(
             'حدث خطأ',
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textPrimary,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.ink,
               fontSize: 18,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             _error ?? '',
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textSecondary,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.muted,
               fontSize: 14,
             ),
             textAlign: TextAlign.center,
@@ -695,9 +710,9 @@ class _SubscriptionLogsPageState extends State<SubscriptionLogsPage> {
           ElevatedButton.icon(
             onPressed: _loadData,
             icon: const Icon(Icons.refresh),
-            label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
+            label: Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo')),
             style: ElevatedButton.styleFrom(
-              backgroundColor: EnergyDashboardTheme.neonBlue,
+              backgroundColor: SdColors.info,
               foregroundColor: Colors.white,
             ),
           ),

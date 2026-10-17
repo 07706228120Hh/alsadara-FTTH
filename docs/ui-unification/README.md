@@ -17,3 +17,7 @@
 نظام التصميم نفسه في `src/Apps/CompanyDesktop/alsadara-ftth/lib/frontend/` (اقرأ README داخله).
 
 الحالة (2026-10-16): نظام التصميم أُنشئ ولم يُفحص بـ flutter analyze بعد؛ لم تُرحَّل أي شاشة؛ لم يُعدَّل أي ملف قائم.
+
+## خطة التنظيف الشامل
+- `THEME_CLEANUP_PLAN.md` — المراحل والقواعد.
+- `THEME_COMPLIANCE.md` — تقرير الالتزام (يُولَّد بـ `tools/theme_compliance.py`).

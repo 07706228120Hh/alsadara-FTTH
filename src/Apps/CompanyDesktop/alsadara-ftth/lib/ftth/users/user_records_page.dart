@@ -207,7 +207,7 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
             Text(errorMessage, style: const TextStyle(fontSize: 12)),
           ],
         ),
-        backgroundColor: Colors.red.shade600,
+        backgroundColor: SdColors.danger,
         duration: const Duration(seconds: 8),
         action: SnackBarAction(
           label: 'إعادة المحاولة',
@@ -668,9 +668,9 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: Colors.teal.shade50,
+                    color: SdColors.accentTint,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.teal.shade200),
+                    border: Border.all(color: SdColors.accentTintEdge),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -678,17 +678,17 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
                       Row(
                         children: [
                           Icon(Icons.note,
-                              color: Colors.teal.shade600, size: 18),
+                              color: SdColors.accent, size: 18),
                           const SizedBox(width: 6),
                           Text('ملاحظات الاشتراك:',
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.teal.shade700)),
+                                  color: SdColors.accent)),
                         ],
                       ),
                       const SizedBox(height: 6),
                       Text(subscriptionNotes,
-                          style: TextStyle(color: Colors.teal.shade800)),
+                          style: TextStyle(color: SdColors.accent)),
                     ],
                   ),
                 ),
@@ -704,7 +704,7 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
                         child: Text('${entry.key}:',
                             style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: Colors.grey[700],
+                                color: SdColors.muted,
                                 fontSize: 13)),
                       ),
                       Expanded(
@@ -758,18 +758,18 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.blue.shade50,
+              color: SdColors.infoTint,
               child: Row(
                 children: [
                   Icon(Icons.filter_list,
-                      color: Colors.blue.shade700, size: 18),
+                      color: SdColors.info, size: 18),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'الفلاتر النشطة: ${widget.initialFilterCriteria!.activeFiltersDescription}',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.blue.shade800,
+                        color: SdColors.info,
                         fontWeight: FontWeight.w500,
                       ),
                       maxLines: 2,
@@ -786,8 +786,8 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Colors.deepPurple.shade600,
-                  Colors.deepPurple.shade800
+                  SdColors.platformBase,
+                  SdColors.platformBase
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -910,7 +910,7 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
     final isNarrow = MediaQuery.of(context).size.width < 500;
     return Container(
       padding: EdgeInsets.all(isNarrow ? 12 : 16),
-      color: Colors.grey[50],
+      color: SdColors.surfaceAlt,
       child: Column(
         children: [
           // الصف الأول: نوع العملية والزون
@@ -1213,9 +1213,9 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       color: isCashPayment
-          ? Colors.green.shade50
+          ? SdColors.successTint
           : isCreditPayment
-              ? Colors.red.shade50
+              ? SdColors.dangerTint
               : null,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -1237,8 +1237,8 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: operationType == 'شراء اشتراك جديد'
-                          ? Colors.blue.shade100
-                          : Colors.orange.shade100,
+                          ? SdColors.infoTint
+                          : SdColors.warningTint,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(operationType,
@@ -1246,8 +1246,8 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             color: operationType == 'شراء اشتراك جديد'
-                                ? Colors.blue.shade800
-                                : Colors.orange.shade800)),
+                                ? SdColors.info
+                                : SdColors.warning)),
                   ),
                 ],
               ),
@@ -1281,8 +1281,8 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: isCashPayment
-                              ? Colors.green.shade200
-                              : Colors.red.shade200,
+                              ? SdColors.successTintEdge
+                              : SdColors.dangerTintEdge,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(paymentType,
@@ -1290,8 +1290,8 @@ class _UserRecordsPageState extends State<UserRecordsPage> {
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
                                 color: isCashPayment
-                                    ? Colors.green.shade800
-                                    : Colors.red.shade800)),
+                                    ? SdColors.success
+                                    : SdColors.danger)),
                       ),
                     ],
                   ),

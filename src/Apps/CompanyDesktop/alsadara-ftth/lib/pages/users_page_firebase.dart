@@ -4,10 +4,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/tenant_user.dart';
 import '../services/custom_auth_service.dart';
 import 'user_details_page.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class UsersPageFirebase extends StatefulWidget {
   final String tenantId; // معرف الشركة
@@ -106,7 +106,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
         builder: (context, setDialogState) => AlertDialog(
           title: Text(
             'إضافة مستخدم جديد',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -116,7 +116,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   controller: usernameController,
                   decoration: InputDecoration(
                     labelText: 'اسم المستخدم *',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -126,7 +126,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'كلمة المرور *',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -135,7 +135,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   controller: fullNameController,
                   decoration: InputDecoration(
                     labelText: 'الاسم الكامل',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -144,7 +144,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   controller: phoneController,
                   decoration: InputDecoration(
                     labelText: 'رقم الهاتف',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -153,13 +153,13 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   value: selectedRole,
                   decoration: InputDecoration(
                     labelText: 'الدور الوظيفي',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                   items: UserRole.values.map((role) {
                     return DropdownMenuItem(
                       value: role,
-                      child: Text(role.arabicName, style: GoogleFonts.cairo()),
+                      child: Text(role.arabicName, style: TextStyle(fontFamily: 'Cairo')),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -173,7 +173,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   controller: departmentController,
                   decoration: InputDecoration(
                     labelText: 'القسم',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -182,7 +182,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   controller: centerController,
                   decoration: InputDecoration(
                     labelText: 'المركز',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -192,7 +192,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     labelText: 'الراتب',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -202,7 +202,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('إلغاء', style: GoogleFonts.cairo()),
+              child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -212,7 +212,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                     SnackBar(
                       content: Text(
                         'يرجى إدخال اسم المستخدم وكلمة المرور',
-                        style: GoogleFonts.cairo(),
+                        style: TextStyle(fontFamily: 'Cairo'),
                       ),
                     ),
                   );
@@ -232,7 +232,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   salary: salaryController.text.trim(),
                 );
               },
-              child: Text('إضافة', style: GoogleFonts.cairo()),
+              child: Text('إضافة', style: TextStyle(fontFamily: 'Cairo')),
             ),
           ],
         ),
@@ -266,9 +266,9 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
             SnackBar(
               content: Text(
                 'اسم المستخدم موجود بالفعل',
-                style: GoogleFonts.cairo(),
+                style: TextStyle(fontFamily: 'Cairo'),
               ),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
@@ -305,9 +305,9 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
           SnackBar(
             content: Text(
               'تم إضافة المستخدم بنجاح',
-              style: GoogleFonts.cairo(),
+              style: TextStyle(fontFamily: 'Cairo'),
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -319,9 +319,9 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
           SnackBar(
             content: Text(
               'حدث خطأ أثناء إضافة المستخدم',
-              style: GoogleFonts.cairo(),
+              style: TextStyle(fontFamily: 'Cairo'),
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -344,7 +344,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
         builder: (context, setDialogState) => AlertDialog(
           title: Text(
             'تعديل بيانات: ${user.username}',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -354,7 +354,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   controller: fullNameController,
                   decoration: InputDecoration(
                     labelText: 'الاسم الكامل',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -363,7 +363,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   controller: phoneController,
                   decoration: InputDecoration(
                     labelText: 'رقم الهاتف',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -372,13 +372,13 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   value: selectedRole,
                   decoration: InputDecoration(
                     labelText: 'الدور الوظيفي',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                   items: UserRole.values.map((role) {
                     return DropdownMenuItem(
                       value: role,
-                      child: Text(role.arabicName, style: GoogleFonts.cairo()),
+                      child: Text(role.arabicName, style: TextStyle(fontFamily: 'Cairo')),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -392,7 +392,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   controller: departmentController,
                   decoration: InputDecoration(
                     labelText: 'القسم',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -401,7 +401,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   controller: centerController,
                   decoration: InputDecoration(
                     labelText: 'المركز',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                 ),
@@ -411,13 +411,13 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     labelText: 'الراتب',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile(
-                  title: Text('حساب نشط', style: GoogleFonts.cairo()),
+                  title: Text('حساب نشط', style: TextStyle(fontFamily: 'Cairo')),
                   value: isActive,
                   onChanged: (value) {
                     setDialogState(() => isActive = value);
@@ -429,7 +429,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('إلغاء', style: GoogleFonts.cairo()),
+              child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -446,7 +446,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   isActive: isActive,
                 );
               },
-              child: Text('حفظ', style: GoogleFonts.cairo()),
+              child: Text('حفظ', style: TextStyle(fontFamily: 'Cairo')),
             ),
           ],
         ),
@@ -487,9 +487,9 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
           SnackBar(
             content: Text(
               'تم تحديث المستخدم بنجاح',
-              style: GoogleFonts.cairo(),
+              style: TextStyle(fontFamily: 'Cairo'),
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -501,9 +501,9 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
           SnackBar(
             content: Text(
               'حدث خطأ أثناء تحديث المستخدم',
-              style: GoogleFonts.cairo(),
+              style: TextStyle(fontFamily: 'Cairo'),
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -514,20 +514,20 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('تأكيد الحذف', style: GoogleFonts.cairo()),
+        title: Text('تأكيد الحذف', style: TextStyle(fontFamily: 'Cairo')),
         content: Text(
           'هل أنت متأكد من حذف المستخدم "${user.username}"؟',
-          style: GoogleFonts.cairo(),
+          style: TextStyle(fontFamily: 'Cairo'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('حذف', style: GoogleFonts.cairo()),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
+            child: Text('حذف', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -547,9 +547,9 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
             SnackBar(
               content: Text(
                 'تم حذف المستخدم بنجاح',
-                style: GoogleFonts.cairo(),
+                style: TextStyle(fontFamily: 'Cairo'),
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
         }
@@ -561,9 +561,9 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
             SnackBar(
               content: Text(
                 'حدث خطأ أثناء حذف المستخدم',
-                style: GoogleFonts.cairo(),
+                style: TextStyle(fontFamily: 'Cairo'),
               ),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
@@ -580,7 +580,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
       builder: (context) => AlertDialog(
         title: Text(
           'تغيير كلمة المرور: ${user.username}',
-          style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -590,7 +590,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
               obscureText: true,
               decoration: InputDecoration(
                 labelText: 'كلمة المرور الجديدة',
-                labelStyle: GoogleFonts.cairo(),
+                labelStyle: TextStyle(fontFamily: 'Cairo'),
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.lock),
               ),
@@ -601,7 +601,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
               obscureText: true,
               decoration: InputDecoration(
                 labelText: 'تأكيد كلمة المرور',
-                labelStyle: GoogleFonts.cairo(),
+                labelStyle: TextStyle(fontFamily: 'Cairo'),
                 border: const OutlineInputBorder(),
                 prefixIcon: const Icon(Icons.lock_outline),
               ),
@@ -611,7 +611,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -620,7 +620,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   SnackBar(
                     content: Text(
                       'يرجى إدخال كلمة المرور',
-                      style: GoogleFonts.cairo(),
+                      style: TextStyle(fontFamily: 'Cairo'),
                     ),
                   ),
                 );
@@ -632,9 +632,9 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                   SnackBar(
                     content: Text(
                       'كلمات المرور غير متطابقة',
-                      style: GoogleFonts.cairo(),
+                      style: TextStyle(fontFamily: 'Cairo'),
                     ),
-                    backgroundColor: Colors.red,
+                    backgroundColor: SdColors.danger,
                   ),
                 );
                 return;
@@ -643,7 +643,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
               Navigator.pop(context);
               await _changePassword(user.id, passwordController.text);
             },
-            child: Text('تغيير', style: GoogleFonts.cairo()),
+            child: Text('تغيير', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -668,9 +668,9 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
           SnackBar(
             content: Text(
               'تم تغيير كلمة المرور بنجاح',
-              style: GoogleFonts.cairo(),
+              style: TextStyle(fontFamily: 'Cairo'),
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -680,9 +680,9 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
           SnackBar(
             content: Text(
               'حدث خطأ أثناء تغيير كلمة المرور',
-              style: GoogleFonts.cairo(),
+              style: TextStyle(fontFamily: 'Cairo'),
             ),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -706,14 +706,15 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
             const SizedBox(width: 12),
             Text(
               'إدارة الموظفين',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontWeight: FontWeight.bold,
                 fontSize: 20,
               ),
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF1a237e),
+        backgroundColor: SdColors.primary,
         foregroundColor: Colors.white,
         elevation: 4,
         actions: [
@@ -740,7 +741,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
               controller: _searchController,
               decoration: InputDecoration(
                 labelText: 'بحث',
-                labelStyle: GoogleFonts.cairo(),
+                labelStyle: TextStyle(fontFamily: 'Cairo'),
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -758,11 +759,11 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.error, size: 64, color: Colors.red[300]),
+                            Icon(Icons.error, size: 64, color: SdColors.dangerTintEdge),
                             const SizedBox(height: 16),
                             Text(
                               _errorMessage!,
-                              style: GoogleFonts.cairo(color: Colors.red),
+                              style: TextStyle(fontFamily: 'Cairo', color: SdColors.danger),
                               textAlign: TextAlign.center,
                             ),
                             const SizedBox(height: 16),
@@ -770,7 +771,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                               onPressed: _loadUsers,
                               icon: const Icon(Icons.refresh),
                               label: Text('إعادة المحاولة',
-                                  style: GoogleFonts.cairo()),
+                                  style: TextStyle(fontFamily: 'Cairo')),
                             ),
                           ],
                         ),
@@ -781,13 +782,14 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.people_outline,
-                                    size: 64, color: Colors.grey[400]),
+                                    size: 64, color: SdColors.faint),
                                 const SizedBox(height: 16),
                                 Text(
                                   'لا يوجد مستخدمين',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: 18,
-                                    color: Colors.grey[600],
+                                    color: SdColors.muted,
                                   ),
                                 ),
                               ],
@@ -803,8 +805,8 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                                 child: ListTile(
                                   leading: CircleAvatar(
                                     backgroundColor: user.isActive
-                                        ? Colors.green
-                                        : Colors.grey,
+                                        ? SdColors.success
+                                        : SdColors.faint,
                                     child: Text(
                                       user.username[0].toUpperCase(),
                                       style:
@@ -815,7 +817,8 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                                     user.fullName.isNotEmpty
                                         ? user.fullName
                                         : user.username,
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
                                         fontWeight: FontWeight.bold),
                                   ),
                                   subtitle: Column(
@@ -824,7 +827,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                                     children: [
                                       Text(
                                         'المستخدم: ${user.username}',
-                                        style: GoogleFonts.cairo(fontSize: 12),
+                                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                                       ),
                                       if (user.plainPassword != null &&
                                           user.plainPassword!.isNotEmpty)
@@ -832,7 +835,8 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                                           children: [
                                             Text(
                                               'كلمة المرور: ',
-                                              style: GoogleFonts.cairo(
+                                              style: TextStyle(
+                                                  fontFamily: 'Cairo',
                                                   fontSize: 12),
                                             ),
                                             Container(
@@ -841,16 +845,17 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                                                       horizontal: 6,
                                                       vertical: 2),
                                               decoration: BoxDecoration(
-                                                color: Colors.blue.shade50,
+                                                color: SdColors.infoTint,
                                                 borderRadius:
                                                     BorderRadius.circular(4),
                                               ),
                                               child: Text(
                                                 user.plainPassword!,
-                                                style: GoogleFonts.cairo(
+                                                style: TextStyle(
+                                                  fontFamily: 'Cairo',
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.bold,
-                                                  color: Colors.blue.shade700,
+                                                  color: SdColors.info,
                                                 ),
                                               ),
                                             ),
@@ -858,19 +863,19 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
                                         ),
                                       Text(
                                         'الدور: ${user.role.arabicName}',
-                                        style: GoogleFonts.cairo(fontSize: 12),
+                                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                                       ),
                                       if (user.phone != null)
                                         Text(
                                           'الهاتف: ${user.phone}',
                                           style:
-                                              GoogleFonts.cairo(fontSize: 12),
+                                              TextStyle(fontFamily: 'Cairo', fontSize: 12),
                                         ),
                                     ],
                                   ),
                                   trailing: IconButton(
                                     icon: const Icon(Icons.delete,
-                                        color: Colors.red),
+                                        color: SdColors.danger),
                                     tooltip: 'حذف',
                                     onPressed: () => _deleteUser(user),
                                   ),
@@ -900,7 +905,7 @@ class _UsersPageFirebaseState extends State<UsersPageFirebase> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddUserDialog,
         icon: const Icon(Icons.add),
-        label: Text('إضافة مستخدم', style: GoogleFonts.cairo()),
+        label: Text('إضافة مستخدم', style: TextStyle(fontFamily: 'Cairo')),
       ),
     );
   }

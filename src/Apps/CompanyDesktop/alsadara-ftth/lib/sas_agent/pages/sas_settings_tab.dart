@@ -144,7 +144,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
                 'في واجهة الوكيل حالياً.',
                 style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 12.sp,
-                  color: Colors.grey[600],
+                  color: SdColors.muted,
                   height: 1.5,
                 ),
               ),
@@ -242,7 +242,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(SasUi.radius.r),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.16), width: 1.2),
+        border: Border.all(color: SdColors.faint.withValues(alpha: 0.16), width: 1.2),
         boxShadow: SasUi.cardShadow(),
       ),
       child: TabBar(
@@ -264,7 +264,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
           boxShadow: SasUi.cardShadow(SdColors.primary),
         ),
         labelColor: Colors.white,
-        unselectedLabelColor: const Color(0xFF64748B),
+        unselectedLabelColor: SdColors.muted,
         labelStyle: TextStyle(fontFamily: 'Cairo', fontSize: 13.sp, fontWeight: FontWeight.w800),
         unselectedLabelStyle:
             TextStyle(fontFamily: 'Cairo', fontSize: 13.sp, fontWeight: FontWeight.w700),
@@ -445,7 +445,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
     if (ok == null) {
       return const SasStatusBadge(
         label: 'جارٍ الفحص…',
-        color: Colors.grey,
+        color: SdColors.faint,
         icon: Icons.hourglass_empty_rounded,
       );
     }
@@ -485,7 +485,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
                   _kvRow('الحالة', acc.isActive ? 'مفعّل' : 'غير مفعّل',
                       valueColor: acc.isActive
                           ? SdColors.success
-                          : Colors.grey.shade600),
+                          : SdColors.muted),
                 ],
               ),
             )
@@ -495,14 +495,14 @@ class _SasSettingsTabState extends State<SasSettingsTab>
               child: Row(
                 children: [
                   Icon(Icons.info_outline_rounded,
-                      color: Colors.grey[500], size: 20.sp),
+                      color: SdColors.faint, size: 20.sp),
                   SizedBox(width: 10.w),
                   Expanded(
                     child: Text(
                       'لم يُحدَّد حساب ساس بعد — اذهب لتبويب «الحسابات» لربط/تحديد حساب.',
                       style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 12.5.sp,
-                          color: Colors.grey[700],
+                          color: SdColors.muted,
                           height: 1.5),
                     ),
                   ),
@@ -665,19 +665,19 @@ class _SasSettingsTabState extends State<SasSettingsTab>
         width: 40.w,
         height: 40.w,
         decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.10),
+          color: SdColors.faint.withValues(alpha: 0.10),
           borderRadius: BorderRadius.circular(11.r),
         ),
-        child: Icon(f.icon, color: Colors.grey[500], size: 20.sp),
+        child: Icon(f.icon, color: SdColors.faint, size: 20.sp),
       ),
       title: Text(f.title,
           style: TextStyle(fontFamily: 'Cairo', 
               fontSize: 13.5.sp, fontWeight: FontWeight.w800)),
       subtitle: Text(f.desc,
-          style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5.sp, color: Colors.grey[600])),
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5.sp, color: SdColors.muted)),
       trailing: const SasStatusBadge(
         label: 'محفوظ',
-        color: Colors.grey,
+        color: SdColors.faint,
         icon: Icons.inventory_2_rounded,
       ),
       onTap: () => _showPreservedInfo(f),
@@ -731,7 +731,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
             'تجديد · تقارير · تصريح (بلنك) · تذاكر · عقارات — عبر بوّابة الصدارة '
             'الآمنة (عزل ثلاثي: شركة + مالك + صلاحية).',
             style: TextStyle(fontFamily: 'Cairo', 
-                fontSize: 12.sp, color: Colors.grey[600], height: 1.6),
+                fontSize: 12.sp, color: SdColors.muted, height: 1.6),
           ),
         ],
       ),
@@ -763,9 +763,9 @@ class _SasSettingsTabState extends State<SasSettingsTab>
           style: TextStyle(fontFamily: 'Cairo', 
               fontSize: 13.5.sp, fontWeight: FontWeight.w800)),
       subtitle: Text(subtitle,
-          style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5.sp, color: Colors.grey[600])),
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 11.5.sp, color: SdColors.muted)),
       trailing: Icon(Icons.chevron_left_rounded,
-          size: 20.sp, color: enabled ? Colors.grey[500] : Colors.grey[300]),
+          size: 20.sp, color: enabled ? SdColors.faint : SdColors.edge),
       onTap: onTap,
     );
   }
@@ -781,7 +781,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
             child: Text(label,
                 style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.5.sp,
-                    color: Colors.grey[700],
+                    color: SdColors.muted,
                     fontWeight: FontWeight.w600)),
           ),
           SizedBox(width: 10.w),
@@ -800,7 +800,7 @@ class _SasSettingsTabState extends State<SasSettingsTab>
   }
 
   Widget _divider() =>
-      Divider(height: 1, color: Colors.grey.withValues(alpha: 0.10));
+      Divider(height: 1, color: SdColors.faint.withValues(alpha: 0.10));
 
   static String _roleAr(String r) {
     switch (r.toLowerCase()) {

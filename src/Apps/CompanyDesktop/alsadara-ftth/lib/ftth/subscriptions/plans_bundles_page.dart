@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../auth/auth_error_handler.dart';
 import '../../services/auth_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 // يمكن لاحقاً استخدام نظام الألوان الذكي إن لزم
 
 /// صفحة عرض نتائج واجهة الباقات والعروض
@@ -89,7 +90,7 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.indigo.shade600,
+        backgroundColor: SdColors.primary,
         foregroundColor: Colors.white,
         elevation: 1,
         title: const Text('الباقات و العروض',
@@ -115,7 +116,7 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline_rounded, size: 48, color: Colors.red[400]),
+            Icon(Icons.error_outline_rounded, size: 48, color: SdColors.danger),
             const SizedBox(height: 12),
             Text(_error!, style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
@@ -133,7 +134,7 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
                     _rawBody!.length > 500
                         ? '${_rawBody!.substring(0, 500)}...'
                         : _rawBody!,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    style: const TextStyle(fontSize: 11, color: SdColors.faint),
                   ),
                 ),
               )
@@ -151,7 +152,7 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.inbox_outlined, size: 68, color: Colors.grey),
+            const Icon(Icons.inbox_outlined, size: 68, color: SdColors.faint),
             const SizedBox(height: 16),
             const Text('لا توجد نتائج معروضة',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -159,7 +160,7 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
             Text(
               'قد تكون البينات في مفتاح مختلف أو فارغة. سيتم إظهار معاينة خام للمساعدة في التشخيص.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade700),
+              style: TextStyle(color: SdColors.muted),
             ),
             const SizedBox(height: 16),
             if (_rawBody != null)
@@ -167,9 +168,9 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: SdColors.groundAlt,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(color: SdColors.edge),
                 ),
                 child: Text(
                   _rawBody!.length > 1200
@@ -215,14 +216,14 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
                 padding: const EdgeInsetsDirectional.only(top: 12, bottom: 6),
                 child: Row(
                   children: [
-                    Icon(Icons.speed, size: 18, color: Colors.indigo.shade600),
+                    Icon(Icons.speed, size: 18, color: SdColors.primary),
                     const SizedBox(width: 6),
                     Text(
                       speedKey,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.indigo.shade700,
+                        color: SdColors.primary,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -230,12 +231,12 @@ class _PlansBundlesPageState extends State<PlansBundlesPage> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.indigo.withValues(alpha: .08),
+                        color: SdColors.primary.withValues(alpha: .08),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text('${list.length} خطة',
                           style: TextStyle(
-                              fontSize: 11, color: Colors.indigo.shade600)),
+                              fontSize: 11, color: SdColors.primary)),
                     ),
                   ],
                 ),
@@ -361,9 +362,9 @@ class _PlanCardState extends State<_PlanCard> {
             : Text(widget.description,
                 maxLines: 2, overflow: TextOverflow.ellipsis),
         leading: CircleAvatar(
-          backgroundColor: Colors.indigo.shade100,
+          backgroundColor: SdColors.primaryTint,
           child: Text(widget.name.split(' ').last,
-              style: TextStyle(color: Colors.indigo.shade800, fontSize: 11)),
+              style: TextStyle(color: SdColors.primary, fontSize: 11)),
         ),
         children: [
           if (offers.isEmpty)
@@ -411,9 +412,9 @@ class _PeriodsSection extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.indigo.withValues(alpha: 0.025),
+              color: SdColors.primary.withValues(alpha: 0.025),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.indigo.withValues(alpha: 0.12)),
+              border: Border.all(color: SdColors.primary.withValues(alpha: 0.12)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,17 +422,17 @@ class _PeriodsSection extends StatelessWidget {
                 Row(
                   children: [
                     Icon(Icons.schedule,
-                        size: 18, color: Colors.indigo.shade500),
+                        size: 18, color: SdColors.primary),
                     const SizedBox(width: 6),
                     Text('${period == 0 ? '?' : period} شهر',
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
-                            color: Colors.indigo.shade700)),
+                            color: SdColors.primary)),
                     const Spacer(),
                     Text('${list.length} عرض',
                         style: TextStyle(
-                            fontSize: 11, color: Colors.indigo.shade400)),
+                            fontSize: 11, color: SdColors.primaryLight)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -480,14 +481,14 @@ class _PeriodsSection extends StatelessWidget {
                               Row(
                                 children: [
                                   Icon(Icons.date_range,
-                                      size: 14, color: Colors.grey.shade600),
+                                      size: 14, color: SdColors.muted),
                                   const SizedBox(width: 4),
                                   Flexible(
                                     child: Text(
                                       '${from ?? '-'} → ${to ?? '-'}',
                                       style: TextStyle(
                                           fontSize: 11,
-                                          color: Colors.grey.shade700),
+                                          color: SdColors.muted),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -526,12 +527,12 @@ int _stateRank(String s) {
 Color _stateColor(String s) {
   switch (s) {
     case 'DR':
-      return Colors.orange.shade600;
+      return SdColors.warning;
     case 'U':
-      return Colors.teal.shade600;
+      return SdColors.accent;
     case 'D':
     default:
-      return Colors.blue.shade600;
+      return SdColors.info;
   }
 }
 

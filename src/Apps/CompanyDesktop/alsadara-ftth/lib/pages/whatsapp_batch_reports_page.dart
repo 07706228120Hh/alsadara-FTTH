@@ -534,7 +534,7 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم حذف التقرير'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
           _loadReports();
@@ -544,7 +544,7 @@ class _WhatsAppBatchReportsPageState extends State<WhatsAppBatchReportsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('خطأ في الحذف'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }

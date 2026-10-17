@@ -3,9 +3,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/firebase_availability.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class FirebaseDataViewer extends StatefulWidget {
   const FirebaseDataViewer({super.key});
@@ -77,7 +77,7 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('عرض بيانات Firebase', style: GoogleFonts.cairo()),
+        title: Text('عرض بيانات Firebase', style: TextStyle(fontFamily: 'Cairo')),
         backgroundColor: const Color(0xFF1E3A8A),
         foregroundColor: Colors.white,
         actions: [
@@ -99,7 +99,7 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
                   _buildSection(
                     title: 'Super Admins (${_superAdmins.length})',
                     icon: Icons.admin_panel_settings,
-                    color: Colors.purple,
+                    color: SdColors.platformBase,
                     children: _superAdmins.map((admin) {
                       return _buildCard(
                         title: admin['username'] ?? 'N/A',
@@ -114,7 +114,7 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
                   _buildSection(
                     title: 'Tenants (${_tenants.length})',
                     icon: Icons.business,
-                    color: Colors.blue,
+                    color: SdColors.info,
                     children: _tenants.map((tenant) {
                       final tenantUsers = _users[tenant['id']] ?? [];
                       return Column(
@@ -126,9 +126,9 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
                             trailing: Chip(
                               label: Text(
                                 '${tenantUsers.length} مستخدم',
-                                style: GoogleFonts.cairo(fontSize: 12),
+                                style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                               ),
-                              backgroundColor: Colors.blue[100],
+                              backgroundColor: SdColors.infoTint,
                             ),
                           ),
                           // Users under this tenant
@@ -158,20 +158,21 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.amber[50],
+                      color: SdColors.warningTint,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.amber[200]!),
+                      border: Border.all(color: SdColors.warningTintEdge),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline, color: Colors.amber[900]),
+                        Icon(Icons.info_outline, color: SdColors.warningEdge),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'تأكد من أن كود الشركة (code) في Firebase يطابق ما تدخله في صفحة تسجيل الدخول. البحث حساس لحالة الأحرف (Case Sensitive).',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 13,
-                              color: Colors.amber[900],
+                              color: SdColors.warningEdge,
                             ),
                           ),
                         ),
@@ -199,7 +200,8 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
             const SizedBox(width: 8),
             Text(
               title,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 color: color,
@@ -226,25 +228,26 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
       child: ExpansionTile(
         leading: Icon(
           isNested ? Icons.person : Icons.account_circle,
-          color: isNested ? Colors.grey[600] : const Color(0xFF1E3A8A),
+          color: isNested ? SdColors.muted : const Color(0xFF1E3A8A),
         ),
         title: Text(
           title,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontWeight: FontWeight.bold,
             fontSize: isNested ? 14 : 16,
           ),
         ),
         subtitle: Text(
           subtitle,
-          style: GoogleFonts.cairo(fontSize: isNested ? 12 : 14),
+          style: TextStyle(fontFamily: 'Cairo', fontSize: isNested ? 12 : 14),
         ),
         trailing: trailing,
         children: [
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            color: Colors.grey[50],
+            color: SdColors.surfaceAlt,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: data.entries.map((entry) {
@@ -252,7 +255,8 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
                   padding: const EdgeInsets.only(bottom: 4),
                   child: RichText(
                     text: TextSpan(
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 12,
                         color: Colors.black87,
                       ),
@@ -263,7 +267,7 @@ class _FirebaseDataViewerState extends State<FirebaseDataViewer> {
                         ),
                         TextSpan(
                           text: _formatValue(entry.value),
-                          style: TextStyle(color: Colors.grey[800]),
+                          style: TextStyle(color: SdColors.ink),
                         ),
                       ],
                     ),

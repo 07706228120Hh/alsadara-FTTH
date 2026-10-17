@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/accounting_theme.dart';
@@ -244,7 +243,7 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
                 child: _isLoading
                     ? const Center(
                         child: CircularProgressIndicator(
-                            color: AccountingTheme.neonGreen))
+                            color: SdColors.success))
                     : _errorMessage != null
                         ? Center(
                             child: SdEmptyState(
@@ -310,7 +309,7 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
         ),
         SizedBox(width: isMob ? 8 : 12),
         Icon(Icons.compare_arrows_rounded,
-            color: AccountingTheme.textMuted,
+            color: SdColors.faint,
             size: isMob ? 16 : 20),
         SizedBox(width: isMob ? 8 : 12),
         _yearDropdown(
@@ -353,7 +352,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
         children: [
           Text(
             label,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: isMob ? 10 : ar.small,
               color: color,
               fontWeight: FontWeight.w600,
@@ -364,7 +364,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
             child: DropdownButton<int>(
               value: value,
               isDense: true,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 12 : ar.body,
                 fontWeight: FontWeight.bold,
                 color: color,
@@ -564,7 +565,7 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
     return Container(
       padding: EdgeInsets.all(isMob ? 10 : ar.cardPad),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
         boxShadow: AccountingTheme.cardShadow,
         border: Border.all(color: color.withOpacity(0.2)),
@@ -579,9 +580,10 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 10 : ar.small,
-                    color: AccountingTheme.textMuted,
+                    color: SdColors.faint,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -611,7 +613,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
                       const SizedBox(width: 2),
                       Text(
                         '${changePercent.abs().toStringAsFixed(1)}%',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: isMob ? 9 : 10,
                           fontWeight: FontWeight.bold,
                           color: changePercent >= 0
@@ -627,7 +630,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
           SizedBox(height: isMob ? 4 : 8),
           Text(
             _fmtCurrency(value),
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: isMob ? 14 : ar.financialMedium,
               fontWeight: FontWeight.bold,
               color: color,
@@ -663,7 +667,7 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
     return Container(
       padding: EdgeInsets.all(isMob ? 10 : 16),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
         boxShadow: AccountingTheme.cardShadow,
       ),
@@ -675,10 +679,11 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
             children: [
               Text(
                 'مقارنة الإيرادات الشهرية',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: isMob ? 13 : ar.headingSmall,
                   fontWeight: FontWeight.bold,
-                  color: AccountingTheme.textPrimary,
+                  color: SdColors.ink,
                 ),
               ),
               const Spacer(),
@@ -705,7 +710,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
                       final monthName = _arabicMonths[group.x];
                       return BarTooltipItem(
                         '$monthName - $year\n${_fmtCurrency(rod.toY)}',
-                        GoogleFonts.cairo(
+                        TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: ar.caption,
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -729,9 +735,10 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
                         }
                         return Text(
                           _fmtShort(value),
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: isMob ? 8 : 10,
-                            color: AccountingTheme.textMuted,
+                            color: SdColors.faint,
                           ),
                         );
                       },
@@ -750,9 +757,10 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             _arabicMonths[idx],
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: isMob ? 7 : 9,
-                              color: AccountingTheme.textMuted,
+                              color: SdColors.faint,
                             ),
                           ),
                         );
@@ -818,9 +826,10 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
         const SizedBox(width: 4),
         Text(
           label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: isMob ? 10 : ar.small,
-            color: AccountingTheme.textSecondary,
+            color: SdColors.muted,
           ),
         ),
       ],
@@ -847,7 +856,7 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
         boxShadow: AccountingTheme.cardShadow,
       ),
@@ -880,7 +889,7 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
         vertical: isMob ? 8 : ar.tableCellPadV + 4,
       ),
       decoration: const BoxDecoration(
-        color: AccountingTheme.tableHeaderBg,
+        color: SdColors.primary,
       ),
       child: Row(
         children: [
@@ -902,10 +911,11 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
       flex: flex,
       child: Text(
         text,
-        style: GoogleFonts.cairo(
+        style: TextStyle(
+          fontFamily: 'Cairo',
           fontSize: isMob ? 10 : ar.tableHeaderFont,
           fontWeight: FontWeight.bold,
-          color: AccountingTheme.tableHeaderText,
+          color: SdColors.surface,
         ),
         textAlign: TextAlign.center,
       ),
@@ -928,9 +938,9 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
         vertical: isMob ? 8 : ar.tableCellPadV + 2,
       ),
       decoration: BoxDecoration(
-        color: isEven ? Colors.transparent : AccountingTheme.tableRowAlt,
+        color: isEven ? Colors.transparent : SdColors.surfaceAlt,
         border: const Border(
-          bottom: BorderSide(color: AccountingTheme.borderColor, width: 0.5),
+          bottom: BorderSide(color: SdColors.divider, width: 0.5),
         ),
       ),
       child: Row(
@@ -940,10 +950,11 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
             flex: 2,
             child: Text(
               data['monthName'] as String,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 fontWeight: FontWeight.w600,
-                color: AccountingTheme.textPrimary,
+                color: SdColors.ink,
               ),
               textAlign: TextAlign.center,
             ),
@@ -952,7 +963,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(revenue1),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 color: _clrYear1,
                 fontWeight: FontWeight.w500,
@@ -964,7 +976,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(revenue2),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 color: _clrYear2,
                 fontWeight: FontWeight.w500,
@@ -980,7 +993,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(expenses1),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 color: _clrExpenses.withOpacity(0.7),
                 fontWeight: FontWeight.w500,
@@ -992,7 +1006,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(expenses2),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 color: _clrExpenses,
                 fontWeight: FontWeight.w500,
@@ -1015,9 +1030,10 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
     if (change == 0) {
       return Text(
         '-',
-        style: GoogleFonts.cairo(
+        style: TextStyle(
+          fontFamily: 'Cairo',
           fontSize: isMob ? 10 : ar.tableCellFont,
-          color: AccountingTheme.textMuted,
+          color: SdColors.faint,
         ),
         textAlign: TextAlign.center,
       );
@@ -1048,7 +1064,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
           Flexible(
             child: Text(
               '${change.abs().toStringAsFixed(1)}%',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 9 : ar.tableCellFont,
                 fontWeight: FontWeight.w600,
                 color: displayColor,
@@ -1074,9 +1091,9 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
         vertical: isMob ? 10 : ar.tableCellPadV + 4,
       ),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgSecondary,
+        color: SdColors.groundAlt,
         border: const Border(
-          top: BorderSide(color: AccountingTheme.borderColor, width: 1.5),
+          top: BorderSide(color: SdColors.divider, width: 1.5),
         ),
       ),
       child: Row(
@@ -1086,10 +1103,11 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
             flex: 2,
             child: Text(
               'الإجمالي',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 11 : ar.tableCellFont + 1,
                 fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
+                color: SdColors.ink,
               ),
               textAlign: TextAlign.center,
             ),
@@ -1098,7 +1116,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(totalRevY1),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 fontWeight: FontWeight.bold,
                 color: _clrYear1,
@@ -1110,7 +1129,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(totalRevY2),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 fontWeight: FontWeight.bold,
                 color: _clrYear2,
@@ -1126,7 +1146,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(totalExpY1),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 fontWeight: FontWeight.bold,
                 color: _clrExpenses.withOpacity(0.7),
@@ -1138,7 +1159,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
           Expanded(
             child: Text(
               _fmtCurrency(totalExpY2),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.tableCellFont,
                 fontWeight: FontWeight.bold,
                 color: _clrExpenses,

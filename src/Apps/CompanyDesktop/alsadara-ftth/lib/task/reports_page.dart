@@ -9,6 +9,7 @@ import '../services/task_api_service.dart';
 import '../services/task_export_service.dart';
 import 'task_status_colors.dart';
 import 'widgets/task_common_widgets.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class ReportsPage extends StatefulWidget {
   final List<Task> tasks;
@@ -475,7 +476,7 @@ class _ReportsPageState extends State<ReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final gradientColors = [Colors.blueAccent, Colors.blue[700]!];
+    final gradientColors = [Colors.blueAccent, SdColors.info];
     final smartTextColor =
         SmartTextColor.getAppBarTextColorWithGradient(context, gradientColors);
     final smartIconColor = smartTextColor;
@@ -549,34 +550,34 @@ class _ReportsPageState extends State<ReportsPage> {
                   if (mounted)
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content: Text('تم تصدير Excel'),
-                        backgroundColor: Colors.green));
+                        backgroundColor: SdColors.success));
                 } else {
                   await TaskExportService.exportToPdf(
                       tasks: currentFilteredTasks);
                   if (mounted)
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content: Text('تم تصدير PDF'),
-                        backgroundColor: Colors.green));
+                        backgroundColor: SdColors.success));
                 }
               } catch (e) {
                 if (mounted)
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('خطأ في التصدير'),
-                      backgroundColor: Colors.red));
+                      backgroundColor: SdColors.danger));
               }
             },
             itemBuilder: (_) => const [
               PopupMenuItem(
                   value: 'excel',
                   child: Row(children: [
-                    Icon(Icons.table_chart, color: Colors.green, size: 20),
+                    Icon(Icons.table_chart, color: SdColors.success, size: 20),
                     SizedBox(width: 8),
                     Text('تصدير Excel'),
                   ])),
               PopupMenuItem(
                   value: 'pdf',
                   child: Row(children: [
-                    Icon(Icons.picture_as_pdf, color: Colors.red, size: 20),
+                    Icon(Icons.picture_as_pdf, color: SdColors.danger, size: 20),
                     SizedBox(width: 8),
                     Text('تصدير PDF'),
                   ])),
@@ -600,7 +601,7 @@ class _ReportsPageState extends State<ReportsPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.blue.shade50, Colors.white],
+            colors: [SdColors.infoTint, Colors.white],
           ),
         ),
         child: Column(
@@ -625,7 +626,7 @@ class _ReportsPageState extends State<ReportsPage> {
                           CircularProgressIndicator(),
                           SizedBox(height: 12),
                           Text('جاري تحميل البيانات...',
-                              style: TextStyle(color: Colors.grey)),
+                              style: TextStyle(color: SdColors.faint)),
                         ],
                       ))
                     : currentFilteredTasks.isEmpty
@@ -644,11 +645,11 @@ class _ReportsPageState extends State<ReportsPage> {
                   child: Row(
                     children: [
                       Icon(Icons.info_outline,
-                          size: 14, color: Colors.grey[500]),
+                          size: 14, color: SdColors.faint),
                       const SizedBox(width: 4),
                       Text(
                         'نتائج السيرفر: $_serverSearchTotal مهمة (معروض: ${currentFilteredTasks.length})',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 12, color: SdColors.faint),
                       ),
                     ],
                   ),
@@ -725,7 +726,7 @@ class _ReportsPageState extends State<ReportsPage> {
                         _dateLabel != 'أمس' &&
                         _dateLabel != 'هذا الشهر'
                     ? Colors.white
-                    : Colors.blue[700],
+                    : SdColors.info,
               ),
               label: Text(
                 _dateLabel != 'الكل' &&
@@ -748,7 +749,7 @@ class _ReportsPageState extends State<ReportsPage> {
                       _dateLabel != 'اليوم' &&
                       _dateLabel != 'أمس' &&
                       _dateLabel != 'هذا الشهر'
-                  ? Colors.blue[700]
+                  ? SdColors.info
                   : null,
               onPressed: _showCustomDatePicker,
             ),
@@ -765,7 +766,7 @@ class _ReportsPageState extends State<ReportsPage> {
           style:
               TextStyle(fontSize: 12, color: isSelected ? Colors.white : null)),
       selected: isSelected,
-      selectedColor: Colors.blue[700],
+      selectedColor: SdColors.info,
       onSelected: (_) => _setQuickDate(label, range),
     );
   }
@@ -779,9 +780,9 @@ class _ReportsPageState extends State<ReportsPage> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: SdColors.infoTint,
         borderRadius: BorderRadius.circular(10.0),
-        border: Border.all(color: Colors.blue.shade200),
+        border: Border.all(color: SdColors.infoTintEdge),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -859,7 +860,7 @@ class _ReportsPageState extends State<ReportsPage> {
               borderRadius: BorderRadius.circular(15.0),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withValues(alpha: 0.3),
+                  color: SdColors.faint.withValues(alpha: 0.3),
                   spreadRadius: 2,
                   blurRadius: 5,
                   offset: const Offset(0, 3),
@@ -875,7 +876,7 @@ class _ReportsPageState extends State<ReportsPage> {
                                 title: 'المجموع الكلي',
                                 value: currentFilteredTasks.length.toString(),
                                 icon: Icons.assignment,
-                                color: Colors.blue,
+                                color: SdColors.info,
                                 isSmallScreen: true)),
                         const SizedBox(width: 8),
                         Expanded(
@@ -886,7 +887,7 @@ class _ReportsPageState extends State<ReportsPage> {
                                     .length
                                     .toString(),
                                 icon: Icons.check_circle,
-                                color: Colors.green,
+                                color: SdColors.success,
                                 isSmallScreen: true)),
                       ]),
                       const SizedBox(height: 12),
@@ -899,7 +900,7 @@ class _ReportsPageState extends State<ReportsPage> {
                                     .length
                                     .toString(),
                                 icon: Icons.cancel,
-                                color: Colors.red,
+                                color: SdColors.danger,
                                 isSmallScreen: true)),
                         const SizedBox(width: 8),
                         Expanded(
@@ -908,7 +909,7 @@ class _ReportsPageState extends State<ReportsPage> {
                                 value:
                                     '${formatTaskAmount(widget.calculateTotalAmount(currentFilteredTasks) as num)} د.ع',
                                 icon: Icons.account_balance_wallet,
-                                color: Colors.orange,
+                                color: SdColors.warning,
                                 isSmallScreen: true)),
                       ]),
                     ],
@@ -921,7 +922,7 @@ class _ReportsPageState extends State<ReportsPage> {
                               title: 'المجموع الكلي',
                               value: currentFilteredTasks.length.toString(),
                               icon: Icons.assignment,
-                              color: Colors.blue,
+                              color: SdColors.info,
                               isSmallScreen: false)),
                       const SizedBox(width: 12),
                       Expanded(
@@ -932,7 +933,7 @@ class _ReportsPageState extends State<ReportsPage> {
                                   .length
                                   .toString(),
                               icon: Icons.check_circle,
-                              color: Colors.green,
+                              color: SdColors.success,
                               isSmallScreen: false)),
                       const SizedBox(width: 12),
                       Expanded(
@@ -943,7 +944,7 @@ class _ReportsPageState extends State<ReportsPage> {
                                   .length
                                   .toString(),
                               icon: Icons.cancel,
-                              color: Colors.red,
+                              color: SdColors.danger,
                               isSmallScreen: false)),
                       const SizedBox(width: 12),
                       Expanded(
@@ -952,7 +953,7 @@ class _ReportsPageState extends State<ReportsPage> {
                               value:
                                   '${formatTaskAmount(widget.calculateTotalAmount(currentFilteredTasks) as num)} د.ع',
                               icon: Icons.account_balance_wallet,
-                              color: Colors.orange,
+                              color: SdColors.warning,
                               isSmallScreen: false)),
                     ],
                   ),
@@ -975,7 +976,7 @@ class _ReportsPageState extends State<ReportsPage> {
         decoration: InputDecoration(
           hintText:
               'بحث في كل المهام (اسم العميل، الهاتف، الفني، رقم المهمة...)',
-          hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+          hintStyle: TextStyle(fontSize: 13, color: SdColors.faint),
           prefixIcon: _isSearching
               ? const Padding(
                   padding: EdgeInsets.all(12),
@@ -1001,15 +1002,15 @@ class _ReportsPageState extends State<ReportsPage> {
               const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+            borderSide: BorderSide(color: SdColors.edge),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+            borderSide: BorderSide(color: SdColors.edge),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.blue.shade400, width: 1.5),
+            borderSide: BorderSide(color: SdColors.info, width: 1.5),
           ),
         ),
         onChanged: _onSearchChanged,
@@ -1026,19 +1027,19 @@ class _ReportsPageState extends State<ReportsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.assignment_outlined, size: 80, color: Colors.grey[400]),
+          Icon(Icons.assignment_outlined, size: 80, color: SdColors.faint),
           const SizedBox(height: 16),
           Text(
             'لا توجد مهام تطابق الفلاتر المحددة',
             style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[600]),
+                color: SdColors.muted),
           ),
           const SizedBox(height: 8),
           Text(
             'قم بتعديل الفلاتر أو مسحها لرؤية المزيد من المهام',
-            style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 16, color: SdColors.faint),
             textAlign: TextAlign.center,
           ),
         ],
@@ -1155,12 +1156,12 @@ class _ReportsPageState extends State<ReportsPage> {
                               ? Icons.keyboard_arrow_up
                               : Icons.keyboard_arrow_down,
                           size: 20,
-                          color: Colors.grey[400],
+                          color: SdColors.faint,
                         ),
                         Text(
                           isExpanded ? 'إخفاء التفاصيل' : 'عرض التفاصيل',
                           style:
-                              TextStyle(fontSize: 11, color: Colors.grey[400]),
+                              TextStyle(fontSize: 11, color: SdColors.faint),
                         ),
                       ],
                     ),
@@ -1177,25 +1178,25 @@ class _ReportsPageState extends State<ReportsPage> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: SdColors.infoTint,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade200),
+                        border: Border.all(color: SdColors.infoTintEdge),
                       ),
                       child: Row(
                         children: [
                           Icon(Icons.person_pin,
-                              size: 18, color: Colors.blue[700]),
+                              size: 18, color: SdColors.info),
                           const SizedBox(width: 8),
                           Text('العميل: ',
                               style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.blue[700],
+                                  color: SdColors.info,
                                   fontSize: 14)),
                           Expanded(
                             child: Text(task.username,
                                 style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.blue[900],
+                                    color: SdColors.infoEdge,
                                     fontSize: 14)),
                           ),
                         ],
@@ -1242,12 +1243,12 @@ class _ReportsPageState extends State<ReportsPage> {
     if (value.isEmpty) return const SizedBox.shrink();
     return Row(
       children: [
-        Icon(icon, size: 14, color: Colors.grey[500]),
+        Icon(icon, size: 14, color: SdColors.faint),
         const SizedBox(width: 4),
         Text('$label: ',
             style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[600],
+                color: SdColors.muted,
                 fontSize: 12)),
         Expanded(
           child: Text(value,
@@ -1264,13 +1265,13 @@ class _ReportsPageState extends State<ReportsPage> {
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.grey[600]),
+          Icon(icon, size: 16, color: SdColors.muted),
           const SizedBox(width: 8),
           Text(
             '$label: ',
             style: TextStyle(
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
+                color: SdColors.muted,
                 fontSize: 14),
           ),
           Expanded(
@@ -1426,7 +1427,7 @@ class _ReportsPageState extends State<ReportsPage> {
               ],
             ),
             const SizedBox(height: 4),
-            Divider(color: Colors.grey.shade200),
+            Divider(color: SdColors.divider),
             const SizedBox(height: 8),
             if (height != null)
               SizedBox(height: height, child: child)
@@ -1551,7 +1552,7 @@ class _ReportsPageState extends State<ReportsPage> {
       return _buildChartCard(
         title: 'المهام حسب القسم',
         icon: Icons.business,
-        iconColor: Colors.indigo,
+        iconColor: SdColors.primary,
         height: 300,
         child: const Center(child: Text('لا توجد بيانات')),
       );
@@ -1561,13 +1562,13 @@ class _ReportsPageState extends State<ReportsPage> {
       ..sort((a, b) => b.value.compareTo(a.value));
     final maxVal = entries.first.value.toDouble();
     final barColors = [
-      Colors.indigo,
-      Colors.blue,
-      Colors.teal,
-      Colors.cyan,
-      Colors.lightBlue,
-      Colors.blueGrey,
-      Colors.purple,
+      SdColors.primary,
+      SdColors.info,
+      SdColors.accent,
+      SdColors.accent,
+      SdColors.info,
+      SdColors.faint,
+      SdColors.platformBase,
     ];
 
     final chartHeight = math.max(entries.length * 44.0, 200.0);
@@ -1575,7 +1576,7 @@ class _ReportsPageState extends State<ReportsPage> {
     return _buildChartCard(
       title: 'المهام حسب القسم',
       icon: Icons.business,
-      iconColor: Colors.indigo,
+      iconColor: SdColors.primary,
       height: chartHeight + 80,
       child: RotatedBox(
         quarterTurns: 0,
@@ -1637,7 +1638,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     }
                     return Text(
                       value.toInt().toString(),
-                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      style: const TextStyle(fontSize: 10, color: SdColors.faint),
                     );
                   },
                 ),
@@ -1652,7 +1653,7 @@ class _ReportsPageState extends State<ReportsPage> {
               drawVerticalLine: false,
               horizontalInterval: math.max(1, (maxVal / 5).ceilToDouble()),
               getDrawingHorizontalLine: (value) => FlLine(
-                color: Colors.grey.shade200,
+                color: SdColors.divider,
                 strokeWidth: 1,
               ),
             ),
@@ -1714,7 +1715,7 @@ class _ReportsPageState extends State<ReportsPage> {
     return _buildChartCard(
       title: 'المهام اليومية (آخر 14 يوم)',
       icon: Icons.show_chart,
-      iconColor: Colors.teal,
+      iconColor: SdColors.accent,
       height: 280,
       child: LineChart(
         LineChartData(
@@ -1739,7 +1740,7 @@ class _ReportsPageState extends State<ReportsPage> {
             drawVerticalLine: false,
             horizontalInterval: math.max(1, (maxY / 5).ceilToDouble()),
             getDrawingHorizontalLine: (value) => FlLine(
-              color: Colors.grey.shade200,
+              color: SdColors.divider,
               strokeWidth: 1,
             ),
           ),
@@ -1760,7 +1761,7 @@ class _ReportsPageState extends State<ReportsPage> {
                     meta: meta,
                     child: Text(
                       fmt.format(daysList[idx]),
-                      style: const TextStyle(fontSize: 9, color: Colors.grey),
+                      style: const TextStyle(fontSize: 9, color: SdColors.faint),
                     ),
                   );
                 },
@@ -1774,7 +1775,7 @@ class _ReportsPageState extends State<ReportsPage> {
                 getTitlesWidget: (value, meta) {
                   return Text(
                     value.toInt().toString(),
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    style: const TextStyle(fontSize: 10, color: SdColors.faint),
                   );
                 },
               ),
@@ -1787,8 +1788,8 @@ class _ReportsPageState extends State<ReportsPage> {
           borderData: FlBorderData(
             show: true,
             border: Border(
-              bottom: BorderSide(color: Colors.grey.shade300),
-              left: BorderSide(color: Colors.grey.shade300),
+              bottom: BorderSide(color: SdColors.edge),
+              left: BorderSide(color: SdColors.edge),
             ),
           ),
           lineBarsData: [
@@ -1796,21 +1797,21 @@ class _ReportsPageState extends State<ReportsPage> {
               spots: spots,
               isCurved: true,
               curveSmoothness: 0.3,
-              color: Colors.teal,
+              color: SdColors.accent,
               barWidth: 3,
               dotData: FlDotData(
                 show: true,
                 getDotPainter: (spot, percent, barData, index) =>
                     FlDotCirclePainter(
                   radius: 3,
-                  color: Colors.teal,
+                  color: SdColors.accent,
                   strokeWidth: 1.5,
                   strokeColor: Colors.white,
                 ),
               ),
               belowBarData: BarAreaData(
                 show: true,
-                color: Colors.teal.withValues(alpha: 0.12),
+                color: SdColors.accent.withValues(alpha: 0.12),
               ),
             ),
           ],
@@ -1835,7 +1836,7 @@ class _ReportsPageState extends State<ReportsPage> {
       return _buildChartCard(
         title: 'أفضل 5 فنيين (مهام مكتملة)',
         icon: Icons.engineering,
-        iconColor: Colors.deepPurple,
+        iconColor: SdColors.platformBase,
         height: 300,
         child: const Center(child: Text('لا توجد بيانات')),
       );
@@ -1847,17 +1848,17 @@ class _ReportsPageState extends State<ReportsPage> {
     final maxVal = top5.first.value.toDouble();
 
     final techColors = [
-      Colors.deepPurple,
-      Colors.deepPurple.shade300,
-      Colors.purple,
-      Colors.purple.shade300,
+      SdColors.platformBase,
+      SdColors.platformTintEdge,
+      SdColors.platformBase,
+      SdColors.platformTintEdge,
       Colors.purpleAccent,
     ];
 
     return _buildChartCard(
       title: 'أفضل 5 فنيين (مهام مكتملة)',
       icon: Icons.engineering,
-      iconColor: Colors.deepPurple,
+      iconColor: SdColors.platformBase,
       height: 300,
       child: BarChart(
         BarChartData(
@@ -1909,7 +1910,7 @@ class _ReportsPageState extends State<ReportsPage> {
                 getTitlesWidget: (value, meta) {
                   return Text(
                     value.toInt().toString(),
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    style: const TextStyle(fontSize: 10, color: SdColors.faint),
                   );
                 },
               ),
@@ -1924,7 +1925,7 @@ class _ReportsPageState extends State<ReportsPage> {
             drawVerticalLine: false,
             horizontalInterval: math.max(1, (maxVal / 5).ceilToDouble()),
             getDrawingHorizontalLine: (value) => FlLine(
-              color: Colors.grey.shade200,
+              color: SdColors.divider,
               strokeWidth: 1,
             ),
           ),
@@ -1959,10 +1960,10 @@ class _ReportsPageState extends State<ReportsPage> {
       return _buildStatInfoCard(
         title: 'الالتزام بـ SLA',
         icon: Icons.timer,
-        iconColor: Colors.blue,
+        iconColor: SdColors.info,
         value: 'لا يوجد',
         subtitle: 'لا توجد مهام بموعد نهائي',
-        valueColor: Colors.grey,
+        valueColor: SdColors.faint,
       );
     }
 
@@ -1982,17 +1983,17 @@ class _ReportsPageState extends State<ReportsPage> {
     final rate = (compliant / tasksWithSla.length * 100);
     final Color rateColor;
     if (rate >= 80) {
-      rateColor = Colors.green;
+      rateColor = SdColors.success;
     } else if (rate >= 50) {
-      rateColor = Colors.orange;
+      rateColor = SdColors.warning;
     } else {
-      rateColor = Colors.red;
+      rateColor = SdColors.danger;
     }
 
     return _buildStatInfoCard(
       title: 'الالتزام بـ SLA',
       icon: Icons.timer,
-      iconColor: Colors.blue,
+      iconColor: SdColors.info,
       value: '${rate.toStringAsFixed(1)}%',
       subtitle: '$compliant من ${tasksWithSla.length} مهمة ضمن الموعد',
       valueColor: rateColor,
@@ -2012,10 +2013,10 @@ class _ReportsPageState extends State<ReportsPage> {
       return _buildStatInfoCard(
         title: 'وقت الإنجاز (الوسيط)',
         icon: Icons.speed,
-        iconColor: Colors.orange,
+        iconColor: SdColors.warning,
         value: 'لا يوجد',
         subtitle: 'لا توجد مهام مكتملة',
-        valueColor: Colors.grey,
+        valueColor: SdColors.faint,
       );
     }
 
@@ -2030,10 +2031,10 @@ class _ReportsPageState extends State<ReportsPage> {
       return _buildStatInfoCard(
         title: 'وقت الإنجاز (الوسيط)',
         icon: Icons.speed,
-        iconColor: Colors.orange,
+        iconColor: SdColors.warning,
         value: 'لا يوجد',
         subtitle: 'لا توجد بيانات صالحة',
-        valueColor: Colors.grey,
+        valueColor: SdColors.faint,
       );
     }
 
@@ -2052,15 +2053,15 @@ class _ReportsPageState extends State<ReportsPage> {
     // نعرض الوسيط كقيمة رئيسية
     if (median < 60) {
       formatted = '${median.toStringAsFixed(0)} دقيقة';
-      valueColor = Colors.green;
+      valueColor = SdColors.success;
     } else if (median < 1440) {
       final hours = (median / 60).toStringAsFixed(1);
       formatted = '$hours ساعة';
-      valueColor = median < 480 ? Colors.green : Colors.orange;
+      valueColor = median < 480 ? SdColors.success : SdColors.warning;
     } else {
       final days = (median / 1440).toStringAsFixed(1);
       formatted = '$days يوم';
-      valueColor = Colors.red;
+      valueColor = SdColors.danger;
     }
 
     // نص المتوسط الواقعي
@@ -2080,7 +2081,7 @@ class _ReportsPageState extends State<ReportsPage> {
     return _buildStatInfoCard(
       title: 'وقت الإنجاز (الوسيط)',
       icon: Icons.speed,
-      iconColor: Colors.orange,
+      iconColor: SdColors.warning,
       value: formatted,
       subtitle: subtitle,
       valueColor: valueColor,
@@ -2192,7 +2193,7 @@ class _ReportsPageState extends State<ReportsPage> {
     return _buildChartCard(
       title: 'تحليل التأخير والأداء',
       icon: Icons.warning_amber_rounded,
-      iconColor: Colors.red,
+      iconColor: SdColors.danger,
       height: null, // ارتفاع تلقائي
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2203,13 +2204,13 @@ class _ReportsPageState extends State<ReportsPage> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: openDelayed.isEmpty
-                  ? Colors.green.shade50
-                  : Colors.red.shade50,
+                  ? SdColors.successTint
+                  : SdColors.dangerTint,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                   color: openDelayed.isEmpty
-                      ? Colors.green.shade300
-                      : Colors.red.shade300),
+                      ? SdColors.successTintEdge
+                      : SdColors.dangerTintEdge),
             ),
             child: Column(
               children: [
@@ -2221,7 +2222,7 @@ class _ReportsPageState extends State<ReportsPage> {
                             ? Icons.check_circle
                             : Icons.access_alarm,
                         size: 20,
-                        color: openDelayed.isEmpty ? Colors.green : Colors.red),
+                        color: openDelayed.isEmpty ? SdColors.success : SdColors.danger),
                     const SizedBox(width: 6),
                     Text(
                       openDelayed.isEmpty
@@ -2231,8 +2232,8 @@ class _ReportsPageState extends State<ReportsPage> {
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: openDelayed.isEmpty
-                            ? Colors.green.shade700
-                            : Colors.red.shade700,
+                            ? SdColors.success
+                            : SdColors.danger,
                       ),
                     ),
                   ],
@@ -2251,7 +2252,7 @@ class _ReportsPageState extends State<ReportsPage> {
                           children: [
                             Text('#${e.task.id}',
                                 style: TextStyle(
-                                    fontSize: 10, color: Colors.grey[500])),
+                                    fontSize: 10, color: SdColors.faint)),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
@@ -2265,7 +2266,7 @@ class _ReportsPageState extends State<ReportsPage> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                  color: Colors.red.shade700,
+                                  color: SdColors.danger,
                                   borderRadius: BorderRadius.circular(6)),
                               child: Text(_formatDuration(e.minutes),
                                   style: const TextStyle(
@@ -2281,7 +2282,7 @@ class _ReportsPageState extends State<ReportsPage> {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text('و ${openDelayed.length - 5} مهمة أخرى...',
                           style:
-                              TextStyle(fontSize: 11, color: Colors.red[400])),
+                              TextStyle(fontSize: 11, color: SdColors.danger)),
                     ),
                 ],
               ],
@@ -2297,19 +2298,19 @@ class _ReportsPageState extends State<ReportsPage> {
                   child: _buildDelayStatChip(
                       '${completedDelayed.length}',
                       'متأخرة (> ${_formatDuration(delayedThreshold)})',
-                      Colors.red)),
+                      SdColors.danger)),
               const SizedBox(width: 8),
               Expanded(
                   child: _buildDelayStatChip(
                       '${completedSlow.length}',
                       'بطيئة (${_formatDuration(slowThreshold)}-${_formatDuration(delayedThreshold)})',
-                      Colors.orange)),
+                      SdColors.warning)),
               const SizedBox(width: 8),
               Expanded(
                   child: _buildDelayStatChip(
                       '${completedFast.length}',
                       'سريعة (< ${_formatDuration(slowThreshold)})',
-                      Colors.green)),
+                      SdColors.success)),
             ],
           ),
 
@@ -2320,7 +2321,7 @@ class _ReportsPageState extends State<ReportsPage> {
                 '* $excludedCount مهمة مستبعدة (أكثر من 7 أيام — غالباً مهام منسية)',
                 style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[500],
+                    color: SdColors.faint,
                     fontStyle: FontStyle.italic),
               ),
             ),
@@ -2330,15 +2331,15 @@ class _ReportsPageState extends State<ReportsPage> {
 
             // ══ الأقسام ══
             _buildPerfSection(
-                'متوسط الإنجاز حسب القسم:', deptSorted, Colors.blue, medianMin),
+                'متوسط الإنجاز حسب القسم:', deptSorted, SdColors.info, medianMin),
             const SizedBox(height: 12),
 
             _buildPerfSection('متوسط الإنجاز حسب الفني:', techSorted,
-                Colors.orange, medianMin),
+                SdColors.warning, medianMin),
             const SizedBox(height: 12),
 
             _buildPerfSection('متوسط الإنجاز حسب نوع المهمة:', typeSorted,
-                Colors.purple, medianMin),
+                SdColors.platformBase, medianMin),
             const SizedBox(height: 16),
 
             // ══ أبطأ 5 مهام مكتملة ══
@@ -2350,15 +2351,15 @@ class _ReportsPageState extends State<ReportsPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade50,
+                    color: SdColors.dangerTint,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.shade200),
+                    border: Border.all(color: SdColors.dangerTintEdge),
                   ),
                   child: Row(
                     children: [
                       Text('#${e.task.id}',
                           style:
-                              TextStyle(fontSize: 10, color: Colors.grey[500])),
+                              TextStyle(fontSize: 10, color: SdColors.faint)),
                       const SizedBox(width: 6),
                       Expanded(
                           child: Column(
@@ -2372,14 +2373,14 @@ class _ReportsPageState extends State<ReportsPage> {
                           Text(
                               '${e.task.department} — ${e.task.technician.isNotEmpty ? e.task.technician : "غير معيّن"}',
                               style: TextStyle(
-                                  fontSize: 11, color: Colors.grey[600])),
+                                  fontSize: 11, color: SdColors.muted)),
                         ],
                       )),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                            color: Colors.red.shade700,
+                            color: SdColors.danger,
                             borderRadius: BorderRadius.circular(8)),
                         child: Text(_formatDuration(e.minutes),
                             style: const TextStyle(
@@ -2412,11 +2413,11 @@ class _ReportsPageState extends State<ReportsPage> {
           // لون حسب المقارنة: أخضر إذا أسرع من الوسيط العام، أحمر إذا أبطأ بكثير
           final Color chipColor;
           if (med <= globalMedian) {
-            chipColor = Colors.green;
+            chipColor = SdColors.success;
           } else if (med <= globalMedian * 3) {
-            chipColor = Colors.orange;
+            chipColor = SdColors.warning;
           } else {
-            chipColor = Colors.red;
+            chipColor = SdColors.danger;
           }
           return Padding(
             padding: const EdgeInsets.only(bottom: 5),
@@ -2434,7 +2435,7 @@ class _ReportsPageState extends State<ReportsPage> {
                         style: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w600))),
                 Text('${e.value.length} مهمة',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    style: TextStyle(fontSize: 12, color: SdColors.muted)),
                 const SizedBox(width: 10),
                 Container(
                   padding:
@@ -2528,7 +2529,7 @@ class _ReportsPageState extends State<ReportsPage> {
               subtitle,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[600],
+                color: SdColors.muted,
               ),
               textAlign: TextAlign.center,
             ),

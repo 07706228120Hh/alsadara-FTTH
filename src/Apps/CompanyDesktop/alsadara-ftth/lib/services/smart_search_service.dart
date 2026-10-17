@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class SmartSearchService {
   // البحث الذكي مع اقتراحات
@@ -168,7 +169,7 @@ class _SmartSearchWidgetState extends State<SmartSearchWidget> {
               borderRadius: BorderRadius.circular(25),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withValues(alpha: 0.3),
+                  color: SdColors.faint.withValues(alpha: 0.3),
                   blurRadius: 10,
                   offset: Offset(0, 3),
                 ),
@@ -178,7 +179,7 @@ class _SmartSearchWidgetState extends State<SmartSearchWidget> {
               controller: _searchController,
               decoration: InputDecoration(
                 hintText: 'البحث في المهام...',
-                prefixIcon: Icon(Icons.search, color: Colors.blue),
+                prefixIcon: Icon(Icons.search, color: SdColors.info),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                         icon: Icon(Icons.clear),
@@ -211,7 +212,7 @@ class _SmartSearchWidgetState extends State<SmartSearchWidget> {
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withValues(alpha: 0.2),
+                    color: SdColors.faint.withValues(alpha: 0.2),
                     blurRadius: 8,
                     offset: Offset(0, 2),
                   ),
@@ -221,7 +222,7 @@ class _SmartSearchWidgetState extends State<SmartSearchWidget> {
                 children: _suggestions
                     .map((suggestion) => ListTile(
                           leading:
-                              Icon(Icons.search, size: 16, color: Colors.grey),
+                              Icon(Icons.search, size: 16, color: SdColors.faint),
                           title: Text(suggestion),
                           onTap: () {
                             _searchController.text = suggestion;
@@ -300,14 +301,14 @@ class _AdvancedFilterDialogState extends State<AdvancedFilterDialog> {
             // العنوان
             Row(
               children: [
-                Icon(Icons.tune, color: Colors.blue, size: 28),
+                Icon(Icons.tune, color: SdColors.info, size: 28),
                 SizedBox(width: 10),
                 Text(
                   'الفلترة المتقدمة',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blue,
+                    color: SdColors.info,
                   ),
                 ),
                 Spacer(),
@@ -452,7 +453,7 @@ class _AdvancedFilterDialogState extends State<AdvancedFilterDialog> {
                   child: ElevatedButton(
                     onPressed: _applyFilters,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
+                      backgroundColor: SdColors.info,
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
@@ -478,7 +479,7 @@ class _AdvancedFilterDialogState extends State<AdvancedFilterDialog> {
         style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
-          color: Colors.grey[700],
+          color: SdColors.muted,
         ),
       ),
     );
@@ -501,7 +502,7 @@ class _AdvancedFilterDialogState extends State<AdvancedFilterDialog> {
       child: Container(
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
+          border: Border.all(color: SdColors.faint),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -511,7 +512,7 @@ class _AdvancedFilterDialogState extends State<AdvancedFilterDialog> {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[600],
+                color: SdColors.muted,
               ),
             ),
             SizedBox(height: 4),
@@ -519,7 +520,7 @@ class _AdvancedFilterDialogState extends State<AdvancedFilterDialog> {
               date?.toString().split(' ')[0] ?? 'اختر التاريخ',
               style: TextStyle(
                 fontSize: 16,
-                color: date != null ? Colors.black : Colors.grey,
+                color: date != null ? Colors.black : SdColors.faint,
               ),
             ),
           ],

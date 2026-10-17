@@ -12,6 +12,7 @@ import '../../widgets/window_close_handler_fixed.dart';
 import '../tickets/tktats_page.dart';
 import '../whatsapp/whatsapp_bottom_window.dart';
 import 'agent_tasks_bubble.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// شريط أدوات عائم موحد — يجمع كل الأزرار العائمة في بطاقة واحدة قابلة للسحب.
 class FloatingToolbar {
@@ -640,15 +641,15 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: small ? 3 : 4, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.red,
+          color: SdColors.danger,
           borderRadius: BorderRadius.circular(8),
           boxShadow: [
-            BoxShadow(color: Colors.red.withValues(alpha: 0.4), blurRadius: 4)
+            BoxShadow(color: SdColors.danger.withValues(alpha: 0.4), blurRadius: 4)
           ],
         ),
         constraints: BoxConstraints(minWidth: small ? 14 : 16, minHeight: small ? 14 : 16),
         child: Text(
-          count > 99 ? '99+' : '$count',
+          count > 9999 ? '9999+' : '$count',
           style: TextStyle(
               color: Colors.white, fontSize: small ? 8 : 9, fontWeight: FontWeight.w900),
           textAlign: TextAlign.center,
@@ -786,7 +787,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
                         return Material(
                           elevation: 8,
                           shape: const CircleBorder(),
-                          color: const Color(0xFF1A237E),
+                          color: SdColors.primary,
                           shadowColor: Colors.black38,
                           child: SizedBox(
                             width: smallPh ? 38 : (isMobile ? 44 : 50),
@@ -806,11 +807,11 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 5, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: Colors.red,
+                                        color: SdColors.danger,
                                         borderRadius: BorderRadius.circular(10),
                                         boxShadow: [
                                           BoxShadow(
-                                              color: Colors.red
+                                              color: SdColors.danger
                                                   .withValues(alpha: 0.5),
                                               blurRadius: 6)
                                         ],
@@ -854,7 +855,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
         builder: (_, unread, __) => _buildCircleBtn(
           name: 'notifications',
           tooltip: unread > 0 ? 'الإشعارات ($unread)' : 'الإشعارات',
-          color: const Color(0xFF6A1B9A),
+          color: SdColors.platformBase,
           icon: Icons.notifications_rounded,
           badge: unread,
           btnSize: btnSize,
@@ -870,7 +871,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
         builder: (_, unread, __) => _buildCircleBtn(
           name: 'chat',
           tooltip: unread > 0 ? 'المحادثة ($unread)' : 'المحادثة الداخلية',
-          color: const Color(0xFF1976D2),
+          color: SdColors.info,
           icon: Icons.forum_rounded,
           badge: unread,
           btnSize: btnSize,
@@ -886,7 +887,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
         builder: (_, unread, __) => _buildCircleBtn(
           name: 'conversations',
           tooltip: unread > 0 ? 'واتساب خاص ($unread)' : 'واتساب خاص',
-          color: const Color(0xFF128C7E),
+          color: SdColors.whatsappEdge,
           icon: Icons.chat_bubble,
           badge: unread,
           btnSize: btnSize,
@@ -906,7 +907,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
         tooltip: config.s1TasksCount > 0
             ? 'المهام (${config.s1TasksCount})'
             : 'المهام',
-        color: const Color(0xFF43A047),
+        color: SdColors.success,
         icon: Icons.task_alt_rounded,
         badge: config.s1TasksCount,
         btnSize: btnSize,
@@ -932,7 +933,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
             child: _buildCircleBtn(
               name: 'ftth_tickets',
               tooltip: count > 0 ? 'تذاكر مفتوحة ($count)' : 'التذاكر',
-              color: Colors.orange.shade700,
+              color: SdColors.warning,
               icon: Icons.assignment_rounded,
               badge: count,
               btnSize: btnSize,
@@ -953,7 +954,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
       buttons.add(_buildCircleBtn(
         name: 'whatsapp',
         tooltip: 'واتساب عادي',
-        color: const Color(0xFF25D366),
+        color: SdColors.whatsapp,
         icon: Icons.chat,
         btnSize: btnSize,
         iconSize: iconSize,
@@ -983,7 +984,7 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
             ),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.grey.shade300, width: 0.5),
+              border: Border.all(color: SdColors.edge, width: 0.5),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -992,12 +993,12 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
                 GestureDetector(
                   onTap: FloatingToolbar.toggleCollapsed,
                   child: Icon(Icons.keyboard_arrow_left_rounded,
-                      size: _isSmallPhone ? 15 : (isMobile ? 18 : 22), color: Colors.grey.shade500),
+                      size: _isSmallPhone ? 15 : (isMobile ? 18 : 22), color: SdColors.faint),
                 ),
                 SizedBox(width: isMobile ? 1 : 2),
                 // أيقونة السحب
                 Icon(Icons.drag_indicator,
-                    size: _isSmallPhone ? 12 : (isMobile ? 14 : 18), color: Colors.grey.shade400),
+                    size: _isSmallPhone ? 12 : (isMobile ? 14 : 18), color: SdColors.faint),
                 SizedBox(width: isMobile ? 1 : 2),
                 ...buttons,
               ],
@@ -1086,13 +1087,13 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
   Color _typeColor(String? type) {
     switch (type) {
       case 'RequestStatusUpdate':
-        return const Color(0xFF1565C0);
+        return SdColors.info;
       case 'RequestAssigned':
-        return const Color(0xFF00897B);
+        return SdColors.accent;
       case 'AgentRequest':
-        return const Color(0xFFEF6C00);
+        return SdColors.warning;
       case 'ChatMessage':
-        return const Color(0xFF2E7D32);
+        return SdColors.success;
       default:
         return const Color(0xFF546E7A);
     }
@@ -1113,7 +1114,7 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: SdColors.edge,
                 borderRadius: BorderRadius.circular(2)),
           ),
           Padding(
@@ -1121,13 +1122,13 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
             child: Row(
               children: [
                 const Icon(Icons.notifications_rounded,
-                    color: Color(0xFF6A1B9A), size: 24),
+                    color: SdColors.platformBase, size: 24),
                 const SizedBox(width: 8),
                 const Text('الإشعارات',
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF1A237E))),
+                        color: SdColors.primary)),
                 const Spacer(),
                 FilterChip(
                   label: Text(_unreadOnly ? 'غير المقروءة' : 'الكل',
@@ -1138,7 +1139,7 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
                     _load();
                   },
                   selectedColor:
-                      const Color(0xFF6A1B9A).withValues(alpha: 0.15),
+                      SdColors.platformBase.withValues(alpha: 0.15),
                   visualDensity: VisualDensity.compact,
                 ),
                 const SizedBox(width: 8),
@@ -1160,11 +1161,11 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.notifications_off_outlined,
-                                size: 48, color: Colors.grey.shade300),
+                                size: 48, color: SdColors.edge),
                             const SizedBox(height: 8),
                             Text('لا توجد إشعارات',
                                 style: TextStyle(
-                                    color: Colors.grey.shade500, fontSize: 14)),
+                                    color: SdColors.faint, fontSize: 14)),
                           ],
                         ),
                       )
@@ -1229,7 +1230,7 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
                                     Text(_timeAgo(createdAt),
                                         style: TextStyle(
                                             fontSize: 10,
-                                            color: Colors.grey.shade500)),
+                                            color: SdColors.faint)),
                                 ],
                               ),
                               trailing: !isRead && id != null

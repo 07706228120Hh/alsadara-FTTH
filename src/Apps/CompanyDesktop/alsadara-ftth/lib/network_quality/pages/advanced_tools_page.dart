@@ -78,7 +78,7 @@ class AdvancedToolsPage extends StatelessWidget {
                 title: 'السجلّ والاتجاه',
                 subtitle: 'اتجاه نتائج الفحوص عبر الوقت والفحوص السابقة',
                 icon: Icons.timeline_rounded,
-                gradient: const [Color(0xFF5C6BC0), Color(0xFF283593)],
+                gradient: const [SdColors.primarySoft, SdColors.primaryMid],
                 iconEdge: Nq3d.indigoDark,
                 glow: const Color(0x591A237E),
                 onTap: () => Navigator.push(
@@ -90,7 +90,7 @@ class AdvancedToolsPage extends StatelessWidget {
                 title: 'تعديل إعدادات WiFi الراوتر',
                 subtitle: 'تغيير اسم/كلمة مرور الشبكة (Huawei/ZTE)',
                 icon: Icons.settings_input_antenna_rounded,
-                gradient: const [Color(0xFF5C6BC0), Color(0xFF283593)],
+                gradient: const [SdColors.primarySoft, SdColors.primaryMid],
                 iconEdge: Nq3d.indigoDark,
                 glow: const Color(0x591A237E),
                 onTap: () => Navigator.push(

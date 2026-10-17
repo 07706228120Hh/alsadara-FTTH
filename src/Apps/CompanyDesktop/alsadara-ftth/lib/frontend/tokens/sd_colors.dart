@@ -3,7 +3,10 @@
 /// المصدر الوحيد للألوان في الواجهات الجديدة/المرحَّلة. لا تكتب Color(0x…) داخل
 /// الصفحات؛ أضف اللون هنا أولاً إن لزم.
 ///
-/// القاعدة: لون أساسي واحد (نيلي) + لون مرافق (تركوازي) + 4 ألوان مجموعات
+/// الهوية «كحلي ملكي وذهبي» (17-10-2026): كحلي ملكي + ذهبي للفخامة + ألوان أحجار
+/// كريمة للأقسام (زمرّد/ياقوت أزرق/ياقوت أحمر/جمشت) على خلفية رمادية مزرقّة باردة.
+/// القاعدة: لون أساسي واحد (كحلي) + لون مرافق (سماوي بترولي #0E7490) للأزرار الثانوية؛
+/// الذهبي للزخارف الرفيعة فقط (لا أزرار) — قرار المالك 17-10-2026 + 4 ألوان مجموعات
 /// للأقسام + ألوان دلالية (نجاح/تحذير/خطر/معلومة) — كل لون معه درجة حافّة
 /// داكنة (للبروز 3D) ودرجة فاتحة (خلفية) ودرجة حافّة فاتحة.
 library;
@@ -14,41 +17,44 @@ class SdColors {
   SdColors._();
 
   // ── الهوية ──
-  static const primary = Color(0xFF1A237E); // نيلي الصدارة
-  static const primaryEdge = Color(0xFF0F1660); // حافّة البروز
-  static const primaryMid = Color(0xFF283593);
-  static const primaryLight = Color(0xFF3949AB);
-  static const primarySoft = Color(0xFF5C6BC0);
-  static const primaryTint = Color(0xFFE8EAF6);
-  static const primaryTintEdge = Color(0xFFC5CAE9);
+  static const primary = Color(0xFF132A5E); // كحلي ملكي
+  static const primaryEdge = Color(0xFF0B1B3F); // حافّة البروز
+  static const primaryMid = Color(0xFF1A3570);
+  static const primaryLight = Color(0xFF1E3A8A);
+  static const primarySoft = Color(0xFF3B5BA9);
+  static const primaryTint = Color(0xFFE8EDF7);
+  static const primaryTintEdge = Color(0xFFCFD9EC);
 
-  static const accent = Color(0xFF00838F); // تركوازي (الفايبر/الشبكة)
-  static const accentEdge = Color(0xFF005662);
-  static const accentLight = Color(0xFF26A69A);
-  static const accentGlow = Color(0xFF00ACC1);
-  static const accentTint = Color(0xFFE0F2F1);
-  static const accentTintEdge = Color(0xFFB2DFDB);
+  static const accent = Color(0xFF0E7490); // تركوازي (الفايبر/الشبكة)
+  static const accentEdge = Color(0xFF155E75);
+  static const accentLight = Color(0xFF06B6D4);
+  static const accentGlow = Color(0xFF22D3EE);
+  static const accentTint = Color(0xFFE0F7FA);
+  static const accentTintEdge = Color(0xFFA5F3FC);
 
   /// لمسة ذهبية للفخامة — للعناوين الفرعية وخطوط البطاقة العلوية فقط (لا للنص الطويل).
-  static const gold = Color(0xFFE8C26A);
+  static const gold = Color(0xFFC9A44C);
+
+  /// ذهبي فاتح — للزخارف فقط (حلقات المكعّبات، خطوط رفيعة)، لا للأزرار.
+  static const goldLight = Color(0xFFE6C67A);
 
   // ── المحايدات ──
-  static const ground = Color(0xFFEEF1F6); // خلفية الصفحات
-  static const groundAlt = Color(0xFFF2F4F8);
+  static const ground = Color(0xFFF1F4F9); // خلفية الصفحات
+  static const groundAlt = Color(0xFFF6F8FB);
   static const surface = Color(0xFFFFFFFF); // البطاقات
   static const surfaceAlt = Color(0xFFF5F7FB); // صفوف داخل البطاقات
-  static const ink = Color(0xFF1B1E2B); // النص الأساسي
-  static const muted = Color(0xFF5B6070); // نص ثانوي (تباين ≥ 4.5:1 على الأبيض)
-  static const faint = Color(0xFF8A90A2); // نص معطّل/تلميح (للأيقونات لا للنص الطويل)
-  static const divider = Color(0xFFE3E6F0);
-  static const edge = Color(0xFFDCE0EC); // حافّة بروز العناصر الصغيرة
-  static const cardEdge = Color(0xFFD6DBEA); // حافّة بروز البطاقات
-  static const sideShade = Color(0xFFC5CBE0); // الوجه المظلّل للمجسّمات
+  static const ink = Color(0xFF0B1B3F); // النص الأساسي
+  static const muted = Color(0xFF5E6577); // نص ثانوي (تباين ≥ 4.5:1 على الأبيض)
+  static const faint = Color(0xFF9AA1B2); // نص معطّل/تلميح (للأيقونات لا للنص الطويل)
+  static const divider = Color(0xFFE3E8F1);
+  static const edge = Color(0xFFDCE3EE); // حافّة بروز العناصر الصغيرة
+  static const cardEdge = Color(0xFFDCE3EE); // حافّة بروز البطاقات
+  static const sideShade = Color(0xFFC8D2E3); // الوجه المظلّل للمجسّمات
 
   /// الإطار الموحّد حول الحقول والبطاقات والأزرار: كحلي رمادي داكن ناعم
   /// (بدل الأسود الصريح — 17-10-2026). غيّر هنا فقط ليتغيّر في كل التطبيق.
-  static const outline = Color(0xFF3D4466);
-  static const outlineDisabled = Color(0x403D4466);
+  static const outline = Color(0xFFE3E8F1);
+  static const outlineDisabled = Color(0x80E3E8F1);
 
   // ── الدلالية ──
   static const success = Color(0xFF2E7D32);
@@ -67,17 +73,17 @@ class SdColors {
   static const dangerTint = Color(0xFFFFEBEE);
   static const dangerTintEdge = Color(0xFFFFCDD2);
 
-  static const info = Color(0xFF1565C0);
-  static const infoEdge = Color(0xFF0D47A1);
-  static const infoTint = Color(0xFFE3F2FD);
-  static const infoTintEdge = Color(0xFFBBDEFB);
+  static const info = Color(0xFF1E3A8A);
+  static const infoEdge = Color(0xFF172554);
+  static const infoTint = Color(0xFFE8EEFB);
+  static const infoTintEdge = Color(0xFFC9D6F5);
 
   // ── بنفسجي المنصّات (مطابق لنبرة SdGroup.platform؛ للجداول/البطاقات الدلالية) ──
-  static const platformBase = Color(0xFF7B1FA2);
-  static const platformLight = Color(0xFFAB47BC);
-  static const platformEdge = Color(0xFF4A148C);
-  static const platformTint = Color(0xFFF3E5F5);
-  static const platformTintEdge = Color(0xFFE1BEE7);
+  static const platformBase = Color(0xFF5B21B6);
+  static const platformLight = Color(0xFFC4B5FD);
+  static const platformEdge = Color(0xFF3B1488);
+  static const platformTint = Color(0xFFF1ECFD);
+  static const platformTintEdge = Color(0xFFDCD0FA);
 
   // ── علامات تجارية خارجية (للأيقونة/الشعار فقط، لا للشريط أو الخلفية) ──
   static const whatsapp = Color(0xFF25D366);
@@ -147,48 +153,48 @@ extension SdGroupTone on SdGroup {
     switch (this) {
       case SdGroup.field:
         return const SdTone(
-          light: Color(0xFF26A69A),
-          base: Color(0xFF00838F),
-          edge: Color(0xFF005662),
-          tint: Color(0xFFE0F2F1),
-          tintEdge: Color(0xFFB2DFDB),
-          text: Color(0xFF00695C),
+          light: Color(0xFF34D399),
+          base: Color(0xFF047857),
+          edge: Color(0xFF064E3B),
+          tint: Color(0xFFE7F6EF),
+          tintEdge: Color(0xFFBFE8D4),
+          text: Color(0xFF065F46),
         );
       case SdGroup.admin:
         return const SdTone(
-          light: Color(0xFF5C6BC0),
-          base: Color(0xFF3949AB),
-          edge: Color(0xFF1A237E),
-          tint: Color(0xFFE8EAF6),
-          tintEdge: Color(0xFFC5CAE9),
-          text: Color(0xFF1A237E),
+          light: Color(0xFF60A5FA),
+          base: Color(0xFF1E3A8A),
+          edge: Color(0xFF172554),
+          tint: Color(0xFFE8EEFB),
+          tintEdge: Color(0xFFC9D6F5),
+          text: Color(0xFF1E3A8A),
         );
       case SdGroup.comms:
         return const SdTone(
-          light: Color(0xFFFFA726),
-          base: Color(0xFFEF6C00),
-          edge: Color(0xFFA84300),
-          tint: Color(0xFFFFF3E0),
-          tintEdge: Color(0xFFFFE0B2),
-          text: Color(0xFFB53D00),
+          light: Color(0xFFFB7185),
+          base: Color(0xFF9F1239),
+          edge: Color(0xFF6B0F2A),
+          tint: Color(0xFFFDECEF),
+          tintEdge: Color(0xFFF8C9D2),
+          text: Color(0xFF9F1239),
         );
       case SdGroup.platform:
         return const SdTone(
-          light: Color(0xFFAB47BC),
-          base: Color(0xFF7B1FA2),
-          edge: Color(0xFF4A148C),
-          tint: Color(0xFFF3E5F5),
-          tintEdge: Color(0xFFE1BEE7),
-          text: Color(0xFF6A1B9A),
+          light: Color(0xFFC4B5FD),
+          base: Color(0xFF5B21B6),
+          edge: Color(0xFF3B1488),
+          tint: Color(0xFFF1ECFD),
+          tintEdge: Color(0xFFDCD0FA),
+          text: Color(0xFF5B21B6),
         );
       case SdGroup.neutral:
         return const SdTone(
-          light: Color(0xFF78909C),
-          base: Color(0xFF546E7A),
-          edge: Color(0xFF37474F),
-          tint: Color(0xFFECEFF1),
-          tintEdge: Color(0xFFCFD8DC),
-          text: Color(0xFF37474F),
+          light: Color(0xFFA8A29E),
+          base: Color(0xFF57534E),
+          edge: Color(0xFF3F3B37),
+          tint: Color(0xFFF3F2F0),
+          tintEdge: Color(0xFFE2DFDB),
+          text: Color(0xFF44403C),
         );
     }
   }
@@ -244,7 +250,7 @@ extension SdStatusTone on SdStatus {
         );
       case SdStatus.info:
         return const SdTone(
-          light: Color(0xFF42A5F5),
+          light: Color(0xFF60A5FA),
           base: SdColors.info,
           edge: SdColors.infoEdge,
           tint: SdColors.infoTint,

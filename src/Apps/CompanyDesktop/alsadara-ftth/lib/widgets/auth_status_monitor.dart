@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/unified_auth_manager.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// Widget لمراقبة حالة المصادقة وعرض إشعارات التوكن
 class AuthStatusMonitor extends StatefulWidget {
@@ -100,7 +101,7 @@ class _AuthStatusMonitorState extends State<AuthStatusMonitor> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         icon: const Icon(Icons.warning_amber_rounded,
-            color: Colors.orange, size: 48),
+            color: SdColors.warning, size: 48),
         title: const Text('انتهت جلسة العمل'),
         content: const Text(
           'انتهت صلاحية جلستك، يرجى تسجيل الدخول مرة أخرى للمتابعة.',
@@ -113,7 +114,7 @@ class _AuthStatusMonitorState extends State<AuthStatusMonitor> {
               widget.onSessionExpired?.call();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
+              backgroundColor: SdColors.info,
               foregroundColor: Colors.white,
             ),
             child: const Text('تسجيل الدخول'),
@@ -126,7 +127,7 @@ class _AuthStatusMonitorState extends State<AuthStatusMonitor> {
   void _showTokenExpiringWarning() {
     _showSnackBar(
       '⏰ سيتم تجديد الجلسة قريباً',
-      backgroundColor: Colors.orange.withValues(alpha: 0.9),
+      backgroundColor: SdColors.warning.withValues(alpha: 0.9),
       duration: const Duration(seconds: 3),
     );
   }
@@ -134,7 +135,7 @@ class _AuthStatusMonitorState extends State<AuthStatusMonitor> {
   void _showTokenRefreshingInfo() {
     _showSnackBar(
       '🔄 جاري تجديد الجلسة...',
-      backgroundColor: Colors.blue.withValues(alpha: 0.9),
+      backgroundColor: SdColors.info.withValues(alpha: 0.9),
       duration: const Duration(seconds: 2),
     );
   }
@@ -142,7 +143,7 @@ class _AuthStatusMonitorState extends State<AuthStatusMonitor> {
   void _showTokenRefreshedSuccess() {
     _showSnackBar(
       '✅ تم تجديد الجلسة بنجاح',
-      backgroundColor: Colors.green.withValues(alpha: 0.9),
+      backgroundColor: SdColors.success.withValues(alpha: 0.9),
       duration: const Duration(seconds: 2),
     );
   }
@@ -150,7 +151,7 @@ class _AuthStatusMonitorState extends State<AuthStatusMonitor> {
   void _showTokenExpiredError() {
     _showSnackBar(
       '❌ انتهت صلاحية الجلسة',
-      backgroundColor: Colors.red.withValues(alpha: 0.9),
+      backgroundColor: SdColors.danger.withValues(alpha: 0.9),
       duration: const Duration(seconds: 4),
     );
   }
@@ -158,7 +159,7 @@ class _AuthStatusMonitorState extends State<AuthStatusMonitor> {
   void _showTokenRevokedError() {
     _showSnackBar(
       '🚪 تم إلغاء الجلسة',
-      backgroundColor: Colors.red.withValues(alpha: 0.9),
+      backgroundColor: SdColors.danger.withValues(alpha: 0.9),
       duration: const Duration(seconds: 3),
     );
   }
@@ -166,7 +167,7 @@ class _AuthStatusMonitorState extends State<AuthStatusMonitor> {
   void _showSuccessMessage(String message) {
     _showSnackBar(
       message,
-      backgroundColor: Colors.green.withValues(alpha: 0.9),
+      backgroundColor: SdColors.success.withValues(alpha: 0.9),
       duration: const Duration(seconds: 2),
     );
   }
@@ -174,7 +175,7 @@ class _AuthStatusMonitorState extends State<AuthStatusMonitor> {
   void _showErrorMessage(String message) {
     _showSnackBar(
       message,
-      backgroundColor: Colors.red.withValues(alpha: 0.9),
+      backgroundColor: SdColors.danger.withValues(alpha: 0.9),
       duration: const Duration(seconds: 4),
     );
   }
@@ -195,7 +196,7 @@ class _AuthStatusMonitorState extends State<AuthStatusMonitor> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        backgroundColor: backgroundColor ?? Colors.blue.withValues(alpha: 0.9),
+        backgroundColor: backgroundColor ?? SdColors.info.withValues(alpha: 0.9),
         duration: duration ?? const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
@@ -243,7 +244,7 @@ class TokenInfoWidget extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Colors.blue),
+                    const Icon(Icons.info_outline, color: SdColors.info),
                     const SizedBox(width: 8),
                     const Text(
                       'معلومات الجلسة',
@@ -274,7 +275,7 @@ class TokenInfoWidget extends StatelessWidget {
                   const SizedBox(height: 8),
                   LinearProgressIndicator(
                     value: _getTokenProgressValue(tokenInfo),
-                    backgroundColor: Colors.grey.withValues(alpha: 0.3),
+                    backgroundColor: SdColors.faint.withValues(alpha: 0.3),
                     valueColor: AlwaysStoppedAnimation<Color>(
                       _getTokenProgressColor(tokenInfo),
                     ),
@@ -295,32 +296,32 @@ class TokenInfoWidget extends StatelessWidget {
 
     switch (state) {
       case AuthState.authenticated:
-        color = Colors.green;
+        color = SdColors.success;
         text = 'متصل';
         icon = Icons.check_circle;
         break;
       case AuthState.authenticating:
-        color = Colors.blue;
+        color = SdColors.info;
         text = 'جاري التصل';
         icon = Icons.sync;
         break;
       case AuthState.refreshing:
-        color = Colors.orange;
+        color = SdColors.warning;
         text = 'جاري التجديد';
         icon = Icons.refresh;
         break;
       case AuthState.unauthenticated:
-        color = Colors.red;
+        color = SdColors.danger;
         text = 'غير متصل';
         icon = Icons.error;
         break;
       case AuthState.checking:
-        color = Colors.grey;
+        color = SdColors.faint;
         text = 'فحص';
         icon = Icons.help;
         break;
       case AuthState.error:
-        color = Colors.red;
+        color = SdColors.danger;
         text = 'خطأ';
         icon = Icons.error;
         break;
@@ -373,9 +374,9 @@ class TokenInfoWidget extends StatelessWidget {
 
   Color _getTokenProgressColor(TokenInfo tokenInfo) {
     final remainingMinutes = tokenInfo.timeToExpiry.inMinutes;
-    if (remainingMinutes < 5) return Colors.red;
-    if (remainingMinutes < 15) return Colors.orange;
-    return Colors.green;
+    if (remainingMinutes < 5) return SdColors.danger;
+    if (remainingMinutes < 15) return SdColors.warning;
+    return SdColors.success;
   }
 
   String _formatDateTime(DateTime dateTime) {

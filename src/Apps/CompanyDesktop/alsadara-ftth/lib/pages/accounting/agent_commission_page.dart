@@ -1,11 +1,10 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../models/agent.dart';
 import '../../services/agent_api_service.dart';
 import '../../services/vps_auth_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 /// صفحة العمولات - تحتوي تبويبين: نسب العمولات + أرباح الباقات
 class AgentCommissionPage extends StatefulWidget {
   final String? companyId;
@@ -155,7 +154,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('لم يتم تحديد أي نسبة عمولة'),
-          backgroundColor: AccountingTheme.warning,
+          backgroundColor: SdColors.warning,
         ),
       );
       return;
@@ -172,7 +171,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'تم الحفظ'),
-            backgroundColor: AccountingTheme.success,
+            backgroundColor: SdColors.success,
           ),
         );
         await _loadAgentRates(agentId);
@@ -182,7 +181,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('خطأ'),
-              backgroundColor: AccountingTheme.danger),
+              backgroundColor: SdColors.danger),
         );
       }
     }
@@ -196,7 +195,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'تم الحفظ'),
-            backgroundColor: AccountingTheme.success,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -205,7 +204,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('خطأ'),
-              backgroundColor: AccountingTheme.danger),
+              backgroundColor: SdColors.danger),
         );
       }
     }
@@ -229,7 +228,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('تم حفظ أرباح $saved باقة'),
-          backgroundColor: AccountingTheme.success,
+          backgroundColor: SdColors.success,
         ),
       );
     }
@@ -257,15 +256,15 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline,
-              size: context.accR.iconEmpty, color: AccountingTheme.danger),
+              size: context.accR.iconEmpty, color: SdColors.danger),
           SizedBox(height: context.accR.spaceXL),
           Text(_errorMessage!,
-              style: GoogleFonts.cairo(fontSize: context.accR.headingSmall)),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: context.accR.headingSmall)),
           SizedBox(height: context.accR.spaceXL),
           ElevatedButton.icon(
             onPressed: _loadData,
             icon: const Icon(Icons.refresh),
-            label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
+            label: Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -280,16 +279,16 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         // تبويبات داخلية
         Container(
           decoration: const BoxDecoration(
-            color: AccountingTheme.bgCard,
+            color: SdColors.surface,
             border:
-                Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+                Border(bottom: BorderSide(color: SdColors.divider)),
           ),
           child: Row(
             children: [
               _buildMobileTab(
-                  0, Icons.percent, 'نسب العمولات', AccountingTheme.neonBlue),
+                  0, Icons.percent, 'نسب العمولات', SdColors.primary),
               _buildMobileTab(1, Icons.monetization_on, 'أرباح الباقات',
-                  AccountingTheme.neonOrange),
+                  SdColors.warning),
             ],
           ),
         ),
@@ -324,14 +323,15 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
             children: [
               Icon(icon,
                   size: 14,
-                  color: isSelected ? color : AccountingTheme.textMuted),
+                  color: isSelected ? color : SdColors.faint),
               const SizedBox(width: 4),
               Text(
                 label,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 11,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? color : AccountingTheme.textMuted,
+                  color: isSelected ? color : SdColors.faint,
                 ),
               ),
             ],
@@ -389,9 +389,9 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         Container(
           margin: EdgeInsets.all(isMobile ? 8 : 0),
           decoration: BoxDecoration(
-            color: AccountingTheme.bgCard,
+            color: SdColors.surface,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AccountingTheme.borderColor),
+            border: Border.all(color: SdColors.divider),
           ),
           child: _selectedAgent != null
               ? Padding(
@@ -402,14 +402,15 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                       CircleAvatar(
                         radius: avatarRadius,
                         backgroundColor:
-                            AccountingTheme.neonBlue.withOpacity(0.1),
+                            SdColors.primary.withOpacity(0.1),
                         child: Text(
                           _selectedAgent!.name.isNotEmpty
                               ? _selectedAgent!.name[0]
                               : '?',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.bold,
-                            color: AccountingTheme.neonBlue,
+                            color: SdColors.primary,
                             fontSize: isMobile ? 11 : 13,
                           ),
                         ),
@@ -418,10 +419,11 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                       Expanded(
                         child: Text(
                           '${_selectedAgent!.name} (${_selectedAgent!.agentCode})',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: fontSize,
                             fontWeight: FontWeight.w600,
-                            color: AccountingTheme.textPrimary,
+                            color: SdColors.ink,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -429,7 +431,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                       GestureDetector(
                         onTap: _clearSelectedAgent,
                         child: const Icon(Icons.close,
-                            size: 18, color: AccountingTheme.textMuted),
+                            size: 18, color: SdColors.faint),
                       ),
                       if (isMobile) ...[
                         const SizedBox(width: 6),
@@ -439,11 +441,12 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
-                              color: AccountingTheme.neonGreen,
+                              color: SdColors.success,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text('حفظ',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white)),
@@ -463,15 +466,17 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                     }
                     setState(() => _showSuggestions = true);
                   },
-                  style: GoogleFonts.cairo(
-                      fontSize: fontSize, color: AccountingTheme.textPrimary),
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: fontSize, color: SdColors.ink),
                   textDirection: TextDirection.rtl,
                   decoration: InputDecoration(
                     hintText: 'ابحث عن وكيل بالاسم أو الكود...',
-                    hintStyle: GoogleFonts.cairo(
-                        fontSize: fontSize, color: AccountingTheme.textMuted),
+                    hintStyle: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: fontSize, color: SdColors.faint),
                     prefixIcon: const Icon(Icons.search,
-                        size: 18, color: AccountingTheme.textMuted),
+                        size: 18, color: SdColors.faint),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 12),
@@ -486,10 +491,10 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
             margin: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 0),
             constraints: BoxConstraints(maxHeight: maxSuggestHeight),
             decoration: BoxDecoration(
-              color: AccountingTheme.bgCard,
+              color: SdColors.surface,
               borderRadius:
                   const BorderRadius.vertical(bottom: Radius.circular(8)),
-              border: Border.all(color: AccountingTheme.borderColor),
+              border: Border.all(color: SdColors.divider),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.15),
@@ -503,8 +508,9 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                     padding: const EdgeInsets.all(16),
                     child: Center(
                       child: Text('لا يوجد نتائج',
-                          style: GoogleFonts.cairo(
-                              color: AccountingTheme.textMuted,
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.faint,
                               fontSize: fontSize)),
                     ),
                   )
@@ -526,12 +532,13 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                               CircleAvatar(
                                 radius: avatarRadius,
                                 backgroundColor:
-                                    AccountingTheme.neonBlue.withOpacity(0.1),
+                                    SdColors.primary.withOpacity(0.1),
                                 child: Text(
                                   agent.name.isNotEmpty ? agent.name[0] : '?',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontWeight: FontWeight.bold,
-                                    color: AccountingTheme.neonBlue,
+                                    color: SdColors.primary,
                                     fontSize: isMobile ? 10 : 12,
                                   ),
                                 ),
@@ -543,18 +550,20 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                                   children: [
                                     Text(
                                       agent.name,
-                                      style: GoogleFonts.cairo(
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
                                         fontSize: fontSize,
                                         fontWeight: FontWeight.w600,
-                                        color: AccountingTheme.textPrimary,
+                                        color: SdColors.ink,
                                       ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     Text(
                                       '${agent.agentCode} • ${agent.phoneNumber}',
-                                      style: GoogleFonts.cairo(
+                                      style: TextStyle(
+                                        fontFamily: 'Cairo',
                                         fontSize: isMobile ? 9 : 10,
-                                        color: AccountingTheme.textMuted,
+                                        color: SdColors.faint,
                                       ),
                                     ),
                                   ],
@@ -590,22 +599,24 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         if (_selectedAgent != null)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: AccountingTheme.bgSecondary,
+            color: SdColors.groundAlt,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.calculate,
-                    size: 16, color: AccountingTheme.neonPurple),
+                    size: 16, color: SdColors.platformBase),
                 const SizedBox(width: 6),
                 Text('إجمالي العمولة: ',
-                    style: GoogleFonts.cairo(
-                        fontSize: 11, color: AccountingTheme.textSecondary)),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 11, color: SdColors.muted)),
                 Text(
                   '${_formatNumber(_calculateTotalCommission())} د.ع',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: AccountingTheme.neonPurple,
+                    color: SdColors.platformBase,
                   ),
                 ),
               ],
@@ -631,12 +642,12 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         return Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AccountingTheme.bgCard,
+            color: SdColors.surface,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: pct > 0
-                  ? AccountingTheme.neonBlue.withOpacity(0.3)
-                  : AccountingTheme.borderColor,
+                  ? SdColors.primary.withOpacity(0.3)
+                  : SdColors.divider,
             ),
           ),
           child: Column(
@@ -647,17 +658,18 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                   Container(
                     padding: const EdgeInsets.all(5),
                     decoration: BoxDecoration(
-                      color: AccountingTheme.neonBlue.withOpacity(0.1),
+                      color: SdColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Icon(Icons.wifi,
-                        size: 12, color: AccountingTheme.neonBlue),
+                        size: 12, color: SdColors.primary),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       plan['NameAr'] ?? plan['Name'] ?? '',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 12, fontWeight: FontWeight.bold),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -666,15 +678,16 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                     padding:
                         const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                     decoration: BoxDecoration(
-                      color: AccountingTheme.neonPurple.withOpacity(0.1),
+                      color: SdColors.platformBase.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       '${plan['SpeedMbps'] ?? '-'} Mbps',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
-                          color: AccountingTheme.neonPurple),
+                          color: SdColors.platformBase),
                     ),
                   ),
                 ],
@@ -687,11 +700,13 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('السعر',
-                            style: GoogleFonts.cairo(
-                                fontSize: 8, color: AccountingTheme.textMuted)),
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 8, color: SdColors.faint)),
                         Text(
                           _formatNumber(plan['MonthlyPrice']),
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 11, fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -702,16 +717,18 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('الربح',
-                            style: GoogleFonts.cairo(
-                                fontSize: 8, color: AccountingTheme.textMuted)),
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 8, color: SdColors.faint)),
                         Text(
                           profit > 0 ? _formatNumber(profit) : 'غير محدد',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: profit > 0
-                                ? AccountingTheme.neonGreen
-                                : AccountingTheme.danger,
+                                ? SdColors.success
+                                : SdColors.danger,
                           ),
                         ),
                       ],
@@ -725,15 +742,16 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: AccountingTheme.neonBlue,
+                        color: SdColors.primary,
                       ),
                       decoration: InputDecoration(
                         hintText: '0',
                         suffixText: '%',
-                        suffixStyle: GoogleFonts.cairo(fontSize: 9),
+                        suffixStyle: TextStyle(fontFamily: 'Cairo', fontSize: 9),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(6),
                         ),
@@ -750,7 +768,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                     decoration: BoxDecoration(
                       color: commissionAmount > 0
-                          ? AccountingTheme.neonPurple.withOpacity(0.1)
+                          ? SdColors.platformBase.withOpacity(0.1)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(6),
                     ),
@@ -758,12 +776,13 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                       commissionAmount > 0
                           ? '${_formatNumber(commissionAmount)} د.ع'
                           : '-',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: commissionAmount > 0
-                            ? AccountingTheme.neonPurple
-                            : AccountingTheme.textMuted,
+                            ? SdColors.platformBase
+                            : SdColors.faint,
                       ),
                     ),
                   ),
@@ -782,8 +801,9 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
     if (_plans.isEmpty) {
       return Center(
         child: Text('لا توجد باقات',
-            style: GoogleFonts.cairo(
-                fontSize: 14, color: AccountingTheme.textMuted)),
+            style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 14, color: SdColors.faint)),
       );
     }
     return Column(
@@ -792,14 +812,15 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          color: AccountingTheme.neonGreen.withOpacity(0.05),
+          color: SdColors.success.withOpacity(0.05),
           child: Row(
             children: [
               Expanded(
                 child: Text(
                   'الربح = المبلغ الصافي بعد خصم التكاليف',
-                  style: GoogleFonts.cairo(
-                      fontSize: 10, color: AccountingTheme.textMuted),
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 10, color: SdColors.faint),
                 ),
               ),
               GestureDetector(
@@ -808,7 +829,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AccountingTheme.neonGreen,
+                    color: SdColors.success,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
@@ -817,7 +838,8 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                       const Icon(Icons.save, size: 12, color: Colors.white),
                       const SizedBox(width: 4),
                       Text('حفظ الكل',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
                               color: Colors.white)),
@@ -842,12 +864,12 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
               return Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AccountingTheme.bgCard,
+                  color: SdColors.surface,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: profit > 0
-                        ? AccountingTheme.neonGreen.withOpacity(0.3)
-                        : AccountingTheme.borderColor,
+                        ? SdColors.success.withOpacity(0.3)
+                        : SdColors.divider,
                   ),
                 ),
                 child: Column(
@@ -858,17 +880,18 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: AccountingTheme.neonBlue.withOpacity(0.1),
+                            color: SdColors.primary.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Icon(Icons.wifi,
-                              size: 14, color: AccountingTheme.neonBlue),
+                              size: 14, color: SdColors.primary),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             plan['NameAr'] ?? plan['Name'] ?? '',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 13, fontWeight: FontWeight.bold),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -877,15 +900,16 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AccountingTheme.neonPurple.withOpacity(0.1),
+                            color: SdColors.platformBase.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             '${plan['SpeedMbps'] ?? '-'} Mbps',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: AccountingTheme.neonPurple),
+                                color: SdColors.platformBase),
                           ),
                         ),
                       ],
@@ -898,12 +922,14 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('السعر الشهري',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontSize: 9,
-                                      color: AccountingTheme.textMuted)),
+                                      color: SdColors.faint)),
                               Text(
                                 '${_formatNumber(plan['MonthlyPrice'])} د.ع',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: 12, fontWeight: FontWeight.w600),
                               ),
                             ],
@@ -916,17 +942,19 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                             controller: controller,
                             keyboardType: TextInputType.number,
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: AccountingTheme.neonGreen),
+                                color: SdColors.success),
                             decoration: InputDecoration(
                               hintText: '0',
-                              hintStyle: GoogleFonts.cairo(
-                                  color: AccountingTheme.textMuted,
+                              hintStyle: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  color: SdColors.faint,
                                   fontSize: 12),
                               suffixText: 'د.ع',
-                              suffixStyle: GoogleFonts.cairo(fontSize: 9),
+                              suffixStyle: TextStyle(fontFamily: 'Cairo', fontSize: 9),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -946,11 +974,11 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: AccountingTheme.neonBlue.withOpacity(0.1),
+                              color: SdColors.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Icon(Icons.save,
-                                size: 16, color: AccountingTheme.neonBlue),
+                                size: 16, color: SdColors.primary),
                           ),
                         ),
                       ],
@@ -973,17 +1001,17 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         // شريط التبويبات
         Container(
           decoration: const BoxDecoration(
-            color: AccountingTheme.bgCard,
+            color: SdColors.surface,
             border:
-                Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+                Border(bottom: BorderSide(color: SdColors.divider)),
           ),
           child: TabBar(
             controller: _tabController,
-            indicatorColor: AccountingTheme.neonPink,
-            labelColor: AccountingTheme.textPrimary,
-            unselectedLabelColor: AccountingTheme.textMuted,
-            labelStyle: GoogleFonts.cairo(fontWeight: FontWeight.bold),
-            unselectedLabelStyle: GoogleFonts.cairo(),
+            indicatorColor: SdColors.platformLight,
+            labelColor: SdColors.ink,
+            unselectedLabelColor: SdColors.faint,
+            labelStyle: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
+            unselectedLabelStyle: TextStyle(fontFamily: 'Cairo'),
             tabs: const [
               Tab(
                 icon: Icon(Icons.percent, size: 18),
@@ -1028,9 +1056,9 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                   onPressed: _saveAgentRates,
                   icon: Icon(Icons.save, size: context.accR.iconM),
                   label: Text('حفظ النسب',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AccountingTheme.neonGreen,
+                    backgroundColor: SdColors.success,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 24, vertical: 12),
@@ -1061,13 +1089,14 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
         children: [
           Icon(Icons.person_search,
               size: isMob ? 48 : context.accR.iconEmpty,
-              color: AccountingTheme.textMuted.withOpacity(0.3)),
+              color: SdColors.faint.withOpacity(0.3)),
           SizedBox(height: isMob ? 12 : context.accR.spaceXL),
           Text(
             'اختر وكيلاً لعرض وتعديل نسب عمولاته',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: isMob ? 13 : context.accR.headingSmall,
-              color: AccountingTheme.textMuted,
+              color: SdColors.faint,
             ),
             textAlign: TextAlign.center,
           ),
@@ -1079,7 +1108,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
   Widget _buildDesktopCommissionTable() {
     return Container(
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(context.accR.cardRadius),
         boxShadow: [
           BoxShadow(
@@ -1095,20 +1124,21 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
           children: [
             Container(
               padding: EdgeInsets.all(context.accR.spaceXL),
-              color: AccountingTheme.neonBlue.withOpacity(0.05),
+              color: SdColors.primary.withOpacity(0.05),
               child: Row(
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundColor: AccountingTheme.neonBlue.withOpacity(0.15),
+                    backgroundColor: SdColors.primary.withOpacity(0.15),
                     child: Text(
                       _selectedAgent?.name.isNotEmpty == true
                           ? _selectedAgent!.name[0]
                           : '?',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.headingMedium,
                         fontWeight: FontWeight.bold,
-                        color: AccountingTheme.neonBlue,
+                        color: SdColors.primary,
                       ),
                     ),
                   ),
@@ -1118,17 +1148,19 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                     children: [
                       Text(
                         _selectedAgent?.name ?? '',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: context.accR.headingSmall,
                           fontWeight: FontWeight.bold,
-                          color: AccountingTheme.textPrimary,
+                          color: SdColors.ink,
                         ),
                       ),
                       Text(
                         'الكود: ${_selectedAgent?.agentCode ?? ''} | الهاتف: ${_selectedAgent?.phoneNumber ?? ''}',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: context.accR.financialSmall,
-                          color: AccountingTheme.textMuted,
+                          color: SdColors.faint,
                         ),
                       ),
                     ],
@@ -1144,32 +1176,37 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                     constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 48),
                     child: DataTable(
                     headingRowColor:
-                        WidgetStateProperty.all(AccountingTheme.bgSecondary),
+                        WidgetStateProperty.all(SdColors.groundAlt),
                     columnSpacing: 16,
                     columns: [
                       DataColumn(
                           label: Text('الباقة',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontWeight: FontWeight.bold))),
                       DataColumn(
                           label: Text('السعر',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontWeight: FontWeight.bold))),
                       DataColumn(
                           label: Text('الربح',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontWeight: FontWeight.bold,
-                                  color: AccountingTheme.neonGreen))),
+                                  color: SdColors.success))),
                       DataColumn(
                           label: Text('النسبة %',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontWeight: FontWeight.bold,
-                                  color: AccountingTheme.neonBlue))),
+                                  color: SdColors.primary))),
                       DataColumn(
                           label: Text('مبلغ العمولة',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontWeight: FontWeight.bold,
-                                  color: AccountingTheme.neonPurple))),
+                                  color: SdColors.platformBase))),
                     ],
                     rows: _plans.map((plan) {
                       final planId = plan['Id']?.toString() ?? '';
@@ -1184,28 +1221,32 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(plan['NameAr'] ?? plan['Name'] ?? '',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontWeight: FontWeight.w600)),
                             Text('${plan['SpeedMbps'] ?? '-'} Mbps',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: context.accR.small,
-                                    color: AccountingTheme.textMuted)),
+                                    color: SdColors.faint)),
                           ],
                         )),
                         DataCell(Text(
                           '${_formatNumber(plan['MonthlyPrice'])} د.ع',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: context.accR.financialSmall),
                         )),
                         DataCell(Text(
                           profit > 0
                               ? '${_formatNumber(profit)} د.ع'
                               : 'غير محدد',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.w600,
                             color: profit > 0
-                                ? AccountingTheme.neonGreen
-                                : AccountingTheme.danger,
+                                ? SdColors.success
+                                : SdColors.danger,
                           ),
                         )),
                         DataCell(SizedBox(
@@ -1215,14 +1256,16 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                             keyboardType: const TextInputType.numberWithOptions(
                                 decimal: true),
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontWeight: FontWeight.bold,
-                              color: AccountingTheme.neonBlue,
+                              color: SdColors.primary,
                             ),
                             decoration: InputDecoration(
                               hintText: '0',
                               suffixText: '%',
-                              suffixStyle: GoogleFonts.cairo(
+                              suffixStyle: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: context.accR.small),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
@@ -1239,7 +1282,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                               horizontal: 12, vertical: 4),
                           decoration: BoxDecoration(
                             color: commissionAmount > 0
-                                ? AccountingTheme.neonPurple.withOpacity(0.1)
+                                ? SdColors.platformBase.withOpacity(0.1)
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -1247,12 +1290,13 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                             commissionAmount > 0
                                 ? '${_formatNumber(commissionAmount)} د.ع'
                                 : '-',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontWeight: FontWeight.bold,
                               fontSize: context.accR.body,
                               color: commissionAmount > 0
-                                  ? AccountingTheme.neonPurple
-                                  : AccountingTheme.textMuted,
+                                  ? SdColors.platformBase
+                                  : SdColors.faint,
                             ),
                           ),
                         )),
@@ -1266,14 +1310,14 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
             if (_selectedAgent != null)
               Container(
                 padding: EdgeInsets.all(context.accR.spaceXL),
-                color: AccountingTheme.bgSecondary,
+                color: SdColors.groundAlt,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _buildTotalCard(
                       'إجمالي العمولة لكل اشتراك كامل',
                       _calculateTotalCommission(),
-                      AccountingTheme.neonPurple,
+                      SdColors.platformBase,
                     ),
                   ],
                 ),
@@ -1300,18 +1344,20 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                   children: [
                     Text(
                       'تحديد ربح كل باقة',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.headingMedium,
                         fontWeight: FontWeight.bold,
-                        color: AccountingTheme.textPrimary,
+                        color: SdColors.ink,
                       ),
                     ),
                     SizedBox(height: context.accR.spaceXS),
                     Text(
                       'الربح هو المبلغ الصافي بعد خصم التكاليف - العمولة تُحسب كنسبة من هذا الربح',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.financialSmall,
-                        color: AccountingTheme.textMuted,
+                        color: SdColors.faint,
                       ),
                     ),
                   ],
@@ -1321,9 +1367,9 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                 onPressed: _saveAllProfits,
                 icon: Icon(Icons.save, size: context.accR.iconM),
                 label: Text('حفظ الكل',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.neonGreen,
+                  backgroundColor: SdColors.success,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(
                       horizontal: context.accR.spaceXXL,
@@ -1337,13 +1383,14 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
             child: _plans.isEmpty
                 ? Center(
                     child: Text('لا توجد باقات',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: context.accR.headingSmall,
-                            color: AccountingTheme.textMuted)),
+                            color: SdColors.faint)),
                   )
                 : Container(
                     decoration: BoxDecoration(
-                      color: AccountingTheme.bgCard,
+                      color: SdColors.surface,
                       borderRadius:
                           BorderRadius.circular(context.accR.cardRadius),
                       boxShadow: [
@@ -1362,29 +1409,34 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                           width: double.infinity,
                           child: DataTable(
                             headingRowColor: WidgetStateProperty.all(
-                                AccountingTheme.bgSecondary),
+                                SdColors.groundAlt),
                             columnSpacing: 24,
                             columns: [
                               DataColumn(
                                   label: Text('الباقة',
-                                      style: GoogleFonts.cairo(
+                                      style: TextStyle(
+                                          fontFamily: 'Cairo',
                                           fontWeight: FontWeight.bold))),
                               DataColumn(
                                   label: Text('السرعة',
-                                      style: GoogleFonts.cairo(
+                                      style: TextStyle(
+                                          fontFamily: 'Cairo',
                                           fontWeight: FontWeight.bold))),
                               DataColumn(
                                   label: Text('السعر الشهري',
-                                      style: GoogleFonts.cairo(
+                                      style: TextStyle(
+                                          fontFamily: 'Cairo',
                                           fontWeight: FontWeight.bold))),
                               DataColumn(
                                   label: Text('الربح',
-                                      style: GoogleFonts.cairo(
+                                      style: TextStyle(
+                                          fontFamily: 'Cairo',
                                           fontWeight: FontWeight.bold,
-                                          color: AccountingTheme.neonGreen))),
+                                          color: SdColors.success))),
                               DataColumn(
                                   label: Text('إجراء',
-                                      style: GoogleFonts.cairo(
+                                      style: TextStyle(
+                                          fontFamily: 'Cairo',
                                           fontWeight: FontWeight.bold))),
                             ],
                             rows: _plans.map((plan) {
@@ -1393,16 +1445,18 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                               return DataRow(cells: [
                                 DataCell(Text(
                                   plan['NameAr'] ?? plan['Name'] ?? '',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontWeight: FontWeight.w600),
                                 )),
                                 DataCell(Text(
                                   '${plan['SpeedMbps'] ?? '-'} Mbps',
-                                  style: GoogleFonts.cairo(),
+                                  style: TextStyle(fontFamily: 'Cairo'),
                                 )),
                                 DataCell(Text(
                                   '${_formatNumber(plan['MonthlyPrice'])} د.ع',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontWeight: FontWeight.w600),
                                 )),
                                 DataCell(SizedBox(
@@ -1411,16 +1465,19 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                                     controller: controller,
                                     keyboardType: TextInputType.number,
                                     textAlign: TextAlign.center,
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontWeight: FontWeight.bold,
-                                      color: AccountingTheme.neonGreen,
+                                      color: SdColors.success,
                                     ),
                                     decoration: InputDecoration(
                                       hintText: '0',
-                                      hintStyle: GoogleFonts.cairo(
-                                          color: AccountingTheme.textMuted),
+                                      hintStyle: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          color: SdColors.faint),
                                       suffixText: 'د.ع',
-                                      suffixStyle: GoogleFonts.cairo(
+                                      suffixStyle: TextStyle(
+                                          fontFamily: 'Cairo',
                                           fontSize: context.accR.small),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
@@ -1434,7 +1491,7 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
                                 )),
                                 DataCell(IconButton(
                                   icon: Icon(Icons.save,
-                                      color: AccountingTheme.neonBlue,
+                                      color: SdColors.primary,
                                       size: context.accR.iconM),
                                   tooltip: 'حفظ ربح هذه الباقة',
                                   onPressed: () {
@@ -1473,13 +1530,15 @@ class _AgentCommissionPageState extends State<AgentCommissionPage>
           Icon(Icons.calculate, color: color, size: context.accR.iconM),
           SizedBox(width: context.accR.spaceS),
           Text(label,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: context.accR.body,
-                  color: AccountingTheme.textSecondary)),
+                  color: SdColors.muted)),
           SizedBox(width: context.accR.spaceM),
           Text(
             '${_formatNumber(amount)} د.ع',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: context.accR.headingSmall,
               fontWeight: FontWeight.bold,
               color: color,

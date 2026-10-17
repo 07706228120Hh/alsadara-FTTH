@@ -17,6 +17,7 @@ import 'package:webview_windows/webview_windows.dart' as wvwin;
 import 'package:webview_flutter/webview_flutter.dart' as wvm;
 import 'package:webview_cookie_manager/webview_cookie_manager.dart';
 import '../../services/ftth_cf_clearance.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class CloudflareGateDialog extends StatefulWidget {
   const CloudflareGateDialog({super.key});
@@ -240,7 +241,7 @@ class _CloudflareGateDialogState extends State<CloudflareGateDialog> {
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: Colors.indigo,
+              color: SdColors.primary,
               child: Row(
                 children: [
                   const Icon(Icons.verified_user, color: Colors.white),
@@ -262,7 +263,7 @@ class _CloudflareGateDialogState extends State<CloudflareGateDialog> {
             ),
             Container(
               width: double.infinity,
-              color: Colors.amber[50],
+              color: SdColors.warningTint,
               padding: const EdgeInsets.all(10),
               child: const Text(
                 'بعد إتمام التحقق ستُغلق هذه النافذة تلقائياً ويُكمل التطبيق الدخول.',

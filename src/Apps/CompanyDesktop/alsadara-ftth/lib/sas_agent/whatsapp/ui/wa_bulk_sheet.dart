@@ -255,7 +255,7 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
         children: [
           SasUi.gradientBadge(
             icon: Icons.send_rounded,
-            colors: const [_kWaGreen, Color(0xFF128C7E)],
+            colors: const [_kWaGreen, SdColors.whatsappEdge],
             size: 38,
             iconSize: 18,
           ),
@@ -265,7 +265,7 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
                 style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 16.sp,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF1A1A2E))),
+                    color: SdColors.ink)),
           ),
           SasStatusBadge(
               label: _settings.mode.label,
@@ -298,7 +298,7 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
                   ? 'الخادم المحلي غير مشغّل — شغّله أو بدّل إلى النمط اليدوي من الإعدادات.'
                   : 'الخادم غير مربوط — امسح رمز QR من إعدادات واتساب أولاً.',
               style: TextStyle(fontFamily: 'Cairo', 
-                  fontSize: 11.5.sp, color: Colors.grey[700], height: 1.5),
+                  fontSize: 11.5.sp, color: SdColors.muted, height: 1.5),
             ),
           ),
         ],
@@ -344,7 +344,7 @@ class _WaBulkSheetState extends State<WaBulkSheet> {
                     style: FilledButton.styleFrom(
                       backgroundColor: _kWaGreen,
                       disabledBackgroundColor:
-                          Colors.grey.withValues(alpha: 0.30),
+                          SdColors.faint.withValues(alpha: 0.30),
                       padding: EdgeInsets.symmetric(vertical: 12.h),
                       minimumSize: Size(double.infinity, 0),
                     ),
@@ -436,7 +436,7 @@ class _StatBox extends StatelessWidget {
             Text(label,
                 style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 11.sp,
-                    color: Colors.grey[700],
+                    color: SdColors.muted,
                     fontWeight: FontWeight.w700)),
           ],
         ),

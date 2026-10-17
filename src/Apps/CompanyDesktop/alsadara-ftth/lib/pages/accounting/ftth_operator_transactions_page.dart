@@ -644,8 +644,8 @@ class _FtthOperatorTransactionsPageState
               FilterChip(
                 label: Text('باقات الإنترنت', style: TextStyle(fontSize: context.accR.small)),
                 selected: _fiberOnly,
-                selectedColor: Colors.green.shade100,
-                checkmarkColor: Colors.green.shade800,
+                selectedColor: SdColors.successTint,
+                checkmarkColor: SdColors.success,
                 onSelected: (v) {
                   setState(() {
                     _fiberOnly = v;
@@ -671,7 +671,7 @@ class _FtthOperatorTransactionsPageState
                       return ChoiceChip(
                         label: Text(cat, style: TextStyle(fontSize: context.accR.small)),
                         selected: isSelected,
-                        selectedColor: Colors.teal.shade100,
+                        selectedColor: SdColors.accentTint,
                         onSelected: (_) {
                           setState(() {
                             _selectedCategory = cat;
@@ -756,7 +756,7 @@ class _FtthOperatorTransactionsPageState
                 headingRowHeight: 30,
                 dataRowMinHeight: 24,
                 dataRowMaxHeight: 36,
-                headingRowColor: WidgetStateProperty.all(Colors.teal.shade50),
+                headingRowColor: WidgetStateProperty.all(SdColors.accentTint),
                 headingTextStyle: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: context.accR.financialSmall,
@@ -835,9 +835,9 @@ class _FtthOperatorTransactionsPageState
 
                   return DataRow(
                     color: WidgetStateProperty.resolveWith((states) {
-                      if (isAttributed) return Colors.indigo.shade50;
+                      if (isAttributed) return SdColors.primaryTint;
                       if (i.isEven) return Colors.white;
-                      return Colors.grey.shade50;
+                      return SdColors.surfaceAlt;
                     }),
                     cells: [
                       DataCell(Text('${i + 1}',
@@ -889,7 +889,7 @@ class _FtthOperatorTransactionsPageState
                                               duration: Duration(seconds: 1)));
                                     },
                                     child: Icon(Icons.copy,
-                                        size: context.accR.iconXS, color: Colors.grey.shade500),
+                                        size: context.accR.iconXS, color: SdColors.faint),
                                   ),
                                 ],
                               )
@@ -900,7 +900,7 @@ class _FtthOperatorTransactionsPageState
                           width: 120,
                           child: Text(tx.planName,
                               style: TextStyle(
-                                  fontSize: context.accR.caption, color: Colors.grey.shade700),
+                                  fontSize: context.accR.caption, color: SdColors.muted),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis),
                         ),
@@ -911,8 +911,8 @@ class _FtthOperatorTransactionsPageState
                             fontSize: context.accR.small,
                             fontWeight: FontWeight.bold,
                             color: tx.amount < 0
-                                ? Colors.red.shade700
-                                : Colors.green.shade700),
+                                ? SdColors.danger
+                                : SdColors.success),
                       )),
                       // عمود الخصم (تجديد وتغيير فقط - الشراء له أسعار مختلفة)
                       DataCell(() {
@@ -927,7 +927,7 @@ class _FtthOperatorTransactionsPageState
                         if (!renewChangeTypes.contains(tx.type)) {
                           return Text('-',
                               style: TextStyle(
-                                  fontSize: context.accR.caption, color: Colors.grey.shade400));
+                                  fontSize: context.accR.caption, color: SdColors.faint));
                         }
                         final discount = PlanPricingService.instance
                             .getDiscount(tx.planName, tx.amount);
@@ -937,36 +937,36 @@ class _FtthOperatorTransactionsPageState
                             style: TextStyle(
                                 fontSize: context.accR.caption,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.orange.shade800),
+                                color: SdColors.warning),
                           );
                         }
                         return Text('-',
                             style: TextStyle(
-                                fontSize: context.accR.caption, color: Colors.grey.shade400));
+                                fontSize: context.accR.caption, color: SdColors.faint));
                       }()),
                       DataCell(Text(
                         tx.remainingBalance != 0
                             ? _currencyFormat.format(tx.remainingBalance.abs())
                             : '-',
                         style: TextStyle(
-                            fontSize: context.accR.caption, color: Colors.grey.shade600),
+                            fontSize: context.accR.caption, color: SdColors.muted),
                       )),
                       DataCell(Text(
                         tx.planDuration > 0
                             ? '${tx.planDuration} يوم'
                             : _calcDuration(tx.startsAt, tx.endsAt),
                         style: TextStyle(
-                            fontSize: context.accR.caption, color: Colors.grey.shade600),
+                            fontSize: context.accR.caption, color: SdColors.muted),
                       )),
                       DataCell(Text(
                         tx.startsAt.isNotEmpty ? _formatDate(tx.startsAt) : '-',
                         style: TextStyle(
-                            fontSize: context.accR.caption, color: Colors.grey.shade600),
+                            fontSize: context.accR.caption, color: SdColors.muted),
                       )),
                       DataCell(Text(
                         tx.endsAt.isNotEmpty ? _formatDate(tx.endsAt) : '-',
                         style: TextStyle(
-                            fontSize: context.accR.caption, color: Colors.grey.shade600),
+                            fontSize: context.accR.caption, color: SdColors.muted),
                       )),
                       DataCell(Text(
                         tx.paymentMode.isNotEmpty
@@ -975,12 +975,12 @@ class _FtthOperatorTransactionsPageState
                                 ? tx.paymentMethod
                                 : '-',
                         style: TextStyle(
-                            fontSize: context.accR.caption, color: Colors.grey.shade600),
+                            fontSize: context.accR.caption, color: SdColors.muted),
                       )),
                       DataCell(Text(
                         tx.zoneId.isNotEmpty ? tx.zoneId : '-',
                         style: TextStyle(
-                            fontSize: context.accR.caption, color: Colors.grey.shade600),
+                            fontSize: context.accR.caption, color: SdColors.muted),
                       )),
                       DataCell(
                         Column(
@@ -992,15 +992,15 @@ class _FtthOperatorTransactionsPageState
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 4, vertical: 1),
                                 decoration: BoxDecoration(
-                                  color: Colors.indigo.shade50,
+                                  color: SdColors.primaryTint,
                                   borderRadius: BorderRadius.circular(4),
                                   border:
-                                      Border.all(color: Colors.indigo.shade200),
+                                      Border.all(color: SdColors.primaryTintEdge),
                                 ),
                                 child: Text('منسوب تلقائياً',
                                     style: TextStyle(
                                         fontSize: context.accR.caption,
-                                        color: Colors.indigo.shade700,
+                                        color: SdColors.primary,
                                         fontWeight: FontWeight.w600)),
                               ),
                             if (tx.auditCreator.isNotEmpty)
@@ -1009,22 +1009,22 @@ class _FtthOperatorTransactionsPageState
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 4, vertical: 1),
                                 decoration: BoxDecoration(
-                                  color: Colors.green.shade50,
+                                  color: SdColors.successTint,
                                   borderRadius: BorderRadius.circular(4),
                                   border:
-                                      Border.all(color: Colors.green.shade200),
+                                      Border.all(color: SdColors.successTintEdge),
                                 ),
                                 child: Text('audit: ${tx.auditCreator}',
                                     style: TextStyle(
                                         fontSize: context.accR.caption,
-                                        color: Colors.green.shade800,
+                                        color: SdColors.success,
                                         fontWeight: FontWeight.w600)),
                               ),
                             if (tx.deviceUsername.isNotEmpty)
                               Text('📡 ${tx.deviceUsername}',
                                   style: TextStyle(
                                       fontSize: context.accR.caption,
-                                      color: Colors.grey.shade500)),
+                                      color: SdColors.faint)),
                           ],
                         ),
                       ),

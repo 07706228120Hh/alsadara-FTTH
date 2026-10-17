@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/company_model.dart';
 import '../services/company_api_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// شاشة إدارة الشركات - لمدير النظام فقط
 class CompaniesManagementPage extends StatefulWidget {
@@ -75,7 +76,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
           SnackBar(
             content:
                 Text('تم ربط الشركة "${company.name}" بنظام المواطن بنجاح'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -86,7 +87,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل الربط'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -107,7 +108,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('إلغاء الربط'),
           ),
         ],
@@ -123,7 +124,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم إلغاء الربط بنجاح'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
       }
@@ -134,7 +135,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل إلغاء الربط'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -148,7 +149,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('إدارة الشركات'),
-        backgroundColor: Colors.indigo,
+        backgroundColor: SdColors.primary,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -170,7 +171,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.error_outline,
-                          size: 64, color: Colors.red),
+                          size: 64, color: SdColors.danger),
                       const SizedBox(height: 16),
                       Text(errorMessage!, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
@@ -215,7 +216,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
                 CircleAvatar(
                   radius: 24,
                   backgroundColor:
-                      company.isActive ? Colors.indigo : Colors.grey,
+                      company.isActive ? SdColors.primary : SdColors.faint,
                   child: Text(
                     company.name.substring(0, 1).toUpperCase(),
                     style: TextStyle(color: Colors.white, fontSize: isPhone ? 16 : 20),
@@ -236,7 +237,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
                       ),
                       Text(
                         'الكود: ${company.code}',
-                        style: TextStyle(color: Colors.grey[600]),
+                        style: TextStyle(color: SdColors.muted),
                       ),
                     ],
                   ),
@@ -246,7 +247,7 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: company.isActive ? Colors.green : Colors.red,
+                    color: company.isActive ? SdColors.success : SdColors.danger,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -295,13 +296,13 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: company.isLinkedToCitizenPortal
-                    ? Colors.green.shade50
-                    : Colors.grey.shade100,
+                    ? SdColors.successTint
+                    : SdColors.groundAlt,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: company.isLinkedToCitizenPortal
-                      ? Colors.green
-                      : Colors.grey.shade300,
+                      ? SdColors.success
+                      : SdColors.edge,
                 ),
               ),
               child: Row(
@@ -311,8 +312,8 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
                         ? Icons.link
                         : Icons.link_off,
                     color: company.isLinkedToCitizenPortal
-                        ? Colors.green
-                        : Colors.grey,
+                        ? SdColors.success
+                        : SdColors.faint,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -323,8 +324,8 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: company.isLinkedToCitizenPortal
-                            ? Colors.green.shade900
-                            : Colors.grey.shade700,
+                            ? SdColors.successEdge
+                            : SdColors.muted,
                       ),
                     ),
                   ),
@@ -349,8 +350,8 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: company.isLinkedToCitizenPortal
-                            ? Colors.orange
-                            : Colors.green,
+                            ? SdColors.warning
+                            : SdColors.success,
                       ),
                     ),
                 ],
@@ -367,12 +368,12 @@ class _CompaniesManagementPageState extends State<CompaniesManagementPage> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.grey[600]),
+          Icon(icon, size: 16, color: SdColors.muted),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
-              style: TextStyle(color: Colors.grey[800]),
+              style: TextStyle(color: SdColors.ink),
               overflow: TextOverflow.ellipsis,
             ),
           ),

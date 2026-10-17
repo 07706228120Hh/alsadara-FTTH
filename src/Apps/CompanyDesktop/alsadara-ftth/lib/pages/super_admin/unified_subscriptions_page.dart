@@ -3,12 +3,12 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/energy_dashboard_theme.dart';
 import '../../services/api/auth/super_admin_api.dart';
 import 'widgets/super_admin_widgets.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 class UnifiedSubscriptionsPage extends StatefulWidget {
   const UnifiedSubscriptionsPage({super.key});
 
@@ -108,11 +108,11 @@ class _UnifiedSubscriptionsPageState extends State<UnifiedSubscriptionsPage> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: EnergyDashboardTheme.bgPrimary,
+      color: SdColors.ground,
       child: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
-                  color: EnergyDashboardTheme.neonGreen))
+                  color: SdColors.success))
           : Column(
               children: [
                 Padding(
@@ -121,7 +121,7 @@ class _UnifiedSubscriptionsPageState extends State<UnifiedSubscriptionsPage> {
                     title: 'مراقبة الاشتراكات',
                     subtitle: 'جميع اشتراكات الشركات في مكان واحد',
                     icon: Icons.subscriptions_rounded,
-                    color: EnergyDashboardTheme.neonPurple,
+                    color: SdColors.platformBase,
                     onRefresh: _loadData,
                   ),
                 ),
@@ -135,27 +135,27 @@ class _UnifiedSubscriptionsPageState extends State<UnifiedSubscriptionsPage> {
                       SAFilterChip(
                         key: 'all',
                         label: 'الكل',
-                        color: EnergyDashboardTheme.neonBlue,
+                        color: SdColors.info,
                       ),
                       SAFilterChip(
                         key: 'active',
                         label: 'نشطة',
-                        color: EnergyDashboardTheme.success,
+                        color: SdColors.success,
                       ),
                       SAFilterChip(
                         key: 'warning',
                         label: 'تحذير',
-                        color: EnergyDashboardTheme.warning,
+                        color: SdColors.warning,
                       ),
                       SAFilterChip(
                         key: 'critical',
                         label: 'حرجة',
-                        color: EnergyDashboardTheme.neonOrange,
+                        color: SdColors.warning,
                       ),
                       SAFilterChip(
                         key: 'expired',
                         label: 'منتهية',
-                        color: EnergyDashboardTheme.danger,
+                        color: SdColors.danger,
                       ),
                     ],
                     selectedChip: _statusFilter,
@@ -195,8 +195,9 @@ class _UnifiedSubscriptionsPageState extends State<UnifiedSubscriptionsPage> {
         children: [
           Text(
             '$total شركة',
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textSecondary,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.muted,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -205,13 +206,14 @@ class _UnifiedSubscriptionsPageState extends State<UnifiedSubscriptionsPage> {
           Container(
             width: 1,
             height: 16,
-            color: EnergyDashboardTheme.borderColor,
+            color: SdColors.divider,
           ),
           const SizedBox(width: 16),
           Text(
             'متوسط الأيام المتبقية: $avgDays يوم',
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textMuted,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.faint,
               fontSize: 11,
             ),
           ),
@@ -261,12 +263,12 @@ class _UnifiedSubscriptionsPageState extends State<UnifiedSubscriptionsPage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: company.isExpired || company.daysRemaining <= 7
               ? statusColor.withOpacity(0.4)
-              : EnergyDashboardTheme.borderColor,
+              : SdColors.divider,
         ),
       ),
       child: Row(
@@ -286,16 +288,18 @@ class _UnifiedSubscriptionsPageState extends State<UnifiedSubscriptionsPage> {
               children: [
                 Text(
                   company.name,
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   '${company.code} | ${company.employeeCount} مستخدم',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textMuted,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.faint,
                     fontSize: 11,
                   ),
                 ),
@@ -312,12 +316,14 @@ class _UnifiedSubscriptionsPageState extends State<UnifiedSubscriptionsPage> {
                   children: [
                     Text(
                       DateFormat('MM/dd').format(company.subscriptionStartDate),
-                      style: GoogleFonts.cairo(
-                          color: EnergyDashboardTheme.textMuted, fontSize: 9),
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: SdColors.faint, fontSize: 9),
                     ),
                     Text(
                       DateFormat('MM/dd').format(company.subscriptionEndDate),
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: statusColor,
                           fontSize: 9,
                           fontWeight: FontWeight.w600),

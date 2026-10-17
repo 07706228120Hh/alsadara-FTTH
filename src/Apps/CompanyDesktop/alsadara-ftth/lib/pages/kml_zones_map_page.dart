@@ -13,8 +13,6 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:xml/xml.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../frontend/tokens/sd_colors.dart';
 
 // ══════════════════════════════════════════════════════════════
@@ -595,7 +593,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           Text(
             'الصق إحداثيات أو رابط Google Maps',
-            style: TextStyle(fontSize: isSmall ? 11 : 13, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: isSmall ? 11 : 13, color: SdColors.muted),
           ),
           SizedBox(height: isSmall ? 8 : 12),
           TextField(
@@ -604,7 +602,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
             style: TextStyle(fontSize: isSmall ? 13 : 15),
             decoration: InputDecoration(
               hintText: '33.3573, 44.4415',
-              hintStyle: TextStyle(fontSize: isSmall ? 12 : 14, color: Colors.grey.shade400),
+              hintStyle: TextStyle(fontSize: isSmall ? 12 : 14, color: SdColors.faint),
               prefixIcon: Icon(Icons.location_on, size: isSmall ? 18 : 22),
               suffixIcon: IconButton(
                 icon: Icon(Icons.content_paste, size: isSmall ? 18 : 20),
@@ -627,13 +625,13 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           SizedBox(height: isSmall ? 4 : 8),
           Text(
             'أمثلة:\n• 33.3573, 44.4415\n• https://maps.google.com/?q=33.3573,44.4415\n• https://goo.gl/maps/...',
-            style: TextStyle(fontSize: isSmall ? 9 : 11, color: Colors.grey.shade500),
+            style: TextStyle(fontSize: isSmall ? 9 : 11, color: SdColors.faint),
           ),
         ]),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('إلغاء', style: TextStyle(fontSize: isSmall ? 12 : 14, color: Colors.grey)),
+            child: Text('إلغاء', style: TextStyle(fontSize: isSmall ? 12 : 14, color: SdColors.faint)),
           ),
           ElevatedButton.icon(
             onPressed: () {
@@ -643,7 +641,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                 _goToCoordinate(result);
               } else {
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('صيغة غير صحيحة — أدخل إحداثيات أو رابط Google Maps'), backgroundColor: Colors.red),
+                  const SnackBar(content: Text('صيغة غير صحيحة — أدخل إحداثيات أو رابط Google Maps'), backgroundColor: SdColors.danger),
                 );
               }
             },
@@ -892,8 +890,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
     setState(() => _fetchingLocation = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: GoogleFonts.cairo()),
-        backgroundColor: Colors.red[700],
+        content: Text(msg, style: TextStyle(fontFamily: 'Cairo')),
+        backgroundColor: SdColors.danger,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -1013,7 +1011,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
   }
 
   Color _markerColor(FatPoint p) =>
-      p.isActive ? const Color(0xFF22C55E) : const Color(0xFFF97316);
+      p.isActive ? SdColors.success : const Color(0xFFF97316);
 
   // ══════════════════════════════════════════════════════════════
   // Build
@@ -1045,12 +1043,12 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           const SizedBox(height: 20),
           Text(
             'جاري تحميل بيانات الزونات...',
-            style: GoogleFonts.cairo(color: SdColors.muted, fontSize: 16),
+            style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 16),
           ),
           const SizedBox(height: 8),
           Text(
             'يُعالج الملف في الخلفية',
-            style: GoogleFonts.cairo(color: SdColors.faint, fontSize: 12),
+            style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 12),
           ),
         ],
       ),
@@ -1062,17 +1060,18 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 56),
+          const Icon(Icons.error_outline, color: SdColors.danger, size: 56),
           const SizedBox(height: 16),
           Text(
             'فشل تحميل الخريطة',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 color: SdColors.ink, fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             _error ?? '',
-            style: GoogleFonts.cairo(color: SdColors.muted, fontSize: 12),
+            style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 12),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
@@ -1088,7 +1087,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
               _loadKml();
             },
             icon: const Icon(Icons.refresh),
-            label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
+            label: Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo')),
             style: ElevatedButton.styleFrom(backgroundColor: _accent),
           ),
         ],
@@ -1251,7 +1250,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
         children: [
           Text(
             label,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: SdColors.ink,
               fontSize: 12,
               fontWeight: FontWeight.bold,
@@ -1351,7 +1351,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
             ),
             Text(
               'الطبقات',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 color: SdColors.muted,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -1359,7 +1360,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
             ),
             const SizedBox(height: 4),
             _layerToggle('نقاط FAT', Icons.wifi_tethering, _showPoints,
-                const Color(0xFF22C55E), (v) {
+                SdColors.success, (v) {
               setState(() => _showPoints = v);
               (ctx as Element).markNeedsBuild();
             }),
@@ -1381,7 +1382,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
             const SizedBox(height: 14),
             Text(
               'الإحصائيات',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 color: SdColors.muted,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -1389,11 +1391,11 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
             ),
             const SizedBox(height: 6),
             _statRow('إجمالي FAT', _visiblePoints.length.toString(),
-                const Color(0xFF22C55E)),
+                SdColors.success),
             _statRow(
                 'المفعّل',
                 _visiblePoints.where((p) => p.isActive).length.toString(),
-                const Color(0xFF22C55E)),
+                SdColors.success),
             _statRow(
                 'غير مفعّل',
                 _visiblePoints.where((p) => !p.isActive).length.toString(),
@@ -1436,7 +1438,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           ),
           const SizedBox(width: 10),
           Text('جاري تحديد موقعك...',
-              style: GoogleFonts.cairo(color: Colors.white, fontSize: 13)),
+              style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontSize: 13)),
         ],
       ),
     );
@@ -1448,7 +1450,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E40AF).withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.5)),
+        border: Border.all(color: SdColors.info.withValues(alpha: 0.5)),
         boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 10)],
       ),
       child: Row(
@@ -1462,7 +1464,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
               children: [
                 Text(
                   _navDestination?.name ?? '',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 13),
@@ -1471,7 +1474,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                 Text(
                   '${_formatDist(_routeDistanceMeters)}  •  '
                   '${_formatDuration(_routeDurationSeconds)}',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: Colors.white70, fontSize: 11),
                 ),
               ],
@@ -1484,7 +1488,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: _showDirections
-                    ? const Color(0xFF3B82F6)
+                    ? SdColors.info
                     : Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1495,7 +1499,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                       color: Colors.white, size: 14),
                   const SizedBox(width: 4),
                   Text('الاتجاهات',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: Colors.white, fontSize: 11)),
                 ],
               ),
@@ -1508,7 +1513,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.25),
+                color: SdColors.danger.withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.close_rounded,
@@ -1539,11 +1544,12 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
             child: Row(
               children: [
                 const Icon(Icons.turn_right_rounded,
-                    color: Color(0xFF3B82F6), size: 18),
+                    color: SdColors.info, size: 18),
                 const SizedBox(width: 8),
                 Text(
                   'الاتجاهات (${_routeSteps.length} خطوة)',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: SdColors.ink,
                       fontWeight: FontWeight.bold,
                       fontSize: 12),
@@ -1571,15 +1577,15 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           color: isLast
-                              ? const Color(0xFF22C55E).withValues(alpha: 0.15)
-                              : const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                              ? SdColors.success.withValues(alpha: 0.15)
+                              : SdColors.info.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
                           step.icon,
                           color: isLast
-                              ? const Color(0xFF22C55E)
-                              : const Color(0xFF3B82F6),
+                              ? SdColors.success
+                              : SdColors.info,
                           size: 16,
                         ),
                       ),
@@ -1590,13 +1596,15 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                           children: [
                             Text(
                               step.instruction,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   color: SdColors.ink, fontSize: 12),
                             ),
                             if (step.distanceMeters > 0 && !isLast)
                               Text(
                                 _formatDist(step.distanceMeters),
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     color: SdColors.faint, fontSize: 10),
                               ),
                           ],
@@ -1640,7 +1648,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
       ),
       child: Text(
         label,
-        style: GoogleFonts.cairo(
+        style: TextStyle(
+            fontFamily: 'Cairo',
             color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
@@ -1653,7 +1662,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
   Widget _sectionLabel(String label) {
     return Text(
       label,
-      style: GoogleFonts.cairo(
+      style: TextStyle(
+          fontFamily: 'Cairo',
           color: SdColors.muted, fontSize: 11, fontWeight: FontWeight.bold),
     );
   }
@@ -1674,7 +1684,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
         value: value,
         isExpanded: true,
         dropdownColor: SdColors.surface,
-        style: GoogleFonts.cairo(color: SdColors.ink, fontSize: 12),
+        style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink, fontSize: 12),
         underline: const SizedBox.shrink(),
         icon: const Icon(Icons.arrow_drop_down, color: SdColors.faint, size: 18),
         items: items.map((z) => DropdownMenuItem(value: z, child: Text(z))).toList(),
@@ -1707,11 +1717,12 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           controller: ctrl,
           focusNode: focusNode,
           textDirection: TextDirection.ltr,
-          style: GoogleFonts.cairo(color: SdColors.ink, fontSize: 12),
+          style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink, fontSize: 12),
           textAlign: TextAlign.left,
           decoration: InputDecoration(
             hintText: isActive ? selected : hint,
-            hintStyle: GoogleFonts.cairo(
+            hintStyle: TextStyle(
+              fontFamily: 'Cairo',
               color: isActive ? SdColors.muted : SdColors.faint,
               fontSize: 11,
             ),
@@ -1788,7 +1799,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                         textDirection: opt == 'الكل'
                             ? TextDirection.rtl
                             : TextDirection.ltr,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: opt == 'الكل'
                               ? SdColors.faint
                               : SdColors.ink,
@@ -1825,7 +1837,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           Expanded(
             child: Text(
               label,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 color: value ? SdColors.ink : SdColors.faint,
                 fontSize: 12,
               ),
@@ -1854,7 +1867,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
           Expanded(
             child: Text(
               label,
-              style: GoogleFonts.cairo(color: SdColors.muted, fontSize: 11),
+              style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 11),
             ),
           ),
           Container(
@@ -1866,7 +1879,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
             ),
             child: Text(
               value,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   color: color,
                   fontSize: 12,
                   fontWeight: FontWeight.bold),
@@ -1940,7 +1954,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
             polylines: [
               Polyline(
                 points: _routePoints,
-                color: const Color(0xFF3B82F6),
+                color: SdColors.info,
                 strokeWidth: 5.0,
               ),
               Polyline(
@@ -1965,7 +1979,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
+                        color: SdColors.info.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -1973,7 +1987,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                       width: 18,
                       height: 18,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF3B82F6),
+                        color: SdColors.info,
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2.5),
                         boxShadow: const [
@@ -2047,7 +2061,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _legendRow(const Color(0xFF22C55E), 'FAT مفعّل'),
+          _legendRow(SdColors.success, 'FAT مفعّل'),
           const SizedBox(height: 4),
           _legendRow(const Color(0xFFF97316), 'FAT غير مفعّل'),
           const SizedBox(height: 4),
@@ -2075,7 +2089,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: GoogleFonts.cairo(color: SdColors.muted, fontSize: 11),
+          style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 11),
         ),
       ],
     );
@@ -2097,7 +2111,7 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: GoogleFonts.cairo(color: SdColors.muted, fontSize: 11),
+          style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 11),
         ),
       ],
     );
@@ -2139,7 +2153,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                   children: [
                     Text(
                       p.name,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         color: SdColors.ink,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -2147,7 +2162,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                     ),
                     Text(
                       p.zone,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: SdColors.muted, fontSize: 12),
                     ),
                   ],
@@ -2164,7 +2180,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                 ),
                 child: Text(
                   p.isActive ? 'مفعّل' : 'غير مفعّل',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: color,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -2211,7 +2228,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                   : const Icon(Icons.navigation_rounded, size: 18),
               label: Text(
                 _fetchingLocation ? 'جاري التحديد...' : 'ابدأ الملاحة',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.bold, fontSize: 13),
               ),
               style: ElevatedButton.styleFrom(
@@ -2259,7 +2277,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
               Expanded(
                 child: Text(
                   r.zoneId.isNotEmpty ? r.zoneId : 'منطقة FDT',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: SdColors.ink,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -2278,7 +2297,8 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
                   ),
                   child: Text(
                     '${r.regionUsers} مستخدم',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         color: _accent,
                         fontSize: 11,
                         fontWeight: FontWeight.bold),
@@ -2318,12 +2338,13 @@ class _KmlZonesMapPageState extends State<KmlZonesMapPage> {
       children: [
         Text(
           label,
-          style: GoogleFonts.cairo(color: SdColors.faint, fontSize: 10),
+          style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 10),
         ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             color: SdColors.ink,
             fontSize: 13,
             fontWeight: FontWeight.w600,
@@ -2431,7 +2452,7 @@ class _SearchSheetState extends State<_SearchSheet> {
                 child: ElevatedButton.icon(
                   onPressed: () => widget.onSearch(_fbg, _fat),
                   icon: const Icon(Icons.search_rounded, size: 18),
-                  label: Text('بحث', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                  label: Text('بحث', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0EA5E9),
                     foregroundColor: Colors.white,
@@ -2450,7 +2471,7 @@ class _SearchSheetState extends State<_SearchSheet> {
                   },
                   child: Text(
                     'مسح',
-                    style: GoogleFonts.cairo(color: SdColors.muted),
+                    style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted),
                   ),
                 ),
               ],
@@ -2483,13 +2504,14 @@ class _SearchSheetState extends State<_SearchSheet> {
           controller: ctrl,
           focusNode: focusNode,
           textDirection: TextDirection.ltr,
-          style: GoogleFonts.cairo(color: SdColors.ink, fontSize: 13),
+          style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink, fontSize: 13),
           textAlign: TextAlign.left,
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: GoogleFonts.cairo(color: SdColors.faint, fontSize: 12),
+            labelStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 12),
             hintText: isActive ? selected : hint,
-            hintStyle: GoogleFonts.cairo(
+            hintStyle: TextStyle(
+              fontFamily: 'Cairo',
               color: isActive ? SdColors.muted : SdColors.faint,
               fontSize: 12,
             ),
@@ -2564,7 +2586,8 @@ class _SearchSheetState extends State<_SearchSheet> {
                         opt,
                         textDirection:
                             opt == 'الكل' ? TextDirection.rtl : TextDirection.ltr,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: opt == 'الكل' ? SdColors.faint : SdColors.ink,
                           fontSize: 12,
                         ),

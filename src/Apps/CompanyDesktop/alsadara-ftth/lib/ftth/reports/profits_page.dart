@@ -778,7 +778,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1A237E),
+            color: SdColors.primary,
           ),
         ),
         const SizedBox(height: 12),
@@ -789,9 +789,9 @@ class _ProfitsPageState extends State<ProfitsPage> {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green[50],
+                  color: SdColors.successTint,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green[200]!),
+                  border: Border.all(color: SdColors.successTintEdge),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -799,14 +799,14 @@ class _ProfitsPageState extends State<ProfitsPage> {
                     Row(
                       children: [
                         Icon(Icons.trending_up,
-                            color: Colors.green[700], size: 20),
+                            color: SdColors.success, size: 20),
                         const SizedBox(width: 8),
                         const Text(
                           'إجمالي الإيرادات',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Colors.green,
+                            color: SdColors.success,
                           ),
                         ),
                       ],
@@ -817,7 +817,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green[800],
+                        color: SdColors.success,
                       ),
                     ),
                   ],
@@ -831,9 +831,9 @@ class _ProfitsPageState extends State<ProfitsPage> {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.red[50],
+                  color: SdColors.dangerTint,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red[200]!),
+                  border: Border.all(color: SdColors.dangerTintEdge),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -841,14 +841,14 @@ class _ProfitsPageState extends State<ProfitsPage> {
                     Row(
                       children: [
                         Icon(Icons.trending_down,
-                            color: Colors.red[700], size: 20),
+                            color: SdColors.danger, size: 20),
                         const SizedBox(width: 8),
                         const Text(
                           'إجمالي المصروفات',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: Colors.red,
+                            color: SdColors.danger,
                           ),
                         ),
                       ],
@@ -859,7 +859,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.red[800],
+                        color: SdColors.danger,
                       ),
                     ),
                   ],
@@ -877,15 +877,15 @@ class _ProfitsPageState extends State<ProfitsPage> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: netProfit >= 0
-                  ? [Colors.blue[400]!, Colors.blue[600]!]
-                  : [Colors.orange[400]!, Colors.orange[600]!],
+                  ? [SdColors.info, SdColors.info]
+                  : [SdColors.warning, SdColors.warning],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: (netProfit >= 0 ? Colors.blue : Colors.orange)
+                color: (netProfit >= 0 ? SdColors.info : SdColors.warning)
                     .withValues(alpha: 0.3),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
@@ -2310,7 +2310,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1A237E),
+            color: SdColors.primary,
           ),
         ),
         const SizedBox(height: 12),
@@ -2320,7 +2320,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withValues(alpha: 0.1),
+                color: SdColors.faint.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -2340,12 +2340,12 @@ class _ProfitsPageState extends State<ProfitsPage> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isProfit ? Colors.green[100] : Colors.red[100],
+                    color: isProfit ? SdColors.successTint : SdColors.dangerTint,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     isProfit ? Icons.arrow_upward : Icons.arrow_downward,
-                    color: isProfit ? Colors.green[700] : Colors.red[700],
+                    color: isProfit ? SdColors.success : SdColors.danger,
                     size: 20,
                   ),
                 ),
@@ -2361,7 +2361,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                   '${_formatCurrency(entry.value.abs())} IQD',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isProfit ? Colors.green[700] : Colors.red[700],
+                    color: isProfit ? SdColors.success : SdColors.danger,
                     fontSize: 14,
                   ),
                 ),
@@ -2387,7 +2387,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1A237E),
+            color: SdColors.primary,
           ),
         ),
         const SizedBox(height: 12),
@@ -2397,7 +2397,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withValues(alpha: 0.1),
+                color: SdColors.faint.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -2415,10 +2415,10 @@ class _ProfitsPageState extends State<ProfitsPage> {
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor:
-                      isProfit ? Colors.green[100] : Colors.red[100],
+                      isProfit ? SdColors.successTint : SdColors.dangerTint,
                   child: Icon(
                     Icons.person,
-                    color: isProfit ? Colors.green[700] : Colors.red[700],
+                    color: isProfit ? SdColors.success : SdColors.danger,
                     size: 20,
                   ),
                 ),
@@ -2433,7 +2433,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                   '${_formatCurrency(entry.value.abs())} IQD',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isProfit ? Colors.green[700] : Colors.red[700],
+                    color: isProfit ? SdColors.success : SdColors.danger,
                     fontSize: 14,
                   ),
                 ),
@@ -2459,7 +2459,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1A237E),
+            color: SdColors.primary,
           ),
         ),
         const SizedBox(height: 12),
@@ -2469,7 +2469,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withValues(alpha: 0.1),
+                color: SdColors.faint.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -2488,12 +2488,12 @@ class _ProfitsPageState extends State<ProfitsPage> {
                 leading: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: isProfit ? Colors.blue[100] : Colors.orange[100],
+                    color: isProfit ? SdColors.infoTint : SdColors.warningTint,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.miscellaneous_services,
-                    color: isProfit ? Colors.blue[700] : Colors.orange[700],
+                    color: isProfit ? SdColors.info : SdColors.warning,
                     size: 20,
                   ),
                 ),
@@ -2508,7 +2508,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                   '${_formatCurrency(entry.value.abs())} IQD',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isProfit ? Colors.blue[700] : Colors.orange[700],
+                    color: isProfit ? SdColors.info : SdColors.warning,
                     fontSize: 14,
                   ),
                 ),
@@ -2525,20 +2525,20 @@ class _ProfitsPageState extends State<ProfitsPage> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
+          color: SdColors.groundAlt,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey[300]!),
+          border: Border.all(color: SdColors.edge),
         ),
         child: const Row(
           children: [
-            Icon(Icons.info_outline, color: Colors.grey),
+            Icon(Icons.info_outline, color: SdColors.faint),
             SizedBox(width: 12),
             Expanded(
               child: Text(
                 'تم حساب الأرباح لجميع المعاملات بدون تطبيق فلاتر',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey,
+                  color: SdColors.faint,
                 ),
               ),
             ),
@@ -2555,16 +2555,16 @@ class _ProfitsPageState extends State<ProfitsPage> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1A237E),
+            color: SdColors.primary,
           ),
         ),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.blue[50],
+            color: SdColors.infoTint,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.blue[200]!),
+            border: Border.all(color: SdColors.infoTintEdge),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2641,7 +2641,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Colors.blue[700],
+                color: SdColors.info,
               ),
             ),
           ),
@@ -2651,7 +2651,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
               value,
               style: const TextStyle(
                 fontSize: 14,
-                color: Color(0xFF2C3E50),
+                color: SdColors.ink,
               ),
             ),
           ),
@@ -2685,7 +2685,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A237E),
+                            color: SdColors.primary,
                           ),
                         ),
                         IconButton(
@@ -2702,21 +2702,21 @@ class _ProfitsPageState extends State<ProfitsPage> {
                       padding: const EdgeInsets.all(12),
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: Colors.blue[50],
+                        color: SdColors.infoTint,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue[200]!),
+                        border: Border.all(color: SdColors.infoTintEdge),
                       ),
                       child: Row(
                         children: [
                           Icon(Icons.info_outline,
-                              color: Colors.blue[700], size: 20),
+                              color: SdColors.info, size: 20),
                           const SizedBox(width: 12),
                           const Expanded(
                             child: Text(
                               'سيتم احتساب الأرباح كالتالي: عدد المعاملات × قيمة الربح المدخلة',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF1565C0),
+                                color: SdColors.info,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -2741,7 +2741,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                         ElevatedButton(
                           onPressed: () => Navigator.pop(context),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey[300],
+                            backgroundColor: SdColors.edge,
                             foregroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 30, vertical: 12),
@@ -2757,7 +2757,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                             // لا نحتاج لإغلاق النافذة هنا لأن _saveCategoryProfits() يقوم بذلك
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1A237E),
+                            backgroundColor: SdColors.primary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 30, vertical: 12),
@@ -2782,7 +2782,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
   Widget _buildProfitCategoryTable() {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey[300]!),
+        border: Border.all(color: SdColors.edge),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -2791,7 +2791,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A237E).withValues(alpha: 0.1),
+              color: SdColors.primary.withValues(alpha: 0.1),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(8),
                 topRight: Radius.circular(8),
@@ -2806,7 +2806,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: Color(0xFF1A237E),
+                      color: SdColors.primary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -2818,7 +2818,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: Color(0xFF1A237E),
+                      color: SdColors.primary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -2830,7 +2830,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: Color(0xFFE65100),
+                      color: SdColors.warningEdge,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -2842,7 +2842,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: Color(0xFF1A237E),
+                      color: SdColors.primary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -2860,7 +2860,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(color: Colors.grey[200]!),
+                  bottom: BorderSide(color: SdColors.divider),
                 ),
               ),
               child: Row(
@@ -2873,7 +2873,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
-                        color: Color(0xFF2C3E50),
+                        color: SdColors.ink,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -2892,7 +2892,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                           hintText: '0',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
+                            borderSide: BorderSide(color: SdColors.edge),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 4, vertical: 8),
@@ -2915,12 +2915,12 @@ class _ProfitsPageState extends State<ProfitsPage> {
                           hintText: '0',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(color: Colors.orange[300]!),
+                            borderSide: BorderSide(color: SdColors.warningTintEdge),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(
-                                color: Colors.orange[700]!, width: 2),
+                                color: SdColors.warning, width: 2),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 4, vertical: 8),
@@ -2943,7 +2943,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                           hintText: '0',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(color: Colors.grey[300]!),
+                            borderSide: BorderSide(color: SdColors.edge),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 4, vertical: 8),
@@ -2995,7 +2995,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('تم حفظ قيم الأرباح بنجاح وإعادة حساب الأرباح'),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           duration: Duration(seconds: 3),
         ),
       );
@@ -3009,19 +3009,19 @@ class _ProfitsPageState extends State<ProfitsPage> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.purple[50]!, Colors.purple[100]!],
+          colors: [SdColors.platformTint, SdColors.platformTint],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.purple[300]!),
+        border: Border.all(color: SdColors.platformTintEdge),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.calculate, color: Colors.purple[700], size: 24),
+              Icon(Icons.calculate, color: SdColors.platformBase, size: 24),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
@@ -3029,12 +3029,12 @@ class _ProfitsPageState extends State<ProfitsPage> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF6A1B9A),
+                    color: SdColors.platformBase,
                   ),
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.refresh, color: Color(0xFF6A1B9A)),
+                icon: const Icon(Icons.refresh, color: SdColors.platformBase),
                 tooltip: 'إعادة تعيين الأرباح',
                 onPressed: () {
                   showDialog(
@@ -3070,7 +3070,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('تم إعادة تعيين الأرباح بنجاح'),
-                                backgroundColor: Colors.green,
+                                backgroundColor: SdColors.success,
                               ),
                             );
                           },
@@ -3088,7 +3088,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
             'يتم حساب الأرباح بناءً على القيم المخصصة التي تم إدخالها:',
             style: TextStyle(
               fontSize: 14,
-              color: Color(0xFF4A148C),
+              color: SdColors.platformEdge,
             ),
           ),
           const SizedBox(height: 8),
@@ -3109,14 +3109,14 @@ class _ProfitsPageState extends State<ProfitsPage> {
               padding: const EdgeInsets.only(bottom: 4),
               child: Row(
                 children: [
-                  const Icon(Icons.circle, size: 8, color: Color(0xFF6A1B9A)),
+                  const Icon(Icons.circle, size: 8, color: SdColors.platformBase),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '$category: شراء ${_formatCurrency(purchaseProfit)} - تجديد من شراء ${_formatCurrency(renewalFromPurchaseProfit)} - تجديد ${_formatCurrency(renewalProfit)}',
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF4A148C),
+                        color: SdColors.platformEdge,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -3501,7 +3501,7 @@ class _ProfitsPageState extends State<ProfitsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('تم حفظ الملف بنجاح في:\n$outputPath'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             duration: const Duration(seconds: 5),
             action: SnackBarAction(
               label: 'نسخ المسار',

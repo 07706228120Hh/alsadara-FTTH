@@ -1,6 +1,5 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../frontend/frontend.dart';
 import '../../services/accounting_service.dart';
@@ -191,7 +190,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
       _SummaryData('الشراء', _toDouble(revenue['purchase']), Colors.indigo,
           Icons.shopping_cart),
       _SummaryData('الإجمالي', _toDouble(summary['grandTotal']),
-          Colors.red.shade700, Icons.account_balance),
+          SdColors.danger, Icons.account_balance),
     ];
 
     final crossCount = isMobile ? 4 : 4;
@@ -246,7 +245,8 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(_formatNumber(d.value),
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: valueSize,
                         fontWeight: FontWeight.w800,
                         color: d.color)),
@@ -257,7 +257,8 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: labelSize, color: SdColors.muted)),
               ),
             ],
@@ -301,7 +302,8 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
             Expanded(
               child: Text(title,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: isMobile ? 13 : context.accR.body,
                       fontWeight: FontWeight.w700)),
             ),
@@ -316,7 +318,8 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
               ),
               child: Text(
                 _formatNumber(total),
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMobile ? 13 : context.accR.body,
                     fontWeight: FontWeight.w800,
                     color: color),
@@ -463,7 +466,7 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(context.accR.cardRadius),
-        side: BorderSide(color: Colors.indigo.shade200),
+        side: BorderSide(color: SdColors.primaryTintEdge),
       ),
       child: Padding(
         padding: EdgeInsets.all(context.accR.spaceXL),
@@ -472,10 +475,11 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
           children: [
             Row(
               children: [
-                Icon(Icons.trending_up, color: Colors.indigo.shade700),
+                Icon(Icons.trending_up, color: SdColors.primary),
                 SizedBox(width: context.accR.spaceS),
                 Text('نشاط آخر 30 يوم',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.body,
                         fontWeight: FontWeight.w700)),
               ],
@@ -505,16 +509,18 @@ class _FundsOverviewPageState extends State<FundsOverviewPage> {
                   child: Column(
                     children: [
                       Text(name,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: context.accR.small,
                               fontWeight: FontWeight.w600,
                               color: color.shade700)),
                       Text('$count عملية',
                           style: TextStyle(
                               fontSize: context.accR.small,
-                              color: Colors.grey.shade600)),
+                              color: SdColors.muted)),
                       Text(_formatNumber(total),
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: context.accR.body,
                               fontWeight: FontWeight.w800,
                               color: color.shade700)),

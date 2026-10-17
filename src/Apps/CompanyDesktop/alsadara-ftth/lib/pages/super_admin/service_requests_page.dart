@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../../theme/energy_dashboard_theme.dart';
 import '../../services/sadara_api_service.dart';
 import '../citizen_portal/models/citizen_portal_models.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 /// صفحة إدارة طلبات الخدمة
 class ServiceRequestsManagementPage extends StatefulWidget {
   const ServiceRequestsManagementPage({super.key});
@@ -91,7 +91,7 @@ class _ServiceRequestsManagementPageState
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Container(
-        color: EnergyDashboardTheme.bgPrimary,
+        color: SdColors.ground,
         child: Column(
           children: [
             _buildToolbar(),
@@ -115,9 +115,9 @@ class _ServiceRequestsManagementPageState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         border: Border(
-          bottom: BorderSide(color: EnergyDashboardTheme.borderColor),
+          bottom: BorderSide(color: SdColors.divider),
         ),
       ),
       child: Row(
@@ -131,7 +131,7 @@ class _ServiceRequestsManagementPageState
             _selectedRequest != null
                 ? Icons.assignment
                 : Icons.receipt_long_rounded,
-            color: EnergyDashboardTheme.neonBlue,
+            color: SdColors.info,
             size: 24,
           ),
           const SizedBox(width: 12),
@@ -142,7 +142,7 @@ class _ServiceRequestsManagementPageState
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: EnergyDashboardTheme.textPrimary,
+              color: SdColors.ink,
             ),
           ),
           const Spacer(),
@@ -161,10 +161,10 @@ class _ServiceRequestsManagementPageState
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide:
-                        BorderSide(color: EnergyDashboardTheme.borderColor),
+                        BorderSide(color: SdColors.divider),
                   ),
                   filled: true,
-                  fillColor: EnergyDashboardTheme.bgPrimary,
+                  fillColor: SdColors.ground,
                 ),
               ),
             ),
@@ -215,7 +215,7 @@ class _ServiceRequestsManagementPageState
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: EnergyDashboardTheme.bgSecondary,
+      color: SdColors.groundAlt,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -223,50 +223,50 @@ class _ServiceRequestsManagementPageState
             _buildStatChip(
               'الكل',
               _statistics['total'] ?? 0,
-              EnergyDashboardTheme.neonBlue,
+              SdColors.info,
               Icons.list_alt,
             ),
             _buildStatChip(
               'جديد',
               _statistics['pending'] ?? 0,
-              Colors.blue,
+              SdColors.info,
               Icons.hourglass_empty,
             ),
             _buildStatChip(
               'قيد المراجعة',
               _statistics['reviewing'] ?? 0,
-              Colors.orange,
+              SdColors.warning,
               Icons.visibility,
             ),
             _buildStatChip(
               'قيد التنفيذ',
               _statistics['inProgress'] ?? 0,
-              Colors.indigo,
+              SdColors.primary,
               Icons.engineering,
             ),
             _buildStatChip(
               'مكتمل',
               _statistics['completed'] ?? 0,
-              Colors.green,
+              SdColors.success,
               Icons.check_circle,
             ),
             _buildStatChip(
               'ملغي',
               _statistics['cancelled'] ?? 0,
-              Colors.grey,
+              SdColors.faint,
               Icons.cancel,
             ),
             _buildStatChip(
               'مرفوض',
               _statistics['rejected'] ?? 0,
-              Colors.red,
+              SdColors.danger,
               Icons.block,
             ),
             const SizedBox(width: 16),
             _buildStatChip(
               'اليوم',
               _statistics['todayCreated'] ?? 0,
-              EnergyDashboardTheme.neonPurple,
+              SdColors.platformBase,
               Icons.today,
             ),
           ],
@@ -308,11 +308,11 @@ class _ServiceRequestsManagementPageState
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          const Icon(Icons.error_outline, size: 48, color: SdColors.danger),
           const SizedBox(height: 16),
           Text(
             _errorMessage ?? 'خطأ غير معروف',
-            style: const TextStyle(color: Colors.red),
+            style: const TextStyle(color: SdColors.danger),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
@@ -334,14 +334,14 @@ class _ServiceRequestsManagementPageState
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.inbox_rounded,
-                size: 64, color: EnergyDashboardTheme.textMuted),
+                size: 64, color: SdColors.faint),
             const SizedBox(height: 16),
             Text(
               _searchQuery.isNotEmpty || _statusFilter != null
                   ? 'لا توجد نتائج مطابقة'
                   : 'لا توجد طلبات خدمة',
               style: TextStyle(
-                  fontSize: 16, color: EnergyDashboardTheme.textMuted),
+                  fontSize: 16, color: SdColors.faint),
             ),
           ],
         ),
@@ -377,7 +377,7 @@ class _ServiceRequestsManagementPageState
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: EnergyDashboardTheme.borderColor),
+        side: BorderSide(color: SdColors.divider),
       ),
       child: InkWell(
         onTap: () => setState(() => _selectedRequest = req),
@@ -433,7 +433,7 @@ class _ServiceRequestsManagementPageState
                     Text(
                       '${req.serviceName ?? 'خدمة'} - ${customerName.isNotEmpty ? customerName : 'غير محدد'}',
                       style: TextStyle(
-                        color: EnergyDashboardTheme.textSecondary,
+                        color: SdColors.muted,
                         fontSize: 13,
                       ),
                     ),
@@ -442,7 +442,7 @@ class _ServiceRequestsManagementPageState
                       Text(
                         customerPhone,
                         style: TextStyle(
-                          color: EnergyDashboardTheme.textMuted,
+                          color: SdColors.faint,
                           fontSize: 12,
                         ),
                       ),
@@ -458,21 +458,21 @@ class _ServiceRequestsManagementPageState
                       '${req.estimatedCost!.toStringAsFixed(0)} د.ع',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: EnergyDashboardTheme.neonGreen,
+                        color: SdColors.success,
                       ),
                     ),
                   Text(
                     _formatDate(req.requestedAt),
                     style: TextStyle(
                       fontSize: 11,
-                      color: EnergyDashboardTheme.textMuted,
+                      color: SdColors.faint,
                     ),
                   ),
                 ],
               ),
               const SizedBox(width: 8),
               Icon(Icons.chevron_left,
-                  color: EnergyDashboardTheme.textMuted, size: 20),
+                  color: SdColors.faint, size: 20),
             ],
           ),
         ),
@@ -550,7 +550,7 @@ class _ServiceRequestsManagementPageState
                       label: const Text('تعيين لموظف',
                           style: TextStyle(fontSize: 12)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
+                        backgroundColor: SdColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
@@ -694,23 +694,23 @@ class _ServiceRequestsManagementPageState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: EnergyDashboardTheme.neonBlue),
+              Icon(icon, size: 18, color: SdColors.info),
               const SizedBox(width: 8),
               Text(
                 title,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
-                  color: EnergyDashboardTheme.textPrimary,
+                  color: SdColors.ink,
                 ),
               ),
             ],
@@ -733,7 +733,7 @@ class _ServiceRequestsManagementPageState
             child: Text(
               '$label:',
               style: TextStyle(
-                color: EnergyDashboardTheme.textMuted,
+                color: SdColors.faint,
                 fontSize: 13,
               ),
             ),
@@ -859,7 +859,7 @@ class _ServiceRequestsManagementPageState
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم حذف الطلب نهائياً'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
         }
@@ -886,7 +886,7 @@ class _ServiceRequestsManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('فشل جلب بيانات الأقسام'),
-              backgroundColor: Colors.red),
+              backgroundColor: SdColors.danger),
         );
       }
       return;
@@ -949,7 +949,7 @@ class _ServiceRequestsManagementPageState
               child: AlertDialog(
                 title: Row(
                   children: [
-                    const Icon(Icons.person_add, color: Colors.indigo),
+                    const Icon(Icons.person_add, color: SdColors.primary),
                     const SizedBox(width: 8),
                     Text('تعيين الطلب ${req.requestNumber} لموظف'),
                   ],
@@ -1052,7 +1052,7 @@ class _ServiceRequestsManagementPageState
                             child: Text(
                               'لا يوجد فنيين في قسم "$selectedDepartment"',
                               style: TextStyle(
-                                  color: Colors.orange.shade700,
+                                  color: SdColors.warning,
                                   fontWeight: FontWeight.w600),
                             ),
                           ),
@@ -1073,7 +1073,7 @@ class _ServiceRequestsManagementPageState
                     icon: const Icon(Icons.check),
                     label: const Text('تعيين'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo,
+                      backgroundColor: SdColors.primary,
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -1100,7 +1100,7 @@ class _ServiceRequestsManagementPageState
             SnackBar(
               content: Text(
                   'تم تعيين الطلب للفني: ${selectedTechnician ?? selectedLeader ?? "غير محدد"}'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
         }
@@ -1113,7 +1113,7 @@ class _ServiceRequestsManagementPageState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('فشل التعيين'), backgroundColor: Colors.red),
+                content: Text('فشل التعيين'), backgroundColor: SdColors.danger),
           );
         }
       }
@@ -1132,7 +1132,7 @@ class _ServiceRequestsManagementPageState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('تم تحديث الحالة إلى: ${newStatus.nameAr}'),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
         ),
       );
 
@@ -1150,7 +1150,7 @@ class _ServiceRequestsManagementPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }

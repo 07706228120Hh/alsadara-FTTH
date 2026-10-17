@@ -1,6 +1,7 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../models/task.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class AdvancedAnalytics {
   // تحليل الأداء حسب الفني
@@ -146,7 +147,7 @@ class AdvancedAnalyticsWidget extends StatelessWidget {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+                color: SdColors.platformBase,
               ),
             ),
             SizedBox(height: 20),
@@ -161,7 +162,7 @@ class AdvancedAnalyticsWidget extends StatelessWidget {
                   margin: EdgeInsets.symmetric(vertical: 4),
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: SdColors.infoTint,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
@@ -173,8 +174,8 @@ class AdvancedAnalyticsWidget extends StatelessWidget {
                         '${entry.value.efficiency.toStringAsFixed(1)}% (${entry.value.completedTasks}/${entry.value.totalTasks})',
                         style: TextStyle(
                           color: entry.value.efficiency >= 80
-                              ? Colors.green
-                              : Colors.orange,
+                              ? SdColors.success
+                              : SdColors.warning,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -196,10 +197,10 @@ class AdvancedAnalyticsWidget extends StatelessWidget {
                 PieChartData(
                   sections: timeAnalysis.entries.map((entry) {
                     var colors = {
-                      'صباحاً': Colors.orange,
-                      'ظهراً': Colors.blue,
-                      'مساءً': Colors.purple,
-                      'ليلاً': Colors.indigo,
+                      'صباحاً': SdColors.warning,
+                      'ظهراً': SdColors.info,
+                      'مساءً': SdColors.platformBase,
+                      'ليلاً': SdColors.primary,
                     };
 
                     return PieChartSectionData(
@@ -227,7 +228,7 @@ class AdvancedAnalyticsWidget extends StatelessWidget {
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.green.shade400, Colors.green.shade600],
+                  colors: [SdColors.success, SdColors.success],
                 ),
                 borderRadius: BorderRadius.circular(15),
               ),

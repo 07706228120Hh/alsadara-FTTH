@@ -182,7 +182,7 @@ class _TaskCardState extends State<TaskCard> {
                 ),
               ],
 
-              Divider(height: 1, color: Colors.grey.shade200),
+              Divider(height: 1, color: SdColors.divider),
 
               Padding(
                 padding: EdgeInsets.fromLTRB(isSmall ? 4 : 8, isSmall ? 2 : 4,
@@ -258,7 +258,7 @@ class _TaskCardState extends State<TaskCard> {
                   style: TextStyle(
                     fontSize: isSmall ? 12 : 15,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1A1A2E),
+                    color: SdColors.ink,
                     letterSpacing: 0.3,
                   ),
                   maxLines: 2,
@@ -270,7 +270,7 @@ class _TaskCardState extends State<TaskCard> {
                   '${widget.task.department} • #${widget.task.id}',
                   style: TextStyle(
                     fontSize: isSmall ? 11 : 12,
-                    color: Colors.grey.shade600,
+                    color: SdColors.muted,
                     fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
@@ -305,7 +305,7 @@ class _TaskCardState extends State<TaskCard> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF00897B),
+                          color: SdColors.accent,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -347,15 +347,15 @@ class _TaskCardState extends State<TaskCard> {
     final IconData icon;
     switch (status) {
       case 'overdue':
-        color = const Color(0xFFEF4444);
+        color = SdColors.danger;
         icon = Icons.warning_rounded;
         break;
       case 'warning':
-        color = const Color(0xFFF59E0B);
+        color = SdColors.warning;
         icon = Icons.schedule;
         break;
       default:
-        color = const Color(0xFF10B981);
+        color = SdColors.success;
         icon = Icons.check_circle_outline;
     }
 
@@ -463,28 +463,28 @@ class _TaskCardState extends State<TaskCard> {
 
     final tiles = <Widget>[
       _buildInfoTile(Icons.person_outline_rounded, 'العميل',
-          widget.task.username, const Color(0xFF3498DB),
+          widget.task.username, SdColors.info,
           compact: compact),
       _buildInfoTile(Icons.engineering_outlined, 'الفني',
-          widget.task.technician, const Color(0xFF009688),
+          widget.task.technician, SdColors.accent,
           compact: compact,
           trailing: widget.task.technician.isNotEmpty &&
                   widget.task.technician != 'غير متوفر'
               ? _buildMiniIconButton(
                   Icons.send_rounded,
-                  const Color(0xFF009688),
+                  SdColors.accent,
                   () => _sendTaskToTechnician(widget.task.technician))
               : null),
       _buildInfoTile(
-          Icons.hub_outlined, 'FBG', widget.task.fbg, const Color(0xFF27AE60),
+          Icons.hub_outlined, 'FBG', widget.task.fbg, SdColors.success,
           compact: compact),
       _buildInfoTile(Icons.phone_outlined, 'الهاتف', widget.task.phone,
-          const Color(0xFF8E44AD),
+          SdColors.platformBase,
           compact: compact,
           trailing: widget.task.phone.isNotEmpty
               ? _buildMiniIconButton(
                   Icons.copy_rounded,
-                  const Color(0xFF8E44AD),
+                  SdColors.platformBase,
                   () => _copyPhoneNumber(widget.task.phone))
               : null),
       if (widget.task.agentName.isNotEmpty)
@@ -505,11 +505,11 @@ class _TaskCardState extends State<TaskCard> {
                 : null),
       if (widget.task.hasAmount)
         _buildInfoTile(Icons.payments_outlined, _getAmountLabel(),
-            '${widget.task.amountFormatted} د.ع', const Color(0xFFE74C3C),
+            '${widget.task.amountFormatted} د.ع', SdColors.danger,
             compact: compact),
       if (widget.task.hasDeliveryFee && !_isMaintenanceTask())
         _buildInfoTile(Icons.local_shipping, _getFeeLabel(),
-            '${widget.task.deliveryFeeFormatted} د.ع', const Color(0xFF00897B),
+            '${widget.task.deliveryFeeFormatted} د.ع', SdColors.accent,
             compact: compact),
       if (widget.task.createdByName.isNotEmpty)
         _buildInfoTile(Icons.person_add_outlined, 'أنشأها',
@@ -517,11 +517,11 @@ class _TaskCardState extends State<TaskCard> {
             compact: compact),
       if (widget.task.serviceType.isNotEmpty)
         _buildInfoTile(Icons.speed_outlined, 'الخدمة',
-            '${widget.task.serviceType} Mbps', const Color(0xFFE67E22),
+            '${widget.task.serviceType} Mbps', SdColors.warning,
             compact: compact),
       if (widget.task.subscriptionDuration.isNotEmpty)
         _buildInfoTile(Icons.timer_outlined, 'المدة',
-            widget.task.subscriptionDuration, const Color(0xFF16A085),
+            widget.task.subscriptionDuration, SdColors.accent,
             compact: compact),
     ];
 
@@ -677,12 +677,12 @@ class _TaskCardState extends State<TaskCard> {
             children: [
               Expanded(
                 child: _buildCompactDetailItem(Icons.location_on_outlined,
-                    'الموقع', widget.task.location, const Color(0xFF3498DB)),
+                    'الموقع', widget.task.location, SdColors.info),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _buildCompactDetailItem(Icons.cable_outlined, 'FAT',
-                    widget.task.fat, const Color(0xFF27AE60)),
+                    widget.task.fat, SdColors.success),
               ),
             ],
           ),
@@ -693,7 +693,7 @@ class _TaskCardState extends State<TaskCard> {
             children: [
               Expanded(
                 child: _buildCompactDetailItem(Icons.flag_outlined, 'الأولوية',
-                    widget.task.priority, const Color(0xFFE67E22)),
+                    widget.task.priority, SdColors.warning),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -701,7 +701,7 @@ class _TaskCardState extends State<TaskCard> {
                     Icons.calendar_today_rounded,
                     'الإنشاء',
                     DateFormat('MM/dd').format(widget.task.createdAt),
-                    const Color(0xFF9B59B6)),
+                    SdColors.platformBase),
               ),
             ],
           ),
@@ -781,12 +781,12 @@ class _TaskCardState extends State<TaskCard> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.notes_rounded, size: 13, color: Colors.grey.shade400),
+          Icon(Icons.notes_rounded, size: 13, color: SdColors.faint),
           const SizedBox(width: 6),
           Expanded(
             child: Column(
@@ -796,7 +796,7 @@ class _TaskCardState extends State<TaskCard> {
                   label,
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey.shade500,
+                    color: SdColors.faint,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -804,7 +804,7 @@ class _TaskCardState extends State<TaskCard> {
                   text,
                   style: const TextStyle(
                     fontSize: 11,
-                    color: Color(0xFF1A1A2E),
+                    color: SdColors.ink,
                     height: 1.3,
                   ),
                   maxLines: 2,
@@ -828,9 +828,9 @@ class _TaskCardState extends State<TaskCard> {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.indigo.withValues(alpha: 0.04),
+        color: SdColors.primary.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.indigo.withValues(alpha: 0.12)),
+        border: Border.all(color: SdColors.primary.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -840,21 +840,21 @@ class _TaskCardState extends State<TaskCard> {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.indigo.withValues(alpha: 0.1),
+                  color: SdColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(5),
                 ),
                 child: const Icon(Icons.timeline_rounded,
-                    size: 14, color: Colors.indigo),
+                    size: 14, color: SdColors.primary),
               ),
               const SizedBox(width: 6),
               const Text('سجل الحالة',
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Colors.indigo)),
+                      color: SdColors.primary)),
               const Spacer(),
               Text('${history.length} تغيير',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                  style: TextStyle(fontSize: 11, color: SdColors.faint)),
             ],
           ),
           const SizedBox(height: 8),
@@ -874,7 +874,7 @@ class _TaskCardState extends State<TaskCard> {
                             color: statusColor, shape: BoxShape.circle),
                       ),
                       Container(
-                          width: 2, height: 20, color: Colors.grey.shade300),
+                          width: 2, height: 20, color: SdColors.edge),
                     ],
                   ),
                   const SizedBox(width: 8),
@@ -887,12 +887,12 @@ class _TaskCardState extends State<TaskCard> {
                             Text(h.fromStatus,
                                 style: TextStyle(
                                     fontSize: 11,
-                                    color: Colors.grey.shade600,
+                                    color: SdColors.muted,
                                     decoration: TextDecoration.lineThrough)),
                             const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 4),
                                 child: Icon(Icons.arrow_forward,
-                                    size: 12, color: Colors.grey)),
+                                    size: 12, color: SdColors.faint)),
                             Text(h.toStatus,
                                 style: TextStyle(
                                     fontSize: 12,
@@ -906,12 +906,12 @@ class _TaskCardState extends State<TaskCard> {
                               Text(h.changedBy,
                                   style: TextStyle(
                                       fontSize: 11,
-                                      color: Colors.grey.shade500)),
+                                      color: SdColors.faint)),
                             const SizedBox(width: 8),
                             Text(
                               DateFormat('MM/dd HH:mm').format(h.changedAt),
                               style: TextStyle(
-                                  fontSize: 11, color: Colors.grey.shade400),
+                                  fontSize: 11, color: SdColors.faint),
                             ),
                           ],
                         ),
@@ -925,7 +925,7 @@ class _TaskCardState extends State<TaskCard> {
           if (history.length > 5)
             Center(
               child: Text('+ ${history.length - 5} تغييرات أخرى',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                  style: TextStyle(fontSize: 11, color: SdColors.faint)),
             ),
         ],
       ),
@@ -975,7 +975,7 @@ class _TaskCardState extends State<TaskCard> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
                 content: Text('تم إضافة التعليق'),
-                backgroundColor: Colors.green,
+                backgroundColor: SdColors.success,
                 duration: Duration(seconds: 2)),
           );
         }
@@ -983,7 +983,7 @@ class _TaskCardState extends State<TaskCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(result['message'] ?? 'فشل إضافة التعليق'),
-              backgroundColor: Colors.red),
+              backgroundColor: SdColors.danger),
         );
       }
     } catch (_) {
@@ -991,7 +991,7 @@ class _TaskCardState extends State<TaskCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('خطأ في إضافة التعليق'),
-              backgroundColor: Colors.red),
+              backgroundColor: SdColors.danger),
         );
       }
     }
@@ -1007,9 +1007,9 @@ class _TaskCardState extends State<TaskCard> {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.teal.withValues(alpha: 0.04),
+        color: SdColors.accent.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.teal.withValues(alpha: 0.12)),
+        border: Border.all(color: SdColors.accent.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1020,23 +1020,23 @@ class _TaskCardState extends State<TaskCard> {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.teal.withValues(alpha: 0.1),
+                  color: SdColors.accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(5),
                 ),
                 child: const Icon(Icons.comment_outlined,
-                    size: 14, color: Colors.teal),
+                    size: 14, color: SdColors.accent),
               ),
               const SizedBox(width: 6),
               const Text('التعليقات',
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Colors.teal)),
+                      color: SdColors.accent)),
               const Spacer(),
               if (_comments.isNotEmpty)
                 Text('${_comments.length}',
                     style:
-                        TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                        TextStyle(fontSize: 11, color: SdColors.faint)),
             ],
           ),
           const SizedBox(height: 8),
@@ -1054,7 +1054,7 @@ class _TaskCardState extends State<TaskCard> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text('لا توجد تعليقات بعد',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+                  style: TextStyle(fontSize: 12, color: SdColors.faint)),
             )
           else
             ..._comments.take(5).map((c) => _buildCommentItem(c)),
@@ -1065,7 +1065,7 @@ class _TaskCardState extends State<TaskCard> {
               child: Center(
                   child: Text('+ ${_comments.length - 5} تعليقات أخرى',
                       style: TextStyle(
-                          fontSize: 11, color: Colors.grey.shade500))),
+                          fontSize: 11, color: SdColors.faint))),
             ),
 
           const SizedBox(height: 8),
@@ -1081,21 +1081,21 @@ class _TaskCardState extends State<TaskCard> {
                   decoration: InputDecoration(
                     hintText: 'أضف تعليقاً...',
                     hintStyle:
-                        TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                        TextStyle(fontSize: 12, color: SdColors.faint),
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(color: Colors.grey.shade300)),
+                        borderSide: BorderSide(color: SdColors.edge)),
                     enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(color: Colors.grey.shade300)),
+                        borderSide: BorderSide(color: SdColors.edge)),
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
                         borderSide:
-                            const BorderSide(color: Colors.teal, width: 1.5)),
+                            const BorderSide(color: SdColors.accent, width: 1.5)),
                   ),
                 ),
               ),
@@ -1106,7 +1106,7 @@ class _TaskCardState extends State<TaskCard> {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color:
-                        _isSendingComment ? Colors.grey.shade300 : Colors.teal,
+                        _isSendingComment ? SdColors.edge : SdColors.accent,
                     shape: BoxShape.circle,
                   ),
                   child: _isSendingComment
@@ -1145,14 +1145,14 @@ class _TaskCardState extends State<TaskCard> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.person_outline, size: 14, color: Colors.grey.shade500),
+              Icon(Icons.person_outline, size: 14, color: SdColors.faint),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -1160,20 +1160,20 @@ class _TaskCardState extends State<TaskCard> {
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade700),
+                      color: SdColors.muted),
                 ),
               ),
               if (date != null)
                 Text(
                   DateFormat('MM/dd HH:mm').format(date),
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade400),
+                  style: TextStyle(fontSize: 11, color: SdColors.faint),
                 ),
             ],
           ),
           const SizedBox(height: 4),
           Text(content,
               style: const TextStyle(
-                  fontSize: 12, color: Color(0xFF1A1A2E), height: 1.4)),
+                  fontSize: 12, color: SdColors.ink, height: 1.4)),
         ],
       ),
     );
@@ -1246,9 +1246,9 @@ class _TaskCardState extends State<TaskCard> {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.04),
+        color: SdColors.warning.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.12)),
+        border: Border.all(color: SdColors.warning.withValues(alpha: 0.12)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1259,18 +1259,18 @@ class _TaskCardState extends State<TaskCard> {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.1),
+                  color: SdColors.warning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(5),
                 ),
                 child: const Icon(Icons.inventory_2_outlined,
-                    size: 14, color: Colors.orange),
+                    size: 14, color: SdColors.warning),
               ),
               const SizedBox(width: 6),
               const Text('المواد المصروفة',
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: Colors.orange)),
+                      color: SdColors.warning)),
               const Spacer(),
               if (_dispensedMaterials.isNotEmpty)
                 Padding(
@@ -1279,13 +1279,13 @@ class _TaskCardState extends State<TaskCard> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.1),
+                      color: SdColors.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text('${_dispensedMaterials.length}',
                         style: const TextStyle(
                             fontSize: 11,
-                            color: Colors.orange,
+                            color: SdColors.warning,
                             fontWeight: FontWeight.w600)),
                   ),
                 ),
@@ -1295,7 +1295,7 @@ class _TaskCardState extends State<TaskCard> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.orange,
+                    color: SdColors.warning,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Row(
@@ -1325,12 +1325,12 @@ class _TaskCardState extends State<TaskCard> {
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.orange))))
+                            strokeWidth: 2, color: SdColors.warning))))
           else if (_dispensedMaterials.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text('لا توجد مواد مصروفة',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+                  style: TextStyle(fontSize: 12, color: SdColors.faint)),
             )
           else
             ..._dispensedMaterials.map((m) => _buildMaterialItem(m)),
@@ -1353,18 +1353,18 @@ class _TaskCardState extends State<TaskCard> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: 0.08),
+              color: SdColors.warning.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(6),
             ),
             child: const Icon(Icons.build_circle_outlined,
-                size: 16, color: Colors.orange),
+                size: 16, color: SdColors.warning),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1375,7 +1375,7 @@ class _TaskCardState extends State<TaskCard> {
                     style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A2E))),
+                        color: SdColors.ink)),
               ],
             ),
           ),
@@ -1385,21 +1385,21 @@ class _TaskCardState extends State<TaskCard> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
+                  color: SdColors.warningTint,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text('$net',
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: Colors.orange.shade800)),
+                        color: SdColors.warning)),
               ),
               if (returned > 0)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
                   child: Text('مرجع: $returned',
                       style: TextStyle(
-                          fontSize: 10, color: Colors.green.shade600)),
+                          fontSize: 10, color: SdColors.success)),
                 ),
             ],
           ),
@@ -1407,7 +1407,7 @@ class _TaskCardState extends State<TaskCard> {
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Text(voucher,
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade400)),
+                  style: TextStyle(fontSize: 10, color: SdColors.faint)),
             ),
         ],
       ),
@@ -1460,7 +1460,7 @@ class _TaskCardState extends State<TaskCard> {
             textDirection: TextDirection.rtl,
             child: AlertDialog(
               title: const Row(children: [
-                Icon(Icons.inventory_2, color: Colors.orange, size: 20),
+                Icon(Icons.inventory_2, color: SdColors.warning, size: 20),
                 SizedBox(width: 8),
                 Text('صرف مواد للعميل', style: TextStyle(fontSize: 16)),
               ]),
@@ -1479,7 +1479,7 @@ class _TaskCardState extends State<TaskCard> {
                                 child: Text('لا توجد مواد في النظام.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                        fontSize: 14, color: Colors.grey))),
+                                        fontSize: 14, color: SdColors.faint))),
                           )
                         : SingleChildScrollView(
                             child: Column(
@@ -1490,18 +1490,18 @@ class _TaskCardState extends State<TaskCard> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
+                                    color: SdColors.infoTint,
                                     borderRadius: BorderRadius.circular(8)),
                                 child: Row(children: [
                                   Icon(Icons.info_outline,
-                                      size: 16, color: Colors.blue.shade700),
+                                      size: 16, color: SdColors.info),
                                   const SizedBox(width: 6),
                                   Expanded(
                                       child: Text(
                                           'اختر المواد المستخدمة (يمكن الصرف حتى بدون رصيد بالعُهدة)',
                                           style: TextStyle(
                                               fontSize: 12,
-                                              color: Colors.blue.shade700,
+                                              color: SdColors.info,
                                               fontWeight: FontWeight.w600))),
                                 ]),
                               ),
@@ -1612,8 +1612,8 @@ class _TaskCardState extends State<TaskCard> {
                                             helperStyle: TextStyle(
                                                 fontSize: 9,
                                                 color: available > 0
-                                                    ? Colors.green.shade700
-                                                    : Colors.orange.shade700)),
+                                                    ? SdColors.success
+                                                    : SdColors.warning)),
                                         style: const TextStyle(fontSize: 13),
                                         onChanged: (v) =>
                                             row.quantity = int.tryParse(v) ?? 1,
@@ -1624,7 +1624,7 @@ class _TaskCardState extends State<TaskCard> {
                                         onTap: () =>
                                             setD(() => rows.removeAt(idx)),
                                         child: const Icon(Icons.remove_circle,
-                                            size: 22, color: Colors.red)),
+                                            size: 22, color: SdColors.danger)),
                                   ]),
                                 );
                               }),
@@ -1646,7 +1646,7 @@ class _TaskCardState extends State<TaskCard> {
                                           'اضغط "إضافة مادة" لتحديد المواد المستخدمة',
                                           style: TextStyle(
                                               fontSize: 11,
-                                              color: Colors.grey.shade500))),
+                                              color: SdColors.faint))),
                                 ),
                             ],
                           )),
@@ -1656,7 +1656,7 @@ class _TaskCardState extends State<TaskCard> {
                     onPressed: () => Navigator.pop(ctx),
                     child: const Text('إلغاء')),
                 FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+                  style: FilledButton.styleFrom(backgroundColor: SdColors.warning),
                   onPressed: rows.isEmpty
                       ? null
                       : () async {
@@ -1686,13 +1686,13 @@ class _TaskCardState extends State<TaskCard> {
                                   const SnackBar(
                                       content:
                                           Text('تم صرف المواد من عُهدة الفني'),
-                                      backgroundColor: Colors.green));
+                                      backgroundColor: SdColors.success));
                             }
                           } catch (e) {
                             if (ctx.mounted) {
                               ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
                                   content: Text('خطأ: $e'),
-                                  backgroundColor: Colors.red));
+                                  backgroundColor: SdColors.danger));
                             }
                           }
                         },
@@ -1743,7 +1743,7 @@ class _TaskCardState extends State<TaskCard> {
       menuItems.add(const PopupMenuItem(
           value: 'agent',
           child: Row(children: [
-            Icon(Icons.group_rounded, size: 18, color: Color(0xFF8E44AD)),
+            Icon(Icons.group_rounded, size: 18, color: SdColors.platformBase),
             SizedBox(width: 8),
             Text('وكيل'),
           ])));
@@ -1752,7 +1752,7 @@ class _TaskCardState extends State<TaskCard> {
       menuItems.add(const PopupMenuItem(
           value: 'edit',
           child: Row(children: [
-            Icon(Icons.edit_rounded, size: 18, color: Color(0xFF3498DB)),
+            Icon(Icons.edit_rounded, size: 18, color: SdColors.info),
             SizedBox(width: 8),
             Text('تعديل'),
           ])));
@@ -1762,7 +1762,7 @@ class _TaskCardState extends State<TaskCard> {
           value: 'delete',
           child: Row(children: [
             Icon(Icons.delete_outline_rounded,
-                size: 18, color: Color(0xFFE74C3C)),
+                size: 18, color: SdColors.danger),
             SizedBox(width: 8),
             Text('حذف'),
           ])));
@@ -1775,7 +1775,7 @@ class _TaskCardState extends State<TaskCard> {
       menuItems.add(const PopupMenuItem(
           value: 'activate',
           child: Row(children: [
-            Icon(Icons.verified_rounded, size: 18, color: Color(0xFF27AE60)),
+            Icon(Icons.verified_rounded, size: 18, color: SdColors.success),
             SizedBox(width: 8),
             Text('تفعيل'),
           ])));
@@ -1953,7 +1953,7 @@ class _TaskCardState extends State<TaskCard> {
           'لا توجد مهام متاحة لهذا المستخدم',
           style: TextStyle(
             fontSize: 16,
-            color: Colors.grey,
+            color: SdColors.faint,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -1970,7 +1970,7 @@ class _TaskCardState extends State<TaskCard> {
         SnackBar(
           content: Text(
               'لا يمكن تغيير الحالة - "${widget.task.status}" حالة نهائية'),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
           duration: const Duration(seconds: 3),
         ),
       );
@@ -2052,7 +2052,7 @@ class _TaskCardState extends State<TaskCard> {
                             horizontal: 20, vertical: 16),
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
-                              colors: [Color(0xFF1A237E), Color(0xFF283593)]),
+                              colors: [SdColors.primary, SdColors.primaryMid]),
                           borderRadius: BorderRadius.only(
                               topLeft: Radius.circular(20),
                               topRight: Radius.circular(20)),
@@ -2083,7 +2083,7 @@ class _TaskCardState extends State<TaskCard> {
                                 style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade700)),
+                                    color: SdColors.muted)),
                             const SizedBox(height: 6),
                             Container(
                               decoration: BoxDecoration(
@@ -2143,7 +2143,7 @@ class _TaskCardState extends State<TaskCard> {
                                 style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade700)),
+                                    color: SdColors.muted)),
                             const SizedBox(height: 6),
                             TextField(
                               controller: amountController,
@@ -2194,9 +2194,9 @@ class _TaskCardState extends State<TaskCard> {
                               decoration: InputDecoration(
                                 hintText: '0',
                                 hintStyle:
-                                    TextStyle(color: Colors.grey.shade400),
+                                    TextStyle(color: SdColors.faint),
                                 filled: true,
-                                fillColor: Colors.grey.shade50,
+                                fillColor: SdColors.surfaceAlt,
                                 contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 12),
                                 prefixIcon: Container(
@@ -2206,20 +2206,20 @@ class _TaskCardState extends State<TaskCard> {
                                       style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.green.shade600)),
+                                          color: SdColors.success)),
                                 ),
                                 border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide(
-                                        color: Colors.grey.shade300)),
+                                        color: SdColors.edge)),
                                 enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide(
-                                        color: Colors.grey.shade300)),
+                                        color: SdColors.edge)),
                                 focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide(
-                                        color: Colors.green.shade400,
+                                        color: SdColors.success,
                                         width: 1.5)),
                               ),
                             ),
@@ -2232,7 +2232,7 @@ class _TaskCardState extends State<TaskCard> {
                                   style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.grey.shade700)),
+                                      color: SdColors.muted)),
                               const SizedBox(height: 6),
                               TextField(
                                 controller: deliveryFeeController,
@@ -2280,20 +2280,20 @@ class _TaskCardState extends State<TaskCard> {
                                 decoration: InputDecoration(
                                   hintText: '0',
                                   hintStyle:
-                                      TextStyle(color: Colors.grey.shade400),
+                                      TextStyle(color: SdColors.faint),
                                   filled: true,
-                                  fillColor: Colors.grey.shade50,
+                                  fillColor: SdColors.surfaceAlt,
                                   contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 14, vertical: 12),
                                   prefixIcon: Container(
                                     width: 36,
                                     alignment: Alignment.center,
                                     child: Icon(Icons.local_shipping,
-                                        size: 18, color: Colors.teal.shade600),
+                                        size: 18, color: SdColors.accent),
                                   ),
                                   suffixIcon: IconButton(
                                     icon: Icon(Icons.close_rounded,
-                                        size: 18, color: Colors.red.shade400),
+                                        size: 18, color: SdColors.danger),
                                     tooltip: 'بدون أجور توصيل',
                                     onPressed: () {
                                       deliveryFeeController.clear();
@@ -2302,15 +2302,15 @@ class _TaskCardState extends State<TaskCard> {
                                   border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                       borderSide: BorderSide(
-                                          color: Colors.grey.shade300)),
+                                          color: SdColors.edge)),
                                   enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                       borderSide: BorderSide(
-                                          color: Colors.grey.shade300)),
+                                          color: SdColors.edge)),
                                   focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                       borderSide: BorderSide(
-                                          color: Colors.teal.shade400,
+                                          color: SdColors.accentLight,
                                           width: 1.5)),
                                 ),
                               ),
@@ -2326,7 +2326,7 @@ class _TaskCardState extends State<TaskCard> {
                                   Text(' * مطلوب',
                                       style: TextStyle(
                                           fontSize: 11,
-                                          color: Colors.red.shade400,
+                                          color: SdColors.danger,
                                           fontWeight: FontWeight.w600)),
                                 const SizedBox(width: 4),
                                 Text(
@@ -2337,8 +2337,8 @@ class _TaskCardState extends State<TaskCard> {
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                         color: selectedStatus == 'ملغية'
-                                            ? Colors.red.shade700
-                                            : Colors.grey.shade700)),
+                                            ? SdColors.danger
+                                            : SdColors.muted)),
                               ],
                             ),
                             const SizedBox(height: 6),
@@ -2353,29 +2353,29 @@ class _TaskCardState extends State<TaskCard> {
                                     : 'ملاحظات إضافية (اختياري)',
                                 hintStyle: TextStyle(
                                     color: selectedStatus == 'ملغية'
-                                        ? Colors.red.shade300
-                                        : Colors.grey.shade400,
+                                        ? SdColors.dangerTintEdge
+                                        : SdColors.faint,
                                     fontSize: 13),
                                 filled: true,
-                                fillColor: Colors.grey.shade50,
+                                fillColor: SdColors.surfaceAlt,
                                 contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 12),
                                 border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide(
-                                        color: Colors.grey.shade300)),
+                                        color: SdColors.edge)),
                                 enabledBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide(
                                         color: selectedStatus == 'ملغية'
-                                            ? Colors.red.shade300
-                                            : Colors.grey.shade300)),
+                                            ? SdColors.dangerTintEdge
+                                            : SdColors.edge)),
                                 focusedBorder: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
                                     borderSide: BorderSide(
                                         color: selectedStatus == 'ملغية'
-                                            ? Colors.red.shade400
-                                            : Colors.orange.shade400,
+                                            ? SdColors.danger
+                                            : SdColors.warning,
                                         width: 1.5)),
                               ),
                             ),
@@ -2397,14 +2397,14 @@ class _TaskCardState extends State<TaskCard> {
                                 style: OutlinedButton.styleFrom(
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 12),
-                                  side: BorderSide(color: Colors.grey.shade400),
+                                  side: BorderSide(color: SdColors.faint),
                                   shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12)),
                                 ),
                                 child: Text('إلغاء',
                                     style: TextStyle(
                                         fontSize: 14,
-                                        color: Colors.grey.shade600,
+                                        color: SdColors.muted,
                                         fontWeight: FontWeight.w600)),
                               ),
                             ),
@@ -2424,7 +2424,7 @@ class _TaskCardState extends State<TaskCard> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text('يجب كتابة سبب الإلغاء'),
-                                        backgroundColor: Colors.red,
+                                        backgroundColor: SdColors.danger,
                                       ),
                                     );
                                     return;
@@ -2438,7 +2438,7 @@ class _TaskCardState extends State<TaskCard> {
                                       const SnackBar(
                                         content: Text(
                                             'المبلغ يجب أن يكون 1,000 على الأقل'),
-                                        backgroundColor: Colors.orange,
+                                        backgroundColor: SdColors.warning,
                                       ),
                                     );
                                     return;
@@ -2465,7 +2465,7 @@ class _TaskCardState extends State<TaskCard> {
                                 style: ElevatedButton.styleFrom(
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 12),
-                                  backgroundColor: const Color(0xFF1A237E),
+                                  backgroundColor: SdColors.primary,
                                   foregroundColor: Colors.white,
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
@@ -2509,7 +2509,7 @@ class _TaskCardState extends State<TaskCard> {
             child: AlertDialog(
               title: Row(children: [
                 Icon(Icons.warning_amber_rounded,
-                    color: Colors.orange.shade700),
+                    color: SdColors.warning),
                 const SizedBox(width: 8),
                 const Expanded(
                     child: Text('المواد المصروفة',
@@ -2529,7 +2529,7 @@ class _TaskCardState extends State<TaskCard> {
                   child: const Text('لم يُصرف شيء'),
                 ),
                 FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+                  style: FilledButton.styleFrom(backgroundColor: SdColors.warning),
                   onPressed: () => Navigator.pop(ctx, 'add_materials'),
                   child: const Text('إضافة مواد'),
                 ),
@@ -2577,7 +2577,7 @@ class _TaskCardState extends State<TaskCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('تم تحديث حالة المهمة إلى: $newStatus'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -2587,7 +2587,7 @@ class _TaskCardState extends State<TaskCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('فشل تحديث الحالة - الانتقال غير مسموح'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             duration: Duration(seconds: 3),
           ),
         );
@@ -2666,7 +2666,7 @@ class _TaskCardState extends State<TaskCard> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم حذف المهمة بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
           // تحديث القائمة بدل الرجوع للصفحة السابقة
@@ -2677,7 +2677,7 @@ class _TaskCardState extends State<TaskCard> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(code == 403 ? 'لا تملك صلاحية حذف المهمة' : msg),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
@@ -2688,7 +2688,7 @@ class _TaskCardState extends State<TaskCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('خطأ في حذف المهمة'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -2713,7 +2713,7 @@ class _TaskCardState extends State<TaskCard> {
                 Navigator.of(context).pop();
                 await _deleteTask();
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
               child: const Text('حذف', style: TextStyle(color: Colors.white)),
             ),
           ],
@@ -2736,7 +2736,7 @@ class _TaskCardState extends State<TaskCard> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF27AE60)),
+                backgroundColor: SdColors.success),
             child: const Text('نعم، تم التفعيل',
                 style: TextStyle(color: Colors.white)),
           ),
@@ -2757,14 +2757,14 @@ class _TaskCardState extends State<TaskCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('تم تحويل المهمة إلى مكتملة مفعّل'),
-              backgroundColor: Colors.green),
+              backgroundColor: SdColors.success),
         );
         widget.onStatusChanged(widget.task);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -2800,7 +2800,7 @@ class _TaskCardState extends State<TaskCard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('يجب تسجيل الدخول لنظام FTTH أولاً'),
-            backgroundColor: Colors.red),
+            backgroundColor: SdColors.danger),
       );
       return;
     }
@@ -2911,7 +2911,7 @@ class _TaskCardState extends State<TaskCard> {
                     ),
                   ],
                 ),
-                backgroundColor: Colors.blue,
+                backgroundColor: SdColors.info,
                 duration: const Duration(seconds: 6),
                 action: SnackBarAction(
                   label: 'نسخ مرة أخرى',
@@ -2952,7 +2952,7 @@ class _TaskCardState extends State<TaskCard> {
                     ),
                   ],
                 ),
-                backgroundColor: Colors.blue,
+                backgroundColor: SdColors.info,
                 duration: const Duration(seconds: 6),
                 action: SnackBarAction(
                   label: 'نسخ مرة أخرى',
@@ -2990,7 +2990,7 @@ class _TaskCardState extends State<TaskCard> {
                       style: TextStyle(fontSize: 11)),
                 ],
               ),
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               duration: const Duration(seconds: 8),
               action: SnackBarAction(
                 label: 'نسخ الرقم',
@@ -3038,7 +3038,7 @@ class _TaskCardState extends State<TaskCard> {
             SnackBar(
               content: Text(
                   'فشل في فتح واتساب: $e\nيرجى التأكد من تثبيت تطبيق واتساب'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
               duration: const Duration(seconds: 4),
             ),
           );
@@ -3061,7 +3061,7 @@ class _TaskCardState extends State<TaskCard> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('تم تحديث رسائل الصيانة بنجاح'),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           duration: Duration(seconds: 3),
         ),
       );
@@ -3161,15 +3161,15 @@ class _TaskCardState extends State<TaskCard> {
   Color _getPriorityColor(String priority) {
     switch (priority) {
       case 'عاجل':
-        return Colors.red;
+        return SdColors.danger;
       case 'عالي':
-        return Colors.orange;
+        return SdColors.warning;
       case 'متوسط':
-        return Colors.yellow.shade700;
+        return SdColors.warning;
       case 'منخفض':
-        return Colors.green;
+        return SdColors.success;
       default:
-        return Colors.grey;
+        return SdColors.faint;
     }
   }
 
@@ -3280,7 +3280,7 @@ class _TaskCardState extends State<TaskCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في جلب بيانات الوكلاء'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -3302,7 +3302,7 @@ class _TaskCardState extends State<TaskCard> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.purple[600]!, Colors.purple[400]!],
+                  colors: [SdColors.platformBase, SdColors.platformLight],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -3347,9 +3347,9 @@ class _TaskCardState extends State<TaskCard> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[200]!),
+                border: Border.all(color: SdColors.infoTintEdge),
               ),
               child: Column(
                 children: [
@@ -3368,11 +3368,11 @@ class _TaskCardState extends State<TaskCard> {
                     children: [
                       Text('الهاتف: ${widget.task.phone}',
                           style:
-                              TextStyle(fontSize: 11, color: Colors.blue[700])),
+                              TextStyle(fontSize: 11, color: SdColors.info)),
                       const SizedBox(width: 16),
                       Text('الموقع: ${widget.task.location}',
                           style:
-                              TextStyle(fontSize: 11, color: Colors.blue[700])),
+                              TextStyle(fontSize: 11, color: SdColors.info)),
                     ],
                   ),
                 ],
@@ -3388,7 +3388,7 @@ class _TaskCardState extends State<TaskCard> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircularProgressIndicator(color: Colors.purple),
+                          CircularProgressIndicator(color: SdColors.platformBase),
                           SizedBox(height: 16),
                           Text('جاري جلب بيانات الوكلاء...'),
                         ],
@@ -3400,11 +3400,11 @@ class _TaskCardState extends State<TaskCard> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.person_off,
-                                  size: 48, color: Colors.grey[400]),
+                                  size: 48, color: SdColors.faint),
                               const SizedBox(height: 16),
                               Text(
                                 'لا يوجد وكلاء متاحون في منطقة ${widget.task.fbg}',
-                                style: TextStyle(color: Colors.grey[600]),
+                                style: TextStyle(color: SdColors.muted),
                                 textAlign: TextAlign.center,
                               ),
                             ],
@@ -3434,12 +3434,12 @@ class _TaskCardState extends State<TaskCard> {
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
             margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
             decoration: BoxDecoration(
-              color: Colors.purple[100],
+              color: SdColors.platformTint,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.purple[300]!, width: 2),
+              border: Border.all(color: SdColors.platformTintEdge, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.purple[200]!.withValues(alpha: 0.3),
+                  color: SdColors.platformTintEdge.withValues(alpha: 0.3),
                   spreadRadius: 1,
                   blurRadius: 3,
                   offset: const Offset(0, 2),
@@ -3451,7 +3451,7 @@ class _TaskCardState extends State<TaskCard> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Colors.purple[800],
+                color: SdColors.platformBase,
                 fontFamily: 'Cairo',
               ),
               textAlign: TextAlign.center,
@@ -3501,10 +3501,10 @@ class _TaskCardState extends State<TaskCard> {
               Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: Colors.purple[100],
+                    backgroundColor: SdColors.platformTint,
                     radius: 18,
                     child:
-                        Icon(Icons.person, color: Colors.purple[700], size: 18),
+                        Icon(Icons.person, color: SdColors.platformBase, size: 18),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -3526,7 +3526,7 @@ class _TaskCardState extends State<TaskCard> {
                           '$phone • $group',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[600],
+                            color: SdColors.muted,
                             fontFamily: 'Cairo',
                           ),
                           textDirection: TextDirection.rtl,
@@ -3560,7 +3560,7 @@ class _TaskCardState extends State<TaskCard> {
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                        backgroundColor: SdColors.success,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 6),
                         shape: RoundedRectangleBorder(
@@ -3578,7 +3578,7 @@ class _TaskCardState extends State<TaskCard> {
                       onPressed: () =>
                           _assignTaskToAgentNew(name, phone, group),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple,
+                        backgroundColor: SdColors.platformBase,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 6),
                         shape: RoundedRectangleBorder(
@@ -3677,7 +3677,7 @@ class _TaskCardState extends State<TaskCard> {
                       ),
                     ],
                   ),
-                  backgroundColor: Colors.green,
+                  backgroundColor: SdColors.success,
                   duration: const Duration(seconds: 6),
                   action: SnackBarAction(
                     label: 'نسخ مرة أخرى',
@@ -3717,7 +3717,7 @@ class _TaskCardState extends State<TaskCard> {
                 SnackBar(
                   content:
                       Text('تم إرسال المهمة للوكيل $agentName عبر الواتساب'),
-                  backgroundColor: Colors.green,
+                  backgroundColor: SdColors.success,
                   duration: const Duration(seconds: 3),
                 ),
               );
@@ -3735,7 +3735,7 @@ class _TaskCardState extends State<TaskCard> {
                 SnackBar(
                   content:
                       Text('تم إرسال المهمة للوكيل $agentName عبر واتساب ويب'),
-                  backgroundColor: Colors.green,
+                  backgroundColor: SdColors.success,
                   duration: const Duration(seconds: 3),
                 ),
               );
@@ -3750,7 +3750,7 @@ class _TaskCardState extends State<TaskCard> {
               SnackBar(
                 content: Text(
                     'فشل في فتح واتساب: $e\nيرجى التأكد من تثبيت تطبيق واتساب'),
-                backgroundColor: Colors.red,
+                backgroundColor: SdColors.danger,
                 duration: const Duration(seconds: 4),
               ),
             );
@@ -3767,7 +3767,7 @@ class _TaskCardState extends State<TaskCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في نسخ تفاصيل المهمة'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -3798,7 +3798,7 @@ class _TaskCardState extends State<TaskCard> {
                   style: TextStyle(fontSize: 11)),
             ],
           ),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
           duration: const Duration(seconds: 8),
           action: SnackBarAction(
             label: 'نسخ الرقم',
@@ -3833,7 +3833,7 @@ class _TaskCardState extends State<TaskCard> {
               Text('يمكنك لصقها يدوياً في الواتساب: $formattedPhone'),
             ],
           ),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
           duration: const Duration(seconds: 5),
           action: SnackBarAction(
             label: 'نسخ الرقم',
@@ -3898,7 +3898,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('تم تعيين المهمة للوكيل $agentName'),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           duration: const Duration(seconds: 2),
         ),
       );
@@ -3908,7 +3908,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تعيين المهمة'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -3921,7 +3921,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('تم نسخ رقم الهاتف إلى الحافظة'),
-          backgroundColor: Colors.blue,
+          backgroundColor: SdColors.info,
           duration: Duration(seconds: 2),
         ),
       );
@@ -3952,7 +3952,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في إرسال المهمة للفني'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -4007,7 +4007,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
         return AlertDialog(
           title: Row(
             children: [
-              const Icon(Icons.phone, color: Colors.green),
+              const Icon(Icons.phone, color: SdColors.success),
               const SizedBox(width: 8),
               const Text('رقم هاتف الفني'),
             ],
@@ -4055,7 +4055,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
                 phoneController.dispose();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: SdColors.success,
                 foregroundColor: Colors.white,
               ),
               child: const Text('إرسال'),
@@ -4116,7 +4116,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
                     ),
                   ],
                 ),
-                backgroundColor: Colors.green,
+                backgroundColor: SdColors.success,
                 duration: const Duration(seconds: 6),
                 action: SnackBarAction(
                   label: 'نسخ مرة أخرى',
@@ -4157,7 +4157,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
                     ),
                   ],
                 ),
-                backgroundColor: Colors.green,
+                backgroundColor: SdColors.success,
                 duration: const Duration(seconds: 6),
                 action: SnackBarAction(
                   label: 'نسخ مرة أخرى',
@@ -4195,7 +4195,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
                       style: TextStyle(fontSize: 11)),
                 ],
               ),
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               duration: const Duration(seconds: 8),
               action: SnackBarAction(
                 label: 'نسخ الرقم',
@@ -4231,7 +4231,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
               SnackBar(
                 content:
                     Text('تم إرسال المهمة للفني $technicianName عبر الواتساب'),
-                backgroundColor: Colors.green,
+                backgroundColor: SdColors.success,
                 duration: const Duration(seconds: 3),
               ),
             );
@@ -4249,7 +4249,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
               SnackBar(
                 content: Text(
                     'تم إرسال المهمة للفني $technicianName عبر واتساب ويب'),
-                backgroundColor: Colors.green,
+                backgroundColor: SdColors.success,
                 duration: const Duration(seconds: 3),
               ),
             );
@@ -4264,7 +4264,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ${widget.task.notes}' : ''}
             SnackBar(
               content: Text(
                   'فشل في فتح واتساب: $e\nيرجى التأكد من تثبيت تطبيق واتساب'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
               duration: const Duration(seconds: 4),
             ),
           );
@@ -4315,7 +4315,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ملاحظات إضافية:\n${widget.ta
         return AlertDialog(
           title: Row(
             children: [
-              const Icon(Icons.error, color: Colors.red),
+              const Icon(Icons.error, color: SdColors.danger),
               const SizedBox(width: 8),
               Text(title),
             ],
@@ -4337,7 +4337,7 @@ ${widget.task.notes.isNotEmpty ? '📝 ملاحظات إضافية:\n${widget.ta
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('تم نسخ تفاصيل الخطأ إلى الحافظة'),
-                    backgroundColor: Colors.blue,
+                    backgroundColor: SdColors.info,
                     duration: Duration(seconds: 2),
                   ),
                 );

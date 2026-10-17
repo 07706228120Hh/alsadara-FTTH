@@ -358,7 +358,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                   style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w800,
-                      color: Colors.grey[700])),
+                      color: SdColors.muted)),
               SizedBox(height: 6.h),
               for (final e in _autoLog.take(5)) _logRow(e),
             ],
@@ -405,7 +405,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                     style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 10.sp,
                         fontWeight: FontWeight.w600,
-                        color: Colors.grey[600])),
+                        color: SdColors.muted)),
                 Text(value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -434,7 +434,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
           Icon(
             ok ? Icons.check_circle_rounded : Icons.info_outline_rounded,
             size: 15.sp,
-            color: ok ? SdColors.success : Colors.grey[500],
+            color: ok ? SdColors.success : SdColors.faint,
           ),
           SizedBox(width: 6.w),
           Expanded(
@@ -446,14 +446,14 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                   style: TextStyle(fontFamily: 'Cairo', 
                       fontSize: 10.5.sp,
                       fontWeight: FontWeight.w700,
-                      color: Colors.grey[800]),
+                      color: SdColors.ink),
                 ),
                 if (e.note.isNotEmpty)
                   Text(e.note,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontFamily: 'Cairo', 
-                          fontSize: 10.sp, color: Colors.grey[600])),
+                          fontSize: 10.sp, color: SdColors.muted)),
               ],
             ),
           ),
@@ -499,9 +499,9 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                   label: Text('$d يوم',
                       style: TextStyle(fontFamily: 'Cairo', 
                           fontWeight: FontWeight.w700,
-                          color: _days == d ? Colors.white : Colors.grey[700])),
+                          color: _days == d ? Colors.white : SdColors.muted)),
                   selectedColor: SdColors.primary,
-                  backgroundColor: Colors.grey.withValues(alpha: 0.10),
+                  backgroundColor: SdColors.faint.withValues(alpha: 0.10),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
                 ),
@@ -523,7 +523,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                   decoration: InputDecoration(
                     labelText: 'عدد مخصّص',
                     labelStyle: TextStyle(fontFamily: 'Cairo', 
-                        color: Colors.grey[600], fontSize: 11.5.sp),
+                        color: SdColors.muted, fontSize: 11.5.sp),
                     isDense: true,
                     suffixIcon: IconButton(
                       icon: Icon(Icons.check_rounded, size: 18.sp),
@@ -667,7 +667,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
         borderRadius: BorderRadius.circular(SasUi.radius.r),
         border: Border.all(
           color: sendable
-              ? Colors.grey.withValues(alpha: 0.16)
+              ? SdColors.faint.withValues(alpha: 0.16)
               : SdColors.warning.withValues(alpha: 0.40),
           width: sendable ? 1.2 : 1.4,
         ),
@@ -679,7 +679,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
             sendable ? Icons.chat_rounded : Icons.phone_disabled_rounded,
             size: 22.sp,
             color: sendable
-                ? const Color(0xFF25D366)
+                ? SdColors.whatsapp
                 : SdColors.warning,
           ),
           SizedBox(width: 12.w),
@@ -696,7 +696,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                         style: TextStyle(fontFamily: 'Cairo', 
                             fontSize: 14.sp,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF1A1A2E)),
+                            color: SdColors.ink),
                       ),
                     ),
                     if (daysLeft != null)
@@ -724,7 +724,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontFamily: 'Cairo', 
-                      fontSize: 11.5.sp, color: Colors.grey[600]),
+                      fontSize: 11.5.sp, color: SdColors.muted),
                 ),
                 SizedBox(height: 2.h),
                 Text(
@@ -739,7 +739,7 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                     fontSize: 11.sp,
                     fontWeight: FontWeight.w600,
                     color: sendable
-                        ? Colors.grey[700]
+                        ? SdColors.muted
                         : SdColors.warning,
                   ),
                 ),
@@ -794,16 +794,16 @@ class _SasRemindersPageState extends State<SasRemindersPage> {
                 style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.sp,
                     fontWeight: FontWeight.w700,
-                    color: Colors.grey[700]),
+                    color: SdColors.muted),
               ),
             ),
             SizedBox(width: 10.w),
             FilledButton.icon(
               onPressed: sendable == 0 ? null : _sendNow,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
+                backgroundColor: SdColors.whatsapp,
                 disabledBackgroundColor:
-                    Colors.grey.withValues(alpha: 0.30),
+                    SdColors.faint.withValues(alpha: 0.30),
                 padding:
                     EdgeInsets.symmetric(horizontal: 20.w, vertical: 13.h),
               ),

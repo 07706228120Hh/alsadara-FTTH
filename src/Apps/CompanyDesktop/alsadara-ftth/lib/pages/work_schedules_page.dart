@@ -311,7 +311,7 @@ class _WorkSchedulesPageState extends State<WorkSchedulesPage> {
               child: const Text('إلغاء')),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              style: FilledButton.styleFrom(backgroundColor: SdColors.danger),
               child: const Text('حذف')),
         ],
       ),

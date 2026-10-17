@@ -89,7 +89,7 @@ class _ClientSetupPageState extends State<ClientSetupPage>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('✅ تم إعداد التطبيق بنجاح!'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
               duration: Duration(seconds: 2),
             ),
           );
@@ -115,7 +115,7 @@ class _ClientSetupPageState extends State<ClientSetupPage>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
         duration: const Duration(seconds: 4),
       ),
     );

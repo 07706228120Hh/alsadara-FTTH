@@ -225,7 +225,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             SnackBar(
               content: Text(
                   'انتهت صلاحية جلسة المستخدم، جاري التوجيه إلى صفحة تسجيل الدخول...'),
-              backgroundColor: Colors.red[600],
+              backgroundColor: SdColors.danger,
               duration: const Duration(seconds: 2),
             ),
           );
@@ -252,7 +252,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
           context,
           SnackBar(
             content: Text(shortMsg),
-            backgroundColor: Colors.orange.shade700,
+            backgroundColor: SdColors.warning,
             duration: const Duration(seconds: 3),
             action: SnackBarAction(
               label: 'إعادة',
@@ -349,7 +349,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         context,
         const SnackBar(
           content: Text('لا توجد بيانات للتصدير'),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
         ),
       );
       return;
@@ -602,7 +602,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         SnackBar(
           content: Text(
               'تم تصدير ${allData.length} سجل إلى Excel بنجاح!\nمحفوظ في: $filePath'),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           duration: const Duration(seconds: 5),
           action: SnackBarAction(
             label: 'نسخ المسار',
@@ -640,7 +640,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         context,
         SnackBar(
           content: Text('فشل في تصدير Excel'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
           duration: const Duration(seconds: 3),
         ),
       );
@@ -870,7 +870,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
             SnackBar(
               content: Text(
                   'انتهت صلاحية جلسة المستخدم، يرجى تسجيل الدخول مرة أخرى'),
-              backgroundColor: Colors.red[600],
+              backgroundColor: SdColors.danger,
               duration: const Duration(seconds: 3),
             ),
           );
@@ -957,19 +957,19 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: SdColors.infoTint,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Row(
                       children: [
                         Icon(Icons.info_outline,
-                            color: Colors.blue, size: 18),
+                            color: SdColors.info, size: 18),
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'الإرسال التلقائي يُدار من إعدادات الشركة.\nهنا يمكنك المعاينة والإرسال اليدوي.',
                             style:
-                                TextStyle(fontSize: 12, color: Colors.blue),
+                                TextStyle(fontSize: 12, color: SdColors.info),
                           ),
                         ),
                       ],
@@ -1038,7 +1038,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                             SnackBar(
                               content:
                                   Text('جاري إرسال تذكير "$daysLabel"...'),
-                              backgroundColor: Colors.blue,
+                              backgroundColor: SdColors.info,
                             ),
                           );
                         }
@@ -1053,8 +1053,8 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                   'تم — أُرسل: ${result['sent']} / فشل: ${result['failed']}'),
                               backgroundColor:
                                   (result['failed'] ?? 0) == 0
-                                      ? Colors.green
-                                      : Colors.orange,
+                                      ? SdColors.success
+                                      : SdColors.warning,
                             ),
                           );
                         }
@@ -1159,12 +1159,12 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                 // إحصائيات
                 Row(
                   children: [
-                    _miniChip('${subs.length} إجمالي', Colors.blue),
+                    _miniChip('${subs.length} إجمالي', SdColors.info),
                     const SizedBox(width: 6),
-                    _miniChip('${valid.length} بهاتف', Colors.green),
+                    _miniChip('${valid.length} بهاتف', SdColors.success),
                     if (noPhone > 0) ...[
                       const SizedBox(width: 6),
-                      _miniChip('$noPhone بدون', Colors.red),
+                      _miniChip('$noPhone بدون', SdColors.danger),
                     ],
                   ],
                 ),
@@ -1214,7 +1214,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
                                 _shortDate(expires),
                                 style: TextStyle(
                                     fontSize: 10,
-                                    color: Colors.grey.shade600),
+                                    color: SdColors.muted),
                               ),
                             );
                           },
@@ -2197,7 +2197,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('لا يمكن فتح الصفحة: معرف العميل غير متوفر'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             duration: Duration(seconds: 2),
           ),
         );
@@ -2260,7 +2260,7 @@ class _ExpiringSoonPageState extends State<ExpiringSoonPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('تعذر فتح تفاصيل المستخدم'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
           duration: const Duration(seconds: 2),
         ),
       );

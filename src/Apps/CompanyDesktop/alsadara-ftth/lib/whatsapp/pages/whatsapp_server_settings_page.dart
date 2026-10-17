@@ -7,10 +7,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' as intl;
 import '../services/whatsapp_server_service.dart';
 import '../services/whatsapp_message_log_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class WhatsAppServerSettingsPage extends StatefulWidget {
   final String tenantId;
@@ -148,7 +148,7 @@ class _WhatsAppServerSettingsPageState
                 '⚠️ انقطع اتصال الواتساب — اضغط "إنشاء جلسة" لإعادة الاتصال',
                 style: const TextStyle(fontFamily: 'Cairo'),
               ),
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               duration: const Duration(seconds: 5),
             ),
           );
@@ -198,7 +198,7 @@ class _WhatsAppServerSettingsPageState
                 '⚠️ انقطع اتصال الواتساب — اضغط "إنشاء جلسة" لإعادة الاتصال',
                 style: const TextStyle(fontFamily: 'Cairo'),
               ),
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               duration: const Duration(seconds: 5),
             ),
           );
@@ -240,7 +240,7 @@ class _WhatsAppServerSettingsPageState
             '✅ الواتساب متصل بالفعل — ${currentStatus['name'] ?? ''} (${currentStatus['phone'] ?? ''})',
             style: const TextStyle(fontFamily: 'Cairo'),
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
           duration: const Duration(seconds: 3),
         ),
       );
@@ -314,22 +314,22 @@ class _WhatsAppServerSettingsPageState
             context: context,
             builder: (ctx) => AlertDialog(
               title: Text('❌ تعذّر توليد QR',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
               content: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('TenantId: ${widget.tenantId}',
-                        style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.faint)),
                     const SizedBox(height: 12),
                     Text('POST /session (إنشاء جلسة):',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.orange[50],
+                        color: SdColors.warningTint,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: SelectableText(
@@ -339,12 +339,12 @@ class _WhatsAppServerSettingsPageState
                     ),
                     const SizedBox(height: 12),
                     Text('GET /qr-image:',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.grey[100],
+                        color: SdColors.groundAlt,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: SelectableText(
@@ -354,12 +354,12 @@ class _WhatsAppServerSettingsPageState
                     ),
                     const SizedBox(height: 12),
                     Text('GET /status:',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.blue[50],
+                        color: SdColors.infoTint,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: SelectableText(
@@ -373,7 +373,7 @@ class _WhatsAppServerSettingsPageState
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: Text('حسناً', style: GoogleFonts.cairo()),
+                  child: Text('حسناً', style: TextStyle(fontFamily: 'Cairo')),
                 ),
               ],
             ),
@@ -437,8 +437,8 @@ class _WhatsAppServerSettingsPageState
     setState(() => _statusMessage = 'جاري إعادة تشغيل الجلسة...');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('🔄 جاري إعادة تشغيل الجلسة...', style: GoogleFonts.cairo()),
-        backgroundColor: Colors.orange,
+        content: Text('🔄 جاري إعادة تشغيل الجلسة...', style: TextStyle(fontFamily: 'Cairo')),
+        backgroundColor: SdColors.warning,
         duration: const Duration(seconds: 3),
       ),
     );
@@ -468,8 +468,8 @@ class _WhatsAppServerSettingsPageState
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('✅ تم إعادة تشغيل الجلسة بنجاح!', style: GoogleFonts.cairo()),
-              backgroundColor: Colors.green,
+              content: Text('✅ تم إعادة تشغيل الجلسة بنجاح!', style: TextStyle(fontFamily: 'Cairo')),
+              backgroundColor: SdColors.success,
             ),
           );
           _startKeepAlive();
@@ -482,8 +482,8 @@ class _WhatsAppServerSettingsPageState
         setState(() => _statusMessage = null);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('⚠️ لم يتم إعادة الاتصال — قد تحتاج لمسح QR جديد', style: GoogleFonts.cairo()),
-            backgroundColor: Colors.orange,
+            content: Text('⚠️ لم يتم إعادة الاتصال — قد تحتاج لمسح QR جديد', style: TextStyle(fontFamily: 'Cairo')),
+            backgroundColor: SdColors.warning,
           ),
         );
       }
@@ -491,8 +491,8 @@ class _WhatsAppServerSettingsPageState
       setState(() => _statusMessage = null);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('⏳ تم تخطي الإعادة — انتظر قليلاً ثم حاول مجدداً', style: GoogleFonts.cairo()),
-          backgroundColor: Colors.grey,
+          content: Text('⏳ تم تخطي الإعادة — انتظر قليلاً ثم حاول مجدداً', style: TextStyle(fontFamily: 'Cairo')),
+          backgroundColor: SdColors.faint,
         ),
       );
     }
@@ -515,13 +515,13 @@ class _WhatsAppServerSettingsPageState
           children: [
             Icon(
               healthy ? Icons.check_circle : Icons.warning,
-              color: healthy ? Colors.green : Colors.orange,
+              color: healthy ? SdColors.success : SdColors.warning,
               size: 28,
             ),
             const SizedBox(width: 8),
             Text(
               healthy ? 'الجلسة سليمة' : 'الجلسة غير سليمة',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -529,13 +529,13 @@ class _WhatsAppServerSettingsPageState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _healthRow('الحالة', status, healthy ? Colors.green : Colors.orange),
-            _healthRow('أخطاء متتالية', '$failures', failures > 0 ? Colors.red : Colors.green),
-            _healthRow('إعادات تشغيل', '$restarts', restarts > 0 ? Colors.orange : Colors.grey),
-            if (health['phone'] != null) _healthRow('الرقم', health['phone'], Colors.blue),
+            _healthRow('الحالة', status, healthy ? SdColors.success : SdColors.warning),
+            _healthRow('أخطاء متتالية', '$failures', failures > 0 ? SdColors.danger : SdColors.success),
+            _healthRow('إعادات تشغيل', '$restarts', restarts > 0 ? SdColors.warning : SdColors.faint),
+            if (health['phone'] != null) _healthRow('الرقم', health['phone'], SdColors.info),
             if (health['error'] != null) ...[
               const SizedBox(height: 8),
-              Text('الخطأ:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.red)),
+              Text('الخطأ:', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: SdColors.danger)),
               Text(health['error'], style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
             ],
           ],
@@ -548,12 +548,12 @@ class _WhatsAppServerSettingsPageState
                 _restartSession();
               },
               icon: const Icon(Icons.refresh),
-              label: Text('إعادة تشغيل', style: GoogleFonts.cairo()),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+              label: Text('إعادة تشغيل', style: TextStyle(fontFamily: 'Cairo')),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.warning, foregroundColor: Colors.white),
             ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('إغلاق', style: GoogleFonts.cairo()),
+            child: Text('إغلاق', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -565,14 +565,14 @@ class _WhatsAppServerSettingsPageState
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Text('$label: ', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+          Text('$label: ', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(value, style: GoogleFonts.cairo(color: color, fontWeight: FontWeight.bold)),
+            child: Text(value, style: TextStyle(fontFamily: 'Cairo', color: color, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -593,7 +593,7 @@ class _WhatsAppServerSettingsPageState
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('قطع الاتصال'),
           ),
         ],
@@ -628,13 +628,13 @@ class _WhatsAppServerSettingsPageState
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF25D366).withValues(alpha: 0.1),
+                  color: SdColors.whatsapp.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.send, color: Color(0xFF25D366)),
+                child: const Icon(Icons.send, color: SdColors.whatsapp),
               ),
               const SizedBox(width: 12),
-              Text('إرسال رسالة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 18)),
+              Text('إرسال رسالة', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 18)),
             ],
           ),
           content: SizedBox(
@@ -683,7 +683,7 @@ class _WhatsAppServerSettingsPageState
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('إلغاء', style: GoogleFonts.cairo()),
+              child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
             ),
             ElevatedButton.icon(
               onPressed: () {
@@ -695,9 +695,9 @@ class _WhatsAppServerSettingsPageState
                 }
               },
               icon: const Icon(Icons.send, size: 18),
-              label: Text('إرسال', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              label: Text('إرسال', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
+                backgroundColor: SdColors.whatsapp,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -728,7 +728,7 @@ class _WhatsAppServerSettingsPageState
               child: CircularProgressIndicator(strokeWidth: 2.5),
             ),
             const SizedBox(width: 20),
-            Text('جاري الإرسال...', style: GoogleFonts.cairo()),
+            Text('جاري الإرسال...', style: TextStyle(fontFamily: 'Cairo')),
           ],
         ),
       ),
@@ -759,9 +759,9 @@ class _WhatsAppServerSettingsPageState
             error == null
                 ? '✅ تم إرسال الرسالة بنجاح!'
                 : '❌ فشل الإرسال',
-            style: GoogleFonts.cairo(),
+            style: TextStyle(fontFamily: 'Cairo'),
           ),
-          backgroundColor: error == null ? Colors.green : Colors.red,
+          backgroundColor: error == null ? SdColors.success : SdColors.danger,
           duration: const Duration(seconds: 8),
         ),
       );
@@ -794,9 +794,9 @@ class _WhatsAppServerSettingsPageState
         appBar: AppBar(
           title: Text(
             'إعدادات WhatsApp Server',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
           ),
-          backgroundColor: const Color(0xFF25D366),
+          backgroundColor: SdColors.whatsapp,
           foregroundColor: Colors.white,
           actions: [
             IconButton(
@@ -843,13 +843,13 @@ class _WhatsAppServerSettingsPageState
               height: 44,
               decoration: BoxDecoration(
                 color: _isServerOnline
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.red.withOpacity(0.1),
+                    ? SdColors.success.withOpacity(0.1)
+                    : SdColors.danger.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 _isServerOnline ? Icons.cloud_done : Icons.cloud_off,
-                color: _isServerOnline ? Colors.green : Colors.red,
+                color: _isServerOnline ? SdColors.success : SdColors.danger,
                 size: 24,
               ),
             ),
@@ -860,15 +860,17 @@ class _WhatsAppServerSettingsPageState
                 children: [
                   Text(
                     'السيرفر',
-                    style: GoogleFonts.cairo(
-                        fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 12, color: SdColors.muted),
                   ),
                   Text(
                     _isServerOnline ? 'يعمل ✅' : 'متوقف ❌',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: _isServerOnline ? Colors.green : Colors.red,
+                      color: _isServerOnline ? SdColors.success : SdColors.danger,
                     ),
                   ),
                 ],
@@ -879,7 +881,7 @@ class _WhatsAppServerSettingsPageState
             Container(
               width: 1,
               height: 40,
-              color: Colors.grey[300],
+              color: SdColors.edge,
               margin: const EdgeInsets.symmetric(horizontal: 12),
             ),
 
@@ -889,13 +891,13 @@ class _WhatsAppServerSettingsPageState
               height: 44,
               decoration: BoxDecoration(
                 color: _isConnected
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.orange.withOpacity(0.1),
+                    ? SdColors.success.withOpacity(0.1)
+                    : SdColors.warning.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 _isConnected ? Icons.phone_android : Icons.phone_disabled,
-                color: _isConnected ? Colors.green : Colors.orange,
+                color: _isConnected ? SdColors.success : SdColors.warning,
                 size: 24,
               ),
             ),
@@ -906,15 +908,17 @@ class _WhatsAppServerSettingsPageState
                 children: [
                   Text(
                     'جلسة واتساب',
-                    style: GoogleFonts.cairo(
-                        fontSize: 12, color: Colors.grey[600]),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 12, color: SdColors.muted),
                   ),
                   Text(
                     _isConnected ? 'متصل ✅' : 'غير متصل ⚠️',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: _isConnected ? Colors.green : Colors.orange[800],
+                      color: _isConnected ? SdColors.success : SdColors.warning,
                     ),
                   ),
                 ],
@@ -928,7 +932,7 @@ class _WhatsAppServerSettingsPageState
 
   Widget _buildConnectedCard() {
     return Card(
-      color: Colors.green[50],
+      color: SdColors.successTint,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -937,7 +941,7 @@ class _WhatsAppServerSettingsPageState
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: Colors.green,
+                color: SdColors.success,
                 borderRadius: BorderRadius.circular(50),
               ),
               child: const Icon(Icons.check, color: Colors.white, size: 60),
@@ -945,10 +949,11 @@ class _WhatsAppServerSettingsPageState
             const SizedBox(height: 20),
             Text(
               '✅ متصل بنجاح!',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.green[800],
+                color: SdColors.success,
               ),
             ),
             const SizedBox(height: 10),
@@ -956,11 +961,11 @@ class _WhatsAppServerSettingsPageState
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.phone, color: Colors.green),
+                  const Icon(Icons.phone, color: SdColors.success),
                   const SizedBox(width: 8),
                   Text(
                     _connectedPhone!,
-                    style: GoogleFonts.cairo(fontSize: 18),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 18),
                   ),
                 ],
               ),
@@ -969,9 +974,10 @@ class _WhatsAppServerSettingsPageState
               const SizedBox(height: 5),
               Text(
                 _connectedName!,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 16,
-                  color: Colors.grey[600],
+                  color: SdColors.muted,
                 ),
               ),
             ],
@@ -984,9 +990,9 @@ class _WhatsAppServerSettingsPageState
                 ElevatedButton.icon(
                   onPressed: _sendTestMessage,
                   icon: const Icon(Icons.send, size: 18),
-                  label: Text('إرسال تجريبي', style: GoogleFonts.cairo(fontSize: 13)),
+                  label: Text('إرسال تجريبي', style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
+                    backgroundColor: SdColors.whatsapp,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   ),
@@ -994,9 +1000,9 @@ class _WhatsAppServerSettingsPageState
                 ElevatedButton.icon(
                   onPressed: _restartSession,
                   icon: const Icon(Icons.refresh, size: 18),
-                  label: Text('إعادة تشغيل', style: GoogleFonts.cairo(fontSize: 13)),
+                  label: Text('إعادة تشغيل', style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+                    backgroundColor: SdColors.warning,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   ),
@@ -1004,18 +1010,18 @@ class _WhatsAppServerSettingsPageState
                 ElevatedButton.icon(
                   onPressed: _checkHealth,
                   icon: const Icon(Icons.health_and_safety, size: 18),
-                  label: Text('فحص الصحة', style: GoogleFonts.cairo(fontSize: 13)),
+                  label: Text('فحص الصحة', style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: SdColors.info,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   ),
                 ),
                 OutlinedButton.icon(
                   onPressed: _disconnect,
-                  icon: const Icon(Icons.link_off, color: Colors.red, size: 18),
+                  icon: const Icon(Icons.link_off, color: SdColors.danger, size: 18),
                   label: Text('قطع الاتصال',
-                      style: GoogleFonts.cairo(color: Colors.red, fontSize: 13)),
+                      style: TextStyle(fontFamily: 'Cairo', color: SdColors.danger, fontSize: 13)),
                 ),
               ],
             ),
@@ -1033,7 +1039,8 @@ class _WhatsAppServerSettingsPageState
           children: [
             Text(
               '📱 ربط الواتساب',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
@@ -1041,7 +1048,7 @@ class _WhatsAppServerSettingsPageState
             const SizedBox(height: 10),
             Text(
               'امسح الكود من تطبيق الواتساب',
-              style: GoogleFonts.cairo(fontSize: 14, color: Colors.grey[600]),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 14, color: SdColors.muted),
             ),
             const SizedBox(height: 20),
 
@@ -1058,7 +1065,7 @@ class _WhatsAppServerSettingsPageState
                       const SizedBox(height: 16),
                       Text(
                         _statusMessage!,
-                        style: GoogleFonts.cairo(color: Colors.grey[600], fontSize: 13),
+                        style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted, fontSize: 13),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -1086,7 +1093,7 @@ class _WhatsAppServerSettingsPageState
                   errorBuilder: (_, __, ___) => const Icon(
                     Icons.qr_code,
                     size: 250,
-                    color: Colors.grey,
+                    color: SdColors.faint,
                   ),
                 ),
               )
@@ -1095,17 +1102,17 @@ class _WhatsAppServerSettingsPageState
                 width: 250,
                 height: 250,
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: SdColors.groundAlt,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.qr_code_2, size: 80, color: Colors.grey[400]),
+                    Icon(Icons.qr_code_2, size: 80, color: SdColors.faint),
                     const SizedBox(height: 10),
                     Text(
                       'اضغط لإنشاء جلسة',
-                      style: GoogleFonts.cairo(color: Colors.grey[600]),
+                      style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted),
                     ),
                   ],
                 ),
@@ -1118,10 +1125,10 @@ class _WhatsAppServerSettingsPageState
               icon: Icon(_qrImage == null ? Icons.play_arrow : Icons.refresh),
               label: Text(
                 _qrImage == null ? 'إنشاء جلسة' : 'تحديث الكود',
-                style: GoogleFonts.cairo(),
+                style: TextStyle(fontFamily: 'Cairo'),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
+                backgroundColor: SdColors.whatsapp,
                 foregroundColor: Colors.white,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
@@ -1133,7 +1140,7 @@ class _WhatsAppServerSettingsPageState
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -1141,14 +1148,14 @@ class _WhatsAppServerSettingsPageState
                 children: [
                   Text(
                     '📋 الخطوات:',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  Text('1. افتح واتساب على هاتفك', style: GoogleFonts.cairo()),
+                  Text('1. افتح واتساب على هاتفك', style: TextStyle(fontFamily: 'Cairo')),
                   Text('2. اذهب إلى ⋮ ← الأجهزة المرتبطة',
-                      style: GoogleFonts.cairo()),
-                  Text('3. اضغط "ربط جهاز"', style: GoogleFonts.cairo()),
-                  Text('4. امسح الكود أعلاه', style: GoogleFonts.cairo()),
+                      style: TextStyle(fontFamily: 'Cairo')),
+                  Text('3. اضغط "ربط جهاز"', style: TextStyle(fontFamily: 'Cairo')),
+                  Text('4. امسح الكود أعلاه', style: TextStyle(fontFamily: 'Cairo')),
                 ],
               ),
             ),
@@ -1167,11 +1174,12 @@ class _WhatsAppServerSettingsPageState
           children: [
             Row(
               children: [
-                const Icon(Icons.dns, color: Colors.blue),
+                const Icon(Icons.dns, color: SdColors.info),
                 const SizedBox(width: 8),
                 Text(
                   'إعدادات السيرفر',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1198,18 +1206,18 @@ class _WhatsAppServerSettingsPageState
               const SizedBox(height: 10),
               ElevatedButton(
                 onPressed: _saveServerUrl,
-                child: Text('حفظ', style: GoogleFonts.cairo()),
+                child: Text('حفظ', style: TextStyle(fontFamily: 'Cairo')),
               ),
             ] else ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: SdColors.groundAlt,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.link, color: Colors.grey),
+                    const Icon(Icons.link, color: SdColors.faint),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -1226,12 +1234,12 @@ class _WhatsAppServerSettingsPageState
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                color: SdColors.groundAlt,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.business, color: Colors.grey),
+                  const Icon(Icons.business, color: SdColors.faint),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -1239,8 +1247,9 @@ class _WhatsAppServerSettingsPageState
                       children: [
                         Text(
                           'معرف الشركة',
-                          style: GoogleFonts.cairo(
-                              fontSize: 12, color: Colors.grey[600]),
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 12, color: SdColors.muted),
                         ),
                         Text(
                           widget.tenantId,
@@ -1275,11 +1284,11 @@ class _WhatsAppServerSettingsPageState
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
+                    color: SdColors.platformBase.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child:
-                      const Icon(Icons.schedule_send, color: Colors.purple),
+                      const Icon(Icons.schedule_send, color: SdColors.platformBase),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1288,16 +1297,18 @@ class _WhatsAppServerSettingsPageState
                     children: [
                       Text(
                         'إعدادات الإرسال الجماعي',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
                         'الفاصل الزمني بين الرسائل لتجنب الحظر',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color: SdColors.muted,
                         ),
                       ),
                     ],
@@ -1311,7 +1322,7 @@ class _WhatsAppServerSettingsPageState
             Row(
               children: [
                 Text('الوحدة:',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
                 const SizedBox(width: 16),
                 Expanded(
                   child: SegmentedButton<String>(
@@ -1342,7 +1353,7 @@ class _WhatsAppServerSettingsPageState
                       backgroundColor:
                           WidgetStateProperty.resolveWith((states) {
                         if (states.contains(WidgetState.selected)) {
-                          return Colors.purple.withOpacity(0.2);
+                          return SdColors.platformBase.withOpacity(0.2);
                         }
                         return null;
                       }),
@@ -1362,24 +1373,25 @@ class _WhatsAppServerSettingsPageState
                       ? () => setState(() => _bulkDelayValue--)
                       : null,
                   icon: const Icon(Icons.remove_circle_outline),
-                  color: Colors.purple,
+                  color: SdColors.platformBase,
                   iconSize: 32,
                 ),
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     decoration: BoxDecoration(
-                      color: Colors.purple.shade50,
+                      color: SdColors.platformTint,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.purple.shade200),
+                      border: Border.all(color: SdColors.platformTintEdge),
                     ),
                     child: Center(
                       child: Text(
                         '$_bulkDelayValue ${_bulkDelayUnit == 'seconds' ? 'ثانية' : 'دقيقة'}',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Colors.purple.shade800,
+                          color: SdColors.platformBase,
                         ),
                       ),
                     ),
@@ -1390,7 +1402,7 @@ class _WhatsAppServerSettingsPageState
                       ? () => setState(() => _bulkDelayValue++)
                       : null,
                   icon: const Icon(Icons.add_circle_outline),
-                  color: Colors.purple,
+                  color: SdColors.platformBase,
                   iconSize: 32,
                 ),
               ],
@@ -1400,10 +1412,10 @@ class _WhatsAppServerSettingsPageState
 
             SliderTheme(
               data: SliderTheme.of(context).copyWith(
-                activeTrackColor: Colors.purple,
-                inactiveTrackColor: Colors.purple.shade100,
-                thumbColor: Colors.purple,
-                overlayColor: Colors.purple.withOpacity(0.2),
+                activeTrackColor: SdColors.platformBase,
+                inactiveTrackColor: SdColors.platformTint,
+                thumbColor: SdColors.platformBase,
+                overlayColor: SdColors.platformBase.withOpacity(0.2),
               ),
               child: Slider(
                 value: _bulkDelayValue.toDouble(),
@@ -1417,20 +1429,21 @@ class _WhatsAppServerSettingsPageState
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
                   Icon(Icons.info_outline,
-                      color: Colors.blue.shade700, size: 20),
+                      color: SdColors.info, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'لإرسال 100 رسالة ≈ $sample100Time دقيقة',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 13,
-                        color: Colors.blue.shade800,
+                        color: SdColors.info,
                       ),
                     ),
                   ),
@@ -1447,10 +1460,10 @@ class _WhatsAppServerSettingsPageState
                 icon: const Icon(Icons.save),
                 label: Text(
                   'حفظ إعدادات الإرسال الجماعي',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple,
+                  backgroundColor: SdColors.platformBase,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
@@ -1481,10 +1494,10 @@ class _WhatsAppServerSettingsPageState
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.teal.withValues(alpha: 0.1),
+                    color: SdColors.accent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.history, color: Colors.teal),
+                  child: const Icon(Icons.history, color: SdColors.accent),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1493,11 +1506,11 @@ class _WhatsAppServerSettingsPageState
                     children: [
                       Text(
                         'سجل الرسائل المُرسلة',
-                        style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       Text(
                         'متابعة الرسائل المُرسلة عبر الواتساب',
-                        style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600]),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.muted),
                       ),
                     ],
                   ),
@@ -1518,15 +1531,15 @@ class _WhatsAppServerSettingsPageState
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: SdColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[200]!),
+                border: Border.all(color: SdColors.divider),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.date_range, size: 20, color: Colors.teal),
+                  const Icon(Icons.date_range, size: 20, color: SdColors.accent),
                   const SizedBox(width: 8),
-                  Text('من:', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),
+                  Text('من:', style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.w600)),
                   const SizedBox(width: 4),
                   Expanded(
                     child: InkWell(
@@ -1547,18 +1560,18 @@ class _WhatsAppServerSettingsPageState
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
+                          border: Border.all(color: SdColors.edge),
                         ),
                         child: Text(
                           _logFromDate != null ? dateFormat.format(_logFromDate!) : 'الكل',
-                          style: GoogleFonts.cairo(fontSize: 12),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                           textAlign: TextAlign.center,
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text('إلى:', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),
+                  Text('إلى:', style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.w600)),
                   const SizedBox(width: 4),
                   Expanded(
                     child: InkWell(
@@ -1579,11 +1592,11 @@ class _WhatsAppServerSettingsPageState
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
+                          border: Border.all(color: SdColors.edge),
                         ),
                         child: Text(
                           _logToDate != null ? dateFormat.format(_logToDate!) : 'اليوم',
-                          style: GoogleFonts.cairo(fontSize: 12),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -1598,7 +1611,7 @@ class _WhatsAppServerSettingsPageState
                         _logToDate = null;
                         _loadMessageLogs();
                       },
-                      icon: const Icon(Icons.clear, size: 18, color: Colors.red),
+                      icon: const Icon(Icons.clear, size: 18, color: SdColors.danger),
                       tooltip: 'مسح الفلتر',
                       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                       padding: EdgeInsets.zero,
@@ -1640,15 +1653,15 @@ class _WhatsAppServerSettingsPageState
             // إحصائيات
             Row(
               children: [
-                _buildStatBox('الكل', total, Colors.blue),
+                _buildStatBox('الكل', total, SdColors.info),
                 const SizedBox(width: 8),
-                _buildStatBox('ناجحة', success, Colors.green),
+                _buildStatBox('ناجحة', success, SdColors.success),
                 const SizedBox(width: 8),
-                _buildStatBox('فاشلة', failed, Colors.red),
+                _buildStatBox('فاشلة', failed, SdColors.danger),
                 const SizedBox(width: 8),
-                _buildStatBox('سيرفر', _logStats['server'] ?? 0, Colors.purple),
+                _buildStatBox('سيرفر', _logStats['server'] ?? 0, SdColors.platformBase),
                 const SizedBox(width: 8),
-                _buildStatBox('تطبيق', _logStats['app'] ?? 0, Colors.orange),
+                _buildStatBox('تطبيق', _logStats['app'] ?? 0, SdColors.warning),
               ],
             ),
             const SizedBox(height: 16),
@@ -1660,11 +1673,11 @@ class _WhatsAppServerSettingsPageState
                 alignment: Alignment.center,
                 child: Column(
                   children: [
-                    Icon(Icons.inbox_outlined, size: 48, color: Colors.grey[300]),
+                    Icon(Icons.inbox_outlined, size: 48, color: SdColors.edge),
                     const SizedBox(height: 8),
                     Text(
                       'لا توجد رسائل في هذه الفترة',
-                      style: GoogleFonts.cairo(color: Colors.grey[500], fontSize: 14),
+                      style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 14),
                     ),
                   ],
                 ),
@@ -1675,7 +1688,7 @@ class _WhatsAppServerSettingsPageState
                 child: ListView.separated(
                   shrinkWrap: true,
                   itemCount: _logEntries.length > 50 ? 50 : _logEntries.length,
-                  separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[200]),
+                  separatorBuilder: (_, __) => Divider(height: 1, color: SdColors.divider),
                   itemBuilder: (context, index) {
                     final entry = _logEntries[index];
                     return Padding(
@@ -1687,14 +1700,14 @@ class _WhatsAppServerSettingsPageState
                             width: 32, height: 32,
                             decoration: BoxDecoration(
                               color: entry.success
-                                  ? Colors.green.withValues(alpha: 0.1)
-                                  : Colors.red.withValues(alpha: 0.1),
+                                  ? SdColors.success.withValues(alpha: 0.1)
+                                  : SdColors.danger.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
                               entry.success ? Icons.check : Icons.close,
                               size: 16,
-                              color: entry.success ? Colors.green : Colors.red,
+                              color: entry.success ? SdColors.success : SdColors.danger,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -1707,12 +1720,12 @@ class _WhatsAppServerSettingsPageState
                                   children: [
                                     Text(
                                       entry.customerName.isNotEmpty ? entry.customerName : entry.phone,
-                                      style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600),
+                                      style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.w600),
                                     ),
                                     const Spacer(),
                                     Text(
                                       '${dateFormat.format(entry.timestamp)}  ${timeFormat.format(entry.timestamp)}',
-                                      style: TextStyle(fontSize: 11, color: Colors.grey[500], fontFamily: 'monospace'),
+                                      style: TextStyle(fontSize: 11, color: SdColors.faint, fontFamily: 'monospace'),
                                     ),
                                   ],
                                 ),
@@ -1721,7 +1734,7 @@ class _WhatsAppServerSettingsPageState
                                     if (entry.customerName.isNotEmpty)
                                       Text(
                                         entry.phone,
-                                        style: TextStyle(fontSize: 11, color: Colors.grey[600], fontFamily: 'monospace'),
+                                        style: TextStyle(fontSize: 11, color: SdColors.muted, fontFamily: 'monospace'),
                                       ),
                                     const SizedBox(width: 8),
                                     Container(
@@ -1739,19 +1752,19 @@ class _WhatsAppServerSettingsPageState
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                                       decoration: BoxDecoration(
-                                        color: Colors.grey.withValues(alpha: 0.1),
+                                        color: SdColors.faint.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
                                         _operationLabel(entry.operationType),
-                                        style: TextStyle(fontSize: 10, color: Colors.grey[700]),
+                                        style: TextStyle(fontSize: 10, color: SdColors.muted),
                                       ),
                                     ),
                                     if (entry.activatedBy != null && entry.activatedBy!.isNotEmpty) ...[
                                       const SizedBox(width: 4),
                                       Text(
                                         entry.activatedBy!,
-                                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                                        style: TextStyle(fontSize: 10, color: SdColors.faint),
                                       ),
                                     ],
                                   ],
@@ -1759,7 +1772,7 @@ class _WhatsAppServerSettingsPageState
                                 if (entry.error != null)
                                   Text(
                                     entry.error!,
-                                    style: const TextStyle(fontSize: 10, color: Colors.red),
+                                    style: const TextStyle(fontSize: 10, color: SdColors.danger),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -1778,7 +1791,7 @@ class _WhatsAppServerSettingsPageState
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   'يتم عرض أحدث 50 رسالة من أصل ${_logEntries.length}',
-                  style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[500]),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.faint),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -1794,14 +1807,14 @@ class _WhatsAppServerSettingsPageState
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: Text('مسح السجل', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                          content: Text('هل تريد مسح جميع سجلات الرسائل؟', style: GoogleFonts.cairo()),
+                          title: Text('مسح السجل', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+                          content: Text('هل تريد مسح جميع سجلات الرسائل؟', style: TextStyle(fontFamily: 'Cairo')),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: GoogleFonts.cairo())),
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo'))),
                             ElevatedButton(
                               onPressed: () => Navigator.pop(ctx, true),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                              child: Text('مسح', style: GoogleFonts.cairo()),
+                              style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger, foregroundColor: Colors.white),
+                              child: Text('مسح', style: TextStyle(fontFamily: 'Cairo')),
                             ),
                           ],
                         ),
@@ -1811,8 +1824,8 @@ class _WhatsAppServerSettingsPageState
                         _loadMessageLogs();
                       }
                     },
-                    icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
-                    label: Text('مسح السجل', style: GoogleFonts.cairo(fontSize: 12, color: Colors.red)),
+                    icon: const Icon(Icons.delete_outline, size: 16, color: SdColors.danger),
+                    label: Text('مسح السجل', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.danger)),
                   ),
                 ),
               ),
@@ -1824,12 +1837,12 @@ class _WhatsAppServerSettingsPageState
 
   Widget _buildDateChip(String label, VoidCallback onTap) {
     return ActionChip(
-      label: Text(label, style: GoogleFonts.cairo(fontSize: 11)),
+      label: Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
       onPressed: onTap,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       visualDensity: VisualDensity.compact,
-      backgroundColor: Colors.teal.withValues(alpha: 0.08),
-      side: BorderSide(color: Colors.teal.withValues(alpha: 0.2)),
+      backgroundColor: SdColors.accent.withValues(alpha: 0.08),
+      side: BorderSide(color: SdColors.accent.withValues(alpha: 0.2)),
     );
   }
 
@@ -1846,11 +1859,11 @@ class _WhatsAppServerSettingsPageState
           children: [
             Text(
               '$count',
-              style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.bold, color: color),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 18, fontWeight: FontWeight.bold, color: color),
             ),
             Text(
               label,
-              style: GoogleFonts.cairo(fontSize: 10, color: color),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: color),
             ),
           ],
         ),
@@ -1860,11 +1873,11 @@ class _WhatsAppServerSettingsPageState
 
   Color _systemColor(String system) {
     switch (system) {
-      case 'server': return Colors.purple;
-      case 'app': return Colors.orange;
-      case 'web': return Colors.blue;
-      case 'api': return Colors.teal;
-      default: return Colors.grey;
+      case 'server': return SdColors.platformBase;
+      case 'app': return SdColors.warning;
+      case 'web': return SdColors.info;
+      case 'api': return SdColors.accent;
+      default: return SdColors.faint;
     }
   }
 
@@ -1898,7 +1911,7 @@ class _WhatsAppServerSettingsPageState
 
   Widget _buildInfoCard() {
     return Card(
-      color: Colors.amber[50],
+      color: SdColors.warningTint,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -1906,11 +1919,12 @@ class _WhatsAppServerSettingsPageState
           children: [
             Row(
               children: [
-                const Icon(Icons.info_outline, color: Colors.amber),
+                const Icon(Icons.info_outline, color: SdColors.warning),
                 const SizedBox(width: 8),
                 Text(
                   'معلومات مهمة',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1919,13 +1933,13 @@ class _WhatsAppServerSettingsPageState
             ),
             const SizedBox(height: 10),
             Text('• يجب أن يكون الهاتف متصلاً بالإنترنت',
-                style: GoogleFonts.cairo(fontSize: 14)),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 14)),
             Text('• الحد الأقصى ~500 رسالة يومياً',
-                style: GoogleFonts.cairo(fontSize: 14)),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 14)),
             Text('• تأخير 2-3 ثواني بين الرسائل لتجنب الحظر',
-                style: GoogleFonts.cairo(fontSize: 14)),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 14)),
             Text('• الجلسة تبقى نشطة حتى قطع الاتصال يدوياً',
-                style: GoogleFonts.cairo(fontSize: 14)),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 14)),
           ],
         ),
       ),
@@ -1959,7 +1973,7 @@ class _WhatsAppServerSettingsPageState
                 ? '✅ تم حفظ إعدادات الإرسال الجماعي'
                 : '❌ فشل في حفظ الإعدادات',
           ),
-          backgroundColor: success ? Colors.green : Colors.red,
+          backgroundColor: success ? SdColors.success : SdColors.danger,
         ),
       );
     }

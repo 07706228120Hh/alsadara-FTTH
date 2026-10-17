@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../services/api/api_client.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// صفحة عرض معاملات الفني المالية - ثيم فاتح (XONEPROO)
 class TechnicianTransactionsPage extends StatefulWidget {
@@ -30,14 +30,14 @@ class _TechnicianTransactionsPageState
   int _total = 0;
 
   // ── ألوان الثيم الفاتح (XONEPROO Style) ──
-  static const _bgPage = Color(0xFFF5F6FA);
+  static const _bgPage = SdColors.surfaceAlt;
   static const _bgCard = Colors.white;
-  static const _bgToolbar = Color(0xFF2C3E50);
+  static const _bgToolbar = SdColors.ink;
   static const _textDark = Color(0xFF333333);
   static const _textGray = Color(0xFF999999);
   static const _textSubtle = Color(0xFF666666);
   static const _shadowColor = Color(0x14000000);
-  static const _accentBlue = Color(0xFF3498DB);
+  static const _accentBlue = SdColors.info;
 
   @override
   void initState() {
@@ -113,7 +113,7 @@ class _TechnicianTransactionsPageState
         const SizedBox(width: 3),
         Text(
           text,
-          style: GoogleFonts.cairo(color: _textSubtle, fontSize: 12),
+          style: TextStyle(fontFamily: 'Cairo', color: _textSubtle, fontSize: 12),
           overflow: TextOverflow.ellipsis,
         ),
       ],
@@ -157,11 +157,11 @@ class _TechnicianTransactionsPageState
   Color _getTypeColor(String? type) {
     switch (type) {
       case 'Charge':
-        return const Color(0xFFE74C3C);
+        return SdColors.danger;
       case 'Payment':
-        return const Color(0xFF2ECC71);
+        return SdColors.success;
       case 'Discount':
-        return const Color(0xFFF39C12);
+        return SdColors.warning;
       case 'Adjustment':
         return _accentBlue;
       default:
@@ -259,7 +259,8 @@ class _TechnicianTransactionsPageState
           ),
           const SizedBox(width: 12),
           Text('معاملاتي المالية',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.white)),
@@ -280,11 +281,11 @@ class _TechnicianTransactionsPageState
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, color: Color(0xFFE74C3C), size: 64),
+          const Icon(Icons.error_outline, color: SdColors.danger, size: 64),
           const SizedBox(height: 16),
           Text(
             _errorMessage!,
-            style: GoogleFonts.cairo(color: _textGray, fontSize: 16),
+            style: TextStyle(fontFamily: 'Cairo', color: _textGray, fontSize: 16),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -292,7 +293,7 @@ class _TechnicianTransactionsPageState
             onPressed: () => _loadTransactions(),
             icon: const Icon(Icons.refresh, color: Colors.white),
             label: Text('إعادة المحاولة',
-                style: GoogleFonts.cairo(color: Colors.white)),
+                style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
             style: ElevatedButton.styleFrom(
               backgroundColor: _accentBlue,
               shape: RoundedRectangleBorder(
@@ -319,7 +320,8 @@ class _TechnicianTransactionsPageState
             children: [
               Text(
                 'المعاملات ($_total)',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   color: _textDark,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -329,7 +331,7 @@ class _TechnicianTransactionsPageState
               if (_totalPages > 1)
                 Text(
                   'صفحة $_currentPage من $_totalPages',
-                  style: GoogleFonts.cairo(color: _textGray, fontSize: 12),
+                  style: TextStyle(fontFamily: 'Cairo', color: _textGray, fontSize: 12),
                 ),
             ],
           ),
@@ -367,7 +369,7 @@ class _TechnicianTransactionsPageState
                 title: 'إجمالي الأجور',
                 value: '${_formatAmount(totalCharges)} د.ع',
                 icon: Icons.trending_down,
-                color: const Color(0xFFE74C3C),
+                color: SdColors.danger,
               ),
             ),
             SizedBox(
@@ -376,7 +378,7 @@ class _TechnicianTransactionsPageState
                 title: 'إجمالي التسديدات',
                 value: '${_formatAmount(totalPayments)} د.ع',
                 icon: Icons.trending_up,
-                color: const Color(0xFF2ECC71),
+                color: SdColors.success,
               ),
             ),
             SizedBox(
@@ -389,8 +391,8 @@ class _TechnicianTransactionsPageState
                     ? Icons.warning_amber_rounded
                     : Icons.check_circle,
                 color: isNegative
-                    ? const Color(0xFFE74C3C)
-                    : const Color(0xFF2ECC71),
+                    ? SdColors.danger
+                    : SdColors.success,
                 subtitle: isNegative ? 'مدين' : 'لا يوجد مستحقات',
               ),
             ),
@@ -441,7 +443,8 @@ class _TechnicianTransactionsPageState
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
                     value,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: _textDark,
@@ -461,12 +464,13 @@ class _TechnicianTransactionsPageState
                 const SizedBox(height: 4),
                 Text(
                   title,
-                  style: GoogleFonts.cairo(fontSize: 12, color: _textGray),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: _textGray),
                 ),
                 if (subtitle != null)
                   Text(
                     subtitle,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 11,
                         color: color,
                         fontWeight: FontWeight.w600),
@@ -549,7 +553,8 @@ class _TechnicianTransactionsPageState
                         ),
                         child: Text(
                           _getTypeName(type),
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             color: typeColor,
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -563,7 +568,8 @@ class _TechnicianTransactionsPageState
                       Flexible(
                         child: Text(
                           title,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               color: _textDark,
                               fontSize: 13,
                               fontWeight: FontWeight.w600),
@@ -612,7 +618,8 @@ class _TechnicianTransactionsPageState
               children: [
                 Text(
                   '${type == 'Charge' ? '-' : '+'}${_formatAmount(amount)}',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: typeColor,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -620,7 +627,7 @@ class _TechnicianTransactionsPageState
                 ),
                 Text(
                   'د.ع',
-                  style: GoogleFonts.cairo(color: _textGray, fontSize: 11),
+                  style: TextStyle(fontFamily: 'Cairo', color: _textGray, fontSize: 11),
                 ),
               ],
             ),
@@ -641,7 +648,8 @@ class _TechnicianTransactionsPageState
           const SizedBox(height: 16),
           Text(
             'لا توجد معاملات مالية حالياً',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: _textGray,
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -650,7 +658,8 @@ class _TechnicianTransactionsPageState
           const SizedBox(height: 8),
           Text(
             'ستظهر هنا جميع الأجور والتسديدات',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 color: _textGray.withOpacity(0.7), fontSize: 14),
           ),
         ],
@@ -669,7 +678,7 @@ class _TechnicianTransactionsPageState
               onPressed: () => _loadTransactions(page: _currentPage - 1),
               icon: const Icon(Icons.chevron_right, color: _accentBlue),
               label:
-                  Text('السابق', style: GoogleFonts.cairo(color: _accentBlue)),
+                  Text('السابق', style: TextStyle(fontFamily: 'Cairo', color: _accentBlue)),
             ),
           const SizedBox(width: 16),
           Container(
@@ -683,7 +692,7 @@ class _TechnicianTransactionsPageState
             ),
             child: Text(
               '$_currentPage / $_totalPages',
-              style: GoogleFonts.cairo(color: _textDark, fontSize: 14),
+              style: TextStyle(fontFamily: 'Cairo', color: _textDark, fontSize: 14),
             ),
           ),
           const SizedBox(width: 16),
@@ -692,7 +701,7 @@ class _TechnicianTransactionsPageState
               onPressed: () => _loadTransactions(page: _currentPage + 1),
               icon: const Icon(Icons.chevron_left, color: _accentBlue),
               label:
-                  Text('التالي', style: GoogleFonts.cairo(color: _accentBlue)),
+                  Text('التالي', style: TextStyle(fontFamily: 'Cairo', color: _accentBlue)),
             ),
         ],
       ),

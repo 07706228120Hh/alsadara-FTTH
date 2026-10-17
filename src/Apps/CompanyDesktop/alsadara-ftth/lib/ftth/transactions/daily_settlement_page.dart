@@ -1097,15 +1097,15 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
           _statBarCard('إجمالي العمليات', fmt.format(_subsTotalAmount),
               '${_subscriptionLogs.length} عملية', [const Color(0xFF880E4F), const Color(0xFFAD1457)], Icons.receipt_long),
           _statBarCard('نقد', fmt.format(_subsCashTotal),
-              '$_subsCashCount عملية', [const Color(0xFF2E7D32), const Color(0xFF43A047)], Icons.attach_money),
+              '$_subsCashCount عملية', [SdColors.success, SdColors.success], Icons.attach_money),
           _statBarCard('آجل', fmt.format(_subsCreditTotal),
-              '$_subsCreditCount عملية', [const Color(0xFFE65100), const Color(0xFFEF6C00)], Icons.access_time),
+              '$_subsCreditCount عملية', [SdColors.warningEdge, SdColors.warning], Icons.access_time),
           _statBarCard('ماستر', fmt.format(_subsMasterTotal),
-              '$_subsMasterCount عملية', [const Color(0xFF4A148C), const Color(0xFF7B1FA2)], Icons.credit_card),
+              '$_subsMasterCount عملية', [SdColors.platformEdge, const Color(0xFF7B1FA2)], Icons.credit_card),
           _statBarCard('وكيل', fmt.format(_subsAgentTotal),
-              '$_subsAgentCount عملية', [const Color(0xFF1565C0), const Color(0xFF1E88E5)], Icons.storefront),
+              '$_subsAgentCount عملية', [SdColors.info, SdColors.info], Icons.storefront),
           _statBarCard('فني', fmt.format(_subsTechTotal),
-              '$_subsTechCount عملية', [const Color(0xFF00695C), const Color(0xFF00897B)], Icons.engineering),
+              '$_subsTechCount عملية', [SdColors.accent, SdColors.accent], Icons.engineering),
         ];
 
         if (constraints.maxWidth < 600) {
@@ -1122,17 +1122,17 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
             children: [
               pair(
                 cCard('الإجمالي', fmt.format(_subsTotalAmount), '${_subscriptionLogs.length} عملية', [const Color(0xFF880E4F), const Color(0xFFAD1457)], Icons.receipt_long),
-                cCard('نقد', fmt.format(_subsCashTotal), '$_subsCashCount عملية', [const Color(0xFF2E7D32), const Color(0xFF43A047)], Icons.attach_money),
+                cCard('نقد', fmt.format(_subsCashTotal), '$_subsCashCount عملية', [SdColors.success, SdColors.success], Icons.attach_money),
               ),
               const SizedBox(height: 4),
               pair(
-                cCard('آجل', fmt.format(_subsCreditTotal), '$_subsCreditCount عملية', [const Color(0xFFE65100), const Color(0xFFEF6C00)], Icons.access_time),
-                cCard('ماستر', fmt.format(_subsMasterTotal), '$_subsMasterCount عملية', [const Color(0xFF4A148C), const Color(0xFF7B1FA2)], Icons.credit_card),
+                cCard('آجل', fmt.format(_subsCreditTotal), '$_subsCreditCount عملية', [SdColors.warningEdge, SdColors.warning], Icons.access_time),
+                cCard('ماستر', fmt.format(_subsMasterTotal), '$_subsMasterCount عملية', [SdColors.platformEdge, const Color(0xFF7B1FA2)], Icons.credit_card),
               ),
               const SizedBox(height: 4),
               pair(
-                cCard('وكيل', fmt.format(_subsAgentTotal), '$_subsAgentCount عملية', [const Color(0xFF1565C0), const Color(0xFF1E88E5)], Icons.storefront),
-                cCard('فني', fmt.format(_subsTechTotal), '$_subsTechCount عملية', [const Color(0xFF00695C), const Color(0xFF00897B)], Icons.engineering),
+                cCard('وكيل', fmt.format(_subsAgentTotal), '$_subsAgentCount عملية', [SdColors.info, SdColors.info], Icons.storefront),
+                cCard('فني', fmt.format(_subsTechTotal), '$_subsTechCount عملية', [SdColors.accent, SdColors.accent], Icons.engineering),
               ),
             ],
           );

@@ -80,13 +80,18 @@ class _SdRaisedState extends State<SdRaised> {
         border: _focus
             ? Border.all(color: SdColors.accentGlow, width: SdOutline.focusWidth)
             : SdOutline.all,
+        // «كوبالت ناعم»: شفة سفلية خفيفة + توهّج منتشر بدل الحافّة الصلبة.
         boxShadow: [
-          BoxShadow(color: widget.edgeColor, offset: Offset(0, d)),
+          BoxShadow(
+            color: widget.edgeColor.withValues(alpha: .45),
+            offset: Offset(0, d * .5),
+            blurRadius: 2,
+          ),
           BoxShadow(
             color: widget.glowColor,
-            offset: Offset(0, d + 12),
-            blurRadius: _down ? 10 : 28,
-            spreadRadius: -14,
+            offset: Offset(0, d + 8),
+            blurRadius: _down ? 10 : 26,
+            spreadRadius: -8,
           ),
         ],
       ),

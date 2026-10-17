@@ -16,6 +16,7 @@ import 'package:webview_windows/webview_windows.dart' as wvwin;
 import '../models/device_models.dart';
 import '../models/quality_models.dart';
 import '../services/optical_signal_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class OpticalWebViewPage extends StatefulWidget {
   final String ip;
@@ -36,7 +37,7 @@ class OpticalWebViewPage extends StatefulWidget {
 }
 
 class _OpticalWebViewPageState extends State<OpticalWebViewPage> {
-  static const _indigo = Color(0xFF1A237E);
+  static const _indigo = SdColors.primary;
 
   final _webCtrl = wvwin.WebviewController();
   bool _ready = false;
@@ -416,7 +417,7 @@ class _OpticalWebViewPageState extends State<OpticalWebViewPage> {
                                 ? Icons.check_circle
                                 : Icons.info_outline,
                             size: 18,
-                            color: _result != null ? Colors.green : _indigo),
+                            color: _result != null ? SdColors.success : _indigo),
                       const SizedBox(width: 8),
                       Expanded(
                           child: Text(_status,

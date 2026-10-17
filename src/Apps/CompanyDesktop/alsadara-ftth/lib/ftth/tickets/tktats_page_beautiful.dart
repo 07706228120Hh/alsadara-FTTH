@@ -6,6 +6,7 @@ import 'tktat_details_page.dart';
 import '../../services/auth_service.dart';
 import '../../utils/status_translator.dart';
 import '../auth/auth_error_handler.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class TKTATsPage extends StatefulWidget {
   final String authToken;
@@ -225,13 +226,13 @@ class _TKTATsPageState extends State<TKTATsPage> {
   Color getPriorityColor(String? priority) {
     switch (priority?.toLowerCase()) {
       case 'high':
-        return Colors.red;
+        return SdColors.danger;
       case 'medium':
-        return Colors.orange;
+        return SdColors.warning;
       case 'low':
-        return Colors.green;
+        return SdColors.success;
       default:
-        return Colors.grey;
+        return SdColors.faint;
     }
   }
 
@@ -276,11 +277,11 @@ class _TKTATsPageState extends State<TKTATsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: SdColors.surfaceAlt,
       appBar: AppBar(
         toolbarHeight: 50,
         elevation: 0,
-        backgroundColor: Colors.blue[600],
+        backgroundColor: SdColors.info,
         foregroundColor: Colors.white,
         title: Row(
           children: [
@@ -331,7 +332,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.blue[50]!, Colors.white],
+            colors: [SdColors.infoTint, Colors.white],
           ),
         ),
         child: Padding(
@@ -359,14 +360,14 @@ class _TKTATsPageState extends State<TKTATsPage> {
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.blue[600]!, Colors.blue[700]!],
+          colors: [SdColors.info, SdColors.info],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withValues(alpha: 0.3),
+            color: SdColors.info.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: Offset(0, 3),
           ),
@@ -404,7 +405,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
               },
               decoration: InputDecoration(
                 hintText: 'ابحث في TKTATs...',
-                prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                prefixIcon: Icon(Icons.search, color: SdColors.muted),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -421,7 +422,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
               icon: Icon(Icons.clear_all),
               label: Text('مسح الفلاتر'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[400],
+                backgroundColor: SdColors.danger,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -439,14 +440,14 @@ class _TKTATsPageState extends State<TKTATsPage> {
     if (isLoading) {
       return Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+          valueColor: AlwaysStoppedAnimation<Color>(SdColors.info),
         ),
       );
     } else if (message.isNotEmpty) {
       return Center(
         child: Text(
           message,
-          style: TextStyle(fontSize: 16, color: Colors.red[600]),
+          style: TextStyle(fontSize: 16, color: SdColors.danger),
           textAlign: TextAlign.center,
         ),
       );
@@ -454,7 +455,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
       return Center(
         child: Text(
           'لا توجد TKTATs متاحة',
-          style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 18, color: SdColors.muted),
         ),
       );
     } else {
@@ -479,7 +480,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
+            color: SdColors.faint.withValues(alpha: 0.1),
             blurRadius: 6,
             offset: Offset(0, 2),
           ),
@@ -522,7 +523,7 @@ class _TKTATsPageState extends State<TKTATsPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
+            color: SdColors.faint.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: Offset(0, 2),
           ),

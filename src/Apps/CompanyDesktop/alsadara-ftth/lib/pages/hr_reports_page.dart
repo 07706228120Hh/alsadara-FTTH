@@ -369,29 +369,29 @@ class _HrReportsPageState extends State<HrReportsPage>
           Row(
             children: [
               _compactStat('الموظفين', '${data['TotalEmployees'] ?? 0}',
-                  Icons.people, Colors.blue),
+                  Icons.people, SdColors.info),
               _compactStat('حضور اليوم', '${today['CheckedInCount'] ?? 0}',
-                  Icons.check_circle, Colors.green),
+                  Icons.check_circle, SdColors.success),
               _compactStat('متأخرون', '${today['LateCount'] ?? 0}',
-                  Icons.schedule, Colors.orange),
+                  Icons.schedule, SdColors.warning),
               _compactStat('غائبون', '${today['AbsentCount'] ?? 0}',
-                  Icons.person_off, Colors.red),
+                  Icons.person_off, SdColors.danger),
               const SizedBox(width: 8),
               Container(width: 1, height: 40, color: SdColors.divider),
               const SizedBox(width: 8),
               _compactStat('حضور شهري', '${monthly['TotalPresent'] ?? 0}',
-                  Icons.thumb_up, Colors.green),
+                  Icons.thumb_up, SdColors.success),
               _compactStat('تأخير', '${monthly['TotalLate'] ?? 0}',
-                  Icons.warning, Colors.orange),
+                  Icons.warning, SdColors.warning),
               _compactStat('دقائق تأخير', '${monthly['TotalLateMinutes'] ?? 0}',
-                  Icons.timer_off, Colors.red),
+                  Icons.timer_off, SdColors.danger),
               _compactStat(
                   'ساعات إضافية',
                   '${((monthly['TotalOvertimeMinutes'] ?? 0) / 60).round()}',
                   Icons.more_time,
-                  Colors.teal),
+                  SdColors.accent),
               _compactStat('نسبة الحضور', '${monthly['AttendanceRate'] ?? 0}%',
-                  Icons.analytics, Colors.indigo),
+                  Icons.analytics, SdColors.primary),
             ],
           ),
           const SizedBox(height: 10),
@@ -405,7 +405,7 @@ class _HrReportsPageState extends State<HrReportsPage>
                 Expanded(
                   flex: 2,
                   child: _dashSection(
-                      'الإجازات', Icons.event_busy, Colors.purple, [
+                      'الإجازات', Icons.event_busy, SdColors.platformBase, [
                     _compactInfoRow(
                         'إجازات معتمدة', '${leaves['ApprovedThisMonth'] ?? 0}'),
                     _compactInfoRow(
@@ -442,19 +442,19 @@ class _HrReportsPageState extends State<HrReportsPage>
                   child: _dashSection(
                     'أكثر الموظفين تأخراً',
                     Icons.schedule,
-                    Colors.orange,
+                    SdColors.warning,
                     topLate.isEmpty
                         ? [
                             const Padding(
                                 padding: EdgeInsets.all(8),
                                 child: Text('لا يوجد',
-                                    style: TextStyle(color: Colors.grey)))
+                                    style: TextStyle(color: SdColors.faint)))
                           ]
                         : topLate
                             .map((e) => _compactRankRow(
                                   e['EmployeeName'] ?? '',
                                   '${e['TotalLateMinutes'] ?? 0} د (${e['LateDays'] ?? 0} يوم)',
-                                  Colors.orange,
+                                  SdColors.warning,
                                 ))
                             .toList(),
                   ),
@@ -466,19 +466,19 @@ class _HrReportsPageState extends State<HrReportsPage>
                   child: _dashSection(
                     'أكثر ساعات إضافية',
                     Icons.more_time,
-                    Colors.teal,
+                    SdColors.accent,
                     topOvertime.isEmpty
                         ? [
                             const Padding(
                                 padding: EdgeInsets.all(8),
                                 child: Text('لا يوجد',
-                                    style: TextStyle(color: Colors.grey)))
+                                    style: TextStyle(color: SdColors.faint)))
                           ]
                         : topOvertime
                             .map((e) => _compactRankRow(
                                   e['EmployeeName'] ?? '',
                                   '${((e['TotalOvertimeMinutes'] ?? 0) / 60).round()} ساعة',
-                                  Colors.teal,
+                                  SdColors.accent,
                                 ))
                             .toList(),
                   ),
@@ -511,7 +511,7 @@ class _HrReportsPageState extends State<HrReportsPage>
                 style: TextStyle(
                     fontSize: 18, fontWeight: FontWeight.bold, color: color)),
             Text(label,
-                style: TextStyle(fontSize: 11.5, color: Colors.grey.shade700),
+                style: TextStyle(fontSize: 11.5, color: SdColors.muted),
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis),
           ],
@@ -573,7 +573,7 @@ class _HrReportsPageState extends State<HrReportsPage>
         children: [
           Flexible(
             child: Text(label,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                style: TextStyle(fontSize: 12, color: SdColors.muted),
                 overflow: TextOverflow.ellipsis),
           ),
           Text(value,
@@ -697,11 +697,11 @@ class _HrReportsPageState extends State<HrReportsPage>
                     ),
                   ),
                   DataCell(
-                      _statusBadge('${emp['PresentDays'] ?? 0}', Colors.green)),
+                      _statusBadge('${emp['PresentDays'] ?? 0}', SdColors.success)),
                   DataCell(
-                      _statusBadge('${emp['LateDays'] ?? 0}', Colors.orange)),
+                      _statusBadge('${emp['LateDays'] ?? 0}', SdColors.warning)),
                   DataCell(
-                      _statusBadge('${emp['AbsentDays'] ?? 0}', Colors.red)),
+                      _statusBadge('${emp['AbsentDays'] ?? 0}', SdColors.danger)),
                   DataCell(Text('${emp['HalfDays'] ?? 0}')),
                   DataCell(Text('${emp['EarlyDepartureDays'] ?? 0}')),
                   DataCell(Text('${emp['TotalLateMinutes'] ?? 0}')),
@@ -827,11 +827,11 @@ class _HrReportsPageState extends State<HrReportsPage>
               DataCell(Text(_formatNumber(s['Allowances']))),
               DataCell(Text(_formatNumber(s['Bonuses']))),
               DataCell(Text(_formatNumber(s['Deductions']),
-                  style: const TextStyle(color: Colors.red))),
+                  style: const TextStyle(color: SdColors.danger))),
               DataCell(Text(_formatNumber(s['NetSalary']),
                   style: const TextStyle(fontWeight: FontWeight.bold))),
               DataCell(_statusBadge(isPaid ? 'مصروف' : 'معلق',
-                  isPaid ? Colors.green : Colors.orange)),
+                  isPaid ? SdColors.success : SdColors.warning)),
               DataCell(Text('${s['AttendanceDays'] ?? 0}')),
               DataCell(Text('${s['AbsentDays'] ?? 0}')),
               DataCell(Text(_formatNumber(s['LateDeduction']))),
@@ -924,9 +924,9 @@ class _HrReportsPageState extends State<HrReportsPage>
             return DataRow(cells: [
               DataCell(Text(emp['EmployeeName'] ?? '')),
               DataCell(Text('${emp['TotalRequests'] ?? 0}')),
-              DataCell(_statusBadge('${emp['Approved'] ?? 0}', Colors.green)),
-              DataCell(_statusBadge('${emp['Rejected'] ?? 0}', Colors.red)),
-              DataCell(_statusBadge('${emp['Pending'] ?? 0}', Colors.orange)),
+              DataCell(_statusBadge('${emp['Approved'] ?? 0}', SdColors.success)),
+              DataCell(_statusBadge('${emp['Rejected'] ?? 0}', SdColors.danger)),
+              DataCell(_statusBadge('${emp['Pending'] ?? 0}', SdColors.warning)),
               DataCell(Text('${emp['TotalDaysApproved'] ?? 0}',
                   style: const TextStyle(fontWeight: FontWeight.bold))),
               DataCell(Text('${byType['Annual'] ?? 0}')),
@@ -971,7 +971,7 @@ class _HrReportsPageState extends State<HrReportsPage>
                     fontSize: 24, fontWeight: FontWeight.bold, color: color)),
             const SizedBox(height: 4),
             Text(label,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 12, color: SdColors.muted),
                 textAlign: TextAlign.center),
           ],
         ),
@@ -996,7 +996,7 @@ class _HrReportsPageState extends State<HrReportsPage>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey.shade700)),
+          Text(label, style: TextStyle(color: SdColors.muted)),
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
@@ -1030,7 +1030,7 @@ class _HrReportsPageState extends State<HrReportsPage>
           Text(value,
               style:
                   const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          Text(label, style: const TextStyle(fontSize: 11.5, color: Colors.grey)),
+          Text(label, style: const TextStyle(fontSize: 11.5, color: SdColors.faint)),
         ],
       ),
     );
@@ -1164,17 +1164,17 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
   Color _statusColor(String? status) {
     switch (status) {
       case 'Present':
-        return Colors.green;
+        return SdColors.success;
       case 'Late':
-        return Colors.orange;
+        return SdColors.warning;
       case 'Absent':
-        return Colors.red;
+        return SdColors.danger;
       case 'HalfDay':
-        return Colors.blue;
+        return SdColors.info;
       case 'EarlyDeparture':
-        return Colors.purple;
+        return SdColors.platformBase;
       default:
-        return Colors.grey;
+        return SdColors.faint;
     }
   }
 
@@ -1247,21 +1247,21 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                   child: Row(
                     children: [
                       _summaryChip('حضور',
-                          '${_attendance!['PresentDays'] ?? 0}', Colors.green),
+                          '${_attendance!['PresentDays'] ?? 0}', SdColors.success),
                       _summaryChip('تأخير', '${_attendance!['LateDays'] ?? 0}',
-                          Colors.orange),
+                          SdColors.warning),
                       _summaryChip('غياب', '${_attendance!['AbsentDays'] ?? 0}',
-                          Colors.red),
+                          SdColors.danger),
                       _summaryChip('نصف يوم',
-                          '${_attendance!['HalfDays'] ?? 0}', Colors.blue),
+                          '${_attendance!['HalfDays'] ?? 0}', SdColors.info),
                       _summaryChip(
                           'دقائق تأخير',
                           '${_attendance!['TotalLateMinutes'] ?? 0}',
-                          Colors.deepOrange),
+                          SdColors.warning),
                       _summaryChip(
                           'ساعات عمل',
                           '${((_attendance!['TotalWorkedMinutes'] ?? 0) / 60).toStringAsFixed(1)}',
-                          Colors.teal),
+                          SdColors.accent),
                     ],
                   ),
                 ),
@@ -1365,9 +1365,9 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
 
             // تلوين الصف
             final rowColor = isFriday && record == null
-                ? Colors.grey.shade200
+                ? SdColors.divider
                 : record == null
-                    ? Colors.red.withValues(alpha: 0.04)
+                    ? SdColors.danger.withValues(alpha: 0.04)
                     : null;
 
             return DataRow(
@@ -1379,7 +1379,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                         fontSize: 12,
                         fontWeight:
                             isFriday ? FontWeight.bold : FontWeight.normal,
-                        color: isFriday ? Colors.red : null))),
+                        color: isFriday ? SdColors.danger : null))),
                 DataCell(Text(dateStr, style: const TextStyle(fontSize: 12))),
                 DataCell(record != null
                     ? Container(
@@ -1402,35 +1402,35 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                         style: TextStyle(
                             fontSize: 11.5,
                             color:
-                                isFriday ? Colors.grey : Colors.red.shade300),
+                                isFriday ? SdColors.faint : SdColors.dangerTintEdge),
                       )),
                 DataCell(Text(checkIn,
                     style: TextStyle(
                         fontSize: 12,
-                        color: checkIn == '-' ? Colors.grey : Colors.black))),
+                        color: checkIn == '-' ? SdColors.faint : Colors.black))),
                 DataCell(Text(checkOut,
                     style: TextStyle(
                         fontSize: 12,
-                        color: checkOut == '-' ? Colors.grey : Colors.black))),
+                        color: checkOut == '-' ? SdColors.faint : Colors.black))),
                 DataCell(Text(workedHours,
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color:
-                            workedHours == '-' ? Colors.grey : Colors.black))),
+                            workedHours == '-' ? SdColors.faint : Colors.black))),
                 DataCell(Text(late != null && late > 0 ? '$late' : '-',
                     style: TextStyle(
                         fontSize: 12,
                         color: late != null && late > 0
-                            ? Colors.orange
-                            : Colors.grey))),
+                            ? SdColors.warning
+                            : SdColors.faint))),
                 DataCell(Text(
                     overtime != null && overtime > 0 ? '$overtime' : '-',
                     style: TextStyle(
                         fontSize: 12,
                         color: overtime != null && overtime > 0
-                            ? Colors.teal
-                            : Colors.grey))),
+                            ? SdColors.accent
+                            : SdColors.faint))),
                 // زر التعديل/الإنشاء
                 DataCell(Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1440,8 +1440,8 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                         record != null ? Icons.edit : Icons.add_circle_outline,
                         size: 18,
                         color: record != null
-                            ? Colors.blue
-                            : Colors.green.shade600,
+                            ? SdColors.info
+                            : SdColors.success,
                       ),
                       tooltip: record != null ? 'تعديل' : 'إضافة بصمة',
                       padding: EdgeInsets.zero,
@@ -1453,7 +1453,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
                     if (record != null)
                       IconButton(
                         icon: Icon(Icons.delete_outline,
-                            size: 18, color: Colors.red.shade400),
+                            size: 18, color: SdColors.danger),
                         tooltip: 'حذف',
                         padding: EdgeInsets.zero,
                         constraints:
@@ -1525,7 +1525,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
             title: Row(
               children: [
                 Icon(isEdit ? Icons.edit : Icons.add_circle,
-                    color: isEdit ? Colors.blue : Colors.green),
+                    color: isEdit ? SdColors.info : SdColors.success),
                 const SizedBox(width: 8),
                 Text(
                   isEdit ? 'تعديل بصمة - $dateStr' : 'إضافة بصمة - $dateStr',
@@ -1801,7 +1801,7 @@ class _EmployeeDetailDialogState extends State<_EmployeeDetailDialog> {
         child: AlertDialog(
           title: const Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.red),
+              Icon(Icons.warning_amber_rounded, color: SdColors.danger),
               SizedBox(width: 8),
               Text('تأكيد الحذف', style: TextStyle(fontSize: 16)),
             ],

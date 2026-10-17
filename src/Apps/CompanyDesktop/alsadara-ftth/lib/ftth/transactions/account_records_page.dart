@@ -2150,7 +2150,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Color(0xFF1565C0), width: 2),
+              border: Border.all(color: SdColors.info, width: 2),
               boxShadow: [
                 BoxShadow(
                   color: SdColors.info.withValues(alpha: 0.15),
@@ -2164,7 +2164,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                 hintText: 'البحث في السجلات...',
                 hintStyle: TextStyle(color: SdColors.muted),
                 prefixIcon:
-                    Icon(Icons.search, color: Color(0xFF1565C0), size: 24),
+                    Icon(Icons.search, color: SdColors.info, size: 24),
                 border: InputBorder.none,
                 contentPadding:
                     EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -2334,7 +2334,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                       'نقد',
                       _formatAmountShort(cashTotal),
                       '$cashCount عملية',
-                      [Color(0xFF2E7D32), Color(0xFF43A047)],
+                      [SdColors.success, SdColors.success],
                       Icons.attach_money,
                     ),
                   ),
@@ -2345,7 +2345,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                       'آجل',
                       _formatAmountShort(creditTotal),
                       '$creditCount عملية',
-                      [Color(0xFFE65100), Color(0xFFEF6C00)],
+                      [SdColors.warningEdge, SdColors.warning],
                       Icons.schedule,
                     ),
                   ),
@@ -2357,7 +2357,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                         'ماستر',
                         _formatAmountShort(masterTotal),
                         '$masterCount عملية',
-                        [Color(0xFF6A1B9A), Color(0xFF8E24AA)],
+                        [SdColors.platformBase, Color(0xFF8E24AA)],
                         Icons.credit_card,
                       ),
                     ),
@@ -2368,7 +2368,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                       'وكيل',
                       _formatAmountShort(agentTotal),
                       '$agentCount عملية',
-                      [Color(0xFF1565C0), Color(0xFF1E88E5)],
+                      [SdColors.info, SdColors.info],
                       Icons.store,
                     ),
                   ),
@@ -2379,7 +2379,7 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                       'فني',
                       _formatAmountShort(technicianTotal),
                       '$technicianCount عملية',
-                      [Color(0xFF00695C), Color(0xFF00897B)],
+                      [SdColors.accent, SdColors.accent],
                       Icons.engineering,
                     ),
                   ),
@@ -2454,8 +2454,8 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           gradient: LinearGradient(
                             colors: showDuplicatesOnly
                                 ? [
-                                    const Color(0xFFE65100),
-                                    const Color(0xFFFF9800)
+                                    SdColors.warningEdge,
+                                    SdColors.warning
                                   ]
                                 : [
                                     const Color(0xFF7B1FA2),
@@ -2521,11 +2521,11 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
                           gradient: LinearGradient(
                             colors: selectedReprintFilter == 'مطبوع أكثر من مرة'
                                 ? [
-                                    const Color(0xFFC62828),
+                                    SdColors.danger,
                                     const Color(0xFFEF5350)
                                   ]
                                 : [
-                                    const Color(0xFF00695C),
+                                    SdColors.accent,
                                     const Color(0xFF26A69A)
                                   ],
                             begin: Alignment.centerLeft,
@@ -3441,11 +3441,11 @@ class _AccountRecordsPageState extends State<AccountRecordsPage> {
     Color cardBgColor;
     Color cardBorderColor;
     if (isCashPayment) {
-      cardBgColor = Color(0xFFE8F5E9); // أخضر فاتح
-      cardBorderColor = Color(0xFF4CAF50); // أخضر
+      cardBgColor = SdColors.successTint; // أخضر فاتح
+      cardBorderColor = SdColors.success; // أخضر
     } else if (isCreditPayment) {
       cardBgColor = Color(0xFFFFEBEE); // أحمر فاتح
-      cardBorderColor = Color(0xFFE53935); // أحمر
+      cardBorderColor = SdColors.danger; // أحمر
     } else {
       cardBgColor = Color(0xFFF5F5F5); // رمادي فاتح
       cardBorderColor = Color(0xFF9E9E9E); // رمادي

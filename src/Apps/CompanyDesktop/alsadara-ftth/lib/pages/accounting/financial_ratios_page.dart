@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/accounting_theme.dart';
@@ -239,45 +238,45 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
   // ═══════════════════════════════════════════════════════════════
 
   Color _statusCurrentRatio(double v) {
-    if (v >= 1.5) return AccountingTheme.success;
-    if (v >= 1.0) return AccountingTheme.warning;
-    return AccountingTheme.danger;
+    if (v >= 1.5) return SdColors.success;
+    if (v >= 1.0) return SdColors.warning;
+    return SdColors.danger;
   }
 
   Color _statusDebtRatio(double v) {
-    if (v <= 0.4) return AccountingTheme.success;
-    if (v <= 0.6) return AccountingTheme.warning;
-    return AccountingTheme.danger;
+    if (v <= 0.4) return SdColors.success;
+    if (v <= 0.6) return SdColors.warning;
+    return SdColors.danger;
   }
 
   Color _statusProfitMargin(double v) {
-    if (v >= 20) return AccountingTheme.success;
-    if (v >= 10) return AccountingTheme.warning;
-    return AccountingTheme.danger;
+    if (v >= 20) return SdColors.success;
+    if (v >= 10) return SdColors.warning;
+    return SdColors.danger;
   }
 
   Color _statusCashRatio(double v) {
-    if (v >= 0.5) return AccountingTheme.success;
-    if (v >= 0.2) return AccountingTheme.warning;
-    return AccountingTheme.danger;
+    if (v >= 0.5) return SdColors.success;
+    if (v >= 0.2) return SdColors.warning;
+    return SdColors.danger;
   }
 
   Color _statusEquityRatio(double v) {
-    if (v >= 50) return AccountingTheme.success;
-    if (v >= 30) return AccountingTheme.warning;
-    return AccountingTheme.danger;
+    if (v >= 50) return SdColors.success;
+    if (v >= 30) return SdColors.warning;
+    return SdColors.danger;
   }
 
   Color _statusExpenseRatio(double v) {
-    if (v <= 70) return AccountingTheme.success;
-    if (v <= 85) return AccountingTheme.warning;
-    return AccountingTheme.danger;
+    if (v <= 70) return SdColors.success;
+    if (v <= 85) return SdColors.warning;
+    return SdColors.danger;
   }
 
   Color _statusROA(double v) {
-    if (v >= 10) return AccountingTheme.success;
-    if (v >= 5) return AccountingTheme.warning;
-    return AccountingTheme.danger;
+    if (v >= 10) return SdColors.success;
+    if (v >= 5) return SdColors.warning;
+    return SdColors.danger;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -306,7 +305,7 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
             child: _isLoading
                 ? const Center(
                     child: CircularProgressIndicator(
-                        color: AccountingTheme.neonBlue))
+                        color: SdColors.primary))
                 : _errorMessage != null
                     ? AccountingTheme.errorView(_errorMessage!, _loadAllData)
                     : _buildContent(),
@@ -358,7 +357,7 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
     return Container(
       padding: EdgeInsets.all(context.accR.spaceL),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(AccountingTheme.radiusMedium),
         boxShadow: AccountingTheme.cardShadow,
         border: Border(
@@ -371,10 +370,11 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
           // الاسم العربي
           Text(
             ratio.name,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: isMobile ? 11 : context.accR.body,
               fontWeight: FontWeight.bold,
-              color: AccountingTheme.textPrimary,
+              color: SdColors.ink,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -383,9 +383,10 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
           // الاسم الإنجليزي
           Text(
             ratio.englishName,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: isMobile ? 9 : context.accR.caption,
-              color: AccountingTheme.textMuted,
+              color: SdColors.faint,
             ),
           ),
           const Spacer(),
@@ -395,7 +396,8 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
               fit: BoxFit.scaleDown,
               child: Text(
                 ratio.formatted,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: isMobile ? 22 : context.accR.financialLarge,
                   fontWeight: FontWeight.w800,
                   color: ratio.statusColor,
@@ -419,7 +421,8 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
               Expanded(
                 child: Text(
                   _statusLabel(ratio.statusColor),
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMobile ? 9 : context.accR.caption,
                     color: ratio.statusColor,
                     fontWeight: FontWeight.w600,
@@ -432,9 +435,10 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
           // الوصف
           Text(
             ratio.description,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: isMobile ? 8 : context.accR.caption,
-              color: AccountingTheme.textMuted,
+              color: SdColors.faint,
               height: 1.3,
             ),
             maxLines: 2,
@@ -446,8 +450,8 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
   }
 
   String _statusLabel(Color color) {
-    if (color == AccountingTheme.success) return 'جيد';
-    if (color == AccountingTheme.warning) return 'تحذير';
+    if (color == SdColors.success) return 'جيد';
+    if (color == SdColors.warning) return 'تحذير';
     return 'خطر';
   }
 
@@ -473,7 +477,7 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
     return Container(
       padding: EdgeInsets.all(context.accR.spaceL),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(AccountingTheme.radiusMedium),
         boxShadow: AccountingTheme.cardShadow,
       ),
@@ -482,10 +486,11 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
         children: [
           Text(
             'مقارنة النسب المالية',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: isMobile ? 13 : context.accR.headingSmall,
               fontWeight: FontWeight.bold,
-              color: AccountingTheme.textPrimary,
+              color: SdColors.ink,
             ),
           ),
           SizedBox(height: context.accR.spaceL),
@@ -499,13 +504,14 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
                 barTouchData: BarTouchData(
                   enabled: true,
                   touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (_) => AccountingTheme.bgSidebar,
+                    getTooltipColor: (_) => SdColors.primary,
                     tooltipRoundedRadius: 8,
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final ratio = ratios[group.x];
                       return BarTooltipItem(
                         '${ratio.name}\n${ratio.formatted}',
-                        GoogleFonts.cairo(
+                        TextStyle(
+                          fontFamily: 'Cairo',
                           color: Colors.white,
                           fontSize: isMobile ? 10 : 12,
                           fontWeight: FontWeight.w600,
@@ -527,9 +533,10 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
                       getTitlesWidget: (value, meta) {
                         return Text(
                           _numFmt.format(value),
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: isMobile ? 8 : 10,
-                            color: AccountingTheme.textMuted,
+                            color: SdColors.faint,
                           ),
                         );
                       },
@@ -550,9 +557,10 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
                             quarterTurns: 1,
                             child: Text(
                               ratios[index].name,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: isMobile ? 8 : 10,
-                                color: AccountingTheme.textSecondary,
+                                color: SdColors.muted,
                                 fontWeight: FontWeight.w600,
                               ),
                               maxLines: 1,
@@ -570,7 +578,7 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
                   drawVerticalLine: false,
                   horizontalInterval: maxVal / 4,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: AccountingTheme.borderColor,
+                    color: SdColors.divider,
                     strokeWidth: 0.8,
                   ),
                 ),
@@ -587,7 +595,7 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
                         backDrawRodData: BackgroundBarChartRodData(
                           show: true,
                           toY: maxVal * 1.1,
-                          color: AccountingTheme.bgSecondary,
+                          color: SdColors.groundAlt,
                         ),
                       ),
                     ],

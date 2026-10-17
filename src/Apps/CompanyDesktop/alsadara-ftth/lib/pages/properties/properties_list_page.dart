@@ -5,8 +5,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../../frontend/components/sd_raised.dart';
 import '../../frontend/tokens/sd_colors.dart';
 import '../../models/property.dart';
@@ -185,7 +183,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
               const SizedBox(width: 16),
               Expanded(
                 child: Text(message,
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -198,7 +196,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+        content: Text(m, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
         backgroundColor: err ? SdColors.danger : SdColors.success,
       ),
     );
@@ -254,7 +252,8 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                 icon: const Icon(Icons.qr_code_scanner_rounded,
                     color: Colors.white),
                 label: Text('مسح رمز العقار',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.w800, color: Colors.white)),
               )
             : null,
@@ -279,10 +278,10 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
         controller: _q,
         textInputAction: TextInputAction.search,
         onSubmitted: (_) => _load(),
-        style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
         decoration: InputDecoration(
           hintText: 'بحث: رقم وطني / عنوان / نقطة دالة',
-          hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
+          hintStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.faint),
           prefixIcon:
               const Icon(Icons.search_rounded, color: SdColors.primary),
           suffixIcon: IconButton(
@@ -326,10 +325,11 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
       padding: const EdgeInsets.only(left: 8),
       child: ChoiceChip(
         label: Text(label,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontWeight: FontWeight.w700,
                 fontSize: 12.5,
-                color: selected ? Colors.white : const Color(0xFF475569))),
+                color: selected ? Colors.white : SdColors.muted)),
         selected: selected,
         onSelected: (_) => onTap(),
         showCheckmark: false,
@@ -338,7 +338,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
         side: BorderSide(
             color: selected
                 ? SdColors.primary
-                : Colors.grey.withValues(alpha: 0.25)),
+                : SdColors.faint.withValues(alpha: 0.25)),
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(PropUi.radiusPill)),
       ),
@@ -391,18 +391,19 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
             onPressed: _page > 1 ? () => _load(page: _page - 1) : null,
             icon: const Icon(Icons.chevron_right_rounded),
             label: Text('السابق',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           ),
           const SizedBox(width: 12),
           Text('صفحة $_page من $totalPages',
-              style: GoogleFonts.cairo(
-                  fontWeight: FontWeight.w800, color: Colors.grey[700])),
+              style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontWeight: FontWeight.w800, color: SdColors.muted)),
           const SizedBox(width: 12),
           OutlinedButton.icon(
             onPressed: _hasMore ? () => _load(page: _page + 1) : null,
             icon: const Icon(Icons.chevron_left_rounded),
             label: Text('التالي',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -442,7 +443,8 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                       p.displayTitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
                           color: PropUi.ink),
@@ -452,8 +454,9 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                       Text(p.shortAddress,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.cairo(
-                              fontSize: 12, color: Colors.grey[600])),
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 12, color: SdColors.muted)),
                     ],
                     const SizedBox(height: 6),
                     Wrap(
@@ -469,7 +472,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_left_rounded, color: Colors.grey),
+              const Icon(Icons.chevron_left_rounded, color: SdColors.faint),
             ],
           ),
         ),
@@ -485,7 +488,8 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
           border: Border.all(color: c.withValues(alpha: 0.22)),
         ),
         child: Text(t,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 color: c, fontWeight: FontWeight.w700, fontSize: 11)),
       );
 }
@@ -542,7 +546,7 @@ class _QrInputDialogState extends State<_QrInputDialog> {
                 color: SdColors.primary),
             const SizedBox(width: 8),
             Text('مسح/إدخال رمز QR',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           ],
         ),
         content: Column(
@@ -551,7 +555,7 @@ class _QrInputDialogState extends State<_QrInputDialog> {
             Text(
               'امسح لصاقة العنوان الوطني بالكاميرا أو بماسح QR، أو الصق/اكتب الرمز يدوياً.',
               style:
-                  GoogleFonts.cairo(fontSize: 12.5, color: Colors.grey[700]),
+                  TextStyle(fontFamily: 'Cairo', fontSize: 12.5, color: SdColors.muted),
             ),
             const SizedBox(height: 14),
             TextField(
@@ -560,10 +564,10 @@ class _QrInputDialogState extends State<_QrInputDialog> {
               autofocus: true,
               textInputAction: TextInputAction.search,
               onSubmitted: (_) => _submit(),
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
               decoration: InputDecoration(
                 hintText: 'SADARA|P:… أو الرمز',
-                hintStyle: GoogleFonts.cairo(color: Colors.grey[500]),
+                hintStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.faint),
                 prefixIcon: const Icon(Icons.qr_code_rounded,
                     color: SdColors.primary),
                 isDense: true,
@@ -582,7 +586,7 @@ class _QrInputDialogState extends State<_QrInputDialog> {
                 ),
                 icon: const Icon(Icons.photo_camera_rounded, size: 20),
                 label: Text('فتح الكاميرا والمسح',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
               ),
             ),
           ],
@@ -591,7 +595,7 @@ class _QrInputDialogState extends State<_QrInputDialog> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('إلغاء',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           ),
           FilledButton.icon(
             onPressed: _submit,
@@ -599,7 +603,7 @@ class _QrInputDialogState extends State<_QrInputDialog> {
                 FilledButton.styleFrom(backgroundColor: SdColors.primary),
             icon: const Icon(Icons.search_rounded, size: 18),
             label: Text('بحث',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           ),
         ],
       ),

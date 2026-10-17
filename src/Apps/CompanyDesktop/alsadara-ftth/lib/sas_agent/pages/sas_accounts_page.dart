@@ -367,10 +367,10 @@ class SasAccountsPageState extends State<SasAccountsPage> {
 
   Widget _accountCard(SasAccount acc, bool isSelected) {
     final statusColor =
-        acc.isActive ? SdColors.success : Colors.grey.shade500;
+        acc.isActive ? SdColors.success : SdColors.faint;
     final badgeColors = acc.isActive
         ? const [SdColors.primaryLight, SdColors.primary]
-        : [Colors.grey.shade500, Colors.grey.shade600];
+        : [SdColors.faint, SdColors.muted];
 
     return Material(
       color: Colors.transparent,
@@ -385,7 +385,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
             border: Border.all(
               color: isSelected
                   ? SdColors.primary
-                  : Colors.grey.withValues(alpha: 0.16),
+                  : SdColors.faint.withValues(alpha: 0.16),
               width: isSelected ? 1.8 : 1.2,
             ),
             boxShadow: isSelected
@@ -416,7 +416,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                             style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 14.5.sp,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF1A1A2E),
+                              color: SdColors.ink,
                             ),
                           ),
                         ),
@@ -431,7 +431,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                     Row(
                       children: [
                         Icon(Icons.dns_rounded,
-                            size: 12.sp, color: Colors.grey[500]),
+                            size: 12.sp, color: SdColors.faint),
                         SizedBox(width: 4.w),
                         Expanded(
                           child: Text(
@@ -440,7 +440,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 11.sp,
-                              color: Colors.grey[600],
+                              color: SdColors.muted,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -468,7 +468,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                       Row(
                         children: [
                           Icon(Icons.schedule_rounded,
-                              size: 12.sp, color: Colors.grey[500]),
+                              size: 12.sp, color: SdColors.faint),
                           SizedBox(width: 4.w),
                           Expanded(
                             child: Text(
@@ -477,7 +477,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(fontFamily: 'Cairo', 
                                 fontSize: 10.5.sp,
-                                color: Colors.grey[600],
+                                color: SdColors.muted,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -492,7 +492,7 @@ class SasAccountsPageState extends State<SasAccountsPage> {
               ),
               PopupMenuButton<String>(
                 icon: Icon(Icons.more_vert_rounded,
-                    color: Colors.grey[500], size: 20.sp),
+                    color: SdColors.faint, size: 20.sp),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.r)),
                 onSelected: (v) {

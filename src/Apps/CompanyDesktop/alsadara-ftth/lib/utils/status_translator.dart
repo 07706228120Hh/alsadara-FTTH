@@ -2,6 +2,7 @@
 // أي قيمة غير معروفة تُعاد كما هي
 
 import 'package:flutter/material.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 // خريطة ترجمات الحالات. أضفنا مرادفات متعددة لضمان الترجمة مهما كان شكل النص القادم من الـ API
 const Map<String, String> _statusMap = {
@@ -165,13 +166,13 @@ Color statusColor(String? status) {
     case 'progress':
     case 'processing':
     case 'working':
-      return Colors.orange;
+      return SdColors.warning;
     case 'completed':
     case 'done':
     case 'finished':
     case 'resolved':
     case 'closed successfully':
-      return Colors.green;
+      return SdColors.success;
     case 'pending':
     case 'on hold':
     case 'hold':
@@ -179,42 +180,42 @@ Color statusColor(String? status) {
     case 'waiting for customer':
     case 'waiting for support':
     case 'queued':
-      return Colors.blue;
+      return SdColors.info;
     case 'cancelled':
     case 'canceled':
     case 'rejected':
     case 'failed':
-      return Colors.red;
+      return SdColors.danger;
     case 'new':
     case 'open':
     case 'opened':
     case 'created':
-      return Colors.purple;
+      return SdColors.platformBase;
     case 'assigned':
     case 'accepted':
     case 'received':
-      return Colors.teal;
+      return SdColors.accent;
     case 'escalated':
-      return Colors.deepOrange;
+      return SdColors.warning;
     case 'reopened':
     case 're-opened':
-      return Colors.indigo;
+      return SdColors.primary;
     case 'monitoring':
     case 'verifying':
     case 'investigating':
-      return Colors.amber;
+      return SdColors.warning;
     case 'draft':
     case 'archived':
-      return Colors.grey;
+      return SdColors.faint;
     default:
       // محاولة تلوين الأكواد الرقمية حسب معناها
-      if (s == '0') return Colors.purple; // جديدة
-      if (s == '1') return Colors.orange; // قيد المعالجة
-      if (s == '2') return Colors.green; // مكتملة
-      if (s == '3') return Colors.grey; // مغلقة
-      if (s == '4') return Colors.blue; // انتظار
-      if (s == '5') return Colors.red; // ملغاة
-      if (s == '6') return Colors.deepOrange; // مُصعّدة
-      return Colors.grey;
+      if (s == '0') return SdColors.platformBase; // جديدة
+      if (s == '1') return SdColors.warning; // قيد المعالجة
+      if (s == '2') return SdColors.success; // مكتملة
+      if (s == '3') return SdColors.faint; // مغلقة
+      if (s == '4') return SdColors.info; // انتظار
+      if (s == '5') return SdColors.danger; // ملغاة
+      if (s == '6') return SdColors.warning; // مُصعّدة
+      return SdColors.faint;
   }
 }

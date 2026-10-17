@@ -4,6 +4,7 @@ library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class Tenant {
   final String id;
@@ -111,15 +112,15 @@ class Tenant {
   Color get subscriptionStatusColor {
     switch (status) {
       case SubscriptionStatus.active:
-        return Colors.green;
+        return SdColors.success;
       case SubscriptionStatus.warning:
-        return Colors.orange;
+        return SdColors.warning;
       case SubscriptionStatus.critical:
-        return Colors.deepOrange;
+        return SdColors.warning;
       case SubscriptionStatus.expired:
-        return Colors.red;
+        return SdColors.danger;
       case SubscriptionStatus.suspended:
-        return Colors.grey;
+        return SdColors.faint;
     }
   }
 

@@ -3,12 +3,12 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/energy_dashboard_theme.dart';
 import '../../services/api/api_client.dart';
 import 'widgets/super_admin_widgets.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 class SystemHealthPage extends StatefulWidget {
   const SystemHealthPage({super.key});
 
@@ -115,11 +115,11 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: EnergyDashboardTheme.bgPrimary,
+      color: SdColors.ground,
       child: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
-                  color: EnergyDashboardTheme.neonGreen))
+                  color: SdColors.success))
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -140,8 +140,8 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
 
   Widget _buildHeader() {
     final healthColor = _isHealthy
-        ? EnergyDashboardTheme.neonGreen
-        : EnergyDashboardTheme.danger;
+        ? SdColors.success
+        : SdColors.danger;
 
     return SAPageHeader(
       title: 'مراقبة صحة النظام',
@@ -152,12 +152,13 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
           ? Icons.monitor_heart_rounded
           : Icons.heart_broken_rounded,
       color: healthColor,
-      secondaryColor: EnergyDashboardTheme.neonBlue,
+      secondaryColor: SdColors.info,
       onRefresh: _loadAll,
       trailing: Text(
         DateFormat('HH:mm:ss').format(DateTime.now()),
-        style: GoogleFonts.cairo(
-          color: EnergyDashboardTheme.textMuted,
+        style: TextStyle(
+          fontFamily: 'Cairo',
+          color: SdColors.faint,
           fontSize: 11,
         ),
       ),
@@ -173,8 +174,8 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             value: _isReachable ? 'متصل' : 'غير متصل',
             icon: Icons.dns_rounded,
             color: _isReachable
-                ? EnergyDashboardTheme.success
-                : EnergyDashboardTheme.danger,
+                ? SdColors.success
+                : SdColors.danger,
             alert: !_isReachable,
           ),
         ),
@@ -185,7 +186,7 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             value: (_v(_vpsStatus, 'os') ?? _v(_vpsStatus, 'OS'))?.toString() ??
                 'Ubuntu',
             icon: Icons.computer_rounded,
-            color: EnergyDashboardTheme.neonBlue,
+            color: SdColors.info,
           ),
         ),
         const SizedBox(width: 10),
@@ -194,7 +195,7 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             title: 'وقت التشغيل',
             value: _v(_sysInfo, 'uptime')?.toString() ?? '-',
             icon: Icons.timer_rounded,
-            color: EnergyDashboardTheme.neonPurple,
+            color: SdColors.platformBase,
           ),
         ),
         const SizedBox(width: 10),
@@ -203,7 +204,7 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             title: 'المزود',
             value: _v(_vpsStatus, 'provider')?.toString() ?? 'Hostinger',
             icon: Icons.cloud_rounded,
-            color: EnergyDashboardTheme.neonOrange,
+            color: SdColors.warning,
           ),
         ),
       ],
@@ -214,7 +215,7 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
     return SASection(
       title: 'معلومات النظام',
       icon: Icons.info_outline_rounded,
-      iconColor: EnergyDashboardTheme.neonBlue,
+      iconColor: SdColors.info,
       child: Wrap(
         spacing: 20,
         runSpacing: 10,
@@ -239,15 +240,17 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
       children: [
         Text(
           '$label: ',
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.textMuted,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.faint,
             fontSize: 12,
           ),
         ),
         Text(
           value,
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.textPrimary,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.ink,
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
@@ -265,13 +268,14 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
     return SASection(
       title: 'الخدمات',
       icon: Icons.miscellaneous_services_rounded,
-      iconColor: EnergyDashboardTheme.neonGreen,
+      iconColor: SdColors.success,
       trailing: Text(
         '$runningCount / ${_services.length} تعمل',
-        style: GoogleFonts.cairo(
+        style: TextStyle(
+          fontFamily: 'Cairo',
           color: runningCount > 0
-              ? EnergyDashboardTheme.neonGreen
-              : EnergyDashboardTheme.danger,
+              ? SdColors.success
+              : SdColors.danger,
           fontSize: 12,
         ),
       ),
@@ -297,8 +301,8 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
         (_v(service, 'status') ?? '').toString().toLowerCase();
     final isRunning = statusStr == 'running';
     final color = isRunning
-        ? EnergyDashboardTheme.success
-        : EnergyDashboardTheme.danger;
+        ? SdColors.success
+        : SdColors.danger;
 
     return SATableRow(
       flexes: const [3, 2, 1, 2],
@@ -319,8 +323,9 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             const SizedBox(width: 8),
             Text(
               _v(service, 'name')?.toString() ?? '',
-              style: GoogleFonts.cairo(
-                color: EnergyDashboardTheme.textPrimary,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.ink,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -333,15 +338,17 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
         ),
         Text(
           _v(service, 'port')?.toString() ?? '-',
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.textSecondary,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.muted,
             fontSize: 12,
           ),
         ),
         Text(
           _v(service, 'memory')?.toString() ?? '-',
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.textSecondary,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.muted,
             fontSize: 12,
           ),
         ),
@@ -357,7 +364,7 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
     return SASection(
       title: 'استخدام الموارد',
       icon: Icons.speed_rounded,
-      iconColor: EnergyDashboardTheme.neonOrange,
+      iconColor: SdColors.warning,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -365,10 +372,10 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             value: cpuUsage,
             maxValue: 100,
             color: cpuUsage > 80
-                ? EnergyDashboardTheme.danger
+                ? SdColors.danger
                 : cpuUsage > 60
-                    ? EnergyDashboardTheme.warning
-                    : EnergyDashboardTheme.neonGreen,
+                    ? SdColors.warning
+                    : SdColors.success,
             label: 'CPU',
             size: 100,
           ),
@@ -376,10 +383,10 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             value: memUsage,
             maxValue: 100,
             color: memUsage > 80
-                ? EnergyDashboardTheme.danger
+                ? SdColors.danger
                 : memUsage > 60
-                    ? EnergyDashboardTheme.warning
-                    : EnergyDashboardTheme.neonBlue,
+                    ? SdColors.warning
+                    : SdColors.info,
             label: 'RAM',
             size: 100,
           ),
@@ -387,10 +394,10 @@ class _SystemHealthPageState extends State<SystemHealthPage> {
             value: diskUsage,
             maxValue: 100,
             color: diskUsage > 80
-                ? EnergyDashboardTheme.danger
+                ? SdColors.danger
                 : diskUsage > 60
-                    ? EnergyDashboardTheme.warning
-                    : EnergyDashboardTheme.neonPurple,
+                    ? SdColors.warning
+                    : SdColors.platformBase,
             label: 'Disk',
             size: 100,
           ),

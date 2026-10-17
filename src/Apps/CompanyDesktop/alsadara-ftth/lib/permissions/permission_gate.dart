@@ -42,6 +42,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'permission_manager.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// حارس الصلاحيات الموحد
 class PermissionGate extends StatelessWidget {
@@ -126,7 +127,7 @@ class PermissionGate extends StatelessWidget {
               return const Scaffold(
                 backgroundColor: Color(0xFF0a0a0a),
                 body: Center(
-                  child: CircularProgressIndicator(color: Colors.amber),
+                  child: CircularProgressIndicator(color: SdColors.warning),
                 ),
               );
             }
@@ -182,14 +183,14 @@ class PermissionGate extends StatelessWidget {
         backgroundColor: const Color(0xFF0a0a0a),
         appBar: AppBar(
           title: Text(pageName ?? 'غير مصرح'),
-          backgroundColor: const Color(0xFF1a1a2e),
+          backgroundColor: SdColors.ink,
           foregroundColor: Colors.white,
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.lock_outline, color: Colors.red, size: 80),
+              const Icon(Icons.lock_outline, color: SdColors.danger, size: 80),
               const SizedBox(height: 24),
               const Text(
                 'غير مصرح بالوصول',
@@ -216,7 +217,7 @@ class PermissionGate extends StatelessWidget {
                 icon: const Icon(Icons.arrow_back),
                 label: const Text('رجوع'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber[700],
+                  backgroundColor: SdColors.warning,
                   foregroundColor: Colors.black,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 24, vertical: 12),

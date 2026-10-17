@@ -1,12 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../services/api/api_config.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 /// صفحة تقارير التسديدات اليومية — عرض للمحاسب
 class SettlementReportsPage extends StatefulWidget {
   final String? companyId;
@@ -85,7 +84,7 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
     final amount = double.tryParse(ctrl?.text.replaceAll(',', '') ?? '') ?? 0;
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('المبلغ المستلم يجب أن يكون أكبر من صفر'), backgroundColor: Colors.red));
+        const SnackBar(content: Text('المبلغ المستلم يجب أن يكون أكبر من صفر'), backgroundColor: SdColors.danger));
       return;
     }
     setState(() => _isPosting = true);
@@ -93,15 +92,15 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
       final result = await _apiPost('settlement-reports/$reportId/accountant-post', {'receivedAmount': amount});
       if (result['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'تم الترحيل بنجاح'), backgroundColor: Colors.green));
+          SnackBar(content: Text(result['message'] ?? 'تم الترحيل بنجاح'), backgroundColor: SdColors.success));
         await _loadReports(); // تحديث البيانات
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'فشل الترحيل'), backgroundColor: Colors.red));
+          SnackBar(content: Text(result['message'] ?? 'فشل الترحيل'), backgroundColor: SdColors.danger));
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+        SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
     }
     if (mounted) setState(() => _isPosting = false);
   }
@@ -154,7 +153,7 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
         body: SafeArea(
           child: Column(
             children: [
@@ -175,8 +174,8 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : ar.spaceL, vertical: isMob ? 6 : ar.spaceM),
       decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+        color: SdColors.surface,
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
       child: Row(
         children: [
@@ -187,7 +186,7 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF16A085), Color(0xFF1ABC9C)]),
+              gradient: const LinearGradient(colors: [SdColors.accent, SdColors.accent]),
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(Icons.receipt_long, color: Colors.white, size: 20),
@@ -195,7 +194,7 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
           const SizedBox(width: 10),
           Expanded(
             child: Text('تقارير التسديدات اليومية',
-                style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold, color: AccountingTheme.textPrimary)),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 16, fontWeight: FontWeight.bold, color: SdColors.ink)),
           ),
           IconButton(
             onPressed: _loadReports,
@@ -213,8 +212,8 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 16, vertical: 8),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        color: SdColors.surface,
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
       child: isMob
           ? Column(
@@ -223,10 +222,10 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                 DropdownButtonFormField<String>(
                   value: _filterOperator,
                   isDense: true,
-                  style: GoogleFonts.cairo(fontSize: 13, color: Colors.black87),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.black87),
                   decoration: InputDecoration(
                     labelText: 'المشغل',
-                    labelStyle: GoogleFonts.cairo(fontSize: 12),
+                    labelStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -251,14 +250,14 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                         child: InputDecorator(
                           decoration: InputDecoration(
                             labelText: 'من',
-                            labelStyle: GoogleFonts.cairo(fontSize: 12),
+                            labelStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                             isDense: true,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                             suffixIcon: const Icon(Icons.calendar_today, size: 16),
                           ),
                           child: Text(_filterFrom != null ? fmt.format(_filterFrom!) : 'الكل',
-                              style: GoogleFonts.cairo(fontSize: 13)),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                         ),
                       ),
                     ),
@@ -277,14 +276,14 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                         child: InputDecorator(
                           decoration: InputDecoration(
                             labelText: 'إلى',
-                            labelStyle: GoogleFonts.cairo(fontSize: 12),
+                            labelStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                             isDense: true,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                             suffixIcon: const Icon(Icons.calendar_today, size: 16),
                           ),
                           child: Text(_filterTo != null ? fmt.format(_filterTo!) : 'الكل',
-                              style: GoogleFonts.cairo(fontSize: 13)),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                         ),
                       ),
                     ),
@@ -300,10 +299,10 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
             child: DropdownButtonFormField<String>(
               value: _filterOperator,
               isDense: true,
-              style: GoogleFonts.cairo(fontSize: 13, color: Colors.black87),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: Colors.black87),
               decoration: InputDecoration(
                 labelText: 'المشغل',
-                labelStyle: GoogleFonts.cairo(fontSize: 12),
+                labelStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -329,14 +328,14 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
               child: InputDecorator(
                 decoration: InputDecoration(
                   labelText: 'من',
-                  labelStyle: GoogleFonts.cairo(fontSize: 12),
+                  labelStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   suffixIcon: const Icon(Icons.calendar_today, size: 16),
                 ),
                 child: Text(_filterFrom != null ? fmt.format(_filterFrom!) : 'الكل',
-                    style: GoogleFonts.cairo(fontSize: 13)),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
               ),
             ),
           ),
@@ -357,14 +356,14 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
               child: InputDecorator(
                 decoration: InputDecoration(
                   labelText: 'إلى',
-                  labelStyle: GoogleFonts.cairo(fontSize: 12),
+                  labelStyle: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   suffixIcon: const Icon(Icons.calendar_today, size: 16),
                 ),
                 child: Text(_filterTo != null ? fmt.format(_filterTo!) : 'الكل',
-                    style: GoogleFonts.cairo(fontSize: 13)),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
               ),
             ),
           ),
@@ -389,15 +388,15 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                 ),
                 SizedBox(
                   width: (MediaQuery.of(context).size.width - 22) / 2,
-                  child: _statCard('نقد النظام', '${fmt.format(_totalSystemCash)} د.ع', Icons.attach_money, const Color(0xFF2E7D32), expanded: false),
+                  child: _statCard('نقد النظام', '${fmt.format(_totalSystemCash)} د.ع', Icons.attach_money, SdColors.success, expanded: false),
                 ),
                 SizedBox(
                   width: (MediaQuery.of(context).size.width - 22) / 2,
-                  child: _statCard('المصاريف', '${fmt.format(_totalExpenses)} د.ع', Icons.remove_circle_outline, const Color(0xFFE65100), expanded: false),
+                  child: _statCard('المصاريف', '${fmt.format(_totalExpenses)} د.ع', Icons.remove_circle_outline, SdColors.warningEdge, expanded: false),
                 ),
                 SizedBox(
                   width: (MediaQuery.of(context).size.width - 22) / 2,
-                  child: _statCard('النقد الصافي', '${fmt.format(_totalNetCash)} د.ع', Icons.account_balance_wallet, const Color(0xFF1565C0), expanded: false),
+                  child: _statCard('النقد الصافي', '${fmt.format(_totalNetCash)} د.ع', Icons.account_balance_wallet, SdColors.info, expanded: false),
                 ),
               ],
             )
@@ -407,11 +406,11 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
           children: [
             _statCard('التقارير', '$_totalReports', Icons.description, const Color(0xFF880E4F)),
             const SizedBox(width: 6),
-            _statCard('نقد النظام', '${fmt.format(_totalSystemCash)} د.ع', Icons.attach_money, const Color(0xFF2E7D32)),
+            _statCard('نقد النظام', '${fmt.format(_totalSystemCash)} د.ع', Icons.attach_money, SdColors.success),
             const SizedBox(width: 6),
-            _statCard('المصاريف', '${fmt.format(_totalExpenses)} د.ع', Icons.remove_circle_outline, const Color(0xFFE65100)),
+            _statCard('المصاريف', '${fmt.format(_totalExpenses)} د.ع', Icons.remove_circle_outline, SdColors.warningEdge),
             const SizedBox(width: 6),
-            _statCard('النقد الصافي', '${fmt.format(_totalNetCash)} د.ع', Icons.account_balance_wallet, const Color(0xFF1565C0)),
+            _statCard('النقد الصافي', '${fmt.format(_totalNetCash)} د.ع', Icons.account_balance_wallet, SdColors.info),
           ],
         ),
       ),
@@ -434,10 +433,10 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(title, style: GoogleFonts.cairo(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600)),
+                  Text(title, style: TextStyle(fontFamily: 'Cairo', color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600)),
                   FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Text(value, style: GoogleFonts.cairo(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
+                    child: Text(value, style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
                   ),
                 ],
               ),
@@ -454,10 +453,10 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_error != null) {
-      return Center(child: Text(_error!, style: GoogleFonts.cairo(color: Colors.red)));
+      return Center(child: Text(_error!, style: TextStyle(fontFamily: 'Cairo', color: SdColors.danger)));
     }
     if (_reports.isEmpty) {
-      return Center(child: Text('لا توجد تقارير', style: GoogleFonts.cairo(color: Colors.grey, fontSize: 16)));
+      return Center(child: Text('لا توجد تقارير', style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 16)));
     }
 
     return ListView.builder(
@@ -520,9 +519,9 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AccountingTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2))],
       ),
       child: Theme(
@@ -532,28 +531,28 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
           childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           leading: CircleAvatar(
             radius: 20,
-            backgroundColor: hasJournal ? const Color(0xFF2E7D32) : Colors.grey.shade400,
+            backgroundColor: hasJournal ? SdColors.success : SdColors.faint,
             child: Icon(hasJournal ? Icons.check : Icons.hourglass_empty, color: Colors.white, size: 18),
           ),
           title: Row(
             children: [
               Expanded(
-                child: Text(operatorName, style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold)),
+                child: Text(operatorName, style: TextStyle(fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.bold)),
               ),
               if (extractedDelivery.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: SdColors.infoTint,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
+                    border: Border.all(color: SdColors.infoTintEdge),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.person_pin, size: 14, color: Colors.blue.shade700),
+                      Icon(Icons.person_pin, size: 14, color: SdColors.info),
                       const SizedBox(width: 4),
-                      Text('← $extractedDelivery', style: GoogleFonts.cairo(fontSize: 11, color: Colors.blue.shade700)),
+                      Text('← $extractedDelivery', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.info)),
                     ],
                   ),
                 ),
@@ -561,13 +560,13 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
           ),
           subtitle: Row(
             children: [
-              Icon(Icons.calendar_today, size: 12, color: Colors.grey.shade500),
+              Icon(Icons.calendar_today, size: 12, color: SdColors.faint),
               const SizedBox(width: 4),
-              Text(dateDisplay, style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600)),
+              Text(dateDisplay, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.muted)),
               const Spacer(),
-              Text('صافي: ', style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600)),
+              Text('صافي: ', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.muted)),
               Text('${fmt.format(netCash)} د.ع',
-                  style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w900, color: const Color(0xFF2E7D32))),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.w900, color: SdColors.success)),
             ],
           ),
           children: [
@@ -575,22 +574,22 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.indigo.shade50,
+                color: SdColors.primaryTint,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.indigo.shade200),
+                border: Border.all(color: SdColors.primaryTintEdge),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.account_balance, size: 18, color: Colors.indigo.shade700),
+                  Icon(Icons.account_balance, size: 18, color: SdColors.primary),
                   const SizedBox(width: 8),
-                  Text('صندوق المشغل: ', style: GoogleFonts.cairo(fontSize: 12, color: Colors.indigo.shade700)),
+                  Text('صندوق المشغل: ', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.primary)),
                   Expanded(
                     child: Text('صندوق $operatorName (1110)',
-                        style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.indigo.shade900)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: SdColors.primaryEdge)),
                   ),
                   if (sysTotal > 0)
                     Text('إجمالي: ${fmt.format(sysTotal)} د.ع',
-                        style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.indigo.shade800)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: SdColors.primary)),
                 ],
               ),
             ),
@@ -601,25 +600,25 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: SdColors.surfaceAlt,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade200),
+                  border: Border.all(color: SdColors.divider),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('تفاصيل اشتراكات اليوم', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+                    Text('تفاصيل اشتراكات اليوم', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: SdColors.muted)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 4,
                       runSpacing: 4,
                       children: [
                         _miniCard('إجمالي', sysTotal, fmt, const Color(0xFF880E4F)),
-                        _miniCard('نقد', sysCash, fmt, const Color(0xFF2E7D32)),
-                        _miniCard('آجل', sysCredit, fmt, const Color(0xFFE65100)),
-                        _miniCard('ماستر', sysMaster, fmt, const Color(0xFF4A148C)),
-                        _miniCard('وكيل', sysAgent, fmt, const Color(0xFF1565C0)),
-                        _miniCard('فني', sysTech, fmt, const Color(0xFF00695C)),
+                        _miniCard('نقد', sysCash, fmt, SdColors.success),
+                        _miniCard('آجل', sysCredit, fmt, SdColors.warningEdge),
+                        _miniCard('ماستر', sysMaster, fmt, SdColors.platformEdge),
+                        _miniCard('وكيل', sysAgent, fmt, SdColors.info),
+                        _miniCard('فني', sysTech, fmt, SdColors.accent),
                       ],
                     ),
                   ],
@@ -632,24 +631,24 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
             if (items.isNotEmpty) ...[
               Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(color: SdColors.edge),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Column(
                   children: [
                     Container(
-                      color: Colors.orange.shade50,
+                      color: SdColors.warningTint,
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       child: Row(
                         children: [
-                          SizedBox(width: 24, child: Center(child: Text('ت', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)))),
+                          SizedBox(width: 24, child: Center(child: Text('ت', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)))),
                           const SizedBox(width: 8),
-                          Expanded(flex: 2, child: Center(child: Text('المبلغ', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)))),
+                          Expanded(flex: 2, child: Center(child: Text('المبلغ', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)))),
                           const SizedBox(width: 8),
-                          Expanded(flex: 2, child: Center(child: Text('الصنف', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)))),
+                          Expanded(flex: 2, child: Center(child: Text('الصنف', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)))),
                           const SizedBox(width: 8),
-                          Expanded(flex: 3, child: Center(child: Text('التفاصيل', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)))),
+                          Expanded(flex: 3, child: Center(child: Text('التفاصيل', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold)))),
                         ],
                       ),
                     ),
@@ -660,13 +659,13 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                       final amount = _toDouble(item['amount']);
                       final category = item['category'] ?? '';
                       return Container(
-                        decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey.shade200))),
+                        decoration: BoxDecoration(border: Border(top: BorderSide(color: SdColors.divider))),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         child: Row(
                           children: [
-                            SizedBox(width: 24, child: Center(child: Text('${idx + 1}', style: GoogleFonts.cairo(fontSize: 11)))),
+                            SizedBox(width: 24, child: Center(child: Text('${idx + 1}', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)))),
                             const SizedBox(width: 8),
-                            Expanded(flex: 2, child: Center(child: Text('${fmt.format(amount)} د.ع', style: GoogleFonts.cairo(fontSize: 11)))),
+                            Expanded(flex: 2, child: Center(child: Text('${fmt.format(amount)} د.ع', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)))),
                             const SizedBox(width: 8),
                             Expanded(
                               flex: 2,
@@ -678,12 +677,12 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(category.isEmpty ? '-' : category,
-                                      style: GoogleFonts.cairo(fontSize: 11, color: _categoryColor(category), fontWeight: FontWeight.bold)),
+                                      style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: _categoryColor(category), fontWeight: FontWeight.bold)),
                                 ),
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Expanded(flex: 3, child: Text(note, style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade700))),
+                            Expanded(flex: 3, child: Text(note, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.muted))),
                           ],
                         ),
                       );
@@ -698,35 +697,35 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.green.shade50,
+                color: SdColors.successTint,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.green.shade300),
+                border: Border.all(color: SdColors.successTintEdge),
               ),
               child: Row(
                 children: [
-                  _summaryChip('نقد النظام', sysCash, fmt, Colors.green.shade800, Icons.attach_money),
+                  _summaryChip('نقد النظام', sysCash, fmt, SdColors.success, Icons.attach_money),
                   if (totalExpenses > 0) ...[
                     const SizedBox(width: 8),
-                    _summaryChip('المصاريف', -totalExpenses, fmt, Colors.orange.shade800, Icons.remove_circle_outline),
+                    _summaryChip('المصاريف', -totalExpenses, fmt, SdColors.warning, Icons.remove_circle_outline),
                   ],
                   const SizedBox(width: 8),
                   Expanded(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade100,
+                        color: SdColors.successTint,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(children: [
-                            Icon(Icons.account_balance_wallet, size: 16, color: Colors.green.shade900),
+                            Icon(Icons.account_balance_wallet, size: 16, color: SdColors.successEdge),
                             const SizedBox(width: 4),
-                            Text('النقد الصافي', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.green.shade900)),
+                            Text('النقد الصافي', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.w900, color: SdColors.successEdge)),
                           ]),
                           Text('${fmt.format(netCash)} د.ع',
-                              style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.green.shade900)),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.w900, color: SdColors.successEdge)),
                         ],
                       ),
                     ),
@@ -741,16 +740,17 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: SdColors.infoTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.shade200),
+                  border: Border.all(color: SdColors.infoTintEdge),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.payments, size: 18, color: Colors.blue.shade700),
+                    Icon(Icons.payments, size: 18, color: SdColors.info),
                     const SizedBox(width: 8),
-                    Text('المبلغ المستلم', style: GoogleFonts.cairo(
-                        fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
+                    Text('المبلغ المستلم', style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 12, fontWeight: FontWeight.bold, color: SdColors.info)),
                     const SizedBox(width: 10),
                     SizedBox(
                       width: 150,
@@ -758,13 +758,13 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                         controller: _receivedAmountControllers[reportId],
                         keyboardType: TextInputType.number,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.bold, color: SdColors.infoEdge),
                         decoration: InputDecoration(
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
                           suffixText: 'د.ع',
-                          suffixStyle: GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
+                          suffixStyle: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.faint),
                         ),
                       ),
                     ),
@@ -773,9 +773,9 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                       onPressed: _isPosting ? null : () => _postReport(report),
                       icon: Icon(_isPosting ? Icons.hourglass_empty : Icons.send, size: 16),
                       label: Text(_isPosting ? 'جاري...' : 'ترحيل',
-                          style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
+                        backgroundColor: SdColors.success,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -789,18 +789,18 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: SdColors.successTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade300),
+                  border: Border.all(color: SdColors.successTintEdge),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle, size: 18, color: Colors.green.shade700),
+                    Icon(Icons.check_circle, size: 18, color: SdColors.success),
                     const SizedBox(width: 8),
                     Text('تم الترحيل — المبلغ المستلم: ',
-                        style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.green.shade800)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.w600, color: SdColors.success)),
                     Text('${fmt.format(receivedAmount > 0 ? receivedAmount : netCash)} د.ع',
-                        style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.green.shade900)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.w900, color: SdColors.successEdge)),
                   ],
                 ),
               ),
@@ -811,9 +811,9 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: hasJournal ? Colors.teal.shade50 : Colors.grey.shade100,
+                color: hasJournal ? SdColors.accentTint : SdColors.groundAlt,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: hasJournal ? Colors.teal.shade300 : Colors.grey.shade300),
+                border: Border.all(color: hasJournal ? SdColors.accentTintEdge : SdColors.edge),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -821,11 +821,11 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                   Row(
                     children: [
                       Icon(hasJournal ? Icons.check_circle : Icons.cancel,
-                          size: 16, color: hasJournal ? Colors.teal.shade700 : Colors.grey),
+                          size: 16, color: hasJournal ? SdColors.accent : SdColors.faint),
                       const SizedBox(width: 6),
                       Text(hasJournal ? 'القيد المحاسبي' : 'بدون قيد محاسبي',
-                          style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold,
-                              color: hasJournal ? Colors.teal.shade800 : Colors.grey)),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold,
+                              color: hasJournal ? SdColors.accent : SdColors.faint)),
                     ],
                   ),
                   if (hasJournal && netCash > 0) ...[
@@ -835,14 +835,14 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: Colors.blue.shade100, borderRadius: BorderRadius.circular(4)),
-                          child: Text('مدين', style: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
+                          decoration: BoxDecoration(color: SdColors.infoTint, borderRadius: BorderRadius.circular(4)),
+                          child: Text('مدين', style: TextStyle(fontFamily: 'Cairo', fontSize: 10, fontWeight: FontWeight.bold, color: SdColors.info)),
                         ),
                         const SizedBox(width: 8),
                         Expanded(child: Text('صندوق $extractedDelivery',
-                            style: GoogleFonts.cairo(fontSize: 11, color: Colors.teal.shade800))),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.accent))),
                         Text('${fmt.format(netCash)} د.ع',
-                            style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: SdColors.info)),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -851,14 +851,14 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: BorderRadius.circular(4)),
-                          child: Text('دائن', style: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red.shade800)),
+                          decoration: BoxDecoration(color: SdColors.dangerTint, borderRadius: BorderRadius.circular(4)),
+                          child: Text('دائن', style: TextStyle(fontFamily: 'Cairo', fontSize: 10, fontWeight: FontWeight.bold, color: SdColors.danger)),
                         ),
                         const SizedBox(width: 8),
                         Expanded(child: Text('صندوق $operatorName',
-                            style: GoogleFonts.cairo(fontSize: 11, color: Colors.teal.shade800))),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.accent))),
                         Text('${fmt.format(netCash)} د.ع',
-                            style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade800)),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: SdColors.danger)),
                       ],
                     ),
                   ],
@@ -871,9 +871,9 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.notes, size: 14, color: Colors.grey.shade500),
+                  Icon(Icons.notes, size: 14, color: SdColors.faint),
                   const SizedBox(width: 6),
-                  Expanded(child: Text(displayNotes, style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade700))),
+                  Expanded(child: Text(displayNotes, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.muted))),
                 ],
               ),
             ],
@@ -897,11 +897,11 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
       ),
       child: Column(
         children: [
-          Text(label, style: GoogleFonts.cairo(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
+          Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 9, fontWeight: FontWeight.w600, color: color)),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(value > 0 ? fmt.format(value) : '0',
-                style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w900, color: color)),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.w900, color: color)),
           ),
         ],
       ),
@@ -922,10 +922,10 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
             Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(icon, size: 14, color: color),
               const SizedBox(width: 4),
-              Text(label, style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+              Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.w600, color: color)),
             ]),
             Text('${fmt.format(value)} د.ع',
-                style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: color)),
           ],
         ),
       ),
@@ -937,19 +937,19 @@ class _SettlementReportsPageState extends State<SettlementReportsPage> {
       children: [
         Icon(icon, size: 16, color: color),
         const SizedBox(width: 6),
-        Text(label, style: GoogleFonts.cairo(fontSize: size, color: color, fontWeight: bold ? FontWeight.w900 : FontWeight.w600)),
+        Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: size, color: color, fontWeight: bold ? FontWeight.w900 : FontWeight.w600)),
         const Spacer(),
         Text('${fmt.format(value)} د.ع',
-            style: GoogleFonts.cairo(fontSize: size + 1, fontWeight: bold ? FontWeight.w900 : FontWeight.bold, color: color)),
+            style: TextStyle(fontFamily: 'Cairo', fontSize: size + 1, fontWeight: bold ? FontWeight.w900 : FontWeight.bold, color: color)),
       ],
     );
   }
 
   Color _categoryColor(String category) {
     switch (category) {
-      case 'مصاريف': return Colors.orange.shade700;
-      case 'أخرى': return Colors.grey.shade600;
-      default: return Colors.deepPurple;
+      case 'مصاريف': return SdColors.warning;
+      case 'أخرى': return SdColors.muted;
+      default: return SdColors.platformBase;
     }
   }
 }

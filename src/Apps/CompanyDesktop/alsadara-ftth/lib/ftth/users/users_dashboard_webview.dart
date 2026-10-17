@@ -10,6 +10,7 @@ import 'package:webview_windows/webview_windows.dart' as wvwin;
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/auth_service.dart';
 import '../../services/ftth_cf_clearance.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class UsersDashboardWebView extends StatefulWidget {
   final String authToken;
@@ -199,7 +200,7 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
       ),
     );
   }
@@ -217,14 +218,14 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('بيانات المستخدمين'),
-          backgroundColor: Colors.indigo,
+          backgroundColor: SdColors.primary,
           foregroundColor: Colors.white,
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.computer, size: 64, color: Colors.grey),
+              const Icon(Icons.computer, size: 64, color: SdColors.faint),
               const SizedBox(height: 16),
               const Text(
                 'هذه الميزة متاحة فقط على Windows',
@@ -236,7 +237,7 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
                 icon: const Icon(Icons.open_in_browser),
                 label: const Text('فتح في المتصفح'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.indigo,
+                  backgroundColor: SdColors.primary,
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -263,7 +264,7 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
               ),
           ],
         ),
-        backgroundColor: Colors.indigo,
+        backgroundColor: SdColors.primary,
         foregroundColor: Colors.white,
         actions: [
           // زر تحديث
@@ -317,8 +318,8 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
               left: 0,
               right: 0,
               child: LinearProgressIndicator(
-                backgroundColor: Colors.indigo.withValues(alpha: 0.2),
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.indigo),
+                backgroundColor: SdColors.primary.withValues(alpha: 0.2),
+                valueColor: const AlwaysStoppedAnimation<Color>(SdColors.primary),
               ),
             ),
 
@@ -329,16 +330,16 @@ class _UsersDashboardWebViewState extends State<UsersDashboardWebView> {
               left: 0,
               right: 0,
               child: Container(
-                color: Colors.orange[100],
+                color: SdColors.warningTint,
                 padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
-                    Icon(Icons.security, color: Colors.orange[800]),
+                    Icon(Icons.security, color: SdColors.warning),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'جاري التحقق من Cloudflare... انتظر قليلاً',
-                        style: TextStyle(color: Colors.orange[900]),
+                        style: TextStyle(color: SdColors.warningEdge),
                       ),
                     ),
                     const SizedBox(

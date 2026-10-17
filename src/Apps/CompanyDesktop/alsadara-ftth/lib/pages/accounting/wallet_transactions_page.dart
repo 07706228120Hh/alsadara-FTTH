@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:excel/excel.dart' as xl;
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
@@ -486,7 +485,7 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
       padding: EdgeInsets.all(r.spaceM),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -505,10 +504,10 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
                 height: 36,
                 child: TextField(
                   controller: _searchController,
-                  style: GoogleFonts.cairo(fontSize: r.small),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: r.small),
                   decoration: InputDecoration(
                     hintText: 'بحث بالاسم أو الرقم...',
-                    hintStyle: GoogleFonts.cairo(fontSize: r.small, color: Colors.grey),
+                    hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: r.small, color: SdColors.faint),
                     prefixIcon: const Icon(Icons.search, size: 18),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
@@ -579,8 +578,8 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
                   _selectedWalletOwnerTypes.first != 'partner')
                 ActionChip(
                   avatar: const Icon(Icons.clear_all, size: 16),
-                  label: Text('مسح الكل', style: GoogleFonts.cairo(fontSize: 11)),
-                  backgroundColor: Colors.red.shade50,
+                  label: Text('مسح الكل', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
+                  backgroundColor: SdColors.dangerTint,
                   onPressed: () {
                     _selectedTypes.clear();
                     _selectedOperator = null;
@@ -633,18 +632,19 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
 
     return Row(
       children: [
-        Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+        Icon(Icons.calendar_today, size: 16, color: SdColors.muted),
         SizedBox(width: r.spaceXS),
         ...chips.map((c) => Padding(
               padding: const EdgeInsets.only(left: 4),
               child: ChoiceChip(
                 label: Text(c['label'],
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 11,
-                        color: _dateLabel == c['label'] ? Colors.white : Colors.grey.shade700)),
+                        color: _dateLabel == c['label'] ? Colors.white : SdColors.muted)),
                 selected: _dateLabel == c['label'],
-                selectedColor: const Color(0xFF1A237E),
-                backgroundColor: Colors.grey.shade100,
+                selectedColor: SdColors.primary,
+                backgroundColor: SdColors.groundAlt,
                 onSelected: (_) => _setQuickDate(c['label'], c['from'], c['to']),
                 visualDensity: VisualDensity.compact,
               ),
@@ -652,7 +652,7 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
         const SizedBox(width: 4),
         ActionChip(
           avatar: const Icon(Icons.date_range, size: 14),
-          label: Text('مخصص', style: GoogleFonts.cairo(fontSize: 11)),
+          label: Text('مخصص', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
           visualDensity: VisualDensity.compact,
           onPressed: () async {
             final picked = await showDateRangePicker(
@@ -690,23 +690,24 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           border: Border.all(
-              color: selected.isNotEmpty ? const Color(0xFF1A237E) : Colors.grey.shade300),
+              color: selected.isNotEmpty ? SdColors.primary : SdColors.edge),
           borderRadius: BorderRadius.circular(8),
-          color: selected.isNotEmpty ? const Color(0xFF1A237E).withOpacity(0.06) : Colors.white,
+          color: selected.isNotEmpty ? SdColors.primary.withOpacity(0.06) : Colors.white,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(label,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 11,
-                    color: selected.isNotEmpty ? const Color(0xFF1A237E) : Colors.grey.shade600)),
+                    color: selected.isNotEmpty ? SdColors.primary : SdColors.muted)),
             if (selected.isNotEmpty) ...[
               const SizedBox(width: 4),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1A237E),
+                  color: SdColors.primary,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text('${selected.length}',
@@ -726,9 +727,9 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
                 children: [
                   Icon(isSelected ? Icons.check_box : Icons.check_box_outline_blank,
                       size: 18,
-                      color: isSelected ? const Color(0xFF1A237E) : Colors.grey),
+                      color: isSelected ? SdColors.primary : SdColors.faint),
                   const SizedBox(width: 8),
-                  Text(o['label']!, style: GoogleFonts.cairo(fontSize: 12)),
+                  Text(o['label']!, style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                 ],
               ),
             );
@@ -755,20 +756,20 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       height: 36,
       decoration: BoxDecoration(
-        border: Border.all(color: value != null ? const Color(0xFF1A237E) : Colors.grey.shade300),
+        border: Border.all(color: value != null ? SdColors.primary : SdColors.edge),
         borderRadius: BorderRadius.circular(8),
-        color: value != null ? const Color(0xFF1A237E).withOpacity(0.06) : Colors.white,
+        color: value != null ? SdColors.primary.withOpacity(0.06) : Colors.white,
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          hint: Text(label, style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade600)),
+          hint: Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.muted)),
           value: value,
           isDense: true,
-          style: GoogleFonts.cairo(fontSize: 11, color: Colors.black87),
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.black87),
           items: [
-            DropdownMenuItem<String>(value: null, child: Text('الكل', style: GoogleFonts.cairo(fontSize: 11))),
+            DropdownMenuItem<String>(value: null, child: Text('الكل', style: TextStyle(fontFamily: 'Cairo', fontSize: 11))),
             ...items.map((i) =>
-                DropdownMenuItem<String>(value: i, child: Text(i, style: GoogleFonts.cairo(fontSize: 11)))),
+                DropdownMenuItem<String>(value: i, child: Text(i, style: TextStyle(fontFamily: 'Cairo', fontSize: 11)))),
           ],
           onChanged: onChanged,
         ),
@@ -786,20 +787,20 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
       padding: EdgeInsets.symmetric(horizontal: r.spaceM, vertical: r.spaceS),
       child: Row(
         children: [
-          _summaryCard('إجمالي العمليات', '$_totalCount', Icons.receipt_long, Colors.indigo),
+          _summaryCard('إجمالي العمليات', '$_totalCount', Icons.receipt_long, SdColors.primary),
           SizedBox(width: r.spaceS),
-          _summaryCard('الوارد', _currencyFormat.format(_totalPositive), Icons.arrow_downward, Colors.green),
+          _summaryCard('الوارد', _currencyFormat.format(_totalPositive), Icons.arrow_downward, SdColors.success),
           SizedBox(width: r.spaceS),
-          _summaryCard('الصادر', _currencyFormat.format(_totalNegative), Icons.arrow_upward, Colors.red),
+          _summaryCard('الصادر', _currencyFormat.format(_totalNegative), Icons.arrow_upward, SdColors.danger),
           SizedBox(width: r.spaceS),
-          _summaryCard('شحن', _currencyFormat.format(_totalTopup), Icons.add_circle_outline, Colors.blue),
+          _summaryCard('شحن', _currencyFormat.format(_totalTopup), Icons.add_circle_outline, SdColors.info),
           SizedBox(width: r.spaceS),
-          _summaryCard('استرداد', _currencyFormat.format(_totalRefund), Icons.replay, Colors.orange),
+          _summaryCard('استرداد', _currencyFormat.format(_totalRefund), Icons.replay, SdColors.warning),
           SizedBox(width: r.spaceS),
-          _summaryCard('تحويل', _currencyFormat.format(_totalTransfer), Icons.swap_horiz, Colors.purple),
+          _summaryCard('تحويل', _currencyFormat.format(_totalTransfer), Icons.swap_horiz, SdColors.platformBase),
           if (_totalFees > 0) ...[
             SizedBox(width: r.spaceS),
-            _summaryCard('رسوم', _currencyFormat.format(_totalFees), Icons.money_off, Colors.brown),
+            _summaryCard('رسوم', _currencyFormat.format(_totalFees), Icons.money_off, SdColors.warning),
           ],
         ],
       ),
@@ -834,10 +835,11 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(value,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: r.body, fontWeight: FontWeight.w700, color: color)),
                   Text(label,
-                      style: GoogleFonts.cairo(fontSize: r.caption, color: Colors.grey.shade600)),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: r.caption, color: SdColors.muted)),
                 ],
               ),
             ),
@@ -881,7 +883,7 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: const BoxDecoration(
-            color: Color(0xFF1A237E),
+            color: SdColors.primary,
           ),
           child: Row(
             children: List.generate(headerLabels.length, (i) {
@@ -898,7 +900,8 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
                     children: [
                       Flexible(
                         child: Text(headerLabels[i],
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 color: Colors.white,
                                 fontSize: r.small,
                                 fontWeight: FontWeight.w600),
@@ -907,7 +910,7 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
                       if (isSorted)
                         Icon(
                           _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                          color: Colors.amber.shade300,
+                          color: SdColors.warningTintEdge,
                           size: 14,
                         ),
                     ],
@@ -924,7 +927,7 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
             itemBuilder: (context, i) {
               final tx = pageData[i];
               final isPositive = tx.amount >= 0;
-              final rowColor = i.isEven ? Colors.grey.shade50 : Colors.white;
+              final rowColor = i.isEven ? SdColors.surfaceAlt : Colors.white;
 
               String dateStr = '';
               if (tx.occuredAt.length >= 16) {
@@ -940,18 +943,18 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: rowColor,
-                  border: Border(bottom: BorderSide(color: Colors.grey.shade200, width: 0.5)),
+                  border: Border(bottom: BorderSide(color: SdColors.divider, width: 0.5)),
                 ),
                 child: Row(
                   children: [
                     // #
                     _cell(_colFlex[0], Text('${startIndex + i + 1}',
-                        style: TextStyle(fontSize: r.small, color: Colors.grey))),
+                        style: TextStyle(fontSize: r.small, color: SdColors.faint))),
                     // التاريخ
-                    _cell(_colFlex[1], Text(dateStr, style: GoogleFonts.cairo(fontSize: r.small))),
+                    _cell(_colFlex[1], Text(dateStr, style: TextStyle(fontFamily: 'Cairo', fontSize: r.small))),
                     // المشغل
                     _cell(_colFlex[2], Text(tx.operatorName,
-                        style: GoogleFonts.cairo(fontSize: r.small, fontWeight: FontWeight.w600),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: r.small, fontWeight: FontWeight.w600),
                         overflow: TextOverflow.ellipsis)),
                     // العميل
                     _cell(_colFlex[3], Column(
@@ -959,11 +962,11 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(tx.customerName,
-                            style: GoogleFonts.cairo(fontSize: r.small),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: r.small),
                             overflow: TextOverflow.ellipsis),
                         if (tx.customerId.isNotEmpty)
                           Text(tx.customerId,
-                              style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                              style: TextStyle(fontSize: 10, color: SdColors.faint),
                               overflow: TextOverflow.ellipsis),
                       ],
                     )),
@@ -971,37 +974,39 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
                     _cell(_colFlex[4], Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: _isCredit(tx.type) ? Colors.green.shade50 : Colors.red.shade50,
+                        color: _isCredit(tx.type) ? SdColors.successTint : SdColors.dangerTint,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(_translateType(tx.type),
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: r.small,
                               fontWeight: FontWeight.w600,
-                              color: _isCredit(tx.type) ? Colors.green.shade800 : Colors.red.shade800),
+                              color: _isCredit(tx.type) ? SdColors.success : SdColors.danger),
                           overflow: TextOverflow.ellipsis),
                     )),
                     // المبلغ
                     _cell(_colFlex[5], Text(
                       '${isPositive ? "+" : "-"}${_currencyFormat.format(tx.amount.abs())}',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: r.small,
                         fontWeight: FontWeight.w700,
-                        color: isPositive ? Colors.green.shade700 : Colors.red.shade700,
+                        color: isPositive ? SdColors.success : SdColors.danger,
                       ),
                     )),
                     // الرصيد المتبقي
                     _cell(_colFlex[6], Text(
                       _currencyFormat.format(tx.remainingBalance),
-                      style: GoogleFonts.cairo(fontSize: r.small, color: Colors.blue.shade700),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: r.small, color: SdColors.info),
                     )),
                     // طريقة الدفع
                     _cell(_colFlex[7], Text(tx.paymentMethod,
-                        style: GoogleFonts.cairo(fontSize: r.small),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: r.small),
                         overflow: TextOverflow.ellipsis)),
                     // المنطقة
                     _cell(_colFlex[8], Text(tx.zoneId,
-                        style: GoogleFonts.cairo(fontSize: r.small, color: Colors.grey.shade600),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: r.small, color: SdColors.muted),
                         overflow: TextOverflow.ellipsis)),
                   ],
                 ),
@@ -1030,12 +1035,12 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        border: Border(top: BorderSide(color: SdColors.divider)),
       ),
       child: Row(
         children: [
           Text('عرض',
-              style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600)),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.muted)),
           const SizedBox(width: 8),
           DropdownButtonHideUnderline(
             child: DropdownButton<int>(
@@ -1050,7 +1055,7 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
           ),
           const SizedBox(width: 8),
           Text('من ${_filteredTransactions.length}',
-              style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey.shade600)),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.muted)),
           const Spacer(),
           IconButton(
             icon: const Icon(Icons.first_page, size: 20),
@@ -1063,11 +1068,11 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFF1A237E),
+              color: SdColors.primary,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text('${_currentPage + 1} / $totalPages',
-                style: GoogleFonts.cairo(color: Colors.white, fontSize: 12)),
+                style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontSize: 12)),
           ),
           IconButton(
             icon: const Icon(Icons.chevron_left, size: 20),
@@ -1114,8 +1119,8 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
     if (_filteredTransactions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text('لا توجد بيانات للتصدير', style: GoogleFonts.cairo()),
-            backgroundColor: Colors.orange),
+            content: Text('لا توجد بيانات للتصدير', style: TextStyle(fontFamily: 'Cairo')),
+            backgroundColor: SdColors.warning),
       );
       return;
     }
@@ -1262,7 +1267,7 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
     if (bytes == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل إنشاء الملف', style: GoogleFonts.cairo()), backgroundColor: Colors.red),
+          SnackBar(content: Text('فشل إنشاء الملف', style: TextStyle(fontFamily: 'Cairo')), backgroundColor: SdColors.danger),
         );
       }
       return;
@@ -1278,8 +1283,8 @@ class _WalletTransactionsPageState extends State<WalletTransactionsPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('تم حفظ الملف: $filePath', style: GoogleFonts.cairo()),
-        backgroundColor: Colors.green.shade700,
+        content: Text('تم حفظ الملف: $filePath', style: TextStyle(fontFamily: 'Cairo')),
+        backgroundColor: SdColors.success,
         duration: const Duration(seconds: 6),
         action: SnackBarAction(
           label: 'فتح',

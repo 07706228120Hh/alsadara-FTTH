@@ -1056,7 +1056,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
               children: [
                 Row(
               children: [
-                const Icon(Icons.http, color: Colors.deepPurple),
+                const Icon(Icons.http, color: SdColors.platformBase),
                 const SizedBox(width: 8),
                 Text('DevTools (${filteredCalls.length}/${_capturedApiCalls.length})',
                     style: const TextStyle(fontSize: 16)),
@@ -1071,7 +1071,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('تم نسخ جميع الطلبات'),
-                        backgroundColor: Colors.green,
+                        backgroundColor: SdColors.success,
                       ),
                     );
                   },
@@ -1130,13 +1130,13 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                         // لون الحالة
                         Color statusColor;
                         if (status >= 200 && status < 300) {
-                          statusColor = Colors.green;
+                          statusColor = SdColors.success;
                         } else if (status >= 400) {
-                          statusColor = Colors.red;
+                          statusColor = SdColors.danger;
                         } else if (status == 0) {
                           statusColor = SdColors.faint;
                         } else {
-                          statusColor = Colors.orange;
+                          statusColor = SdColors.warning;
                         }
 
                         // أيقونة ولون حسب النوع
@@ -1146,34 +1146,34 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                         switch (type) {
                           case 'console':
                             typeIcon = method == 'ERROR' ? Icons.error : (method == 'WARN' ? Icons.warning : Icons.terminal);
-                            methodColor = method == 'ERROR' ? Colors.red : (method == 'WARN' ? Colors.orange : Colors.blueGrey);
-                            bgColor = method == 'ERROR' ? Colors.red.shade50 : (method == 'WARN' ? Colors.orange.shade50 : null);
+                            methodColor = method == 'ERROR' ? SdColors.danger : (method == 'WARN' ? SdColors.warning : SdColors.faint);
+                            bgColor = method == 'ERROR' ? SdColors.dangerTint : (method == 'WARN' ? SdColors.warningTint : null);
                             break;
                           case 'js-error':
                             typeIcon = Icons.bug_report;
-                            methodColor = Colors.red.shade800;
-                            bgColor = Colors.red.shade50;
+                            methodColor = SdColors.danger;
+                            bgColor = SdColors.dangerTint;
                             break;
                           case 'websocket':
                             typeIcon = Icons.cable;
-                            methodColor = Colors.purple;
+                            methodColor = SdColors.platformBase;
                             break;
                           case 'cookie':
                             typeIcon = Icons.cookie;
-                            methodColor = Colors.brown;
+                            methodColor = SdColors.warning;
                             break;
                           case 'storage':
                             typeIcon = Icons.storage;
-                            methodColor = Colors.teal;
+                            methodColor = SdColors.accent;
                             break;
                           case 'navigation':
                             typeIcon = Icons.open_in_browser;
-                            methodColor = Colors.indigo;
-                            bgColor = Colors.indigo.shade50;
+                            methodColor = SdColors.primary;
+                            bgColor = SdColors.primaryTint;
                             break;
                           case 'perf':
                             typeIcon = Icons.speed;
-                            methodColor = Colors.deepOrange;
+                            methodColor = SdColors.warning;
                             break;
                           case 'system':
                             typeIcon = Icons.settings;
@@ -1183,10 +1183,10 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                           default: // fetch, xhr
                             typeIcon = type == 'xhr' ? Icons.swap_horiz : Icons.cloud_download;
                             switch (method) {
-                              case 'GET': methodColor = Colors.blue; break;
-                              case 'POST': methodColor = Colors.green.shade700; break;
-                              case 'PUT': methodColor = Colors.orange; break;
-                              case 'DELETE': methodColor = Colors.red; break;
+                              case 'GET': methodColor = SdColors.info; break;
+                              case 'POST': methodColor = SdColors.success; break;
+                              case 'PUT': methodColor = SdColors.warning; break;
+                              case 'DELETE': methodColor = SdColors.danger; break;
                               default: methodColor = SdColors.faint;
                             }
                         }
@@ -1262,7 +1262,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                                         fontSize: 11,
                                         fontFamily: 'monospace',
                                         color: (type == 'js-error' || method == 'ERROR')
-                                            ? Colors.red.shade700 : null,
+                                            ? SdColors.danger : null,
                                       ),
                                       overflow: TextOverflow.ellipsis,
                                       maxLines: 2,
@@ -1275,7 +1275,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                                       '${time}ms',
                                       style: TextStyle(
                                         fontSize: 9,
-                                        color: time > 1000 ? Colors.red : SdColors.muted,
+                                        color: time > 1000 ? SdColors.danger : SdColors.muted,
                                         fontWeight: time > 1000 ? FontWeight.bold : FontWeight.normal,
                                       ),
                                     ),
@@ -1339,10 +1339,10 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
               method,
               style: TextStyle(
                 color: method == 'POST'
-                    ? Colors.green.shade700
+                    ? SdColors.success
                     : method == 'DELETE'
-                        ? Colors.red
-                        : Colors.blue,
+                        ? SdColors.danger
+                        : SdColors.info,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1350,8 +1350,8 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
             Text('$status',
                 style: TextStyle(
                   color: status >= 200 && status < 300
-                      ? Colors.green
-                      : Colors.red,
+                      ? SdColors.success
+                      : SdColors.danger,
                 )),
             const SizedBox(width: 8),
             Text('${time}ms',
@@ -1366,7 +1366,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('تم النسخ'),
-                    backgroundColor: Colors.green,
+                    backgroundColor: SdColors.success,
                   ),
                 );
               },
@@ -1397,7 +1397,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                     style: TextStyle(fontSize: 10, color: SdColors.faint)),
                 const SizedBox(height: 8),
                 const TabBar(
-                  labelColor: Colors.deepPurple,
+                  labelColor: SdColors.platformBase,
                   tabs: [
                     Tab(text: 'Headers'),
                     Tab(text: 'Request Body'),
@@ -1511,7 +1511,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('تم الحفظ: ${file.path}'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -1603,7 +1603,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
       builder: (ctx) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.article, color: Colors.blue),
+            Icon(Icons.article, color: SdColors.info),
             SizedBox(width: 8),
             Text('سجل العمليات'),
           ],
@@ -1618,11 +1618,11 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                   itemBuilder: (context, index) {
                     final log = _logs[_logs.length - 1 - index]; // الأحدث أولاً
                     Color color = Colors.black;
-                    if (log.contains('✅')) color = Colors.green;
-                    if (log.contains('❌')) color = Colors.red;
-                    if (log.contains('⚠️')) color = Colors.orange;
+                    if (log.contains('✅')) color = SdColors.success;
+                    if (log.contains('❌')) color = SdColors.danger;
+                    if (log.contains('⚠️')) color = SdColors.warning;
                     if (log.contains('🔄') || log.contains('📊'))
-                      color = Colors.blue;
+                      color = SdColors.info;
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2),
                       child: Text(
@@ -1646,7 +1646,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('✅ تم نسخ السجلات إلى الحافظة'),
-                    backgroundColor: Colors.green,
+                    backgroundColor: SdColors.success,
                     duration: Duration(seconds: 2),
                   ),
                 );
@@ -2209,7 +2209,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('فشل في المصادقة - اضغط 📋 لعرض السجلات'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
             action: SnackBarAction(
                 label: '📋', onPressed: _showLogs, textColor: Colors.white),
           ),
@@ -2367,14 +2367,14 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
           SnackBar(
             content: Text(
                 '✅ تم جلب $successCount شارت ($totalRows سجل) - اضغط حفظ 💾'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('❌ فشل - اضغط 📋 لعرض السجلات'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             action: SnackBarAction(
                 label: '📋', onPressed: _showLogs, textColor: Colors.white),
           ),
@@ -2401,7 +2401,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
           SnackBar(
             content: Text(
                 'سكربت Python غير موجود!\n$scriptsPath\\fetch_all_zones_no_filter.py'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -2414,7 +2414,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
       builder: (ctx) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.public, color: Colors.green),
+            Icon(Icons.public, color: SdColors.success),
             SizedBox(width: 8),
             Text('جلب كل المناطق (613)'),
           ],
@@ -2431,7 +2431,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
             Text('• تأكد من تثبيت playwright'),
             Text('• لا تغلق نافذة المتصفح!',
                 style:
-                    TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                    TextStyle(color: SdColors.danger, fontWeight: FontWeight.bold)),
           ],
         ),
         actions: [
@@ -2443,7 +2443,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
             onPressed: () => Navigator.pop(ctx, true),
             icon: const Icon(Icons.play_arrow),
             label: const Text('بدء الجلب'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.success),
           ),
         ],
       ),
@@ -2493,7 +2493,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✅ تم جلب جميع المناطق! تحقق من مجلد البيانات'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -2515,7 +2515,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
           const SnackBar(
             content: Text(
                 'لا توجد بيانات لحفظها - حاول الضغط على زر الاستخراج أولاً'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
         return;
@@ -2548,7 +2548,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                   ? '✅ تم الحفظ\n📍 ${stats.totalZones} منطقة'
                   : '✅ تم حفظ الملف:\n${file.path}',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             duration: const Duration(seconds: 5),
           ),
         );
@@ -2556,7 +2556,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('❌ خطأ'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -2607,9 +2607,9 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.cyan),
+                        strokeWidth: 2, color: SdColors.accent),
                   )
-                : const Icon(Icons.auto_graph, color: Colors.cyan),
+                : const Icon(Icons.auto_graph, color: SdColors.accent),
             onPressed: _isFetchingSupersetDirect ? null : _fetchSupersetDirect,
             tooltip: '📊 جلب Superset مباشرة',
           ),
@@ -2620,9 +2620,9 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.amber),
+                        strokeWidth: 2, color: SdColors.warning),
                   )
-                : const Icon(Icons.people, color: Colors.amber),
+                : const Icon(Icons.people, color: SdColors.warning),
             onPressed: _isFetchingFromApi ? null : _fetchFromDashboardApi,
             tooltip: '📊 جلب الوكلاء والمناطق من API',
           ),
@@ -2633,9 +2633,9 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.lightGreen),
+                        strokeWidth: 2, color: SdColors.success),
                   )
-                : const Icon(Icons.public, color: Colors.lightGreen),
+                : const Icon(Icons.public, color: SdColors.success),
             onPressed: _isFetchingAllZones ? null : _fetchAllZones,
             tooltip: '🌍 جلب كل المناطق (613)',
           ),
@@ -2682,7 +2682,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
             icon: Badge(
               label: Text('${_logs.length}'),
               isLabelVisible: _logs.isNotEmpty,
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               child: const Icon(Icons.article_outlined),
             ),
             onPressed: _showLogs,
@@ -2693,7 +2693,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
             icon: Badge(
               label: Text('${_capturedApiCalls.length}'),
               isLabelVisible: _capturedApiCalls.isNotEmpty,
-              backgroundColor: Colors.deepPurple,
+              backgroundColor: SdColors.platformBase,
               child: const Icon(Icons.http),
             ),
             onPressed: _showApiTraffic,
@@ -2706,12 +2706,12 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
           // شريط الحالة
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: Colors.teal.shade50,
+            color: SdColors.accentTint,
             child: Row(
               children: [
                 Icon(
                   _isLoading ? Icons.sync : Icons.check_circle,
-                  color: _isLoading ? Colors.orange : Colors.green,
+                  color: _isLoading ? SdColors.warning : SdColors.success,
                   size: 18,
                 ),
                 const SizedBox(width: 8),
@@ -2719,7 +2719,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                   child: Text(
                     _statusMessage,
                     style: TextStyle(
-                      color: Colors.teal.shade800,
+                      color: SdColors.accent,
                       fontWeight: FontWeight.w500,
                       fontSize: 13,
                     ),
@@ -2730,32 +2730,32 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.teal.shade100,
+                    color: SdColors.accentTint,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.upload, size: 14, color: Colors.blue.shade700),
+                      Icon(Icons.upload, size: 14, color: SdColors.info),
                       Text(' $_requestCount ',
                           style: TextStyle(
-                              color: Colors.blue.shade700,
+                              color: SdColors.info,
                               fontWeight: FontWeight.bold,
                               fontSize: 12)),
                       const SizedBox(width: 8),
                       Icon(Icons.download,
-                          size: 14, color: Colors.green.shade700),
+                          size: 14, color: SdColors.success),
                       Text(' $_responseCount ',
                           style: TextStyle(
-                              color: Colors.green.shade700,
+                              color: SdColors.success,
                               fontWeight: FontWeight.bold,
                               fontSize: 12)),
                       const SizedBox(width: 8),
                       Icon(Icons.bar_chart,
-                          size: 14, color: Colors.purple.shade700),
+                          size: 14, color: SdColors.platformBase),
                       Text(' $_chartCount',
                           style: TextStyle(
-                              color: Colors.purple.shade700,
+                              color: SdColors.platformBase,
                               fontWeight: FontWeight.bold,
                               fontSize: 12)),
                     ],
@@ -2839,7 +2839,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const Icon(Icons.table_chart,
-                                    color: Colors.teal, size: 18),
+                                    color: SdColors.accent, size: 18),
                                 const SizedBox(width: 4),
                                 Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -2901,7 +2901,7 @@ class _FetchServerDataPageState extends State<FetchServerDataPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.info_outline, color: Colors.teal),
+            Icon(Icons.info_outline, color: SdColors.accent),
             SizedBox(width: 8),
             Text('تعليمات الاستخدام'),
           ],

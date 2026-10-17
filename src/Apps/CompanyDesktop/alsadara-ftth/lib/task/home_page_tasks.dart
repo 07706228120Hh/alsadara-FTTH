@@ -2374,9 +2374,9 @@ class HomePageTasksState extends State<HomePageTasks> {
                   r.contentPaddingH, 8, r.contentPaddingH, 4),
               child: Row(
                 children: [
-                  // رجوع — chevron_right يتّجه صحيحاً في RTL (كما في شاشة مهام FTTH)
+                  // رجوع — نفس أيقونة الزر الموحّد (arrow_back ينعكس إلى → في RTL)
                   _buildBarIcon(
-                      Icons.chevron_right, () => Navigator.of(context).pop()),
+                      Icons.arrow_back, () => Navigator.of(context).pop()),
                   const SizedBox(width: 8),
 
                   // عنوان الصفحة

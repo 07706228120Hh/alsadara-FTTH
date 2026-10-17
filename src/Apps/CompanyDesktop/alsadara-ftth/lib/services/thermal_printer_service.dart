@@ -11,6 +11,7 @@ import 'escpos_cutter.dart';
 import 'printer_settings_storage.dart';
 import 'receipt_pdf_builder.dart';
 import 'receipt_template_storage.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 enum PrinterType { bluetooth, defaultPrinter }
 
@@ -1317,7 +1318,7 @@ class ThermalPrinterService {
         title: Text(
           results['success'] == 'true' ? 'نجح الاختبار!' : 'فشل الاختبار',
           style: TextStyle(
-            color: results['success'] == 'true' ? Colors.green : Colors.red,
+            color: results['success'] == 'true' ? SdColors.success : SdColors.danger,
           ),
         ),
         content: SingleChildScrollView(
@@ -1328,7 +1329,7 @@ class ThermalPrinterService {
               if (results['error'] != null) ...[
                 Text('خطأ:',
                     style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.red)),
+                        fontWeight: FontWeight.bold, color: SdColors.danger)),
                 Text(results['error']!),
                 SizedBox(height: 8),
               ],
@@ -1347,8 +1348,8 @@ class ThermalPrinterService {
                 Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    border: Border.all(color: Colors.green),
+                    color: SdColors.successTint,
+                    border: Border.all(color: SdColors.success),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
@@ -1356,7 +1357,7 @@ class ThermalPrinterService {
                     children: [
                       Text('✓ تم إرسال الوصل للطابعة بنجاح!',
                           style: TextStyle(
-                              color: Colors.green,
+                              color: SdColors.success,
                               fontWeight: FontWeight.bold)),
                       SizedBox(height: 4),
                       Text('إذا لم تر الوصل المطبوع، تحقق من:',
@@ -1371,8 +1372,8 @@ class ThermalPrinterService {
                 Container(
                   padding: EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    border: Border.all(color: Colors.red),
+                    color: SdColors.dangerTint,
+                    border: Border.all(color: SdColors.danger),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
@@ -1380,7 +1381,7 @@ class ThermalPrinterService {
                     children: [
                       Text('✗ فشل في الطباعة',
                           style: TextStyle(
-                              color: Colors.red, fontWeight: FontWeight.bold)),
+                              color: SdColors.danger, fontWeight: FontWeight.bold)),
                       SizedBox(height: 4),
                       Text('الحلول المقترحة:', style: TextStyle(fontSize: 12)),
                       Text('• تأكد من تثبيت طابعة',

@@ -3,8 +3,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../services/employee_profile_service.dart';
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class PerformanceTab extends StatefulWidget {
   final String employeeId;
@@ -33,12 +33,12 @@ class _PerformanceTabState extends State<PerformanceTab> {
   int _totalAudits = 0;
   int _goodAudits = 0;
 
-  static const _accent = Color(0xFF3498DB);
-  static const _green = Color(0xFF27AE60);
-  static const _red = Color(0xFFE74C3C);
-  static const _orange = Color(0xFFF39C12);
-  static const _purple = Color(0xFF8E44AD);
-  static const _gray = Color(0xFF95A5A6);
+  static const _accent = SdColors.info;
+  static const _green = SdColors.success;
+  static const _red = SdColors.danger;
+  static const _orange = SdColors.warning;
+  static const _purple = SdColors.platformBase;
+  static const _gray = SdColors.faint;
 
   @override
   void initState() {
@@ -186,7 +186,7 @@ class _PerformanceTabState extends State<PerformanceTab> {
                 CircularProgressIndicator(
                   value: _overallScore,
                   strokeWidth: 8,
-                  backgroundColor: Colors.grey.shade200,
+                  backgroundColor: SdColors.divider,
                   color: scoreColor,
                 ),
                 Column(
@@ -194,7 +194,8 @@ class _PerformanceTabState extends State<PerformanceTab> {
                   children: [
                     Text(
                       '$score%',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: scoreColor,
@@ -211,9 +212,10 @@ class _PerformanceTabState extends State<PerformanceTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('التقييم العام',
-                    style: GoogleFonts.cairo(fontSize: 12, color: _gray)),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: _gray)),
                 Text(evalText,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: scoreColor)),
@@ -222,7 +224,7 @@ class _PerformanceTabState extends State<PerformanceTab> {
                   children: List.generate(5, (i) {
                     return Icon(
                       i < _stars ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
+                      color: SdColors.warning,
                       size: 28,
                     );
                   }),
@@ -257,7 +259,7 @@ class _PerformanceTabState extends State<PerformanceTab> {
           const SizedBox(height: 8),
           Text(title,
               style:
-                  GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                  TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 13)),
           const SizedBox(height: 12),
           SizedBox(
             width: 70,
@@ -268,19 +270,20 @@ class _PerformanceTabState extends State<PerformanceTab> {
                 CircularProgressIndicator(
                   value: progress,
                   strokeWidth: 6,
-                  backgroundColor: Colors.grey.shade200,
+                  backgroundColor: SdColors.divider,
                   color: color,
                 ),
                 Text(
                   '${(progress * 100).round()}%',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.bold, fontSize: 16, color: color),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 8),
-          Text(detail, style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
+          Text(detail, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: _gray)),
         ],
       ),
     );
@@ -309,7 +312,8 @@ class _PerformanceTabState extends State<PerformanceTab> {
                 const Icon(Icons.analytics, color: _accent, size: 20),
                 const SizedBox(width: 8),
                 Text('تفصيل التقييم',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold, fontSize: 14)),
               ],
             ),
@@ -327,7 +331,7 @@ class _PerformanceTabState extends State<PerformanceTab> {
                 Expanded(
                   child: Text(
                     'التقييم يُحسب تلقائياً: 40% مهام + 35% حضور + 25% تدقيق',
-                    style: GoogleFonts.cairo(fontSize: 10, color: _gray),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: _gray),
                   ),
                 ),
               ],
@@ -347,9 +351,9 @@ class _PerformanceTabState extends State<PerformanceTab> {
         children: [
           SizedBox(
             width: 160,
-            child: Text(label, style: GoogleFonts.cairo(fontSize: 12)),
+            child: Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
           ),
-          Text(weight, style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
+          Text(weight, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: _gray)),
           const SizedBox(width: 12),
           Expanded(
             child: ClipRRect(
@@ -357,14 +361,15 @@ class _PerformanceTabState extends State<PerformanceTab> {
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 8,
-                backgroundColor: Colors.grey.shade200,
+                backgroundColor: SdColors.divider,
                 color: color,
               ),
             ),
           ),
           const SizedBox(width: 8),
           Text('${(progress * 100).round()}%',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 12, fontWeight: FontWeight.bold, color: color)),
         ],
       ),

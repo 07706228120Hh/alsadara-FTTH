@@ -5,9 +5,9 @@ library;
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../services/vps_auth_service.dart';
 import 'super_admin/super_admin_dashboard.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class VpsSuperAdminLoginPage extends StatefulWidget {
   const VpsSuperAdminLoginPage({super.key});
@@ -104,9 +104,9 @@ class _VpsSuperAdminLoginPageState extends State<VpsSuperAdminLoginPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.indigo[900]!,
-              Colors.indigo[700]!,
-              Colors.indigo[500]!,
+              SdColors.primaryEdge,
+              SdColors.primary,
+              SdColors.primary,
             ],
           ),
         ),
@@ -128,13 +128,13 @@ class _VpsSuperAdminLoginPageState extends State<VpsSuperAdminLoginPage> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.indigo[100],
+                        color: SdColors.primaryTint,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         Icons.admin_panel_settings,
                         size: 64,
-                        color: Colors.indigo[900],
+                        color: SdColors.primaryEdge,
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -142,18 +142,20 @@ class _VpsSuperAdminLoginPageState extends State<VpsSuperAdminLoginPage> {
                     // العنوان
                     Text(
                       'مدير النظام',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: Colors.indigo[900],
+                        color: SdColors.primaryEdge,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'لوحة التحكم الرئيسية',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 16,
-                        color: Colors.grey[600],
+                        color: SdColors.muted,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -163,20 +165,21 @@ class _VpsSuperAdminLoginPageState extends State<VpsSuperAdminLoginPage> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.green[100],
+                        color: SdColors.successTint,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.cloud_done,
-                              size: 16, color: Colors.green[700]),
+                              size: 16, color: SdColors.success),
                           const SizedBox(width: 4),
                           Text(
                             'VPS API',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 12,
-                              color: Colors.green[700],
+                              color: SdColors.success,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -191,19 +194,19 @@ class _VpsSuperAdminLoginPageState extends State<VpsSuperAdminLoginPage> {
                         padding: const EdgeInsets.all(12),
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
-                          color: Colors.red[50],
+                          color: SdColors.dangerTint,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red[300]!),
+                          border: Border.all(color: SdColors.dangerTintEdge),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.error, color: Colors.red[700]),
+                            Icon(Icons.error, color: SdColors.danger),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 _errorMessage!,
                                 style:
-                                    GoogleFonts.cairo(color: Colors.red[700]),
+                                    TextStyle(fontFamily: 'Cairo', color: SdColors.danger),
                               ),
                             ),
                           ],
@@ -216,13 +219,13 @@ class _VpsSuperAdminLoginPageState extends State<VpsSuperAdminLoginPage> {
                       textDirection: TextDirection.ltr,
                       decoration: InputDecoration(
                         labelText: 'اسم المستخدم',
-                        labelStyle: GoogleFonts.cairo(),
+                        labelStyle: TextStyle(fontFamily: 'Cairo'),
                         prefixIcon: const Icon(Icons.person),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[50],
+                        fillColor: SdColors.surfaceAlt,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -234,7 +237,7 @@ class _VpsSuperAdminLoginPageState extends State<VpsSuperAdminLoginPage> {
                       textDirection: TextDirection.ltr,
                       decoration: InputDecoration(
                         labelText: 'كلمة المرور',
-                        labelStyle: GoogleFonts.cairo(),
+                        labelStyle: TextStyle(fontFamily: 'Cairo'),
                         prefixIcon: const Icon(Icons.lock),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -251,7 +254,7 @@ class _VpsSuperAdminLoginPageState extends State<VpsSuperAdminLoginPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
-                        fillColor: Colors.grey[50],
+                        fillColor: SdColors.surfaceAlt,
                       ),
                       onSubmitted: (_) => _login(),
                     ),
@@ -264,7 +267,7 @@ class _VpsSuperAdminLoginPageState extends State<VpsSuperAdminLoginPage> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.indigo[700],
+                          backgroundColor: SdColors.primary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -282,7 +285,8 @@ class _VpsSuperAdminLoginPageState extends State<VpsSuperAdminLoginPage> {
                               )
                             : Text(
                                 'تسجيل الدخول',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -297,7 +301,7 @@ class _VpsSuperAdminLoginPageState extends State<VpsSuperAdminLoginPage> {
                       icon: const Icon(Icons.arrow_back, size: 20),
                       label: Text(
                         'العودة لتسجيل دخول الشركات',
-                        style: GoogleFonts.cairo(color: Colors.indigo),
+                        style: TextStyle(fontFamily: 'Cairo', color: SdColors.primary),
                       ),
                     ),
                   ],

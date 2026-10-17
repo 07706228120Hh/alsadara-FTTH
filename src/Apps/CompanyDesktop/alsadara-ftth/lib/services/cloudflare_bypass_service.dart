@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:webview_windows/webview_windows.dart' as wvwin;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class CloudflareBypassService {
   static final CloudflareBypassService _instance =
@@ -308,7 +309,7 @@ class _CloudflareBypassDialogState extends State<_CloudflareBypassDialog> {
         children: [
           Icon(
             _isSuccess ? Icons.check_circle : Icons.security,
-            color: _isSuccess ? Colors.green : Colors.orange,
+            color: _isSuccess ? SdColors.success : SdColors.warning,
           ),
           const SizedBox(width: 8),
           const Text('تجاوز حماية Cloudflare'),
@@ -323,7 +324,7 @@ class _CloudflareBypassDialogState extends State<_CloudflareBypassDialog> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _isSuccess ? Colors.green[50] : Colors.orange[50],
+                color: _isSuccess ? SdColors.successTint : SdColors.warningTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -337,7 +338,7 @@ class _CloudflareBypassDialogState extends State<_CloudflareBypassDialog> {
                   else
                     Icon(
                       _isSuccess ? Icons.check : Icons.info_outline,
-                      color: _isSuccess ? Colors.green : Colors.orange,
+                      color: _isSuccess ? SdColors.success : SdColors.warning,
                       size: 20,
                     ),
                   const SizedBox(width: 8),
@@ -346,7 +347,7 @@ class _CloudflareBypassDialogState extends State<_CloudflareBypassDialog> {
                       _status,
                       style: TextStyle(
                         color:
-                            _isSuccess ? Colors.green[800] : Colors.orange[800],
+                            _isSuccess ? SdColors.success : SdColors.warning,
                       ),
                     ),
                   ),
@@ -358,7 +359,7 @@ class _CloudflareBypassDialogState extends State<_CloudflareBypassDialog> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
+                  border: Border.all(color: SdColors.edge),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 clipBehavior: Clip.antiAlias,
@@ -372,7 +373,7 @@ class _CloudflareBypassDialogState extends State<_CloudflareBypassDialog> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.blue[50],
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text(

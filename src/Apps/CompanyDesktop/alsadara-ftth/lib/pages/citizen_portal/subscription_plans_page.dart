@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'models/citizen_portal_models.dart';
 import 'services/citizen_portal_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class SubscriptionPlansPage extends StatefulWidget {
   const SubscriptionPlansPage({super.key});
@@ -59,7 +60,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.shade200,
+                  color: SdColors.divider,
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -67,7 +68,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
             ),
             child: Row(
               children: [
-                Icon(Icons.local_offer, color: Colors.teal.shade600),
+                Icon(Icons.local_offer, color: SdColors.accent),
                 const SizedBox(width: 12),
                 const Text(
                   'إدارة خطط الاشتراك',
@@ -88,7 +89,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                   icon: const Icon(Icons.add),
                   label: const Text('خطة جديدة'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
+                    backgroundColor: SdColors.accent,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -108,7 +109,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
   Widget _buildContent() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.teal),
+        child: CircularProgressIndicator(color: SdColors.accent),
       );
     }
 
@@ -117,7 +118,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+            Icon(Icons.error_outline, size: 48, color: SdColors.dangerTintEdge),
             const SizedBox(height: 16),
             Text(_error!),
             const SizedBox(height: 16),
@@ -137,16 +138,16 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.local_offer_outlined,
-                size: 64, color: Colors.grey.shade300),
+                size: 64, color: SdColors.edge),
             const SizedBox(height: 16),
             const Text(
               'لا توجد خطط اشتراك',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+              style: TextStyle(fontSize: 18, color: SdColors.faint),
             ),
             const SizedBox(height: 8),
             const Text(
               'ابدأ بإنشاء خطة جديدة',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: SdColors.faint),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -161,7 +162,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
 
     return RefreshIndicator(
       onRefresh: _loadPlans,
-      color: Colors.teal,
+      color: SdColors.accent,
       child: GridView.builder(
         padding: const EdgeInsets.all(16),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -181,11 +182,11 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
 
   Widget _buildPlanCard(SubscriptionPlanModel plan) {
     final colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.purple,
-      Colors.orange,
-      Colors.teal,
+      SdColors.info,
+      SdColors.success,
+      SdColors.platformBase,
+      SdColors.warning,
+      SdColors.accent,
     ];
     final color = colors[plan.displayOrder % colors.length];
 
@@ -217,14 +218,14 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade100,
+                    color: SdColors.dangerTint,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
                     'غير نشط',
                     style: TextStyle(
                       fontSize: 10,
-                      color: Colors.red,
+                      color: SdColors.danger,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -264,9 +265,9 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                     value: 'delete',
                     child: Row(
                       children: [
-                        Icon(Icons.delete, color: Colors.red),
+                        Icon(Icons.delete, color: SdColors.danger),
                         SizedBox(width: 8),
-                        Text('حذف', style: TextStyle(color: Colors.red)),
+                        Text('حذف', style: TextStyle(color: SdColors.danger)),
                       ],
                     ),
                   ),
@@ -301,14 +302,14 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade800,
+                      color: SdColors.ink,
                     ),
                   ),
                   Text(
                     '${plan.durationDays} يوم',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey.shade600,
+                      color: SdColors.muted,
                     ),
                   ),
                   if (plan.description != null) ...[
@@ -317,7 +318,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                       plan.description!,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade600,
+                        color: SdColors.muted,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 2,
@@ -430,7 +431,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                 if (context.mounted) Navigator.pop(context);
                 _loadPlans();
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.accent),
               child: Text(isEditing ? 'حفظ' : 'إنشاء'),
             ),
           ],
@@ -460,7 +461,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
               child: const Text('حذف'),
             ),
           ],

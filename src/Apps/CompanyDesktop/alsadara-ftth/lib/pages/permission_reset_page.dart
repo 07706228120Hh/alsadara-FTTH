@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class PermissionResetPage extends StatefulWidget {
   const PermissionResetPage({super.key});
@@ -52,7 +53,7 @@ class _PermissionResetPageState extends State<PermissionResetPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('✅ تم إعادة تعيين جميع الصلاحيات بنجاح!'),
-          backgroundColor: Colors.green,
+          backgroundColor: SdColors.success,
         ),
       );
 
@@ -64,7 +65,7 @@ class _PermissionResetPageState extends State<PermissionResetPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ خطأ في إعادة تعيين الصلاحيات'),
-          backgroundColor: Colors.red,
+          backgroundColor: SdColors.danger,
         ),
       );
     } finally {
@@ -81,7 +82,7 @@ class _PermissionResetPageState extends State<PermissionResetPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('إعادة تعيين الصلاحيات'),
-        backgroundColor: Colors.blue,
+        backgroundColor: SdColors.info,
         foregroundColor: Colors.white,
       ),
       body: Padding(
@@ -92,7 +93,7 @@ class _PermissionResetPageState extends State<PermissionResetPage> {
             const Icon(
               Icons.settings_backup_restore,
               size: 80,
-              color: Colors.orange,
+              color: SdColors.warning,
             ),
             const SizedBox(height: 20),
             const Text(
@@ -154,7 +155,7 @@ class _PermissionResetPageState extends State<PermissionResetPage> {
                         child: Row(
                           children: [
                             const Icon(Icons.check,
-                                color: Colors.green, size: 20),
+                                color: SdColors.success, size: 20),
                             const SizedBox(width: 8),
                             Text(title),
                           ],
@@ -179,7 +180,7 @@ class _PermissionResetPageState extends State<PermissionResetPage> {
                   ? 'جاري إعادة التعيين...'
                   : 'إعادة تعيين الصلاحيات'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
+                backgroundColor: SdColors.warning,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 textStyle: const TextStyle(fontSize: 18),
@@ -189,9 +190,9 @@ class _PermissionResetPageState extends State<PermissionResetPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.yellow[50],
+                color: SdColors.warningTint,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(color: SdColors.warningTintEdge),
               ),
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

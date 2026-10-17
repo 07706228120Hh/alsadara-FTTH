@@ -1,14 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
-import '../../theme/accounting_theme.dart';
-
 /// صفحة إدارة أجور صيانة الزونات
 class ZoneMaintenanceFeesPage extends StatefulWidget {
   final String? companyId;
@@ -273,8 +270,8 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
           return Directionality(
             textDirection: TextDirection.rtl,
             child: AlertDialog(
-              backgroundColor: AccountingTheme.bgCard,
-              title: Text('إضافة أجور صيانة', style: GoogleFonts.cairo(color: AccountingTheme.textPrimary)),
+              backgroundColor: SdColors.surface,
+              title: Text('إضافة أجور صيانة', style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink)),
               content: SizedBox(
                 width: 450,
                 height: 400,
@@ -284,7 +281,7 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                     // حقل بحث الزون
                     TextField(
                       controller: zoneSearchCtrl,
-                      style: const TextStyle(color: AccountingTheme.textPrimary, fontSize: 13),
+                      style: const TextStyle(color: SdColors.ink, fontSize: 13),
                       onChanged: (v) => setDState(() {
                         zoneFilter = v;
                         // إذا كتب اسم يدوياً
@@ -294,14 +291,14 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                       }),
                       decoration: InputDecoration(
                         labelText: 'بحث أو كتابة اسم الزون',
-                        labelStyle: const TextStyle(color: AccountingTheme.textMuted, fontSize: 12),
-                        prefixIcon: const Icon(Icons.search, size: 18, color: AccountingTheme.textMuted),
+                        labelStyle: const TextStyle(color: SdColors.faint, fontSize: 12),
+                        prefixIcon: const Icon(Icons.search, size: 18, color: SdColors.faint),
                         suffixIcon: selectedZone != null && selectedZone!.isNotEmpty
                             ? Padding(
                                 padding: const EdgeInsets.only(left: 8),
                                 child: Chip(
                                   label: Text(selectedZone!, style: const TextStyle(fontSize: 11, color: Colors.white)),
-                                  backgroundColor: AccountingTheme.neonGreen,
+                                  backgroundColor: SdColors.success,
                                   deleteIcon: const Icon(Icons.close, size: 14, color: Colors.white),
                                   onDeleted: () => setDState(() {
                                     selectedZone = null;
@@ -313,7 +310,7 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                               )
                             : null,
                         filled: true,
-                        fillColor: AccountingTheme.bgCardHover,
+                        fillColor: SdColors.surfaceAlt,
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
@@ -324,14 +321,14 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
-                          color: AccountingTheme.bgPrimary,
+                          color: SdColors.ground,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AccountingTheme.borderColor),
+                          border: Border.all(color: SdColors.divider),
                         ),
                         child: filtered.isEmpty
                             ? Center(child: Text(
                                 zoneFilter.isEmpty ? 'اكتب اسم الزون للبحث...' : 'لا توجد نتائج — اضغط إضافة لاستخدام "$zoneFilter"',
-                                style: GoogleFonts.cairo(color: AccountingTheme.textMuted, fontSize: 11),
+                                style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 11),
                                 textAlign: TextAlign.center,
                               ))
                             : ListView.builder(
@@ -343,14 +340,14 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                                     dense: true,
                                     visualDensity: VisualDensity.compact,
                                     selected: isSelected,
-                                    selectedTileColor: AccountingTheme.neonGreen.withOpacity(0.1),
+                                    selectedTileColor: SdColors.success.withOpacity(0.1),
                                     leading: Icon(
                                       isSelected ? Icons.check_circle : Icons.circle_outlined,
                                       size: 18,
-                                      color: isSelected ? AccountingTheme.neonGreen : AccountingTheme.textMuted,
+                                      color: isSelected ? SdColors.success : SdColors.faint,
                                     ),
                                     title: Text(name, style: TextStyle(
-                                      color: isSelected ? AccountingTheme.neonGreen : AccountingTheme.textPrimary,
+                                      color: isSelected ? SdColors.success : SdColors.ink,
                                       fontSize: 13,
                                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                     )),
@@ -371,24 +368,24 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                         FilteringTextInputFormatter.digitsOnly,
                         _ThousandsSeparatorFormatter(),
                       ],
-                      style: const TextStyle(color: AccountingTheme.textPrimary),
+                      style: const TextStyle(color: SdColors.ink),
                       decoration: InputDecoration(
                         labelText: 'مبلغ الصيانة (د.ع)',
-                        labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+                        labelStyle: const TextStyle(color: SdColors.faint),
                         filled: true,
-                        fillColor: AccountingTheme.bgCardHover,
+                        fillColor: SdColors.surfaceAlt,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: notesCtrl,
-                      style: const TextStyle(color: AccountingTheme.textPrimary),
+                      style: const TextStyle(color: SdColors.ink),
                       decoration: InputDecoration(
                         labelText: 'ملاحظات (اختياري)',
-                        labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+                        labelStyle: const TextStyle(color: SdColors.faint),
                         filled: true,
-                        fillColor: AccountingTheme.bgCardHover,
+                        fillColor: SdColors.surfaceAlt,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                       ),
                     ),
@@ -398,18 +395,18 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: Text('إلغاء', style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+                  child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: AccountingTheme.neonGreen, foregroundColor: Colors.white),
+                      backgroundColor: SdColors.success, foregroundColor: Colors.white),
                   onPressed: () async {
                     // استخدام النص المكتوب إذا لم يتم اختيار من القائمة
                     final zoneName = selectedZone?.isNotEmpty == true
                         ? selectedZone!
                         : zoneSearchCtrl.text.trim();
                     if (zoneName.isEmpty || amountCtrl.text.isEmpty) {
-                      _snack('يجب تحديد الزون والمبلغ', AccountingTheme.warning);
+                      _snack('يجب تحديد الزون والمبلغ', SdColors.warning);
                       return;
                     }
                     Navigator.pop(ctx);
@@ -420,13 +417,13 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                       'CompanyId': widget.companyId ?? VpsAuthService.instance.currentCompanyId ?? '',
                     });
                     if (result['success'] == true) {
-                      _snack('تم إضافة أجور صيانة $zoneName', AccountingTheme.success);
+                      _snack('تم إضافة أجور صيانة $zoneName', SdColors.success);
                     } else {
-                      _snack(result['message'] ?? 'خطأ في الإضافة', AccountingTheme.danger);
+                      _snack(result['message'] ?? 'خطأ في الإضافة', SdColors.danger);
                     }
                     _loadData();
                   },
-                  child: Text('إضافة', style: GoogleFonts.cairo()),
+                  child: Text('إضافة', style: TextStyle(fontFamily: 'Cairo')),
                 ),
               ],
             ),
@@ -448,9 +445,9 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: Text('تعديل أجور صيانة: ${fee['ZoneName'] ?? fee['zoneName']}',
-              style: GoogleFonts.cairo(color: AccountingTheme.textPrimary, fontSize: 14)),
+              style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink, fontSize: 14)),
           content: SizedBox(
             width: 350,
             child: Column(
@@ -463,24 +460,24 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                     FilteringTextInputFormatter.digitsOnly,
                     _ThousandsSeparatorFormatter(),
                   ],
-                  style: const TextStyle(color: AccountingTheme.textPrimary),
+                  style: const TextStyle(color: SdColors.ink),
                   decoration: InputDecoration(
                     labelText: 'مبلغ الصيانة (د.ع)',
-                    labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+                    labelStyle: const TextStyle(color: SdColors.faint),
                     filled: true,
-                    fillColor: AccountingTheme.bgCardHover,
+                    fillColor: SdColors.surfaceAlt,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: notesCtrl,
-                  style: const TextStyle(color: AccountingTheme.textPrimary),
+                  style: const TextStyle(color: SdColors.ink),
                   decoration: InputDecoration(
                     labelText: 'ملاحظات',
-                    labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+                    labelStyle: const TextStyle(color: SdColors.faint),
                     filled: true,
-                    fillColor: AccountingTheme.bgCardHover,
+                    fillColor: SdColors.surfaceAlt,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                   ),
                 ),
@@ -490,21 +487,21 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('إلغاء', style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+              child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.info, foregroundColor: Colors.white),
+                  backgroundColor: SdColors.info, foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
                 final result = await AccountingService.instance.updateZoneMaintenanceFee(id, {
                   'MaintenanceAmount': double.tryParse(amountCtrl.text.replaceAll(',', '')) ?? 0,
                   'Notes': notesCtrl.text.isEmpty ? null : notesCtrl.text,
                 });
-                _snack(result['message'] ?? 'تم', result['success'] == true ? AccountingTheme.success : AccountingTheme.danger);
+                _snack(result['message'] ?? 'تم', result['success'] == true ? SdColors.success : SdColors.danger);
                 _loadData();
               },
-              child: Text('حفظ', style: GoogleFonts.cairo()),
+              child: Text('حفظ', style: TextStyle(fontFamily: 'Cairo')),
             ),
           ],
         ),
@@ -517,7 +514,7 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
       'IsEnabled': !currentState,
     });
     _snack(result['success'] == true ? (currentState ? 'تم التعطيل' : 'تم التفعيل') : 'خطأ',
-        result['success'] == true ? AccountingTheme.success : AccountingTheme.danger);
+        result['success'] == true ? SdColors.success : SdColors.danger);
     _loadData();
   }
 
@@ -527,25 +524,25 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
-          title: Text('حذف أجور صيانة', style: GoogleFonts.cairo(color: AccountingTheme.danger)),
+          backgroundColor: SdColors.surface,
+          title: Text('حذف أجور صيانة', style: TextStyle(fontFamily: 'Cairo', color: SdColors.danger)),
           content: Text('هل تريد حذف أجور صيانة الزون "$name"؟',
-              style: const TextStyle(color: AccountingTheme.textPrimary)),
+              style: const TextStyle(color: SdColors.ink)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('إلغاء', style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+              child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.danger, foregroundColor: Colors.white),
+                  backgroundColor: SdColors.danger, foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
                 final result = await AccountingService.instance.deleteZoneMaintenanceFee(id);
-                _snack(result['message'] ?? 'تم', result['success'] == true ? AccountingTheme.success : AccountingTheme.danger);
+                _snack(result['message'] ?? 'تم', result['success'] == true ? SdColors.success : SdColors.danger);
                 _loadData();
               },
-              child: Text('حذف', style: GoogleFonts.cairo()),
+              child: Text('حذف', style: TextStyle(fontFamily: 'Cairo')),
             ),
           ],
         ),
@@ -555,7 +552,7 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
 
   void _snack(String msg, Color color) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg, style: GoogleFonts.cairo()), backgroundColor: color));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg, style: TextStyle(fontFamily: 'Cairo')), backgroundColor: color));
   }
 }
 

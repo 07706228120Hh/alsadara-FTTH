@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class DashboardStatsWidget extends StatelessWidget {
   final Map<String, dynamic> dashboardData;
@@ -44,14 +45,14 @@ class DashboardStatsWidget extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.people, color: Colors.blue[600], size: 24),
+                Icon(Icons.people, color: SdColors.info, size: 24),
                 const SizedBox(width: 8),
                 Text(
                   'توزعة العملاء',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
+                    color: SdColors.ink,
                   ),
                 ),
               ],
@@ -67,7 +68,7 @@ class DashboardStatsWidget extends StatelessWidget {
                       PieChartData(
                         sections: [
                           PieChartSectionData(
-                            color: Colors.green[400],
+                            color: SdColors.success,
                             value: activeCustomers.toDouble(),
                             title: 'نشط\n$activeCustomers',
                             radius: 60,
@@ -78,7 +79,7 @@ class DashboardStatsWidget extends StatelessWidget {
                             ),
                           ),
                           PieChartSectionData(
-                            color: Colors.red[400],
+                            color: SdColors.danger,
                             value: inactiveCustomers.toDouble(),
                             title: 'منتهي\n$inactiveCustomers',
                             radius: 60,
@@ -98,21 +99,21 @@ class DashboardStatsWidget extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildLegendItem(Colors.green[400]!, 'العملاء النشطين', activeCustomers),
+                        _buildLegendItem(SdColors.success, 'العملاء النشطين', activeCustomers),
                         const SizedBox(height: 10),
-                        _buildLegendItem(Colors.red[400]!, 'العملاء المنتهين', inactiveCustomers),
+                        _buildLegendItem(SdColors.danger, 'العملاء المنتهين', inactiveCustomers),
                         const SizedBox(height: 10),
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.blue[50],
+                            color: SdColors.infoTint,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             'الإجمالي: $totalCustomers',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue[700],
+                              color: SdColors.info,
                             ),
                           ),
                         ),
@@ -143,14 +144,14 @@ class DashboardStatsWidget extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.router, color: Colors.purple[600], size: 24),
+                Icon(Icons.router, color: SdColors.platformBase, size: 24),
                 const SizedBox(width: 8),
                 Text(
                   'إحصائيات الاشتراكات',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
+                    color: SdColors.ink,
                   ),
                 ),
               ],
@@ -193,7 +194,7 @@ class DashboardStatsWidget extends StatelessWidget {
                       barRods: [
                         BarChartRodData(
                           toY: trialSubs.toDouble(),
-                          color: Colors.orange[400],
+                          color: SdColors.warning,
                           width: 20,
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(6),
@@ -207,7 +208,7 @@ class DashboardStatsWidget extends StatelessWidget {
                       barRods: [
                         BarChartRodData(
                           toY: onlineSubs.toDouble(),
-                          color: Colors.green[400],
+                          color: SdColors.success,
                           width: 20,
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(6),
@@ -221,7 +222,7 @@ class DashboardStatsWidget extends StatelessWidget {
                       barRods: [
                         BarChartRodData(
                           toY: offlineSubs.toDouble(),
-                          color: Colors.red[400],
+                          color: SdColors.danger,
                           width: 20,
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(6),

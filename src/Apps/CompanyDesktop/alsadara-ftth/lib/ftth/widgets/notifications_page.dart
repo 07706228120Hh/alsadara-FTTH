@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import '../../services/auth_service.dart';
 import '../auth/auth_error_handler.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class NotificationsPage extends StatefulWidget {
   final String authToken;
@@ -122,7 +123,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.red,
+        backgroundColor: SdColors.danger,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 3),
@@ -195,19 +196,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Color _getNotificationColor(Map<String, dynamic> notification) {
     final isRead = notification['isRead'] ?? false;
     if (!isRead) {
-      return const Color(0xFF1976D2);
+      return SdColors.info;
     }
 
     final description = notification['description']?.toString() ?? '';
     if (description.contains('approved')) {
-      return Colors.green;
+      return SdColors.success;
     } else if (description.contains('debited')) {
-      return Colors.orange;
+      return SdColors.warning;
     } else if (description.contains('password')) {
-      return Colors.purple;
+      return SdColors.platformBase;
     }
 
-    return Colors.grey;
+    return SdColors.faint;
   }
 
   Future<void> _markAsRead(String notificationId) async {
@@ -314,7 +315,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         description,
                         style: TextStyle(
                           fontSize: 14,
-                          color: isRead ? Colors.grey[600] : Colors.black87,
+                          color: isRead ? SdColors.muted : Colors.black87,
                           height: 1.4,
                         ),
                         maxLines: 3,
@@ -326,14 +327,14 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           Icon(
                             Icons.access_time,
                             size: 16,
-                            color: Colors.grey[500],
+                            color: SdColors.faint,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             _formatDate(createdAt),
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[600],
+                              color: SdColors.muted,
                             ),
                           ),
                         ],
@@ -371,7 +372,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A237E),
+                    color: SdColors.primary,
                   ),
                 ),
               ),
@@ -465,7 +466,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Colors.grey[700],
+                color: SdColors.muted,
               ),
             ),
           ),
@@ -476,7 +477,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF2C3E50),
+                color: SdColors.ink,
               ),
             ),
           ),
@@ -518,7 +519,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final isTablet = screenSize.width > 600;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: SdColors.surfaceAlt,
       appBar: AppBar(
         title: const Text(
           'الإشعارات',
@@ -527,7 +528,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             color: Colors.white,
           ),
         ),
-        backgroundColor: const Color(0xFF1A237E),
+        backgroundColor: SdColors.primary,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
@@ -548,7 +549,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       showUnreadOnly
                           ? Icons.radio_button_unchecked
                           : Icons.radio_button_checked,
-                      color: Colors.grey[600],
+                      color: SdColors.muted,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -564,7 +565,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       showUnreadOnly
                           ? Icons.radio_button_checked
                           : Icons.radio_button_unchecked,
-                      color: Colors.grey[600],
+                      color: SdColors.muted,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -587,7 +588,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
-              color: Color(0xFF1A237E),
+              color: SdColors.primary,
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(20),
                 bottomRight: Radius.circular(20),
@@ -655,14 +656,14 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         CircularProgressIndicator(
-                          color: Color(0xFF1A237E),
+                          color: SdColors.primary,
                         ),
                         SizedBox(height: 16),
                         Text(
                           'جاري تحميل الإشعارات...',
                           style: TextStyle(
                             fontSize: 16,
-                            color: Color(0xFF2C3E50),
+                            color: SdColors.ink,
                           ),
                         ),
                       ],
@@ -678,7 +679,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                   ? Icons.notifications_off
                                   : Icons.notifications_none,
                               size: 80,
-                              color: Colors.grey[400],
+                              color: SdColors.faint,
                             ),
                             const SizedBox(height: 16),
                             Text(
@@ -688,7 +689,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.grey[600],
+                                color: SdColors.muted,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -698,7 +699,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                   : 'لا يوجد أي إشعارات متاحة',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: Colors.grey[500],
+                                color: SdColors.faint,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -717,7 +718,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                 padding: EdgeInsets.all(16.0),
                                 child: Center(
                                   child: CircularProgressIndicator(
-                                    color: Color(0xFF1A237E),
+                                    color: SdColors.primary,
                                   ),
                                 ),
                               );

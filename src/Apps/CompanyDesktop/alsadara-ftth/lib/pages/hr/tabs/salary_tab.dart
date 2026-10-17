@@ -2,8 +2,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../services/employee_profile_service.dart';
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class SalaryTab extends StatefulWidget {
   final String employeeId;
@@ -28,10 +28,10 @@ class _SalaryTabState extends State<SalaryTab> {
   bool _loading = true;
   List<Map<String, dynamic>> _salaries = [];
 
-  static const _accent = Color(0xFF3498DB);
-  static const _green = Color(0xFF27AE60);
-  static const _red = Color(0xFFE74C3C);
-  static const _gray = Color(0xFF95A5A6);
+  static const _accent = SdColors.info;
+  static const _green = SdColors.success;
+  static const _red = SdColors.danger;
+  static const _gray = SdColors.faint;
 
   @override
   void initState() {
@@ -89,7 +89,7 @@ class _SalaryTabState extends State<SalaryTab> {
           SizedBox(width: halfWidth, child: _infoCard('الراتب الأساسي', base, _accent, Icons.payments)),
           SizedBox(width: halfWidth, child: _infoCard('إجمالي المدفوع', totalPaid, _green, Icons.account_balance_wallet)),
           SizedBox(width: halfWidth, child: _infoCard('إجمالي الخصومات', totalDeductions, _red, Icons.remove_circle)),
-          SizedBox(width: halfWidth, child: _infoCard('إجمالي الحوافز', totalBonuses, Colors.amber.shade700, Icons.star)),
+          SizedBox(width: halfWidth, child: _infoCard('إجمالي الحوافز', totalBonuses, SdColors.warning, Icons.star)),
         ],
       );
     }
@@ -104,7 +104,7 @@ class _SalaryTabState extends State<SalaryTab> {
             'إجمالي الخصومات', totalDeductions, _red, Icons.remove_circle),
         const SizedBox(width: 12),
         _infoCard(
-            'إجمالي الحوافز', totalBonuses, Colors.amber.shade700, Icons.star),
+            'إجمالي الحوافز', totalBonuses, SdColors.warning, Icons.star),
       ],
     );
   }
@@ -128,10 +128,11 @@ class _SalaryTabState extends State<SalaryTab> {
             const SizedBox(height: 8),
             Text(
               _formatCurrency(value),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 18, fontWeight: FontWeight.bold, color: color),
             ),
-            Text(label, style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
+            Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: _gray)),
           ],
         ),
     );
@@ -163,7 +164,8 @@ class _SalaryTabState extends State<SalaryTab> {
                 const Icon(Icons.history, color: _accent, size: 20),
                 const SizedBox(width: 8),
                 Text('سجل الرواتب',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold, fontSize: 14)),
                 const Spacer(),
                 IconButton(
@@ -189,7 +191,7 @@ class _SalaryTabState extends State<SalaryTab> {
                         size: 48, color: _gray.withOpacity(0.5)),
                     const SizedBox(height: 8),
                     Text('لا توجد سجلات رواتب',
-                        style: GoogleFonts.cairo(color: _gray)),
+                        style: TextStyle(fontFamily: 'Cairo', color: _gray)),
                   ],
                 ),
               ),
@@ -214,7 +216,7 @@ class _SalaryTabState extends State<SalaryTab> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
       child: Row(
         children: [
@@ -222,7 +224,8 @@ class _SalaryTabState extends State<SalaryTab> {
           SizedBox(
             width: MediaQuery.of(context).size.width < 500 ? 80 : 120,
             child: Text(month.toString(),
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.bold, fontSize: 13)),
           ),
           // صافي
@@ -231,7 +234,8 @@ class _SalaryTabState extends State<SalaryTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_formatCurrency(net),
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                         color: _green)),
@@ -239,11 +243,12 @@ class _SalaryTabState extends State<SalaryTab> {
                   children: [
                     if (deductions > 0)
                       Text('خصم: ${_formatCurrency(deductions)}  ',
-                          style: GoogleFonts.cairo(fontSize: 10, color: _red)),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: _red)),
                     if (bonuses > 0)
                       Text('حافز: ${_formatCurrency(bonuses)}',
-                          style: GoogleFonts.cairo(
-                              fontSize: 10, color: Colors.amber.shade700)),
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 10, color: SdColors.warning)),
                   ],
                 ),
               ],
@@ -258,7 +263,8 @@ class _SalaryTabState extends State<SalaryTab> {
             ),
             child: Text(
               isPaid ? 'مدفوع' : 'معلق',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   color: isPaid ? _green : _red,
                   fontSize: 11,
                   fontWeight: FontWeight.bold),
@@ -268,7 +274,7 @@ class _SalaryTabState extends State<SalaryTab> {
           // تاريخ الدفع
           if (paidDate.toString().isNotEmpty)
             Text(_formatDate(paidDate.toString()),
-                style: GoogleFonts.cairo(fontSize: 10, color: _gray)),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: _gray)),
         ],
       ),
     );

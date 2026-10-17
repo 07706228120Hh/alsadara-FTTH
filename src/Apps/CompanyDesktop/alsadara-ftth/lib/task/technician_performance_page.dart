@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../models/task.dart';
 import 'task_status_colors.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// لوحة أداء الفنيين — إحصائيات ورسوم بيانية
 class TechnicianPerformancePage extends StatefulWidget {
@@ -102,11 +103,11 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F7FA),
+        backgroundColor: SdColors.surfaceAlt,
         appBar: AppBar(
           title: const Text('أداء الفنيين',
               style: TextStyle(fontWeight: FontWeight.bold)),
-          backgroundColor: const Color(0xFF1A237E),
+          backgroundColor: SdColors.primary,
           foregroundColor: Colors.white,
           actions: [
             PopupMenuButton<String>(
@@ -128,7 +129,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Text('لا توجد بيانات',
-                        style: TextStyle(fontSize: 16, color: Colors.grey)),
+                        style: TextStyle(fontSize: 16, color: SdColors.faint)),
                     if (_selectedTechnician != null || _dateRange != null) ...[
                       const SizedBox(height: 12),
                       TextButton.icon(
@@ -191,7 +192,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // أيقونة الفلتر
-          Icon(Icons.filter_alt_outlined, size: 20, color: hasFilters ? const Color(0xFF1A237E) : Colors.grey),
+          Icon(Icons.filter_alt_outlined, size: 20, color: hasFilters ? SdColors.primary : SdColors.faint),
 
           // فلتر الفني
           Container(
@@ -199,13 +200,13 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
             height: 38,
             decoration: BoxDecoration(
               color: _selectedTechnician != null
-                  ? const Color(0xFF1A237E).withValues(alpha: 0.08)
-                  : const Color(0xFFF5F7FA),
+                  ? SdColors.primary.withValues(alpha: 0.08)
+                  : SdColors.surfaceAlt,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: _selectedTechnician != null
-                    ? const Color(0xFF1A237E).withValues(alpha: 0.3)
-                    : Colors.grey.shade300,
+                    ? SdColors.primary.withValues(alpha: 0.3)
+                    : SdColors.edge,
               ),
             ),
             child: DropdownButtonHideUnderline(
@@ -216,12 +217,12 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                 hint: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Text('جميع الفنيين',
-                      style: TextStyle(fontSize: isMobile ? 11 : 13, color: Colors.grey.shade600)),
+                      style: TextStyle(fontSize: isMobile ? 11 : 13, color: SdColors.muted)),
                 ),
                 icon: Icon(
                   _selectedTechnician != null ? Icons.close : Icons.arrow_drop_down,
                   size: 18,
-                  color: _selectedTechnician != null ? Colors.red : Colors.grey,
+                  color: _selectedTechnician != null ? SdColors.danger : SdColors.faint,
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 borderRadius: BorderRadius.circular(10),
@@ -248,20 +249,20 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
               padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 color: _dateRange != null
-                    ? const Color(0xFF1A237E).withValues(alpha: 0.08)
-                    : const Color(0xFFF5F7FA),
+                    ? SdColors.primary.withValues(alpha: 0.08)
+                    : SdColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: _dateRange != null
-                      ? const Color(0xFF1A237E).withValues(alpha: 0.3)
-                      : Colors.grey.shade300,
+                      ? SdColors.primary.withValues(alpha: 0.3)
+                      : SdColors.edge,
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.date_range, size: 16,
-                      color: _dateRange != null ? const Color(0xFF1A237E) : Colors.grey),
+                      color: _dateRange != null ? SdColors.primary : SdColors.faint),
                   const SizedBox(width: 6),
                   Text(
                     _dateRange != null
@@ -269,7 +270,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                         : 'كل الأوقات',
                     style: TextStyle(
                       fontSize: isMobile ? 11 : 12,
-                      color: _dateRange != null ? const Color(0xFF1A237E) : Colors.grey.shade600,
+                      color: _dateRange != null ? SdColors.primary : SdColors.muted,
                       fontWeight: _dateRange != null ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
@@ -277,7 +278,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                     const SizedBox(width: 6),
                     InkWell(
                       onTap: () => setState(() => _dateRange = null),
-                      child: const Icon(Icons.close, size: 16, color: Colors.red),
+                      child: const Icon(Icons.close, size: 16, color: SdColors.danger),
                     ),
                   ],
                 ],
@@ -301,15 +302,15 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
+                  color: SdColors.danger.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.filter_alt_off, size: 14, color: Colors.red),
+                    const Icon(Icons.filter_alt_off, size: 14, color: SdColors.danger),
                     const SizedBox(width: 4),
-                    Text('مسح', style: TextStyle(fontSize: isMobile ? 10 : 11, color: Colors.red, fontWeight: FontWeight.w600)),
+                    Text('مسح', style: TextStyle(fontSize: isMobile ? 10 : 11, color: SdColors.danger, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -342,15 +343,15 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF1A237E) : const Color(0xFFF5F7FA),
+          color: isActive ? SdColors.primary : SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isActive ? const Color(0xFF1A237E) : Colors.grey.shade300,
+            color: isActive ? SdColors.primary : SdColors.edge,
           ),
         ),
         child: Text(label, style: TextStyle(
           fontSize: 11,
-          color: isActive ? Colors.white : Colors.grey.shade700,
+          color: isActive ? Colors.white : SdColors.muted,
           fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
         )),
       ),
@@ -405,7 +406,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                       fontSize: isMobile ? 14 : 16, fontWeight: FontWeight.w700)),
               const Spacer(),
               Text('${top.length} فني',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                  style: TextStyle(fontSize: 11, color: SdColors.faint)),
             ],
           ),
           const SizedBox(height: 6),
@@ -478,7 +479,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                           padding: const EdgeInsets.only(left: 4),
                           child: Text(
                             value.toInt().toString(),
-                            style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                            style: TextStyle(fontSize: 10, color: SdColors.faint),
                           ),
                         );
                       },
@@ -494,7 +495,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                   drawVerticalLine: false,
                   horizontalInterval: maxVal > 10 ? (maxVal / 5).ceilToDouble() : 2,
                   getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.grey.shade200,
+                    color: SdColors.divider,
                     strokeWidth: 1,
                     dashArray: [4, 4],
                   ),
@@ -502,8 +503,8 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                 borderData: FlBorderData(
                   show: true,
                   border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade300),
-                    right: BorderSide(color: Colors.grey.shade300),
+                    bottom: BorderSide(color: SdColors.edge),
+                    right: BorderSide(color: SdColors.edge),
                   ),
                 ),
                 barGroups: top.asMap().entries.map((e) {
@@ -565,10 +566,10 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
   /// بطاقة أداء فني
   Widget _buildTechCard(int rank, _TechStat s, bool isMobile) {
     final rateColor = s.completionRate >= 70
-        ? const Color(0xFF4CAF50)
+        ? SdColors.success
         : s.completionRate >= 40
-            ? const Color(0xFFFF9800)
-            : const Color(0xFFE53935);
+            ? SdColors.warning
+            : SdColors.danger;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -617,7 +618,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
                     if (s.department.isNotEmpty)
                       Text(s.department,
                           style: TextStyle(
-                              fontSize: 12, color: Colors.grey.shade500)),
+                              fontSize: 12, color: SdColors.faint)),
                   ],
                 ),
               ),
@@ -642,12 +643,12 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
           // الصف الثاني: إحصائيات
           Row(
             children: [
-              _miniStat('الإجمالي', '${s.total}', const Color(0xFF3B82F6)),
+              _miniStat('الإجمالي', '${s.total}', SdColors.info),
               _miniStat('مكتملة', '${s.done}', TaskStatusColors.completed),
               _miniStat('تنفيذ', '${s.progress}', TaskStatusColors.inProgress),
               _miniStat('ملغية', '${s.cancelled}', TaskStatusColors.cancelled),
               _miniStat('المتوسط', s.done > 0 ? s.avgHoursFormatted : '-',
-                  const Color(0xFF9C27B0)),
+                  SdColors.platformBase),
             ],
           ),
 
@@ -657,7 +658,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: s.total > 0 ? s.done / s.total : 0,
-              backgroundColor: Colors.grey.shade200,
+              backgroundColor: SdColors.divider,
               valueColor: AlwaysStoppedAnimation<Color>(rateColor),
               minHeight: 6,
             ),
@@ -670,13 +671,13 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Icon(Icons.payments_outlined,
-                    size: 14, color: Colors.grey.shade500),
+                    size: 14, color: SdColors.faint),
                 const SizedBox(width: 4),
                 Text('${formatTaskAmount(s.totalAmount)} د.ع',
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade600)),
+                        color: SdColors.muted)),
               ],
             ),
           ],
@@ -693,7 +694,7 @@ class _TechnicianPerformancePageState extends State<TechnicianPerformancePage> {
               style: TextStyle(
                   fontSize: 14, fontWeight: FontWeight.w800, color: color)),
           Text(label,
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+              style: TextStyle(fontSize: 10, color: SdColors.faint)),
         ],
       ),
     );

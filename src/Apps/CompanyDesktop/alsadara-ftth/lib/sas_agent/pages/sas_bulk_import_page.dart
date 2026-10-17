@@ -689,20 +689,20 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
       initialValue: _defaultProfileId,
       isExpanded: true,
       style: TextStyle(fontFamily: 'Cairo', 
-          fontWeight: FontWeight.w600, color: const Color(0xFF1A1A2E)),
+          fontWeight: FontWeight.w600, color: SdColors.ink),
       decoration: InputDecoration(
         labelText: 'الباقة الافتراضية (لكل الصفوف) *',
-        labelStyle: TextStyle(fontFamily: 'Cairo', color: Colors.grey[600]),
+        labelStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.muted),
         isDense: true,
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
+          borderSide: BorderSide(color: SdColors.faint.withValues(alpha: 0.16)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
+          borderSide: BorderSide(color: SdColors.faint.withValues(alpha: 0.16)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
@@ -751,7 +751,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
         onPressed: _validCount == 0 ? null : () => _createAll(),
         style: FilledButton.styleFrom(
           backgroundColor: SdColors.success,
-          disabledBackgroundColor: Colors.grey.withValues(alpha: 0.4),
+          disabledBackgroundColor: SdColors.faint.withValues(alpha: 0.4),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
         ),
@@ -778,7 +778,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
                 _finished ? 'اكتمل الإنشاء' : 'جارٍ الإنشاء…',
                 style: TextStyle(fontFamily: 'Cairo', 
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF1A1A2E)),
+                    color: SdColors.ink),
               ),
               const Spacer(),
               _countPill('نجح', _successCount, SdColors.success),
@@ -794,7 +794,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
             child: LinearProgressIndicator(
               value: _creating ? (pct == 0 ? null : pct) : 1.0,
               minHeight: 8,
-              backgroundColor: Colors.grey.withValues(alpha: 0.15),
+              backgroundColor: SdColors.faint.withValues(alpha: 0.15),
               valueColor: AlwaysStoppedAnimation(
                   _failCount > 0 && _finished
                       ? SdColors.warning
@@ -869,13 +869,13 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
               style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 11.sp,
                   fontWeight: FontWeight.w800,
-                  color: Colors.grey[600])),
+                  color: SdColors.muted)),
           const Spacer(),
           Text('عدد الصفوف: ${_rows.length} · صالح: $_validCount',
               style: TextStyle(fontFamily: 'Cairo', 
                   fontSize: 11.sp,
                   fontWeight: FontWeight.w800,
-                  color: Colors.grey[600])),
+                  color: SdColors.muted)),
         ],
       ),
     );
@@ -905,7 +905,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
               Text('صفّ ${index + 1}',
                   style: TextStyle(fontFamily: 'Cairo', 
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF1A1A2E))),
+                      color: SdColors.ink)),
               SizedBox(width: 8.w),
               SasStatusBadge(label: statusText, color: statusColor),
               const Spacer(),
@@ -913,7 +913,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
                 tooltip: 'حذف الصفّ',
                 onPressed: _creating ? null : () => _removeRow(index),
                 icon: Icon(Icons.close_rounded,
-                    size: 18, color: Colors.grey[500]),
+                    size: 18, color: SdColors.faint),
               ),
             ],
           ),
@@ -985,18 +985,18 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
       decoration: InputDecoration(
         labelText: required ? '${col.labelAr} *' : col.labelAr,
         labelStyle:
-            TextStyle(fontFamily: 'Cairo', fontSize: 11.sp, color: Colors.grey[600]),
+            TextStyle(fontFamily: 'Cairo', fontSize: 11.sp, color: SdColors.muted),
         isDense: true,
         contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
         filled: true,
         fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
+          borderSide: BorderSide(color: SdColors.faint.withValues(alpha: 0.16)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-          borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
+          borderSide: BorderSide(color: SdColors.faint.withValues(alpha: 0.16)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
@@ -1016,11 +1016,11 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
         style: TextStyle(fontFamily: 'Cairo', 
             fontSize: 12.sp,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF1A1A2E)),
+            color: SdColors.ink),
         decoration: InputDecoration(
           labelText: 'الباقة *',
           labelStyle:
-              TextStyle(fontFamily: 'Cairo', fontSize: 11.sp, color: Colors.grey[600]),
+              TextStyle(fontFamily: 'Cairo', fontSize: 11.sp, color: SdColors.muted),
           isDense: true,
           contentPadding:
               EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
@@ -1028,11 +1028,11 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
           fillColor: Colors.white,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-            borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
+            borderSide: BorderSide(color: SdColors.faint.withValues(alpha: 0.16)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
-            borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.16)),
+            borderSide: BorderSide(color: SdColors.faint.withValues(alpha: 0.16)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
@@ -1086,7 +1086,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
                     'اسم المستخدم، كلمة المرور، والباقة (أو اختر باقة افتراضية). '
                     'يمكنك مطابقة الأعمدة يدوياً بعد الاستيراد.',
                     style: TextStyle(fontFamily: 'Cairo', 
-                        fontSize: 12.5.sp, height: 1.6, color: Colors.grey[700]),
+                        fontSize: 12.5.sp, height: 1.6, color: SdColors.muted),
                   ),
                   SizedBox(height: 12.h),
                   Container(
@@ -1095,12 +1095,12 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
                       color: SasUi.pageBg,
                       borderRadius: BorderRadius.circular(SasUi.radiusSm.r),
                       border: Border.all(
-                          color: Colors.grey.withValues(alpha: 0.2)),
+                          color: SdColors.faint.withValues(alpha: 0.2)),
                     ),
                     child: SelectableText(
                       _Col.values.map((c) => c.key).join(','),
                       style: TextStyle(fontFamily: 'monospace', 
-                          fontSize: 12.sp, color: const Color(0xFF1A1A2E)),
+                          fontSize: 12.sp, color: SdColors.ink),
                     ),
                   ),
                   SizedBox(height: 10.h),
@@ -1190,7 +1190,7 @@ class _ColumnMappingDialogState extends State<_ColumnMappingDialog> {
                 'عدد صفوف البيانات: ${widget.sampleRowCount}. طابق كل حقل بعموده '
                 'في الملف (أو اتركه «— بلا —»).',
                 style: TextStyle(fontFamily: 'Cairo', 
-                    fontSize: 12.sp, color: Colors.grey[700], height: 1.5),
+                    fontSize: 12.sp, color: SdColors.muted, height: 1.5),
               ),
               SizedBox(height: 12.h),
               Flexible(
@@ -1215,7 +1215,7 @@ class _ColumnMappingDialogState extends State<_ColumnMappingDialog> {
                                   isExpanded: true,
                                   style: TextStyle(fontFamily: 'Cairo', 
                                       fontSize: 12.sp,
-                                      color: const Color(0xFF1A1A2E)),
+                                      color: SdColors.ink),
                                   decoration: InputDecoration(
                                     isDense: true,
                                     contentPadding: EdgeInsets.symmetric(
@@ -1230,7 +1230,7 @@ class _ColumnMappingDialogState extends State<_ColumnMappingDialog> {
                                       value: null,
                                       child: Text('— بلا —',
                                           style: TextStyle(fontFamily: 'Cairo', 
-                                              color: Colors.grey[500])),
+                                              color: SdColors.faint)),
                                     ),
                                     for (var i = 0;
                                         i < widget.headers.length;

@@ -140,11 +140,11 @@ class _ChartsPageState extends State<ChartsPage> {
                           toY: data[index].toDouble(),
                           color: isTotalUsers
                               ? (data[index] < 200
-                                  ? Colors.red
+                                  ? SdColors.danger
                                   : (data[index] <= 300
-                                      ? Colors.blue
-                                      : Colors.green))
-                              : Colors.orange,
+                                      ? SdColors.info
+                                      : SdColors.success))
+                              : SdColors.warning,
                           width: barWidth,
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -168,7 +168,7 @@ class _ChartsPageState extends State<ChartsPage> {
                   gridData: FlGridData(show: true),
                   borderData: FlBorderData(
                     show: true,
-                    border: Border.all(color: Colors.grey),
+                    border: Border.all(color: SdColors.faint),
                   ),
                   barTouchData: BarTouchData(
                     touchTooltipData: BarTouchTooltipData(

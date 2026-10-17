@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import '../models/citizen_portal_models.dart';
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class RequestStatusBadge extends StatelessWidget {
   final ServiceRequestStatus status;
@@ -168,10 +169,10 @@ class RequestProgressIndicator extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: isCancelled
-                            ? Colors.grey.shade300
+                            ? SdColors.edge
                             : isCompleted
                                 ? step.color
-                                : Colors.grey.shade200,
+                                : SdColors.divider,
                         border: isCurrent && !isCancelled
                             ? Border.all(color: step.color, width: 2)
                             : null,
@@ -190,10 +191,10 @@ class RequestProgressIndicator extends StatelessWidget {
                         isCompleted ? Icons.check : step.icon,
                         size: 16,
                         color: isCancelled
-                            ? Colors.grey
+                            ? SdColors.faint
                             : isCompleted
                                 ? Colors.white
-                                : Colors.grey,
+                                : SdColors.faint,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -202,10 +203,10 @@ class RequestProgressIndicator extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 9,
                         color: isCancelled
-                            ? Colors.grey
+                            ? SdColors.faint
                             : isCompleted
                                 ? step.color
-                                : Colors.grey,
+                                : SdColors.faint,
                         fontWeight: isCurrent ? FontWeight.bold : null,
                       ),
                       textAlign: TextAlign.center,
@@ -218,10 +219,10 @@ class RequestProgressIndicator extends StatelessWidget {
                   height: 2,
                   width: 20,
                   color: isCancelled
-                      ? Colors.grey.shade300
+                      ? SdColors.edge
                       : isCompleted
                           ? step.color
-                          : Colors.grey.shade200,
+                          : SdColors.divider,
                 ),
             ],
           ),

@@ -1,6 +1,7 @@
 // lib/widgets/charts_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class ChartsDialog extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -56,7 +57,7 @@ class ChartsDialog extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.blueGrey,
+                color: SdColors.faint,
               ),
             ),
             const SizedBox(height: 20),
@@ -120,7 +121,7 @@ class ChartsDialog extends StatelessWidget {
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueGrey[800],
+                backgroundColor: SdColors.ink,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -137,11 +138,11 @@ class ChartsDialog extends StatelessWidget {
 
   Widget _buildLegend(Map<String, int> processedData) {
     final List<Color> colors = [
-      Colors.green,
-      Colors.red,
-      Colors.blue,
-      Colors.orange,
-      Colors.purple,
+      SdColors.success,
+      SdColors.danger,
+      SdColors.info,
+      SdColors.warning,
+      SdColors.platformBase,
     ];
 
     return Wrap(
@@ -165,7 +166,7 @@ class ChartsDialog extends StatelessWidget {
             Text(entry.key),
             const SizedBox(width: 4),
             Text('(${entry.value})',
-                style: const TextStyle(color: Colors.grey)),
+                style: const TextStyle(color: SdColors.faint)),
           ],
         );
       }).toList(),
@@ -175,11 +176,11 @@ class ChartsDialog extends StatelessWidget {
   List<PieChartSectionData> _createPieChartSections(
       Map<String, int> processedData) {
     final List<Color> colors = [
-      Colors.green,
-      Colors.red,
-      Colors.blue,
-      Colors.orange,
-      Colors.purple,
+      SdColors.success,
+      SdColors.danger,
+      SdColors.info,
+      SdColors.warning,
+      SdColors.platformBase,
     ];
 
     final total = processedData.values.reduce((sum, value) => sum + value);
@@ -204,11 +205,11 @@ class ChartsDialog extends StatelessWidget {
 
   List<BarChartGroupData> _createBarGroups(Map<String, int> processedData) {
     final List<Color> colors = [
-      Colors.green,
-      Colors.red,
-      Colors.blue,
-      Colors.orange,
-      Colors.purple,
+      SdColors.success,
+      SdColors.danger,
+      SdColors.info,
+      SdColors.warning,
+      SdColors.platformBase,
     ];
 
     return processedData.entries.map((entry) {

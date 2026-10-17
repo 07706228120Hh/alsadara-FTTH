@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// مكوّنات واجهة مشتركة لشاشات المهام.
 ///
@@ -14,10 +15,10 @@ class TaskUiColors {
   TaskUiColors._();
 
   /// كحلي داكن — خلفية/عناوين شاشة المتابعة (follow_up_page).
-  static const Color darkNavy = Color(0xFF1A1A2E);
+  static const Color darkNavy = SdColors.ink;
 
   /// نيلي — عناوين/تمييز شاشة أداء الفنيين (technician_performance_page).
-  static const Color indigo = Color(0xFF1A237E);
+  static const Color indigo = SdColors.primary;
 }
 
 /// بطاقة معلومة صغيرة: أيقونة داخل مربّع ملوّن + label صغير + value.
@@ -64,14 +65,14 @@ class AppInfoTile extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: TextStyle(fontSize: 8, color: Colors.grey.shade500),
+                  style: TextStyle(fontSize: 8, color: SdColors.faint),
                 ),
                 Text(
                   value.isNotEmpty ? value : '-',
                   style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
+                    color: SdColors.ink,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -137,7 +138,7 @@ class AppStatCard extends StatelessWidget {
               title,
               style: TextStyle(
                 fontSize: isSmallScreen ? 10 : 12,
-                color: Colors.grey[600],
+                color: SdColors.muted,
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
@@ -185,7 +186,7 @@ class AppFilterChip extends StatelessWidget {
           color: isSelected ? color : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? color : Colors.grey.shade300,
+            color: isSelected ? color : SdColors.edge,
             width: isSelected ? 1.5 : 1,
           ),
           boxShadow: isSelected
@@ -202,14 +203,14 @@ class AppFilterChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon,
-                size: 14, color: isSelected ? Colors.white : Colors.grey),
+                size: 14, color: isSelected ? Colors.white : SdColors.faint),
             const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? Colors.white : Colors.grey.shade600,
+                color: isSelected ? Colors.white : SdColors.muted,
               ),
             ),
           ],

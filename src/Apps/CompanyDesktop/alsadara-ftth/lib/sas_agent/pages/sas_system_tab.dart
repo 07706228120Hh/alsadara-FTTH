@@ -177,7 +177,7 @@ class _SasSystemTabState extends State<SasSystemTab>
           borderRadius: BorderRadius.circular(10.r),
         ),
         labelColor: Colors.white,
-        unselectedLabelColor: const Color(0xFF64748B),
+        unselectedLabelColor: SdColors.muted,
         labelStyle:
             TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800, fontSize: 12.5.sp),
         unselectedLabelStyle:
@@ -391,7 +391,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
                 style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.5.sp,
                     fontWeight: FontWeight.w700,
-                    color: Colors.grey[700])),
+                    color: SdColors.muted)),
             SizedBox(height: 10.h),
             Wrap(
               spacing: 10.w,
@@ -449,7 +449,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
                   if (i > 0)
                     Divider(
                         height: 1,
-                        color: Colors.grey.withValues(alpha: 0.10)),
+                        color: SdColors.faint.withValues(alpha: 0.10)),
                   _kvRow(_financeLabel(textual[i].key), '${textual[i].value}'),
                 ],
               ],
@@ -507,7 +507,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
                     style: TextStyle(fontFamily: 'Cairo', 
                         fontSize: 14.sp,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF1A1A2E))),
+                        color: SdColors.ink)),
                 if (speed != null || price != null) ...[
                   SizedBox(height: 2.h),
                   Text(
@@ -518,7 +518,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontFamily: 'Cairo', 
-                        fontSize: 11.5.sp, color: Colors.grey[600]),
+                        fontSize: 11.5.sp, color: SdColors.muted),
                   ),
                 ],
               ],
@@ -538,7 +538,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
       children: [
         for (int i = 0; i < entries.length; i++) ...[
           if (i > 0)
-            Divider(height: 1, color: Colors.grey.withValues(alpha: 0.10)),
+            Divider(height: 1, color: SdColors.faint.withValues(alpha: 0.10)),
           _kvRow(entries[i].key, '${entries[i].value}'),
         ],
       ],
@@ -556,7 +556,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
             child: Text(label,
                 style: TextStyle(fontFamily: 'Cairo', 
                     fontSize: 12.5.sp,
-                    color: Colors.grey[700],
+                    color: SdColors.muted,
                     fontWeight: FontWeight.w600)),
           ),
           SizedBox(width: 10.w),
@@ -628,11 +628,11 @@ class _SystemOverviewState extends State<_SystemOverview> {
       return SdColors.danger;
     }
     if (key.contains('balance') || key.contains('credit')) {
-      return const Color(0xFF009688);
+      return SdColors.accent;
     }
     if (key.contains('subscription')) return SdColors.primaryLight;
     if (key.contains('user')) return SdColors.info;
-    return Colors.blueGrey;
+    return SdColors.faint;
   }
 
   Widget _inlineError(String msg) => Container(
@@ -651,7 +651,7 @@ class _SystemOverviewState extends State<_SystemOverview> {
             Expanded(
                 child: Text(msg,
                     style: TextStyle(fontFamily: 'Cairo', 
-                        fontSize: 12.5.sp, color: Colors.grey[800]))),
+                        fontSize: 12.5.sp, color: SdColors.ink))),
             TextButton(
                 onPressed: _loadAll,
                 child: Text('إعادة', style: TextStyle(fontFamily: 'Cairo', ))),
@@ -662,18 +662,18 @@ class _SystemOverviewState extends State<_SystemOverview> {
   Widget _inlineEmpty(String msg) => Container(
         padding: EdgeInsets.all(14.w),
         decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.06),
+          color: SdColors.faint.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(12.r),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.20)),
+          border: Border.all(color: SdColors.faint.withValues(alpha: 0.20)),
         ),
         child: Row(
           children: [
-            Icon(Icons.inbox_rounded, color: Colors.grey[400], size: 20.sp),
+            Icon(Icons.inbox_rounded, color: SdColors.faint, size: 20.sp),
             SizedBox(width: 8.w),
             Expanded(
                 child: Text(msg,
                     style: TextStyle(fontFamily: 'Cairo', 
-                        fontSize: 12.5.sp, color: Colors.grey[600]))),
+                        fontSize: 12.5.sp, color: SdColors.muted))),
           ],
         ),
       );
@@ -887,14 +887,14 @@ class _LogListState extends State<_LogList> {
                           'NAS ${_s(row['nas_ip_address'])}',
                       ].join(' · '),
                       style: TextStyle(fontFamily: 'Cairo', 
-                          fontSize: 11.sp, color: Colors.grey[600]),
+                          fontSize: 11.sp, color: SdColors.muted),
                     ),
                 ],
               ),
             ),
             Text(_s(row['created_at']),
                 style: TextStyle(fontFamily: 'Cairo', 
-                    fontSize: 10.5.sp, color: Colors.grey[500])),
+                    fontSize: 10.5.sp, color: SdColors.faint)),
           ],
         ),
       );
@@ -911,7 +911,7 @@ class _LogListState extends State<_LogList> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.article_outlined,
-              color: Colors.blueGrey, size: 22.sp),
+              color: SdColors.faint, size: 22.sp),
           SizedBox(width: 10.w),
           Expanded(
             child: Column(
@@ -924,7 +924,7 @@ class _LogListState extends State<_LogList> {
                     _s(row['event']).isNotEmpty)
                   Text(_s(row['description']),
                       style: TextStyle(fontFamily: 'Cairo', 
-                          fontSize: 11.5.sp, color: Colors.grey[700])),
+                          fontSize: 11.5.sp, color: SdColors.muted)),
                 SizedBox(height: 2.h),
                 Text(
                   [
@@ -932,14 +932,14 @@ class _LogListState extends State<_LogList> {
                     if (_s(row['ip']).isNotEmpty) 'IP ${_s(row['ip'])}',
                   ].join(' · '),
                   style: TextStyle(fontFamily: 'Cairo', 
-                      fontSize: 11.sp, color: Colors.grey[600]),
+                      fontSize: 11.sp, color: SdColors.muted),
                 ),
               ],
             ),
           ),
           Text(_s(row['created_at']),
               style:
-                  TextStyle(fontFamily: 'Cairo', fontSize: 10.5.sp, color: Colors.grey[500])),
+                  TextStyle(fontFamily: 'Cairo', fontSize: 10.5.sp, color: SdColors.faint)),
         ],
       ),
     );

@@ -5,6 +5,7 @@ library;
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -600,48 +601,14 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     );
   }
 
-  /// خلفية داكنة متدرّجة + توهّج تركوازي ناعم.
+  /// خلفية ثلاثية الأبعاد حقيقية تملأ الشاشة (مدينة الصدارة الليلية — Three.js).
+  /// على سطح المكتب يُزاح مركز المشهد لليسار ليترك مكان بطاقة الدخول.
   Widget _buildBackground() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [Color(0xFF0B1033), Color(0xFF141C5A), Color(0xFF0A2A3A)],
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: -120,
-            right: -80,
-            child: _buildOrb(360, const Color(0xFF5C6BC0)),
-          ),
-          Positioned(
-            top: MediaQuery.of(context).size.height * 0.3,
-            left: -120,
-            child: _buildOrb(320, const Color(0xFF00ACC1)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOrb(double size, Color color) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              color.withValues(alpha: 0.30),
-              color.withValues(alpha: 0.0),
-            ],
-          ),
-        ),
-      ),
+    final w = MediaQuery.sizeOf(context).width;
+    final desktop = w >= 1024;
+    return SdLogin3DBackground(
+      shiftX: desktop ? -235 : 0,
+      lowQuality: w < 600,
     );
   }
 
@@ -658,12 +625,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
             child: _buildBrandHeader(logoSize: 42, titleSize: 20),
           ),
-          const SizedBox(height: 6),
-          Center(
-            child: SdLoginScene(
-              maxWidth: math.min(340, MediaQuery.of(context).size.width - 40),
-            ),
-          ),
+          // نافذة شفافة تُظهر المدينة ثلاثية الأبعاد خلف المحتوى.
+          SizedBox(height: math.min(300, MediaQuery.of(context).size.height * 0.34)),
           Transform.translate(
             offset: const Offset(0, -26),
             child: Padding(
@@ -689,7 +652,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
             children: [
               _buildBrandHeader(logoSize: 48, titleSize: 24),
               const SizedBox(height: 8),
-              Center(child: SdLoginScene(maxWidth: 420)),
+              const SizedBox(height: 320), // نافذة على المدينة ثلاثية الأبعاد
               const SizedBox(height: 8),
               _buildAuthCard(context),
             ],
@@ -706,13 +669,13 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
       children: [
         // يمين (في RTL = أول عنصر): بطاقة الدخول.
         SizedBox(
-          width: 540,
+          width: 470,
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(60, 40, 40, 40),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
+                constraints: const BoxConstraints(maxWidth: 380),
                 child: _buildAuthCard(context, tilt: true),
               ),
             ),
@@ -732,14 +695,34 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildBrandHeader(logoSize: 54, titleSize: 30),
-          Expanded(
-            child: Center(
-              child: SdLoginScene(maxWidth: 540),
+          // المساحة الوسطى فارغة: المدينة ثلاثية الأبعاد في الخلفية تستقبل الماوس هنا.
+          const Expanded(child: SizedBox.shrink()),
+          // طبقة تعتيم متدرّجة خلف العنوان والميزات لإبراز النصّ فوق المدينة المزدحمة.
+          Container(
+            padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x000A1838),
+                  Color(0xA60A1838),
+                  Color(0xD60A1838),
+                ],
+                stops: [0.0, 0.42, 1.0],
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildBrandTitle(),
+                const SizedBox(height: 18),
+                _buildFeatureRow(),
+              ],
             ),
           ),
-          _buildBrandTitle(),
-          const SizedBox(height: 20),
-          _buildFeatureRow(),
         ],
       ),
     );
@@ -808,13 +791,12 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                 color: Color(0x73000000), offset: Offset(-8, 12), blurRadius: 18),
           ],
         ),
-        child: Text(
-          'ص',
-          style: TextStyle(
-            fontFamily: SdText.family,
-            fontSize: size * 0.5,
-            fontWeight: FontWeight.w900,
-            color: SdColors.primary,
+        child: Padding(
+          padding: EdgeInsets.all(size * 0.12),
+          child: Image.asset(
+            'assets/logo.png',
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
           ),
         ),
       ),
@@ -834,6 +816,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
               fontWeight: FontWeight.w900,
               color: Colors.white,
               height: 1.3,
+              shadows: [
+                Shadow(color: Color(0xCC000000), offset: Offset(0, 2), blurRadius: 12),
+              ],
             ),
             children: [
               TextSpan(text: 'إدارة متكاملة لشبكتك\n'),
@@ -852,6 +837,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
               fontWeight: FontWeight.w900,
               color: Colors.white,
               height: 1.2,
+              shadows: [
+                Shadow(color: Color(0x99000000), offset: Offset(0, 2), blurRadius: 10),
+              ],
             ),
           ),
         ),
@@ -862,8 +850,11 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
             fontFamily: SdText.family,
             fontSize: 14.5,
             fontWeight: FontWeight.w600,
-            color: Colors.white.withValues(alpha: 0.72),
+            color: Colors.white.withValues(alpha: 0.86),
             height: 1.6,
+            shadows: const [
+              Shadow(color: Color(0x80000000), offset: Offset(0, 1), blurRadius: 6),
+            ],
           ),
         ),
       ],
@@ -891,9 +882,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.07),
+        color: const Color(0x591B2F5E),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
       ),
       child: Row(
         children: [
@@ -934,28 +925,27 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   // ── البطاقة ──
 
   /// بطاقة الدخول البيضاء المرفوعة (مع ميلان خفيف على سطح المكتب).
+  /// بطاقة زجاجية داكنة شفافة (تُظهر المدينة ثلاثية الأبعاد خلفها) بحجم مدمج.
   Widget _buildAuthCard(BuildContext context, {bool tilt = false}) {
-    Widget card = Container(
+    Widget card = ClipRRect(
+      borderRadius: BorderRadius.circular(26),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
       decoration: BoxDecoration(
-        color: SdColors.surface,
-        borderRadius: BorderRadius.circular(28),
-        border: SdOutline.all,
-        boxShadow: const [
-          BoxShadow(color: Color(0xFFC9CFE3), offset: Offset(0, 10)),
-          BoxShadow(color: Color(0xFF8E97C2), offset: Offset(0, 12)),
-          BoxShadow(
-            color: Color(0xBF050828),
-            offset: Offset(0, 40),
-            blurRadius: 60,
-            spreadRadius: -24,
-          ),
-        ],
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0x8C1A2C66), Color(0xB30B1B3F)],
+        ),
+        borderRadius: BorderRadius.circular(26),
+        // إطار ذهبي بارز يُبرز البطاقة على الخلفية الكحلية.
+        border: Border.all(color: SdColors.gold.withValues(alpha: 0.6), width: 1.5),
       ),
-      clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
             child: _buildLoginForm(context),
           ),
           // خط ذهبي علوي.
@@ -975,6 +965,18 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           ),
         ],
       ),
+        ),
+      ),
+    );
+    // ظل خارجي ناعم تحت الزجاج.
+    card = DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: const [
+          BoxShadow(color: Color(0x66000000), offset: Offset(0, 24), blurRadius: 48, spreadRadius: -16),
+        ],
+      ),
+      child: card,
     );
 
     if (tilt) {
@@ -998,29 +1000,29 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildCardHeader(),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           if (_errorMessage != null) ...[
             _buildErrorMessage(),
-            const SizedBox(height: 14),
+            const SizedBox(height: 8),
           ],
           _buildModeSegmented(),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           if (_isAdminMode) _buildAdminNote() else _buildCompanySelector(),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           _buildUsernameField(),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           _buildPasswordField(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
           _buildRememberRow(),
           if (_savedCredentials.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 6),
             _buildSavedCredentialsDropdown(),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           _buildLoginButton(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildOfflineRouterSetupButton(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Center(child: _buildVersionText()),
         ],
       ),
@@ -1031,7 +1033,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   Widget _buildCardHeader() {
     return Row(
       children: [
-        SdIconCube(icon: Icons.lock_rounded, group: SdGroup.admin, size: 50),
+        SdIconCube(icon: Icons.lock_rounded, group: SdGroup.admin, size: 42),
         const SizedBox(width: 12),
         const Expanded(
           child: Column(
@@ -1042,15 +1044,20 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                 'مرحباً بعودتك',
                 style: TextStyle(
                   fontFamily: SdText.family,
-                  fontSize: 22,
+                  fontSize: 19,
                   fontWeight: FontWeight.w900,
-                  color: SdColors.ink,
+                  color: Colors.white,
                   height: 1.2,
                 ),
               ),
               Text(
                 'سجّل الدخول لمتابعة عملك',
-                style: SdText.bodySm,
+                style: TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xB3FFFFFF),
+                ),
               ),
             ],
           ),
@@ -1072,6 +1079,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         SdSegment('مدير النظام', icon: Icons.verified_user_rounded),
       ],
       selected: _isAdminMode ? 1 : 0,
+      height: 40,
+      glass: true,
       onChanged: (i) => i == 1 ? _selectAdminMode() : _selectEmployeeMode(),
     );
   }
@@ -1110,29 +1119,28 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   /// تسمية حقل فوق الإطار.
   Widget _buildFieldLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(right: 4, bottom: 6),
+      padding: const EdgeInsets.only(right: 4, bottom: 3),
       child: Text(
         text,
         style: const TextStyle(
           fontFamily: SdText.family,
-          fontSize: 12.5,
+          fontSize: 12,
           fontWeight: FontWeight.w800,
-          color: SdColors.muted,
+          color: Color(0xCCFFFFFF),
         ),
       ),
     );
   }
 
   /// إطار حقل مرفوع (خلفية فاتحة + حافّة سفلية).
-  Widget _buildFieldFrame({required Widget child, double minHeight = 56}) {
+  Widget _buildFieldFrame({required Widget child, double minHeight = 44}) {
     return Container(
       constraints: BoxConstraints(minHeight: minHeight),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: SdColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(16),
-        border: SdOutline.all,
-        boxShadow: const [BoxShadow(color: SdColors.edge, offset: Offset(0, 3))],
+        color: const Color(0x1FFFFFFF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0x38FFFFFF)),
       ),
       child: Center(child: child),
     );
@@ -1157,7 +1165,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text('جاري تحميل الشركات...', style: SdText.bodySm),
+                Text('جاري تحميل الشركات...', style: _glassHint),
               ],
             ),
           ),
@@ -1173,8 +1181,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           child: Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 30,
+                height: 30,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
@@ -1187,7 +1195,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                     BoxShadow(color: SdColors.accentEdge, offset: Offset(0, 3)),
                   ],
                 ),
-                child: const Icon(Icons.business_rounded, color: Colors.white, size: 18),
+                child: const Icon(Icons.business_rounded, color: Colors.white, size: 16),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1196,10 +1204,19 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                     value: _selectedCompany,
                     isExpanded: true,
                     isDense: true,
-                    hint: Text('اختر الشركة', style: SdText.bodySm),
+                    hint: Text('اختر الشركة', style: _glassHint),
                     icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                        color: SdColors.primary),
+                        color: Color(0xCCFFFFFF)),
                     borderRadius: BorderRadius.circular(16),
+                    selectedItemBuilder: (context) => _companies
+                        .where((c) => c.code != '1')
+                        .map((c) => Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(c.name,
+                                  style: _glassText,
+                                  overflow: TextOverflow.ellipsis),
+                            ))
+                        .toList(),
                     items: _buildCompanyDropdownItems(),
                     onChanged: (value) {
                       setState(() {
@@ -1247,14 +1264,15 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         _buildFieldFrame(
           child: Row(
             children: [
-              const Icon(Icons.person_rounded, color: SdColors.primary, size: 20),
+              const Icon(Icons.person_rounded, color: SdColors.accentLight, size: 19),
               const SizedBox(width: 12),
               Expanded(
                 child: TextFormField(
                   controller: _usernameController,
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.right,
-                  style: SdText.body,
+                  style: _glassText,
+                  cursorColor: SdColors.accentLight,
                   decoration: InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
@@ -1263,7 +1281,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                     errorBorder: InputBorder.none,
                     filled: false,
                     hintText: 'اسم المستخدم أو رقم الهاتف',
-                    hintStyle: SdText.bodySm.copyWith(color: SdColors.faint),
+                    hintStyle: _glassHint,
                     errorStyle: const TextStyle(height: 0, fontSize: 0),
                   ),
                   validator: (value) => value == null || value.trim().isEmpty
@@ -1287,7 +1305,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         _buildFieldFrame(
           child: Row(
             children: [
-              const Icon(Icons.lock_rounded, color: SdColors.primary, size: 20),
+              const Icon(Icons.lock_rounded, color: SdColors.accentLight, size: 19),
               const SizedBox(width: 12),
               Expanded(
                 child: TextFormField(
@@ -1295,7 +1313,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                   obscureText: _obscurePassword,
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.right,
-                  style: SdText.body,
+                  style: _glassText,
+                  cursorColor: SdColors.accentLight,
                   decoration: InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,
@@ -1304,7 +1323,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                     errorBorder: InputBorder.none,
                     filled: false,
                     hintText: '••••••••',
-                    hintStyle: SdText.bodySm.copyWith(color: SdColors.faint),
+                    hintStyle: _glassHint,
                     errorStyle: const TextStyle(height: 0, fontSize: 0),
                   ),
                   validator: (value) => value == null || value.isEmpty
@@ -1321,8 +1340,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                     _obscurePassword
                         ? Icons.visibility_outlined
                         : Icons.visibility_off_outlined,
-                    color: SdColors.muted,
-                    size: 20,
+                    color: const Color(0xB3FFFFFF),
+                    size: 19,
                   ),
                   onPressed: () =>
                       setState(() => _obscurePassword = !_obscurePassword),
@@ -1338,7 +1357,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
 
   Widget _buildRememberRow() {
     return SizedBox(
-      height: 44,
+      height: 40,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1350,14 +1369,14 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                 label: 'تذكرني',
               ),
               const SizedBox(width: 10),
-              Text('تذكرني', style: SdText.label),
+              Text('تذكرني', style: _glassText.copyWith(fontSize: 13)),
             ],
           ),
           Row(
             children: [
-              const Icon(Icons.lock_outline_rounded, size: 14, color: SdColors.faint),
+              const Icon(Icons.lock_outline_rounded, size: 13, color: Color(0x99FFFFFF)),
               const SizedBox(width: 4),
-              Text('اتصال مشفّر', style: SdText.caption),
+              Text('اتصال مشفّر', style: _glassHint.copyWith(fontSize: 11.5)),
             ],
           ),
         ],
@@ -1374,7 +1393,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         _buildFieldFrame(
           child: Row(
             children: [
-              const Icon(Icons.bookmark_rounded, color: SdColors.primary, size: 20),
+              const Icon(Icons.bookmark_rounded, color: SdColors.accentLight, size: 19),
               const SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonHideUnderline(
@@ -1382,9 +1401,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                     value: _selectedCredential,
                     isExpanded: true,
                     isDense: true,
-                    hint: Text('اختر حساباً للدخول السريع', style: SdText.bodySm),
+                    hint: Text('اختر حساباً للدخول السريع', style: _glassHint),
                     icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                        color: SdColors.primary),
+                        color: Color(0xCCFFFFFF)),
                     borderRadius: BorderRadius.circular(16),
                     selectedItemBuilder: (context) {
                       return _savedCredentials.map((credential) {
@@ -1392,7 +1411,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
                           alignment: AlignmentDirectional.centerStart,
                           child: Text(
                             '${credential.username} · ${credential.companyName}',
-                            style: SdText.label,
+                            style: _glassText,
                             overflow: TextOverflow.ellipsis,
                           ),
                         );
@@ -1487,9 +1506,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     return SdButton(
       label: 'تسجيل الدخول',
       icon: Icons.login_rounded,
-      kind: SdButtonKind.primary,
+      kind: SdButtonKind.accent,
       expand: true,
-      height: 60,
+      height: 50,
       onPressed: _isLoading ? null : _login,
     );
   }
@@ -1500,6 +1519,7 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
       icon: Icons.settings_input_antenna,
       kind: SdButtonKind.secondary,
       expand: true,
+      height: 44,
       onPressed: () {
         Navigator.push(context,
             MaterialPageRoute(builder: (_) => const NetworkToolsHomePage()));
@@ -1515,12 +1535,26 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
       label,
       style: const TextStyle(
         fontFamily: SdText.family,
-        fontSize: 11.5,
+        fontSize: 11,
         fontWeight: FontWeight.w700,
-        color: SdColors.faint,
+        color: Color(0x99FFFFFF),
       ),
     );
   }
+
+  // أنماط النص فوق البطاقة الزجاجية الداكنة.
+  static const TextStyle _glassText = TextStyle(
+    fontFamily: SdText.family,
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    color: Colors.white,
+  );
+  static const TextStyle _glassHint = TextStyle(
+    fontFamily: SdText.family,
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    color: Color(0x8CFFFFFF),
+  );
 
   /// شاشة التحميل: مكعّب درع يدور + ثلاث مراحل مربوطة بـ _isLoading/_isNavigating.
   Widget _buildLoadingOverlay() {

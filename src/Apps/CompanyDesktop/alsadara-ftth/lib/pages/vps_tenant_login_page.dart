@@ -12,6 +12,7 @@ import '../services/api/api_config.dart';
 import 'home_page.dart';
 import 'super_admin/super_admin_dashboard.dart';
 import '../permissions/permissions.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// نموذج بيانات تسجيل الدخول المحفوظة
 class SavedCredential {
@@ -265,7 +266,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم حذف بيانات الدخول'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
           ),
         );
       }
@@ -320,13 +321,14 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
         child: Row(
           children: [
             Icon(Icons.admin_panel_settings,
-                color: Colors.amber[700], size: 20),
+                color: SdColors.warning, size: 20),
             const SizedBox(width: 8),
             Text(
               'مدير النظام',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontWeight: FontWeight.bold,
-                color: Colors.amber[700],
+                color: SdColors.warning,
               ),
             ),
           ],
@@ -360,11 +362,11 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                     height: 24,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Icon(Icons.business,
-                        size: 20, color: Colors.indigo[400]),
+                        size: 20, color: SdColors.primaryLight),
                   ),
                 )
               else
-                Icon(Icons.business, size: 20, color: Colors.indigo[400]),
+                Icon(Icons.business, size: 20, color: SdColors.primaryLight),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -373,14 +375,15 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                   children: [
                     Text(
                       company.name,
-                      style: GoogleFonts.cairo(fontSize: 14),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 14),
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       company.code,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 11,
-                        color: Colors.grey[600],
+                        color: SdColors.muted,
                       ),
                     ),
                   ],
@@ -535,7 +538,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                         color: const Color(0xFF152238),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: const Color(0xFF1E3A5F),
+                          color: SdColors.primaryEdge,
                           width: 2,
                         ),
                       ),
@@ -543,7 +546,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                         child: Icon(
                           Icons.diamond_outlined,
                           size: logoSize * 0.5,
-                          color: const Color(0xFF3B82F6),
+                          color: SdColors.info,
                         ),
                       ),
                     ),
@@ -557,7 +560,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                         color: const Color(0xFF152238).withOpacity(0.6),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: const Color(0xFF1E3A5F),
+                          color: SdColors.primaryEdge,
                           width: 1,
                         ),
                       ),
@@ -569,7 +572,8 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                             // العنوان
                             Text(
                               'مرحباً بك',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: isSmallScreen ? 22 : 28,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
@@ -588,23 +592,24 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                                 margin: const EdgeInsets.only(bottom: 16),
                                 decoration: BoxDecoration(
                                   color:
-                                      const Color(0xFFEF4444).withOpacity(0.1),
+                                      SdColors.danger.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: const Color(0xFFEF4444)
+                                    color: SdColors.danger
                                         .withOpacity(0.3),
                                   ),
                                 ),
                                 child: Row(
                                   children: [
                                     const Icon(Icons.error_outline,
-                                        color: Color(0xFFEF4444), size: 20),
+                                        color: SdColors.danger, size: 20),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         _errorMessage!,
-                                        style: GoogleFonts.cairo(
-                                          color: const Color(0xFFEF4444),
+                                        style: TextStyle(
+                                          fontFamily: 'Cairo',
+                                          color: SdColors.danger,
                                           fontSize: 13,
                                         ),
                                       ),
@@ -657,8 +662,9 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                               onPressed: () {},
                               child: Text(
                                 'نسيت كلمة المرور؟',
-                                style: GoogleFonts.cairo(
-                                  color: const Color(0xFF64748B),
+                                style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  color: SdColors.muted,
                                   fontSize: isSmallScreen ? 12 : 14,
                                 ),
                               ),
@@ -735,7 +741,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1E3A5F) : Colors.transparent,
+          color: isSelected ? SdColors.primaryEdge : Colors.transparent,
           borderRadius: BorderRadius.circular(25),
         ),
         child: Row(
@@ -744,16 +750,17 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
             Icon(
               icon,
               size: 16,
-              color: isSelected ? Colors.white : const Color(0xFF64748B),
+              color: isSelected ? Colors.white : SdColors.muted,
             ),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
                 label,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected ? Colors.white : const Color(0xFF64748B),
+                  color: isSelected ? Colors.white : SdColors.muted,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -778,9 +785,10 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
       children: [
         Text(
           label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: 12,
-            color: const Color(0xFF64748B),
+            color: SdColors.muted,
           ),
         ),
         const SizedBox(height: 8),
@@ -795,12 +803,12 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.poppins(
-              color: const Color(0xFF475569),
+              color: SdColors.muted,
               fontSize: 14,
             ),
             prefixIcon: Icon(
               icon,
-              color: const Color(0xFF64748B),
+              color: SdColors.muted,
               size: 20,
             ),
             suffixIcon: isPassword
@@ -809,31 +817,31 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                       _obscurePassword
                           ? Icons.visibility_off_outlined
                           : Icons.visibility_outlined,
-                      color: const Color(0xFF64748B),
+                      color: SdColors.muted,
                       size: 20,
                     ),
                     onPressed: () {
                       setState(() => _obscurePassword = !_obscurePassword);
                     },
                   )
-                : Icon(icon, color: const Color(0xFF64748B), size: 20),
+                : Icon(icon, color: SdColors.muted, size: 20),
             filled: true,
             fillColor: const Color(0xFF0D1B2A),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF1E3A5F)),
+              borderSide: const BorderSide(color: SdColors.primaryEdge),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF1E3A5F)),
+              borderSide: const BorderSide(color: SdColors.primaryEdge),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 2),
+              borderSide: const BorderSide(color: SdColors.info, width: 2),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFEF4444)),
+              borderSide: const BorderSide(color: SdColors.danger),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -857,14 +865,14 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
             end: Alignment.centerRight,
             colors: [
               Color(0xFFD4A574),
-              Color(0xFFF59E0B),
+              SdColors.warning,
               Color(0xFFD97706),
             ],
           ),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFF59E0B).withOpacity(0.3),
+              color: SdColors.warning.withOpacity(0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -890,7 +898,8 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
                 )
               : Text(
                   'تسجيل الدخول',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -912,7 +921,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
             color: const Color(0xFF152238),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: const Color(0xFF1E3A5F),
+              color: SdColors.primaryEdge,
             ),
           ),
           child: IconButton(
@@ -921,7 +930,7 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
             },
             icon: const Icon(
               Icons.fingerprint,
-              color: Color(0xFF3B82F6),
+              color: SdColors.info,
               size: 28,
             ),
           ),
@@ -929,9 +938,10 @@ class _VpsTenantLoginPageState extends State<VpsTenantLoginPage>
         const SizedBox(height: 8),
         Text(
           'تسجيل الدخول بالبصمة',
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: 12,
-            color: const Color(0xFF64748B),
+            color: SdColors.muted,
           ),
         ),
       ],

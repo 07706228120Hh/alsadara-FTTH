@@ -35,39 +35,39 @@ class _LeaveManagementPageState extends State<LeaveManagementPage>
       'value': 0,
       'label': 'سنوية',
       'icon': Icons.beach_access,
-      'color': Colors.blue
+      'color': SdColors.info
     },
     {
       'value': 1,
       'label': 'مرضية',
       'icon': Icons.local_hospital,
-      'color': Colors.red
+      'color': SdColors.danger
     },
     {
       'value': 2,
       'label': 'بدون راتب',
       'icon': Icons.money_off,
-      'color': Colors.grey
+      'color': SdColors.faint
     },
     {
       'value': 3,
       'label': 'طارئة',
       'icon': Icons.emergency,
-      'color': Colors.orange
+      'color': SdColors.warning
     },
-    {'value': 4, 'label': 'رسمية', 'icon': Icons.flag, 'color': Colors.green},
-    {'value': 5, 'label': 'زواج', 'icon': Icons.favorite, 'color': Colors.pink},
+    {'value': 4, 'label': 'رسمية', 'icon': Icons.flag, 'color': SdColors.success},
+    {'value': 5, 'label': 'زواج', 'icon': Icons.favorite, 'color': SdColors.platformBase},
     {
       'value': 6,
       'label': 'أبوة/أمومة',
       'icon': Icons.child_care,
-      'color': Colors.purple
+      'color': SdColors.platformBase
     },
     {
       'value': 7,
       'label': 'وفاة',
       'icon': Icons.sentiment_very_dissatisfied,
-      'color': Colors.brown
+      'color': SdColors.warning
     },
   ];
 

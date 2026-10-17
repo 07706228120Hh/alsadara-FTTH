@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/notification_api_service.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// زر جرس إشعارات قابل لإعادة الاستخدام — يُضاف في أي AppBar
 /// يعرض بادج بعدد الإشعارات غير المقروءة ويفتح لوحة الإشعارات
@@ -62,9 +63,9 @@ class _NotificationBellState extends State<NotificationBell> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
-                  color: Colors.red,
+                  color: SdColors.danger,
                   borderRadius: BorderRadius.circular(8),
-                  boxShadow: [BoxShadow(color: Colors.red.withValues(alpha: 0.4), blurRadius: 4)],
+                  boxShadow: [BoxShadow(color: SdColors.danger.withValues(alpha: 0.4), blurRadius: 4)],
                 ),
                 constraints: const BoxConstraints(minWidth: 16, minHeight: 14),
                 child: Text(
@@ -148,10 +149,10 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
 
   Color _typeColor(String? type) {
     switch (type) {
-      case 'RequestStatusUpdate': return const Color(0xFF1565C0);
-      case 'RequestAssigned': return const Color(0xFF00897B);
-      case 'AgentRequest': return const Color(0xFFEF6C00);
-      case 'ChatMessage': return const Color(0xFF2E7D32);
+      case 'RequestStatusUpdate': return SdColors.info;
+      case 'RequestAssigned': return SdColors.accent;
+      case 'AgentRequest': return SdColors.warning;
+      case 'ChatMessage': return SdColors.success;
       default: return const Color(0xFF546E7A);
     }
   }
@@ -169,21 +170,21 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
           Container(
             margin: const EdgeInsets.only(top: 10, bottom: 6),
             width: 40, height: 4,
-            decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+            decoration: BoxDecoration(color: SdColors.edge, borderRadius: BorderRadius.circular(2)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                const Icon(Icons.notifications_rounded, color: Color(0xFF1A237E), size: 24),
+                const Icon(Icons.notifications_rounded, color: SdColors.primary, size: 24),
                 const SizedBox(width: 8),
-                const Text('الإشعارات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A237E))),
+                const Text('الإشعارات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: SdColors.primary)),
                 const Spacer(),
                 FilterChip(
                   label: Text(_unreadOnly ? 'غير المقروءة' : 'الكل', style: const TextStyle(fontSize: 11)),
                   selected: _unreadOnly,
                   onSelected: (v) { setState(() => _unreadOnly = v); _load(); },
-                  selectedColor: const Color(0xFF1A237E).withValues(alpha: 0.15),
+                  selectedColor: SdColors.primary.withValues(alpha: 0.15),
                   visualDensity: VisualDensity.compact,
                 ),
                 const SizedBox(width: 8),
@@ -204,9 +205,9 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.notifications_off_outlined, size: 48, color: Colors.grey.shade300),
+                            Icon(Icons.notifications_off_outlined, size: 48, color: SdColors.edge),
                             const SizedBox(height: 8),
-                            Text('لا توجد إشعارات', style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+                            Text('لا توجد إشعارات', style: TextStyle(color: SdColors.faint, fontSize: 14)),
                           ],
                         ),
                       )
@@ -243,7 +244,7 @@ class _NotificationsPanelState extends State<_NotificationsPanel> {
                                 children: [
                                   Text(body, style: const TextStyle(fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
                                   if (createdAt != null)
-                                    Text(_timeAgo(createdAt), style: TextStyle(fontSize: 10, color: Colors.grey.shade500)),
+                                    Text(_timeAgo(createdAt), style: TextStyle(fontSize: 10, color: SdColors.faint)),
                                 ],
                               ),
                               trailing: !isRead && id != null

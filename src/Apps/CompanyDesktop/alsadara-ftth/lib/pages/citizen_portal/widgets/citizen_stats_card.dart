@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class CitizenStatsCard extends StatelessWidget {
   final String title;
@@ -75,8 +76,8 @@ class CitizenStatsCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: trend! >= 0
-                            ? Colors.green.withAlpha((0.1 * 255).round())
-                            : Colors.red.withAlpha((0.1 * 255).round()),
+                            ? SdColors.success.withAlpha((0.1 * 255).round())
+                            : SdColors.danger.withAlpha((0.1 * 255).round()),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -87,7 +88,7 @@ class CitizenStatsCard extends StatelessWidget {
                                 ? Icons.trending_up
                                 : Icons.trending_down,
                             size: 14,
-                            color: trend! >= 0 ? Colors.green : Colors.red,
+                            color: trend! >= 0 ? SdColors.success : SdColors.danger,
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -95,7 +96,7 @@ class CitizenStatsCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: trend! >= 0 ? Colors.green : Colors.red,
+                              color: trend! >= 0 ? SdColors.success : SdColors.danger,
                             ),
                           ),
                         ],
@@ -108,7 +109,7 @@ class CitizenStatsCard extends StatelessWidget {
                 title,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey.shade600,
+                  color: SdColors.muted,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -136,7 +137,7 @@ class CitizenStatsCard extends StatelessWidget {
                   subtitle!,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade500,
+                    color: SdColors.faint,
                   ),
                 ),
               ],
@@ -195,7 +196,7 @@ class CitizenMiniStatsCard extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontSize: 11,
-                  color: Colors.grey.shade600,
+                  color: SdColors.muted,
                 ),
               ),
             ],

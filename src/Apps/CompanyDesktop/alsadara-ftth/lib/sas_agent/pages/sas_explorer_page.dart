@@ -1076,7 +1076,7 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
                       fontWeight: FontWeight.w800, fontSize: 13.5)),
               subtitle: Text('${eps.length} نقطة',
                   style: TextStyle(fontFamily: 'Cairo', 
-                      fontSize: 11, color: Colors.grey[600])),
+                      fontSize: 11, color: SdColors.muted)),
               childrenPadding:
                   const EdgeInsets.fromLTRB(14, 0, 14, 10),
               children: eps
@@ -1093,7 +1093,7 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
                               style: TextStyle(fontFamily: 'Cairo', 
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.grey[600])),
+                                  color: SdColors.muted)),
                         ]),
                       ))
                   .toList(),
@@ -1151,7 +1151,7 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
+        Icon(icon, size: 16, color: SdColors.muted),
         const SizedBox(width: 8),
         SizedBox(
           width: 110,
@@ -1162,7 +1162,7 @@ class _SasExplorerPageState extends State<SasExplorerPage> {
         Expanded(
           child: Text(value,
               style: TextStyle(fontFamily: 'Cairo', 
-                  fontSize: 12, color: Colors.grey[800])),
+                  fontSize: 12, color: SdColors.ink)),
         ),
       ]),
     );
@@ -1264,7 +1264,7 @@ class _RequestCardState extends State<_RequestCard> {
     if (s >= 200 && s < 300) return SdColors.success;
     if (s >= 400) return SdColors.danger;
     if (s >= 300) return SdColors.warning;
-    return Colors.grey;
+    return SdColors.faint;
   }
 
   @override
@@ -1306,7 +1306,7 @@ class _RequestCardState extends State<_RequestCard> {
                       ? Icons.expand_less_rounded
                       : Icons.expand_more_rounded,
                   size: 20,
-                  color: Colors.grey),
+                  color: SdColors.faint),
             ]),
           ),
         ),
@@ -1332,7 +1332,7 @@ class _RequestCardState extends State<_RequestCard> {
     final shown = hasDec ? decrypted : raw;
     if (shown.trim().isEmpty) {
       return Text('$title: —',
-          style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey));
+          style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.faint));
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1378,7 +1378,7 @@ class _RequestCardState extends State<_RequestCard> {
           decoration: BoxDecoration(
             color: const Color(0xFFF7F8FC),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.18)),
+            border: Border.all(color: SdColors.faint.withValues(alpha: 0.18)),
           ),
           child: SelectableText(
             _pretty(shown),
@@ -1442,11 +1442,11 @@ class _EndpointCard extends StatelessWidget {
           child: Row(children: [
             Text('المجال: ${ep.domain}',
                 style: TextStyle(fontFamily: 'Cairo', 
-                    fontSize: 10.5, color: Colors.grey[600])),
+                    fontSize: 10.5, color: SdColors.muted)),
             const SizedBox(width: 10),
             Text('الحالات: ${ep.statuses.join(", ")}',
                 style: TextStyle(fontFamily: 'Cairo', 
-                    fontSize: 10.5, color: Colors.grey[600])),
+                    fontSize: 10.5, color: SdColors.muted)),
           ]),
         ),
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -1520,7 +1520,7 @@ class _EndpointCard extends StatelessWidget {
             style: TextStyle(fontFamily: 'Cairo', 
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
-                color: Colors.grey[700])),
+                color: SdColors.muted)),
         const SizedBox(height: 3),
         Container(
           width: double.infinity,
@@ -1528,7 +1528,7 @@ class _EndpointCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFFF7F8FC),
             borderRadius: BorderRadius.circular(7),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.16)),
+            border: Border.all(color: SdColors.faint.withValues(alpha: 0.16)),
           ),
           child: SelectableText(
             pretty,

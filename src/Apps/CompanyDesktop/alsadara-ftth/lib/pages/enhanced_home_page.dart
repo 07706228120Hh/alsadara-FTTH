@@ -9,6 +9,7 @@ import '../services/unified_auth_manager.dart';
 import '../widgets/auth_status_monitor.dart';
 import 'login/premium_login_page.dart';
 import '../permissions/permissions.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// صفحة رئيسية محسنة مع نظام المصادقة الموحد
 class EnhancedHomePage extends StatefulWidget {
@@ -41,7 +42,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('الصفحة الرئيسية المحسنة'),
-          backgroundColor: Colors.blue.shade700,
+          backgroundColor: SdColors.info,
           foregroundColor: Colors.white,
           actions: [
             // زر عرض معلومات التوكن (للتطوير)
@@ -76,9 +77,9 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
                 const PopupMenuItem(
                   value: 'logout',
                   child: ListTile(
-                    leading: Icon(Icons.logout, color: Colors.red),
+                    leading: Icon(Icons.logout, color: SdColors.danger),
                     title: Text('تسجيل الخروج',
-                        style: TextStyle(color: Colors.red)),
+                        style: TextStyle(color: SdColors.danger)),
                     dense: true,
                   ),
                 ),
@@ -131,7 +132,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
             Row(
               children: [
                 const CircleAvatar(
-                  backgroundColor: Colors.blue,
+                  backgroundColor: SdColors.info,
                   child: Icon(Icons.person, color: Colors.white),
                 ),
                 const SizedBox(width: 16),
@@ -148,7 +149,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
                     Text(
                       '${widget.department} - ${widget.permissions}',
                       style: const TextStyle(
-                        color: Colors.grey,
+                        color: SdColors.faint,
                         fontSize: 14,
                       ),
                     ),
@@ -178,7 +179,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
           label,
           style: const TextStyle(
             fontSize: 12,
-            color: Colors.grey,
+            color: SdColors.faint,
           ),
         ),
         Text(
@@ -205,17 +206,17 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
 
         switch (authState) {
           case AuthState.authenticated:
-            statusColor = Colors.green;
+            statusColor = SdColors.success;
             statusText = 'متصل';
             statusIcon = Icons.check_circle;
             break;
           case AuthState.refreshing:
-            statusColor = Colors.orange;
+            statusColor = SdColors.warning;
             statusText = 'جاري التجديد';
             statusIcon = Icons.refresh;
             break;
           default:
-            statusColor = Colors.red;
+            statusColor = SdColors.danger;
             statusText = 'غير متصل';
             statusIcon = Icons.error;
         }
@@ -243,7 +244,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
                         'ينتهي خلال: ${_formatDuration(tokenInfo.timeToExpiry)}',
                         style: const TextStyle(
                           fontSize: 12,
-                          color: Colors.grey,
+                          color: SdColors.faint,
                         ),
                       ),
                   ],
@@ -317,27 +318,27 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
       case 'home':
         icon = Icons.home;
         title = 'الرئيسية';
-        color = Colors.blue;
+        color = SdColors.info;
         break;
       case 'home_page1':
         icon = Icons.dashboard;
         title = 'لوحة التحكم';
-        color = Colors.green;
+        color = SdColors.success;
         break;
       case 'home_page_tasks':
         icon = Icons.task_alt;
         title = 'المهام';
-        color = Colors.orange;
+        color = SdColors.warning;
         break;
       case 'home_page2':
         icon = Icons.analytics;
         title = 'التحليلات';
-        color = Colors.purple;
+        color = SdColors.platformBase;
         break;
       default:
         icon = Icons.pages;
         title = pageName;
-        color = Colors.grey;
+        color = SdColors.faint;
     }
 
     return Card(
@@ -388,7 +389,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('✅ تم تجديد الجلسة بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
         }
@@ -398,7 +399,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ فشل تجديد الجلسة'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -418,7 +419,7 @@ class _EnhancedHomePageState extends State<EnhancedHomePage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('تسجيل الخروج',
                 style: TextStyle(color: Colors.white)),
           ),

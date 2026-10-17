@@ -3,8 +3,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../services/employee_profile_service.dart';
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class AttendanceTab extends StatefulWidget {
   final String employeeId;
@@ -27,11 +27,11 @@ class _AttendanceTabState extends State<AttendanceTab> {
   int _selectedMonth = DateTime.now().month;
   int _selectedYear = DateTime.now().year;
 
-  static const _accent = Color(0xFF3498DB);
-  static const _green = Color(0xFF27AE60);
-  static const _red = Color(0xFFE74C3C);
-  static const _orange = Color(0xFFF39C12);
-  static const _gray = Color(0xFF95A5A6);
+  static const _accent = SdColors.info;
+  static const _green = SdColors.success;
+  static const _red = SdColors.danger;
+  static const _orange = SdColors.warning;
+  static const _gray = SdColors.faint;
 
   @override
   void initState() {
@@ -119,7 +119,8 @@ class _AttendanceTabState extends State<AttendanceTab> {
           const SizedBox(width: 12),
           Text(
             '${months[_selectedMonth - 1]} $_selectedYear',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontWeight: FontWeight.bold, fontSize: 16, color: _accent),
           ),
           const SizedBox(width: 12),
@@ -215,11 +216,12 @@ class _AttendanceTabState extends State<AttendanceTab> {
           const SizedBox(height: 6),
           Text(
             count.toString(),
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 22, fontWeight: FontWeight.bold, color: color),
           ),
           Text(label,
-              style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey)),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.faint)),
         ],
       ),
     );
@@ -249,7 +251,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
             const Icon(Icons.event_busy, size: 48, color: _gray),
             const SizedBox(height: 8),
             Text('لا توجد بيانات حضور لهذا الشهر',
-                style: GoogleFonts.cairo(color: _gray)),
+                style: TextStyle(fontFamily: 'Cairo', color: _gray)),
           ],
         ),
       );
@@ -273,19 +275,19 @@ class _AttendanceTabState extends State<AttendanceTab> {
           columns: [
             DataColumn(
                 label: Text('التاريخ',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold))),
             DataColumn(
                 label: Text('الحالة',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold))),
             DataColumn(
                 label: Text('وقت الحضور',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold))),
             DataColumn(
                 label: Text('وقت الانصراف',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold))),
             DataColumn(
                 label: Text('ملاحظات',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold))),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold))),
           ],
           rows: _records.map((r) {
             final status = (r['status'] ?? r['Status'] ?? '').toString();
@@ -293,7 +295,7 @@ class _AttendanceTabState extends State<AttendanceTab> {
             return DataRow(cells: [
               DataCell(Text(
                 _formatDate(r['date'] ?? r['Date'] ?? ''),
-                style: GoogleFonts.cairo(fontSize: 12),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
               )),
               DataCell(Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -303,7 +305,8 @@ class _AttendanceTabState extends State<AttendanceTab> {
                 ),
                 child: Text(
                   _getStatusLabel(status),
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: statusColor,
                       fontSize: 11,
                       fontWeight: FontWeight.bold),
@@ -311,15 +314,15 @@ class _AttendanceTabState extends State<AttendanceTab> {
               )),
               DataCell(Text(
                 r['checkIn'] ?? r['CheckIn'] ?? r['checkInTime'] ?? '—',
-                style: GoogleFonts.cairo(fontSize: 12),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
               )),
               DataCell(Text(
                 r['checkOut'] ?? r['CheckOut'] ?? r['checkOutTime'] ?? '—',
-                style: GoogleFonts.cairo(fontSize: 12),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
               )),
               DataCell(Text(
                 r['notes'] ?? r['Notes'] ?? '',
-                style: GoogleFonts.cairo(fontSize: 12, color: _gray),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: _gray),
               )),
             ]);
           }).toList(),

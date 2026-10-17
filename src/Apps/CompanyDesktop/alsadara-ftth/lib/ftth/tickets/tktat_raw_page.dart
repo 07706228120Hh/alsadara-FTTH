@@ -7,6 +7,7 @@ library;
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class TKTATRawPage extends StatelessWidget {
   final Map<String, dynamic> ticket;
@@ -33,7 +34,7 @@ class TKTATRawPage extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF283593), Color(0xFF1976D2), Color(0xFF64B5F6)],
+              colors: [SdColors.primaryMid, SdColors.info, SdColors.infoTintEdge],
             ),
           ),
         ),
@@ -59,7 +60,7 @@ class TKTATRawPage extends StatelessWidget {
             Container(
               margin: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.blueGrey[50],
+                color: SdColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const TabBar(
@@ -106,7 +107,7 @@ class TKTATRawPage extends StatelessWidget {
                                     k,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: Colors.blueGrey[700],
+                                      color: SdColors.muted,
                                       fontSize: 12.5,
                                     ),
                                   ),
@@ -118,7 +119,7 @@ class TKTATRawPage extends StatelessWidget {
                                     shortVal,
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.blueGrey[800],
+                                      color: SdColors.ink,
                                     ),
                                     maxLines: 6,
                                   ),

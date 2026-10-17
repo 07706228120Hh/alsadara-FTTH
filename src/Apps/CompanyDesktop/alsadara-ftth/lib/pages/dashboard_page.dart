@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import '../widgets/responsive_body.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class DashboardPage extends StatelessWidget {
   final String username;
@@ -24,7 +25,7 @@ class DashboardPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('مرحبًا $username'),
-        backgroundColor: Colors.blue[800],
+        backgroundColor: SdColors.info,
       ),
       body: ResponsiveBody(
         padding: const EdgeInsets.all(16),
@@ -47,7 +48,7 @@ class DashboardPage extends StatelessWidget {
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                  backgroundColor: SdColors.danger,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),

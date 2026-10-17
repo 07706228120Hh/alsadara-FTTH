@@ -1,5 +1,4 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
@@ -107,7 +106,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
   Widget _buildBody() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: AccountingTheme.neonBlue),
+        child: CircularProgressIndicator(color: SdColors.primary),
       );
     }
     if (_error != null) {
@@ -149,19 +148,21 @@ class _CollectionsPageState extends State<CollectionsPage> {
                   controller: _searchController,
                   onChanged: (v) => setState(() => _searchQuery = v.trim()),
                   textDirection: TextDirection.rtl,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: context.accR.isMobile ? 12 : 14,
-                    color: AccountingTheme.textPrimary,
+                    color: SdColors.ink,
                   ),
                   decoration: InputDecoration(
                     hintText: 'بحث عن فني...',
-                    hintStyle: GoogleFonts.cairo(
+                    hintStyle: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: context.accR.isMobile ? 12 : 14,
-                      color: AccountingTheme.textMuted,
+                      color: SdColors.faint,
                     ),
                     prefixIcon: Icon(Icons.search,
                         size: context.accR.isMobile ? 16 : 20,
-                        color: AccountingTheme.textMuted),
+                        color: SdColors.faint),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
                             icon: Icon(Icons.close,
@@ -175,26 +176,26 @@ class _CollectionsPageState extends State<CollectionsPage> {
                           )
                         : null,
                     filled: true,
-                    fillColor: AccountingTheme.bgCard,
+                    fillColor: SdColors.surface,
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 0),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(
                           context.accR.isMobile ? 8 : 10),
                       borderSide:
-                          const BorderSide(color: AccountingTheme.borderColor),
+                          const BorderSide(color: SdColors.divider),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(
                           context.accR.isMobile ? 8 : 10),
                       borderSide:
-                          const BorderSide(color: AccountingTheme.borderColor),
+                          const BorderSide(color: SdColors.divider),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(
                           context.accR.isMobile ? 8 : 10),
                       borderSide: const BorderSide(
-                          color: AccountingTheme.neonBlue, width: 1.5),
+                          color: SdColors.primary, width: 1.5),
                     ),
                   ),
                 ),
@@ -209,9 +210,10 @@ class _CollectionsPageState extends State<CollectionsPage> {
           child: Row(
             children: [
               Text('ترتيب حسب:',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: context.accR.isMobile ? 11 : 13,
-                      color: AccountingTheme.textMuted)),
+                      color: SdColors.faint)),
               SizedBox(width: context.accR.spaceXS),
               _sortBtn('المستحق', 'net'),
               SizedBox(width: context.accR.spaceXS),
@@ -231,7 +233,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.check_circle_outline,
-                          color: AccountingTheme.success,
+                          color: SdColors.success,
                           size: context.accR.iconEmpty),
                       SizedBox(height: context.accR.spaceXL),
                       Text(
@@ -241,7 +243,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                   ? 'لا يوجد فنيين مدينون'
                                   : 'لا يوجد فنيين دائنون',
                           style: TextStyle(
-                              color: AccountingTheme.textMuted,
+                              color: SdColors.faint,
                               fontSize: context.accR.body)),
                     ],
                   ),
@@ -269,17 +271,18 @@ class _CollectionsPageState extends State<CollectionsPage> {
         padding: const EdgeInsets.only(left: 6),
         child: ChoiceChip(
           label: Text(label,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: isMobile ? 11 : 13,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                  color: isActive ? Colors.white : AccountingTheme.textPrimary)),
+                  color: isActive ? Colors.white : SdColors.ink)),
           selected: isActive,
-          selectedColor: AccountingTheme.neonBlue,
-          backgroundColor: AccountingTheme.bgCard,
+          selectedColor: SdColors.primary,
+          backgroundColor: SdColors.surface,
           side: BorderSide(
               color: isActive
-                  ? AccountingTheme.neonBlue
-                  : AccountingTheme.borderColor),
+                  ? SdColors.primary
+                  : SdColors.divider),
           padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 10),
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.compact,
@@ -301,7 +304,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
       child: Row(
         children: [
           Icon(Icons.calendar_month,
-              size: isMobile ? 16 : 20, color: AccountingTheme.textMuted),
+              size: isMobile ? 16 : 20, color: SdColors.faint),
           SizedBox(width: isMobile ? 4 : 8),
           chip('الكل', null, null),
           chip('اليوم', today, today),
@@ -312,25 +315,26 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 size: isMobile ? 14 : 18,
                 color: _dateLabel == 'مخصص'
                     ? Colors.white
-                    : AccountingTheme.textMuted),
+                    : SdColors.faint),
             label: Text(
                 _dateLabel == 'مخصص' && _dateFrom != null && _dateTo != null
                     ? '${fmt.format(_dateFrom!)} — ${fmt.format(_dateTo!)}'
                     : 'مخصص',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMobile ? 11 : 13,
                     fontWeight:
                         _dateLabel == 'مخصص' ? FontWeight.bold : FontWeight.w500,
                     color: _dateLabel == 'مخصص'
                         ? Colors.white
-                        : AccountingTheme.textPrimary)),
+                        : SdColors.ink)),
             backgroundColor: _dateLabel == 'مخصص'
-                ? AccountingTheme.neonBlue
-                : AccountingTheme.bgCard,
+                ? SdColors.primary
+                : SdColors.surface,
             side: BorderSide(
                 color: _dateLabel == 'مخصص'
-                    ? AccountingTheme.neonBlue
-                    : AccountingTheme.borderColor),
+                    ? SdColors.primary
+                    : SdColors.divider),
             padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 10),
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             visualDensity: VisualDensity.compact,
@@ -379,15 +383,15 @@ class _CollectionsPageState extends State<CollectionsPage> {
           : ar.cardPadding,
       margin: EdgeInsets.all(isMobile ? ar.spaceXS : ar.spaceM),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
         border: Border.all(
-          color: AccountingTheme.neonBlue.withValues(alpha: 0.25),
+          color: SdColors.primary.withValues(alpha: 0.25),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: AccountingTheme.neonBlue.withValues(alpha: 0.08),
+            color: SdColors.primary.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 3),
           ),
@@ -407,7 +411,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                         child: _statCompact(
                             'إجمالي التسديدات',
                             _fmt(totalPayments),
-                            AccountingTheme.success,
+                            SdColors.success,
                             Icons.payments)),
                     const SizedBox(width: 8),
                     Expanded(
@@ -415,8 +419,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
                             'صافي المستحقات',
                             '${_fmt(totalNet.abs())} د.ع',
                             totalNet < 0
-                                ? AccountingTheme.danger
-                                : AccountingTheme.success,
+                                ? SdColors.danger
+                                : SdColors.success,
                             Icons.account_balance_wallet)),
                   ],
                 ),
@@ -425,11 +429,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
                   children: [
                     Expanded(
                         child: _statCompact('إجمالي الأجور', _fmt(totalCharges),
-                            AccountingTheme.danger, Icons.receipt_long)),
+                            SdColors.danger, Icons.receipt_long)),
                     const SizedBox(width: 8),
-                    _chip('فنيين', '$techCount', AccountingTheme.neonBlue),
+                    _chip('فنيين', '$techCount', SdColors.primary),
                     const SizedBox(width: 6),
-                    _chip('مدينون', '$debtorCount', AccountingTheme.danger),
+                    _chip('مدينون', '$debtorCount', SdColors.danger),
                   ],
                 ),
               ],
@@ -437,22 +441,22 @@ class _CollectionsPageState extends State<CollectionsPage> {
           : Row(
               children: [
                 _stat('إجمالي الأجور', _fmt(totalCharges),
-                    AccountingTheme.danger, Icons.receipt_long),
+                    SdColors.danger, Icons.receipt_long),
                 SizedBox(width: ar.spaceL),
                 _stat('إجمالي التسديدات', _fmt(totalPayments),
-                    AccountingTheme.success, Icons.payments),
+                    SdColors.success, Icons.payments),
                 SizedBox(width: ar.spaceL),
                 _stat(
                     'صافي المستحقات',
                     '${_fmt(totalNet.abs())} د.ع',
                     totalNet < 0
-                        ? AccountingTheme.danger
-                        : AccountingTheme.success,
+                        ? SdColors.danger
+                        : SdColors.success,
                     Icons.account_balance_wallet),
                 const Spacer(),
-                _chip('فنيين', '$techCount', AccountingTheme.neonBlue),
+                _chip('فنيين', '$techCount', SdColors.primary),
                 SizedBox(width: context.accR.spaceS),
-                _chip('مدينون', '$debtorCount', AccountingTheme.danger),
+                _chip('مدينون', '$debtorCount', SdColors.danger),
               ],
             ),
     );
@@ -475,7 +479,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
               children: [
                 Text(label,
                     style: TextStyle(
-                        color: AccountingTheme.textMuted, fontSize: 9),
+                        color: SdColors.faint, fontSize: 9),
                     overflow: TextOverflow.ellipsis),
                 Text(value,
                     style: TextStyle(
@@ -510,7 +514,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
           children: [
             Text(label,
                 style: TextStyle(
-                    color: AccountingTheme.textMuted, fontSize: ar.caption)),
+                    color: SdColors.faint, fontSize: ar.caption)),
             Text(value,
                 style: TextStyle(
                     color: color,
@@ -566,10 +570,10 @@ class _CollectionsPageState extends State<CollectionsPage> {
     final ar = context.accR;
     final isActive = _techFilter == value;
     final color = value == 'debtor'
-        ? AccountingTheme.danger
+        ? SdColors.danger
         : value == 'creditor'
-            ? AccountingTheme.success
-            : AccountingTheme.neonBlue;
+            ? SdColors.success
+            : SdColors.primary;
     return InkWell(
       onTap: () => setState(() => _techFilter = value),
       borderRadius: BorderRadius.circular(20),
@@ -580,13 +584,13 @@ class _CollectionsPageState extends State<CollectionsPage> {
           color: isActive ? color.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isActive ? color : AccountingTheme.borderColor,
+            color: isActive ? color : SdColors.divider,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isActive ? color : AccountingTheme.textMuted,
+            color: isActive ? color : SdColors.faint,
             fontSize: ar.small,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
           ),
@@ -615,13 +619,13 @@ class _CollectionsPageState extends State<CollectionsPage> {
             horizontal: ar.isMobile ? 8 : 10, vertical: ar.isMobile ? 3 : 4),
         decoration: BoxDecoration(
           color: isActive
-              ? AccountingTheme.neonBlue.withValues(alpha: 0.12)
-              : AccountingTheme.bgCard,
+              ? SdColors.primary.withValues(alpha: 0.12)
+              : SdColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isActive
-                ? AccountingTheme.neonBlue.withValues(alpha: 0.4)
-                : AccountingTheme.borderColor,
+                ? SdColors.primary.withValues(alpha: 0.4)
+                : SdColors.divider,
           ),
         ),
         child: Row(
@@ -630,7 +634,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
             Text(
               label,
               style: TextStyle(
-                color: isActive ? AccountingTheme.neonBlue : AccountingTheme.textMuted,
+                color: isActive ? SdColors.primary : SdColors.faint,
                 fontSize: ar.isMobile ? 10 : 12,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
               ),
@@ -640,7 +644,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
               Icon(
                 _sortAsc ? Icons.arrow_upward : Icons.arrow_downward,
                 size: ar.isMobile ? 12 : 14,
-                color: AccountingTheme.neonBlue,
+                color: SdColors.primary,
               ),
             ],
           ],
@@ -670,11 +674,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
         // ignore: unused_local_variable
         final _ = phone;
 
-        final cardColor = isDebtor ? AccountingTheme.danger : AccountingTheme.success;
+        final cardColor = isDebtor ? SdColors.danger : SdColors.success;
         return Container(
           margin: EdgeInsets.only(bottom: ar.spaceS),
           decoration: BoxDecoration(
-            color: AccountingTheme.bgCard,
+            color: SdColors.surface,
             borderRadius: BorderRadius.circular(ar.cardRadius),
             border: Border.all(
               color: cardColor.withValues(alpha: 0.2),
@@ -731,8 +735,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
                             height: ar.iconXL,
                             decoration: BoxDecoration(
                               color: (isDebtor
-                                      ? AccountingTheme.danger
-                                      : AccountingTheme.success)
+                                      ? SdColors.danger
+                                      : SdColors.success)
                                   .withValues(alpha: 0.1),
                               borderRadius:
                                   BorderRadius.circular(ar.cardRadius),
@@ -742,8 +746,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                   ? Icons.warning_amber_rounded
                                   : Icons.check_circle_outline,
                               color: isDebtor
-                                  ? AccountingTheme.danger
-                                  : AccountingTheme.success,
+                                  ? SdColors.danger
+                                  : SdColors.success,
                               size: ar.iconM,
                             ),
                           ),
@@ -754,14 +758,15 @@ class _CollectionsPageState extends State<CollectionsPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(name,
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
                                         fontSize: ar.body,
                                         fontWeight: FontWeight.bold,
-                                        color: AccountingTheme.textPrimary)),
+                                        color: SdColors.ink)),
                                 if (phone.isNotEmpty)
                                   Text(phone,
                                       style: TextStyle(
-                                          color: AccountingTheme.textMuted,
+                                          color: SdColors.faint,
                                           fontSize: ar.small)),
                               ],
                             ),
@@ -772,11 +777,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
                               children: [
                                 Text('الأجور',
                                     style: TextStyle(
-                                        color: AccountingTheme.textMuted,
+                                        color: SdColors.faint,
                                         fontSize: ar.caption)),
                                 Text('${_fmt(totalCharges)} د.ع',
                                     style: TextStyle(
-                                        color: AccountingTheme.danger,
+                                        color: SdColors.danger,
                                         fontWeight: FontWeight.bold,
                                         fontSize: ar.financialSmall)),
                               ],
@@ -788,11 +793,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
                               children: [
                                 Text('التسديدات',
                                     style: TextStyle(
-                                        color: AccountingTheme.textMuted,
+                                        color: SdColors.faint,
                                         fontSize: ar.caption)),
                                 Text('${_fmt(totalPayments)} د.ع',
                                     style: TextStyle(
-                                        color: AccountingTheme.success,
+                                        color: SdColors.success,
                                         fontWeight: FontWeight.bold,
                                         fontSize: ar.financialSmall)),
                               ],
@@ -804,7 +809,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                               children: [
                                 Text('المستحق',
                                     style: TextStyle(
-                                        color: AccountingTheme.textMuted,
+                                        color: SdColors.faint,
                                         fontSize: ar.caption)),
                                 Container(
                                   padding: EdgeInsets.symmetric(
@@ -812,8 +817,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                       vertical: ar.spaceXS),
                                   decoration: BoxDecoration(
                                     color: (isDebtor
-                                            ? AccountingTheme.danger
-                                            : AccountingTheme.success)
+                                            ? SdColors.danger
+                                            : SdColors.success)
                                         .withValues(alpha: 0.12),
                                     borderRadius:
                                         BorderRadius.circular(ar.btnRadius),
@@ -822,8 +827,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                     '${_fmt(netBalance.abs())} د.ع',
                                     style: TextStyle(
                                         color: isDebtor
-                                            ? AccountingTheme.danger
-                                            : AccountingTheme.success,
+                                            ? SdColors.danger
+                                            : SdColors.success,
                                         fontWeight: FontWeight.bold,
                                         fontSize: ar.financialSmall),
                                   ),
@@ -837,12 +842,12 @@ class _CollectionsPageState extends State<CollectionsPage> {
                               children: [
                                 Text('$txCount معاملة',
                                     style: TextStyle(
-                                        color: AccountingTheme.textSecondary,
+                                        color: SdColors.muted,
                                         fontSize: ar.caption)),
                                 if (lastDate != null)
                                   Text(_formatDate(lastDate),
                                       style: TextStyle(
-                                          color: AccountingTheme.textMuted,
+                                          color: SdColors.faint,
                                           fontSize: ar.caption)),
                               ],
                             ),
@@ -855,9 +860,9 @@ class _CollectionsPageState extends State<CollectionsPage> {
                               label: Text('تسديد',
                                   style: TextStyle(fontSize: ar.caption)),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AccountingTheme.success
+                                backgroundColor: SdColors.success
                                     .withValues(alpha: 0.15),
-                                foregroundColor: AccountingTheme.success,
+                                foregroundColor: SdColors.success,
                                 padding: EdgeInsets.symmetric(
                                     horizontal: ar.spaceM,
                                     vertical: ar.spaceXS),
@@ -866,7 +871,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                             ),
                           SizedBox(width: context.accR.spaceXS),
                           Icon(Icons.chevron_left,
-                              color: AccountingTheme.textMuted, size: ar.iconM),
+                              color: SdColors.faint, size: ar.iconM),
                         ],
                       ),
               ),
@@ -903,8 +908,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
               height: 32,
               decoration: BoxDecoration(
                 color: (isDebtor
-                        ? AccountingTheme.danger
-                        : AccountingTheme.success)
+                        ? SdColors.danger
+                        : SdColors.success)
                     .withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -913,7 +918,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                     ? Icons.warning_amber_rounded
                     : Icons.check_circle_outline,
                 color:
-                    isDebtor ? AccountingTheme.danger : AccountingTheme.success,
+                    isDebtor ? SdColors.danger : SdColors.success,
                 size: 18,
               ),
             ),
@@ -923,15 +928,16 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(name,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
-                          color: AccountingTheme.textPrimary),
+                          color: SdColors.ink),
                       overflow: TextOverflow.ellipsis),
                   if (phone.isNotEmpty)
                     Text(phone,
                         style: const TextStyle(
-                            color: AccountingTheme.textMuted, fontSize: 10)),
+                            color: SdColors.faint, fontSize: 10)),
                 ],
               ),
             ),
@@ -942,8 +948,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 label: const Text('تسديد', style: TextStyle(fontSize: 10)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor:
-                      AccountingTheme.success.withValues(alpha: 0.15),
-                  foregroundColor: AccountingTheme.success,
+                      SdColors.success.withValues(alpha: 0.15),
+                  foregroundColor: SdColors.success,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   minimumSize: const Size(0, 26),
@@ -952,7 +958,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
               ),
             const SizedBox(width: 4),
             Icon(Icons.chevron_left,
-                color: AccountingTheme.textMuted, size: 18),
+                color: SdColors.faint, size: 18),
           ],
         ),
         const SizedBox(height: 8),
@@ -961,12 +967,12 @@ class _CollectionsPageState extends State<CollectionsPage> {
           children: [
             Expanded(
               child: _miniStat('الأجور', '${_fmt(totalCharges)} د.ع',
-                  AccountingTheme.danger),
+                  SdColors.danger),
             ),
             const SizedBox(width: 6),
             Expanded(
               child: _miniStat('التسديدات', '${_fmt(totalPayments)} د.ع',
-                  AccountingTheme.success),
+                  SdColors.success),
             ),
             const SizedBox(width: 6),
             Expanded(
@@ -974,8 +980,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 decoration: BoxDecoration(
                   color: (isDebtor
-                          ? AccountingTheme.danger
-                          : AccountingTheme.success)
+                          ? SdColors.danger
+                          : SdColors.success)
                       .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
@@ -983,12 +989,12 @@ class _CollectionsPageState extends State<CollectionsPage> {
                   children: [
                     const Text('المستحق',
                         style: TextStyle(
-                            color: AccountingTheme.textMuted, fontSize: 9)),
+                            color: SdColors.faint, fontSize: 9)),
                     Text('${_fmt(netBalance.abs())} د.ع',
                         style: TextStyle(
                             color: isDebtor
-                                ? AccountingTheme.danger
-                                : AccountingTheme.success,
+                                ? SdColors.danger
+                                : SdColors.success,
                             fontWeight: FontWeight.bold,
                             fontSize: 11),
                         overflow: TextOverflow.ellipsis),
@@ -1001,11 +1007,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
               children: [
                 Text('$txCount معاملة',
                     style: const TextStyle(
-                        color: AccountingTheme.textSecondary, fontSize: 9)),
+                        color: SdColors.muted, fontSize: 9)),
                 if (lastDate != null)
                   Text(_formatDate(lastDate),
                       style: const TextStyle(
-                          color: AccountingTheme.textMuted, fontSize: 9)),
+                          color: SdColors.faint, fontSize: 9)),
               ],
             ),
           ],
@@ -1019,7 +1025,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
       children: [
         Text(label,
             style:
-                const TextStyle(color: AccountingTheme.textMuted, fontSize: 9)),
+                const TextStyle(color: SdColors.faint, fontSize: 9)),
         Text(value,
             style: TextStyle(
                 color: color, fontWeight: FontWeight.bold, fontSize: 11),
@@ -1040,7 +1046,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: Dialog(
-          backgroundColor: AccountingTheme.bgPrimary,
+          backgroundColor: SdColors.ground,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(context.accR.radiusL)),
           child: SizedBox(
@@ -1075,7 +1081,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
         builder: (ctx, setDialogState) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            backgroundColor: AccountingTheme.bgCard,
+            backgroundColor: SdColors.surface,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(context.accR.cardRadius)),
             title: Row(
@@ -1083,19 +1089,20 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 Container(
                   padding: EdgeInsets.all(context.accR.spaceS),
                   decoration: BoxDecoration(
-                    color: AccountingTheme.success.withValues(alpha: 0.1),
+                    color: SdColors.success.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(Icons.payments,
-                      color: AccountingTheme.success, size: context.accR.iconM),
+                      color: SdColors.success, size: context.accR.iconM),
                 ),
                 SizedBox(width: context.accR.spaceM),
                 Expanded(
                   child: Text('تسجيل تسديد - $name',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: context.accR.headingSmall,
                           fontWeight: FontWeight.bold,
-                          color: AccountingTheme.textPrimary)),
+                          color: SdColors.ink)),
                 ),
               ],
             ),
@@ -1107,18 +1114,18 @@ class _CollectionsPageState extends State<CollectionsPage> {
                   Container(
                     padding: EdgeInsets.all(context.accR.spaceM),
                     decoration: BoxDecoration(
-                      color: AccountingTheme.danger.withValues(alpha: 0.08),
+                      color: SdColors.danger.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: [
                         Icon(Icons.info_outline,
-                            color: AccountingTheme.danger,
+                            color: SdColors.danger,
                             size: context.accR.iconM),
                         SizedBox(width: context.accR.spaceS),
                         Text('المبلغ المستحق: ${_fmt(netBalance.abs())} د.ع',
                             style: const TextStyle(
-                                color: AccountingTheme.danger,
+                                color: SdColors.danger,
                                 fontWeight: FontWeight.bold)),
                       ],
                     ),
@@ -1143,17 +1150,17 @@ class _CollectionsPageState extends State<CollectionsPage> {
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade400),
+                        border: Border.all(color: SdColors.faint),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.calendar_today, color: AccountingTheme.accent, size: 18),
+                          Icon(Icons.calendar_today, color: SdColors.success, size: 18),
                           SizedBox(width: 8),
                           Text('التاريخ: ${selectedDate.year}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.day.toString().padLeft(2, '0')}',
                               style: TextStyle(fontSize: 14)),
                           const Spacer(),
-                          Icon(Icons.edit, color: Colors.grey, size: 16),
+                          Icon(Icons.edit, color: SdColors.faint, size: 16),
                         ],
                       ),
                     ),
@@ -1167,19 +1174,19 @@ class _CollectionsPageState extends State<CollectionsPage> {
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('إلغاء',
-                    style: TextStyle(color: AccountingTheme.textMuted)),
+                    style: TextStyle(color: SdColors.faint)),
               ),
               ElevatedButton.icon(
                 icon: Icon(Icons.check, size: context.accR.iconM),
                 label: const Text('تأكيد التسديد'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.success,
+                  backgroundColor: SdColors.success,
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () async {
                   final amount = double.tryParse(amountCtrl.text) ?? 0;
                   if (amount <= 0) {
-                    _snack('الرجاء إدخال مبلغ صحيح', AccountingTheme.warning);
+                    _snack('الرجاء إدخال مبلغ صحيح', SdColors.warning);
                     return;
                   }
                   Navigator.pop(ctx);
@@ -1196,7 +1203,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                     transactionDate: selectedDate,
                   );
                   if (result['success'] == true) {
-                    _snack('تم تسجيل التسديد بنجاح', AccountingTheme.success);
+                    _snack('تم تسجيل التسديد بنجاح', SdColors.success);
                     AuditTrailService.instance.log(
                       action: AuditAction.create,
                       entityType: AuditEntityType.collection,
@@ -1207,7 +1214,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                     _loadDues();
                   } else {
                     _snack(result['message'] ?? 'خطأ في تسجيل التسديد',
-                        AccountingTheme.danger);
+                        SdColors.danger);
                   }
                 },
               ),
@@ -1263,7 +1270,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
           return Directionality(
             textDirection: TextDirection.rtl,
             child: AlertDialog(
-              backgroundColor: AccountingTheme.bgCard,
+              backgroundColor: SdColors.surface,
               title: Row(
                 children: [
                   Container(
@@ -1277,10 +1284,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
                   ),
                   SizedBox(width: context.accR.spaceM),
                   Text('إضافة تحصيل',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: context.accR.headingSmall,
                           fontWeight: FontWeight.bold,
-                          color: AccountingTheme.textPrimary)),
+                          color: SdColors.ink)),
                 ],
               ),
               content: SizedBox(
@@ -1293,7 +1301,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                       // === اختيار الفني ===
                       Text('الفني *',
                           style: TextStyle(
-                              color: AccountingTheme.textMuted,
+                              color: SdColors.faint,
                               fontSize: context.accR.financialSmall)),
                       SizedBox(height: context.accR.spaceXS),
                       if (selectedEmployee != null)
@@ -1301,18 +1309,18 @@ class _CollectionsPageState extends State<CollectionsPage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
-                            color: AccountingTheme.neonBlue
+                            color: SdColors.primary
                                 .withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                                color: AccountingTheme.neonBlue
+                                color: SdColors.primary
                                     .withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             children: [
                               CircleAvatar(
                                 radius: 16,
-                                backgroundColor: AccountingTheme.neonBlue,
+                                backgroundColor: SdColors.primary,
                                 child: Text(
                                   (selectedEmployee!['FullName'] ?? '?')
                                       .toString()
@@ -1330,14 +1338,14 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                     Text(
                                       selectedEmployee!['FullName'] ?? '',
                                       style: const TextStyle(
-                                          color: AccountingTheme.textPrimary,
+                                          color: SdColors.ink,
                                           fontWeight: FontWeight.w600),
                                     ),
                                     if (selectedEmployee!['Department'] != null)
                                       Text(
                                         selectedEmployee!['Department'],
                                         style: TextStyle(
-                                            color: AccountingTheme.textMuted,
+                                            color: SdColors.faint,
                                             fontSize: context.accR.small),
                                       ),
                                   ],
@@ -1350,7 +1358,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                   filteredEmployees = allEmployees;
                                 }),
                                 child: Icon(Icons.close,
-                                    color: AccountingTheme.danger,
+                                    color: SdColors.danger,
                                     size: context.accR.iconM),
                               ),
                             ],
@@ -1360,16 +1368,16 @@ class _CollectionsPageState extends State<CollectionsPage> {
                         TextField(
                           controller: searchCtrl,
                           style: const TextStyle(
-                              color: AccountingTheme.textPrimary),
+                              color: SdColors.ink),
                           decoration: InputDecoration(
                             hintText: 'ابحث عن الفني بالاسم...',
                             hintStyle: TextStyle(
-                                color: AccountingTheme.textMuted
+                                color: SdColors.faint
                                     .withValues(alpha: 0.6)),
                             prefixIcon: const Icon(Icons.search,
-                                color: AccountingTheme.neonBlue),
+                                color: SdColors.primary),
                             filled: true,
-                            fillColor: AccountingTheme.bgCardHover,
+                            fillColor: SdColors.surfaceAlt,
                             border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                                 borderSide: BorderSide.none),
@@ -1405,7 +1413,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                             constraints: const BoxConstraints(maxHeight: 180),
                             margin: const EdgeInsets.only(top: 4),
                             decoration: BoxDecoration(
-                              color: AccountingTheme.bgCardHover,
+                              color: SdColors.surfaceAlt,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: filteredEmployees.isEmpty
@@ -1413,7 +1421,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                     padding: EdgeInsets.all(12),
                                     child: Text('لا توجد نتائج',
                                         style: TextStyle(
-                                            color: AccountingTheme.textMuted)),
+                                            color: SdColors.faint)),
                                   )
                                 : ListView.builder(
                                     shrinkWrap: true,
@@ -1432,7 +1440,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                                 .toString()
                                                 .substring(0, 1),
                                             style: TextStyle(
-                                                color: AccountingTheme.neonBlue,
+                                                color: SdColors.primary,
                                                 fontSize: context.accR.small,
                                                 fontWeight: FontWeight.bold),
                                           ),
@@ -1441,14 +1449,14 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                           emp['FullName'] ?? '',
                                           style: TextStyle(
                                               color:
-                                                  AccountingTheme.textPrimary,
+                                                  SdColors.ink,
                                               fontSize:
                                                   context.accR.financialSmall),
                                         ),
                                         subtitle: Text(
                                           '${emp['Department'] ?? ''} • ${emp['PhoneNumber'] ?? ''}',
                                           style: TextStyle(
-                                              color: AccountingTheme.textMuted,
+                                              color: SdColors.faint,
                                               fontSize: context.accR.small),
                                         ),
                                         onTap: () {
@@ -1475,22 +1483,22 @@ class _CollectionsPageState extends State<CollectionsPage> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 12),
                         decoration: BoxDecoration(
-                          color: AccountingTheme.bgCardHover,
+                          color: SdColors.surfaceAlt,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
                             Icon(Icons.receipt_long,
-                                color: AccountingTheme.textMuted,
+                                color: SdColors.faint,
                                 size: context.accR.iconM),
                             SizedBox(width: context.accR.spaceS),
                             Text('رقم الإيصال: ',
                                 style: TextStyle(
-                                    color: AccountingTheme.textMuted,
+                                    color: SdColors.faint,
                                     fontSize: context.accR.financialSmall)),
                             Text(autoReceipt,
                                 style: TextStyle(
-                                    color: AccountingTheme.accent,
+                                    color: SdColors.success,
                                     fontWeight: FontWeight.w600,
                                     fontSize: context.accR.financialSmall)),
                           ],
@@ -1506,21 +1514,21 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: Text('إلغاء',
-                        style: TextStyle(color: AccountingTheme.textMuted))),
+                        style: TextStyle(color: SdColors.faint))),
                 ElevatedButton.icon(
                   icon: Icon(Icons.check, size: context.accR.iconM),
                   label: const Text('إضافة'),
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: AccountingTheme.neonGreen,
+                      backgroundColor: SdColors.success,
                       foregroundColor: Colors.white),
                   onPressed: () async {
                     if (selectedEmployee == null) {
-                      _snack('الرجاء اختيار الفني', AccountingTheme.warning);
+                      _snack('الرجاء اختيار الفني', SdColors.warning);
                       return;
                     }
                     if (amountCtrl.text.isEmpty || descCtrl.text.isEmpty) {
                       _snack('الرجاء ملء الحقول المطلوبة',
-                          AccountingTheme.warning);
+                          SdColors.warning);
                       return;
                     }
                     Navigator.pop(ctx);
@@ -1542,7 +1550,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                       companyId: widget.companyId ?? '',
                     );
                     if (result['success'] == true) {
-                      _snack('تم إضافة التحصيل بنجاح', AccountingTheme.success);
+                      _snack('تم إضافة التحصيل بنجاح', SdColors.success);
                       AuditTrailService.instance.log(
                         action: AuditAction.create,
                         entityType: AuditEntityType.collection,
@@ -1553,7 +1561,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                       _loadDues();
                     } else {
                       _snack(
-                          result['message'] ?? 'خطأ', AccountingTheme.danger);
+                          result['message'] ?? 'خطأ', SdColors.danger);
                     }
                   },
                 ),
@@ -1599,13 +1607,13 @@ class _CollectionsPageState extends State<CollectionsPage> {
       {bool isNumber = false}) {
     return TextField(
       controller: ctrl,
-      style: const TextStyle(color: AccountingTheme.textPrimary),
+      style: const TextStyle(color: SdColors.ink),
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+        labelStyle: const TextStyle(color: SdColors.faint),
         filled: true,
-        fillColor: AccountingTheme.bgCardHover,
+        fillColor: SdColors.surfaceAlt,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none),
@@ -1723,7 +1731,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(context.accR.radiusL)),
           title: Row(
@@ -1732,25 +1740,26 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                 padding: EdgeInsets.all(context.accR.spaceS),
                 decoration: BoxDecoration(
                   color: (isCharge
-                          ? AccountingTheme.danger
-                          : AccountingTheme.success)
+                          ? SdColors.danger
+                          : SdColors.success)
                       .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                     isCharge ? Icons.arrow_downward : Icons.arrow_upward,
                     color: isCharge
-                        ? AccountingTheme.danger
-                        : AccountingTheme.success,
+                        ? SdColors.danger
+                        : SdColors.success,
                     size: context.accR.iconM),
               ),
               SizedBox(width: context.accR.spaceM),
               Expanded(
                 child: Text('تفاصيل المعاملة',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.headingSmall,
                         fontWeight: FontWeight.bold,
-                        color: AccountingTheme.textPrimary)),
+                        color: SdColors.ink)),
               ),
             ],
           ),
@@ -1768,12 +1777,12 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                       gradient: LinearGradient(
                         colors: isCharge
                             ? [
-                                AccountingTheme.danger.withValues(alpha: 0.08),
-                                AccountingTheme.danger.withValues(alpha: 0.02)
+                                SdColors.danger.withValues(alpha: 0.08),
+                                SdColors.danger.withValues(alpha: 0.02)
                               ]
                             : [
-                                AccountingTheme.success.withValues(alpha: 0.08),
-                                AccountingTheme.success.withValues(alpha: 0.02)
+                                SdColors.success.withValues(alpha: 0.08),
+                                SdColors.success.withValues(alpha: 0.02)
                               ],
                       ),
                       borderRadius:
@@ -1785,8 +1794,8 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                           '${isCharge ? "-" : "+"}${_fmt(amount)} د.ع',
                           style: TextStyle(
                               color: isCharge
-                                  ? AccountingTheme.danger
-                                  : AccountingTheme.success,
+                                  ? SdColors.danger
+                                  : SdColors.success,
                               fontWeight: FontWeight.bold,
                               fontSize: context.accR.financialLarge),
                         ),
@@ -1794,8 +1803,8 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                         Text(typeLabel,
                             style: TextStyle(
                                 color: isCharge
-                                    ? AccountingTheme.danger
-                                    : AccountingTheme.success,
+                                    ? SdColors.danger
+                                    : SdColors.success,
                                 fontSize: context.accR.small)),
                       ],
                     ),
@@ -1841,7 +1850,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
               icon: Icon(Icons.edit_outlined, size: context.accR.iconS),
               label: const Text('تعديل'),
               style: TextButton.styleFrom(
-                  foregroundColor: AccountingTheme.neonBlue),
+                  foregroundColor: SdColors.primary),
             ),
             TextButton.icon(
               onPressed: () {
@@ -1851,13 +1860,13 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
               icon: Icon(Icons.delete_outline, size: context.accR.iconS),
               label: const Text('حذف'),
               style:
-                  TextButton.styleFrom(foregroundColor: AccountingTheme.danger),
+                  TextButton.styleFrom(foregroundColor: SdColors.danger),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AccountingTheme.bgCardHover,
-                foregroundColor: AccountingTheme.textPrimary,
+                backgroundColor: SdColors.surfaceAlt,
+                foregroundColor: SdColors.ink,
               ),
               child: const Text('إغلاق'),
             ),
@@ -1877,13 +1886,13 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
             width: 130,
             child: Text(label,
                 style: TextStyle(
-                    color: AccountingTheme.textMuted,
+                    color: SdColors.faint,
                     fontSize: context.accR.small)),
           ),
           Expanded(
             child: Text(value,
                 style: TextStyle(
-                    color: AccountingTheme.textPrimary,
+                    color: SdColors.ink,
                     fontWeight: FontWeight.w500,
                     fontSize: context.accR.financialSmall)),
           ),
@@ -1937,7 +1946,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
         builder: (ctx, setDialogState) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            backgroundColor: AccountingTheme.bgCard,
+            backgroundColor: SdColors.surface,
             title: Row(
               children: [
                 Container(
@@ -1951,10 +1960,11 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                 ),
                 SizedBox(width: context.accR.spaceM),
                 Text('تعديل تحصيل',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.headingSmall,
                         fontWeight: FontWeight.bold,
-                        color: AccountingTheme.textPrimary)),
+                        color: SdColors.ink)),
               ],
             ),
             content: SizedBox(
@@ -1988,17 +1998,17 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                       child: Container(
                         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
+                          border: Border.all(color: SdColors.faint),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.calendar_today, color: AccountingTheme.accent, size: 18),
+                            Icon(Icons.calendar_today, color: SdColors.success, size: 18),
                             SizedBox(width: 8),
                             Text('التاريخ: ${txDate.year}/${txDate.month.toString().padLeft(2, '0')}/${txDate.day.toString().padLeft(2, '0')}',
                                 style: TextStyle(fontSize: 14)),
                             const Spacer(),
-                            Icon(Icons.edit, color: Colors.grey, size: 16),
+                            Icon(Icons.edit, color: SdColors.faint, size: 16),
                           ],
                         ),
                       ),
@@ -2011,22 +2021,22 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 12),
                         decoration: BoxDecoration(
-                          color: AccountingTheme.bgCardHover,
+                          color: SdColors.surfaceAlt,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
                             Icon(Icons.receipt_long,
-                                color: AccountingTheme.textMuted,
+                                color: SdColors.faint,
                                 size: context.accR.iconM),
                             SizedBox(width: context.accR.spaceS),
                             Text('رقم الإيصال: ',
                                 style: TextStyle(
-                                    color: AccountingTheme.textMuted,
+                                    color: SdColors.faint,
                                     fontSize: context.accR.financialSmall)),
                             Text(refNumber,
                                 style: TextStyle(
-                                    color: AccountingTheme.accent,
+                                    color: SdColors.success,
                                     fontWeight: FontWeight.w600,
                                     fontSize: context.accR.financialSmall)),
                           ],
@@ -2044,21 +2054,21 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
               TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: Text('إلغاء',
-                      style: TextStyle(color: AccountingTheme.textMuted))),
+                      style: TextStyle(color: SdColors.faint))),
               ElevatedButton.icon(
                 icon: Icon(Icons.check, size: context.accR.iconM),
                 label: const Text('حفظ التعديل'),
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AccountingTheme.neonBlue,
+                    backgroundColor: SdColors.primary,
                     foregroundColor: Colors.white),
                 onPressed: () async {
                   final amount = double.tryParse(amountCtrl.text);
                   if (amount == null || amount <= 0) {
-                    _snack('أدخل مبلغ صحيح', AccountingTheme.warning);
+                    _snack('أدخل مبلغ صحيح', SdColors.warning);
                     return;
                   }
                   if (descCtrl.text.trim().isEmpty) {
-                    _snack('أدخل الوصف', AccountingTheme.warning);
+                    _snack('أدخل الوصف', SdColors.warning);
                     return;
                   }
                   Navigator.pop(ctx);
@@ -2078,7 +2088,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                     transactionDate: txDate,
                   );
                   if (result['success'] == true) {
-                    _snack('تم تعديل المعاملة', AccountingTheme.success);
+                    _snack('تم تعديل المعاملة', SdColors.success);
                     AuditTrailService.instance.log(
                       action: AuditAction.edit,
                       entityType: AuditEntityType.collection,
@@ -2088,7 +2098,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                     _loadTransactions();
                     widget.onChanged?.call();
                   } else {
-                    _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                    _snack(result['message'] ?? 'خطأ', SdColors.danger);
                   }
                 },
               ),
@@ -2109,7 +2119,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(context.accR.cardRadius)),
           title: Row(
@@ -2117,18 +2127,19 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
               Container(
                 padding: EdgeInsets.all(context.accR.spaceS),
                 decoration: BoxDecoration(
-                  color: AccountingTheme.danger.withValues(alpha: 0.1),
+                  color: SdColors.danger.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(Icons.delete_forever,
-                    color: AccountingTheme.danger, size: context.accR.iconM),
+                    color: SdColors.danger, size: context.accR.iconM),
               ),
               SizedBox(width: context.accR.spaceM),
               Text('تأكيد الحذف',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: context.accR.headingSmall,
                       fontWeight: FontWeight.bold,
-                      color: AccountingTheme.textPrimary)),
+                      color: SdColors.ink)),
             ],
           ),
           content: Column(
@@ -2137,13 +2148,13 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
             children: [
               Text('هل تريد حذف هذه المعاملة؟',
                   style: TextStyle(
-                      color: AccountingTheme.textPrimary,
+                      color: SdColors.ink,
                       fontSize: context.accR.body)),
               SizedBox(height: context.accR.spaceM),
               Container(
                 padding: EdgeInsets.all(context.accR.spaceM),
                 decoration: BoxDecoration(
-                  color: AccountingTheme.danger.withValues(alpha: 0.06),
+                  color: SdColors.danger.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -2152,10 +2163,10 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                     Text(desc,
                         style: const TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: AccountingTheme.textPrimary)),
+                            color: SdColors.ink)),
                     Text('${_fmt(amount)} د.ع',
                         style: const TextStyle(
-                            color: AccountingTheme.danger,
+                            color: SdColors.danger,
                             fontWeight: FontWeight.bold)),
                   ],
                 ),
@@ -2163,7 +2174,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
               SizedBox(height: context.accR.spaceS),
               Text('سيتم عكس تأثير المعاملة على رصيد الفني',
                   style: TextStyle(
-                      color: AccountingTheme.warning,
+                      color: SdColors.warning,
                       fontSize: context.accR.small)),
             ],
           ),
@@ -2171,13 +2182,13 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('إلغاء',
-                  style: TextStyle(color: AccountingTheme.textMuted)),
+                  style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton.icon(
               icon: Icon(Icons.delete, size: context.accR.iconM),
               label: const Text('حذف'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AccountingTheme.danger,
+                backgroundColor: SdColors.danger,
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
@@ -2193,7 +2204,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                 final result = await AccountingService.instance
                     .deleteTechnicianTransaction(txId);
                 if (result['success'] == true) {
-                  _snack('تم حذف المعاملة', AccountingTheme.success);
+                  _snack('تم حذف المعاملة', SdColors.success);
                   AuditTrailService.instance.log(
                     action: AuditAction.delete,
                     entityType: AuditEntityType.collection,
@@ -2203,7 +2214,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                   _loadTransactions();
                   widget.onChanged?.call();
                 } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                  _snack(result['message'] ?? 'خطأ', SdColors.danger);
                 }
               },
             ),
@@ -2217,13 +2228,13 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
       {bool isNumber = false}) {
     return TextField(
       controller: ctrl,
-      style: const TextStyle(color: AccountingTheme.textPrimary),
+      style: const TextStyle(color: SdColors.ink),
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+        labelStyle: const TextStyle(color: SdColors.faint),
         filled: true,
-        fillColor: AccountingTheme.bgCardHover,
+        fillColor: SdColors.surfaceAlt,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none),
@@ -2247,43 +2258,44 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
           Container(
             padding: EdgeInsets.all(context.accR.spaceXL),
             decoration: const BoxDecoration(
-              color: AccountingTheme.bgCard,
+              color: SdColors.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               border: Border(
-                  bottom: BorderSide(color: AccountingTheme.borderColor)),
+                  bottom: BorderSide(color: SdColors.divider)),
             ),
             child: Row(
               children: [
                 Container(
                   padding: EdgeInsets.all(context.accR.spaceS),
                   decoration: BoxDecoration(
-                    color: AccountingTheme.neonBlue.withValues(alpha: 0.1),
+                    color: SdColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(Icons.receipt_long,
-                      color: AccountingTheme.neonBlue,
+                      color: SdColors.primary,
                       size: context.accR.iconM),
                 ),
                 SizedBox(width: context.accR.spaceM),
                 Expanded(
                   child: Text('معاملات ${widget.technicianName}',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: context.accR.headingSmall,
                           fontWeight: FontWeight.bold,
-                          color: AccountingTheme.textPrimary)),
+                          color: SdColors.ink)),
                 ),
                 IconButton(
                   onPressed: _loadTransactions,
                   icon: Icon(Icons.refresh, size: context.accR.iconM),
                   tooltip: 'تحديث',
                   style: IconButton.styleFrom(
-                      foregroundColor: AccountingTheme.textSecondary),
+                      foregroundColor: SdColors.muted),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
                   icon: Icon(Icons.close, size: context.accR.iconM),
                   style: IconButton.styleFrom(
-                      foregroundColor: AccountingTheme.textMuted),
+                      foregroundColor: SdColors.faint),
                 ),
               ],
             ),
@@ -2293,7 +2305,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
             padding: EdgeInsets.symmetric(
                 horizontal: context.accR.paddingH,
                 vertical: context.accR.spaceS),
-            color: AccountingTheme.bgPrimary,
+            color: SdColors.ground,
             child: Row(
               children: [
                 _filterBtn('الكل', 'all'),
@@ -2309,17 +2321,17 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
             child: _isLoading
                 ? const Center(
                     child: CircularProgressIndicator(
-                        color: AccountingTheme.neonBlue))
+                        color: SdColors.primary))
                 : _error != null
                     ? Center(
                         child: Text(_error!,
                             style:
-                                const TextStyle(color: AccountingTheme.danger)))
+                                const TextStyle(color: SdColors.danger)))
                     : _transactions.isEmpty
                         ? const Center(
                             child: Text('لا توجد معاملات',
                                 style: TextStyle(
-                                    color: AccountingTheme.textMuted)))
+                                    color: SdColors.faint)))
                         : ListView.builder(
                             padding: EdgeInsets.all(context.accR.spaceM),
                             itemCount: _filteredTransactions.length,
@@ -2349,14 +2361,14 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                     padding:
                                         EdgeInsets.all(context.accR.spaceL),
                                     decoration: BoxDecoration(
-                                      color: AccountingTheme.bgCard,
+                                      color: SdColors.surface,
                                       borderRadius: BorderRadius.circular(
                                           context.accR.cardRadius),
                                       border: Border(
                                         right: BorderSide(
                                           color: isCharge
-                                              ? AccountingTheme.danger
-                                              : AccountingTheme.success,
+                                              ? SdColors.danger
+                                              : SdColors.success,
                                           width: 3,
                                         ),
                                       ),
@@ -2376,8 +2388,8 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                               ? Icons.arrow_downward
                                               : Icons.arrow_upward,
                                           color: isCharge
-                                              ? AccountingTheme.danger
-                                              : AccountingTheme.success,
+                                              ? SdColors.danger
+                                              : SdColors.success,
                                           size: context.accR.iconM,
                                         ),
                                         SizedBox(width: context.accR.spaceM),
@@ -2415,8 +2427,8 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                           '${isCharge ? "-" : "+"}${_fmt(amount)} د.ع',
                                           style: TextStyle(
                                               color: isCharge
-                                                  ? AccountingTheme.danger
-                                                  : AccountingTheme.success,
+                                                  ? SdColors.danger
+                                                  : SdColors.success,
                                               fontWeight: FontWeight.bold,
                                               fontSize: context.accR.body),
                                         ),
@@ -2424,7 +2436,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                         Text(_formatDate(date),
                                             style: TextStyle(
                                                 color:
-                                                    AccountingTheme.textMuted,
+                                                    SdColors.faint,
                                                 fontSize:
                                                     context.accR.caption)),
                                         SizedBox(width: context.accR.spaceXS),
@@ -2436,7 +2448,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                             child: Icon(Icons.edit_outlined,
                                                 size: context.accR.iconS,
                                                 color:
-                                                    AccountingTheme.neonBlue),
+                                                    SdColors.primary),
                                           ),
                                         ),
                                         InkWell(
@@ -2445,7 +2457,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                             padding: EdgeInsets.all(4),
                                             child: Icon(Icons.delete_outline,
                                                 size: context.accR.iconS,
-                                                color: AccountingTheme.danger),
+                                                color: SdColors.danger),
                                           ),
                                         ),
                                       ],
@@ -2476,10 +2488,10 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
   Widget _filterBtn(String label, String value) {
     final isActive = _filter == value;
     final color = value == 'charge'
-        ? AccountingTheme.danger
+        ? SdColors.danger
         : value == 'payment'
-            ? AccountingTheme.success
-            : AccountingTheme.neonBlue;
+            ? SdColors.success
+            : SdColors.primary;
     return InkWell(
       onTap: () => setState(() => _filter = value),
       borderRadius: BorderRadius.circular(20),
@@ -2489,13 +2501,13 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
           color: isActive ? color.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isActive ? color : AccountingTheme.borderColor,
+            color: isActive ? color : SdColors.divider,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isActive ? color : AccountingTheme.textMuted,
+            color: isActive ? color : SdColors.faint,
             fontSize: context.accR.small,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
           ),

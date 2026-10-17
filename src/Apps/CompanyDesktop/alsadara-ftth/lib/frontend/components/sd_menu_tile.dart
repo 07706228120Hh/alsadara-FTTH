@@ -146,12 +146,16 @@ class _SdMenuTileState extends State<SdMenuTile> {
                 ? Border.all(color: SdColors.accentGlow, width: SdOutline.focusWidth)
                 : SdOutline.all,
             boxShadow: [
-              BoxShadow(color: SdColors.cardEdge, offset: Offset(0, depth)),
               BoxShadow(
-                color: const Color(0x731A237E),
-                offset: Offset(0, depth + 12),
+                color: const Color(0x260B1B3F),
+                offset: Offset(0, depth + 8),
                 blurRadius: _down ? 10 : 26,
-                spreadRadius: -18,
+                spreadRadius: -8,
+              ),
+              const BoxShadow(
+                color: Color(0x0D0B1B3F),
+                offset: Offset(0, 2),
+                blurRadius: 6,
               ),
             ],
           ),

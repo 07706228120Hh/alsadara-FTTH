@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../services/auth_service.dart';
 import '../../models/filter_criteria.dart';
 import 'dart:convert';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// صفحة عرض معاملات مستخدم محدد
 class UserTransactionsPage extends StatefulWidget {
@@ -182,9 +183,9 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
   }
 
   Color _getAmountColor(double amount) {
-    if (amount > 0) return Colors.green;
-    if (amount < 0) return Colors.red;
-    return Colors.grey;
+    if (amount > 0) return SdColors.success;
+    if (amount < 0) return SdColors.danger;
+    return SdColors.faint;
   }
 
   @override
@@ -195,7 +196,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
           'معاملات: ${widget.userName}',
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: SdColors.platformBase,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -212,7 +213,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                 children: [
                   CircularProgressIndicator(
                     valueColor:
-                        AlwaysStoppedAnimation<Color>(Colors.deepPurple),
+                        AlwaysStoppedAnimation<Color>(SdColors.platformBase),
                   ),
                   SizedBox(height: 16),
                   Text('جاري تحميل المعاملات...'),
@@ -225,18 +226,18 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.error_outline,
-                          size: 64, color: Colors.red.shade400),
+                          size: 64, color: SdColors.danger),
                       const SizedBox(height: 16),
                       Text(
                         errorMessage!,
-                        style: const TextStyle(fontSize: 16, color: Colors.red),
+                        style: const TextStyle(fontSize: 16, color: SdColors.danger),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _loadUserTransactions,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
+                          backgroundColor: SdColors.platformBase,
                           foregroundColor: Colors.white,
                         ),
                         child: const Text('إعادة المحاولة'),
@@ -254,15 +255,15 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: SdColors.infoTint,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.blue.shade200),
+                          border: Border.all(color: SdColors.infoTintEdge),
                         ),
                         child: Row(
                           children: [
                             Icon(
                               Icons.filter_alt,
-                              color: Colors.blue.shade700,
+                              color: SdColors.info,
                               size: 18,
                             ),
                             const SizedBox(width: 8),
@@ -271,7 +272,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                                 'التصفية النشطة: ${widget.filterCriteria!.activeFiltersDescription}',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.blue.shade800,
+                                  color: SdColors.info,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -311,12 +312,12 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.info_outline,
-                                      size: 64, color: Colors.grey),
+                                      size: 64, color: SdColors.faint),
                                   SizedBox(height: 16),
                                   Text(
                                     'لا توجد معاملات لهذا المستخدم',
                                     style: TextStyle(
-                                        fontSize: 16, color: Colors.grey),
+                                        fontSize: 16, color: SdColors.faint),
                                   ),
                                 ],
                               ),
@@ -348,7 +349,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.deepPurple.shade700,
+                color: SdColors.platformBase,
               ),
             ),
             const SizedBox(height: 16),
@@ -358,7 +359,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                   child: _buildStatCard(
                     'العدد الإجمالي',
                     totalCount.toString(),
-                    Colors.blue,
+                    SdColors.info,
                     Icons.receipt_long,
                   ),
                 ),
@@ -379,7 +380,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                   child: _buildStatCard(
                     'المبالغ الموجبة',
                     '${_formatAmount(positiveAmount)} IQD',
-                    Colors.green,
+                    SdColors.success,
                     Icons.trending_up,
                   ),
                 ),
@@ -387,7 +388,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                   child: _buildStatCard(
                     'المبالغ السالبة',
                     '${_formatAmount(negativeAmount)} IQD',
-                    Colors.red,
+                    SdColors.danger,
                     Icons.trending_down,
                   ),
                 ),
@@ -402,7 +403,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Colors.deepPurple.shade600,
+                  color: SdColors.platformBase,
                 ),
               ),
               const SizedBox(height: 8),
@@ -415,7 +416,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                             '${entry.key}: ${entry.value}',
                             style: const TextStyle(fontSize: 12),
                           ),
-                          backgroundColor: Colors.grey.shade100,
+                          backgroundColor: SdColors.groundAlt,
                         ))
                     .toList(),
               ),
@@ -447,7 +448,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
             style: TextStyle(
               fontSize: isMobile ? 10 : 12,
               fontWeight: FontWeight.w500,
-              color: Colors.grey.shade700,
+              color: SdColors.muted,
             ),
             textAlign: TextAlign.center,
             maxLines: 1,
@@ -494,7 +495,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
+                      color: SdColors.platformBase,
                     ),
                   ),
                 ),
@@ -517,7 +518,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                 'اسم الخدمة: ${transaction['serviceName']}',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey.shade700,
+                  color: SdColors.muted,
                 ),
               ),
               const SizedBox(height: 4),
@@ -527,7 +528,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                 'معرف العميل: ${transaction['customerId']}',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey.shade700,
+                  color: SdColors.muted,
                 ),
               ),
               const SizedBox(height: 4),
@@ -537,7 +538,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
                 'المنطقة: ${transaction['zone']}',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey.shade700,
+                  color: SdColors.muted,
                 ),
               ),
               const SizedBox(height: 4),
@@ -546,7 +547,7 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
               'التاريخ: ${_formatDate(transaction['createdAt']?.toString() ?? '')}',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey.shade600,
+                color: SdColors.muted,
               ),
             ),
             if (transaction['transactionStatus'] != null) ...[
@@ -554,14 +555,14 @@ class _UserTransactionsPageState extends State<UserTransactionsPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
+                  color: SdColors.infoTint,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   'الحالة: ${transaction['transactionStatus']}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.blue.shade800,
+                    color: SdColors.info,
                     fontWeight: FontWeight.w500,
                   ),
                 ),

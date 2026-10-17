@@ -16,6 +16,7 @@ export 'components/sd_cube.dart';
 export 'components/sd_basics.dart';
 export 'components/sd_segmented.dart';
 export 'components/sd_login_scene.dart';
+export 'components/sd_login_3d.dart';
 export 'components/sd_app_bar.dart';
 export 'components/sd_menu_tile.dart';
 export 'components/sd_side_nav.dart';

@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../auth/auth_error_handler.dart';
 import '../../services/auth_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class AllSubscriptionsDetailsPage extends StatefulWidget {
   final String authToken;
@@ -202,13 +203,13 @@ class _AllSubscriptionsDetailsPageState
   Color _statusColor(String? s) {
     switch ((s ?? '').toLowerCase()) {
       case 'active':
-        return Colors.green;
+        return SdColors.success;
       case 'expired':
-        return Colors.red;
+        return SdColors.danger;
       case 'suspended':
-        return Colors.orange;
+        return SdColors.warning;
       default:
-        return Colors.grey;
+        return SdColors.faint;
     }
   }
 
@@ -223,7 +224,7 @@ class _AllSubscriptionsDetailsPageState
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF283593), Color(0xFF1976D2), Color(0xFF64B5F6)],
+              colors: [SdColors.primaryMid, SdColors.info, SdColors.infoTintEdge],
             ),
           ),
         ),
@@ -338,14 +339,14 @@ class _AllSubscriptionsDetailsPageState
                                         return Chip(
                                             label: Text(disp),
                                             backgroundColor: type == 'Base'
-                                                ? Colors.blue.shade50
-                                                : Colors.orange.shade50);
+                                                ? SdColors.infoTint
+                                                : SdColors.warningTint);
                                       }).toList(),
                                     ),
                                     const Divider(),
                                     Text('تفاصيل إضافية',
                                         style: TextStyle(
-                                            color: Colors.grey.shade700,
+                                            color: SdColors.muted,
                                             fontWeight: FontWeight.bold,
                                             fontSize: _fs(14))),
                                     _kv(

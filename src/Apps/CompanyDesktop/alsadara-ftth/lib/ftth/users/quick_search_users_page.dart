@@ -297,7 +297,7 @@ class _QuickSearchUsersPageState extends State<QuickSearchUsersPage>
         if ((phone == null || phone.isEmpty) && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('رقم الهاتف غير مسجل في النظام'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
             duration: Duration(seconds: 2),
           ));
         }

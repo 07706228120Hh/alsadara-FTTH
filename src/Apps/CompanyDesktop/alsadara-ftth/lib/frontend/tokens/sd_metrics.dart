@@ -11,9 +11,9 @@ class SdSpace {
   static const double xxs = 4;
   static const double xs = 8;
   static const double sm = 12;
-  static const double md = 16;
-  static const double lg = 20;
-  static const double xl = 24;
+  static const double md = 18;
+  static const double lg = 24;
+  static const double xl = 28;
   static const double xxl = 32;
 
   /// الحشو الجانبي للصفحة.
@@ -45,7 +45,7 @@ class SdRadius {
 /// الإطار الموحّد (كحلي رمادي ناعم) لكل الحقول والبطاقات والأزرار.
 class SdOutline {
   SdOutline._();
-  static const double width = 1.2;
+  static const double width = 1.0;
   static const double focusWidth = 2.0;
   static const BorderSide side = BorderSide(color: SdColors.outline, width: width);
   static const BorderSide focus = BorderSide(color: SdColors.primary, width: focusWidth);
@@ -68,15 +68,20 @@ class SdDepth {
   static List<BoxShadow> raised({
     Color edge = SdColors.cardEdge,
     double depth = card,
-    Color glow = const Color(0x591A237E),
+    Color glow = const Color(0x330B1B3F),
   }) {
+    // نمط «كوبالت ناعم»: ظلال منتشرة ناعمة بلا حافّة صلبة.
     return [
-      BoxShadow(color: edge, offset: Offset(0, depth)),
       BoxShadow(
-        color: glow,
-        offset: Offset(0, depth + 12),
-        blurRadius: 28,
-        spreadRadius: -14,
+        color: const Color(0x1F0B1B3F),
+        offset: Offset(0, depth * 2),
+        blurRadius: 24 + depth * 2,
+        spreadRadius: -6,
+      ),
+      const BoxShadow(
+        color: Color(0x0D0B1B3F),
+        offset: Offset(0, 2),
+        blurRadius: 6,
       ),
     ];
   }

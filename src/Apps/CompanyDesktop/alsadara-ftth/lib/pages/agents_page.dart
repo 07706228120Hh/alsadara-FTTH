@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../utils/smart_text_color.dart';
 import '../services/task_api_service.dart';
 import '../utils/responsive_helper.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class AgentsPage extends StatefulWidget {
   final String fbg;
@@ -110,7 +111,7 @@ class _AgentsPageState extends State<AgentsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ أثناء جلب بيانات الوكلاء'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -194,7 +195,7 @@ class _AgentsPageState extends State<AgentsPage> {
   @override
   Widget build(BuildContext context) {
     final r = context.responsive;
-    final gradientColors = [Colors.blueAccent, Colors.blue[600]!];
+    final gradientColors = [Colors.blueAccent, SdColors.info];
     final smartTextColor =
         SmartTextColor.getAppBarTextColorWithGradient(context, gradientColors);
     final smartIconColor = smartTextColor;
@@ -250,16 +251,16 @@ class _AgentsPageState extends State<AgentsPage> {
                 width: double.infinity,
                 padding: EdgeInsets.all(r.cardPadding),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
+                  color: SdColors.info.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(r.buttonRadius),
-                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                  border: Border.all(color: SdColors.info.withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   'مجموعة: ${widget.fbg}',
                   style: TextStyle(
                     fontSize: r.cardTitleSize,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blue,
+                    color: SdColors.info,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -279,7 +280,7 @@ class _AgentsPageState extends State<AgentsPage> {
                       borderRadius: BorderRadius.circular(r.cardRadius),
                     ),
                     filled: true,
-                    fillColor: Colors.grey[50],
+                    fillColor: SdColors.surfaceAlt,
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: r.contentPaddingH,
                       vertical: r.isMobile ? 10 : 14,
@@ -329,14 +330,14 @@ class _AgentsPageState extends State<AgentsPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.error_outline,
-                size: r.emptyStateIconSize, color: Colors.red[300]),
+                size: r.emptyStateIconSize, color: SdColors.dangerTintEdge),
             SizedBox(height: r.gridSpacing),
             Text(
               'خطأ في تحميل البيانات',
               style: TextStyle(
                 fontSize: r.titleSize,
                 fontWeight: FontWeight.bold,
-                color: Colors.red[700],
+                color: SdColors.danger,
               ),
             ),
             const SizedBox(height: 8),
@@ -345,7 +346,7 @@ class _AgentsPageState extends State<AgentsPage> {
               child: Text(
                 errorMessage!,
                 style: TextStyle(
-                  color: Colors.red[600],
+                  color: SdColors.danger,
                   fontSize: r.captionSize,
                 ),
                 textAlign: TextAlign.center,
@@ -358,7 +359,7 @@ class _AgentsPageState extends State<AgentsPage> {
               label: Text('إعادة المحاولة',
                   style: TextStyle(fontSize: r.buttonTextSize)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
+                backgroundColor: SdColors.info,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(
                   horizontal: r.contentPaddingH,
@@ -377,14 +378,14 @@ class _AgentsPageState extends State<AgentsPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.people_outline,
-                size: r.emptyStateIconSize, color: Colors.grey[400]),
+                size: r.emptyStateIconSize, color: SdColors.faint),
             SizedBox(height: r.gridSpacing),
             Text(
               'لا توجد وكلاء',
               style: TextStyle(
                 fontSize: r.titleSize,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey[600],
+                color: SdColors.muted,
               ),
             ),
             const SizedBox(height: 8),
@@ -393,7 +394,7 @@ class _AgentsPageState extends State<AgentsPage> {
               child: Text(
                 'لم يتم العثور على أي وكلاء للمجموعة ${widget.fbg}',
                 style: TextStyle(
-                  color: Colors.grey[500],
+                  color: SdColors.faint,
                   fontSize: r.captionSize,
                 ),
                 textAlign: TextAlign.center,
@@ -435,9 +436,9 @@ class _AgentsPageState extends State<AgentsPage> {
         ),
         leading: CircleAvatar(
           radius: r.isMobile ? 18 : 22,
-          backgroundColor: Colors.blue[100],
+          backgroundColor: SdColors.infoTint,
           child: Icon(Icons.group,
-              color: Colors.blue[700], size: r.iconSizeMedium),
+              color: SdColors.info, size: r.iconSizeMedium),
         ),
         title: Text(
           agent['group'],
@@ -449,7 +450,7 @@ class _AgentsPageState extends State<AgentsPage> {
         subtitle: Text(
           'اضغط لعرض الوكلاء',
           style: TextStyle(
-            color: Colors.grey[600],
+            color: SdColors.muted,
             fontSize: r.cardSubtitleSize,
           ),
         ),
@@ -487,7 +488,7 @@ class _AgentsPageState extends State<AgentsPage> {
             width: double.infinity,
             padding: EdgeInsets.all(r.cardPadding),
             decoration: BoxDecoration(
-              color: Colors.blue[50],
+              color: SdColors.infoTint,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(r.cardRadius),
                 topRight: Radius.circular(r.cardRadius),
@@ -498,7 +499,7 @@ class _AgentsPageState extends State<AgentsPage> {
               style: TextStyle(
                 fontSize: r.cardTitleSize,
                 fontWeight: FontWeight.bold,
-                color: Colors.blue[800],
+                color: SdColors.info,
               ),
             ),
           ),
@@ -511,9 +512,9 @@ class _AgentsPageState extends State<AgentsPage> {
               ),
               leading: CircleAvatar(
                 radius: r.isMobile ? 16 : 20,
-                backgroundColor: Colors.green[100],
+                backgroundColor: SdColors.successTint,
                 child: Icon(Icons.person,
-                    color: Colors.green[700], size: r.iconSizeSmall),
+                    color: SdColors.success, size: r.iconSizeSmall),
               ),
               title: Text(
                 agentInfo['name']!,
@@ -526,7 +527,7 @@ class _AgentsPageState extends State<AgentsPage> {
               subtitle: Text(
                 agentInfo['phone']!,
                 style: TextStyle(
-                  color: Colors.grey[600],
+                  color: SdColors.muted,
                   fontFamily: 'monospace',
                   fontSize: r.captionSize,
                 ),
@@ -535,7 +536,7 @@ class _AgentsPageState extends State<AgentsPage> {
                 width: r.isMobile ? 36 : 42,
                 height: r.isMobile ? 36 : 42,
                 child: Material(
-                  color: Colors.green,
+                  color: SdColors.success,
                   borderRadius: BorderRadius.circular(20),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(20),

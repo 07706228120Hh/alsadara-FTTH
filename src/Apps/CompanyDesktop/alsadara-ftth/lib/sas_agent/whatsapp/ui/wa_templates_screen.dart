@@ -119,7 +119,7 @@ class _WaTemplatesScreenState extends State<WaTemplatesScreen> {
               children: [
                 SasUi.gradientBadge(
                   icon: Icons.chat_bubble_rounded,
-                  colors: const [_kWaGreen, Color(0xFF128C7E)],
+                  colors: const [_kWaGreen, SdColors.whatsappEdge],
                   size: 40,
                   iconSize: 19,
                 ),
@@ -138,7 +138,7 @@ class _WaTemplatesScreenState extends State<WaTemplatesScreen> {
                             style: TextStyle(fontFamily: 'Cairo', 
                               fontSize: 14.sp,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF1A1A2E),
+                              color: SdColors.ink,
                             ),
                           ),
                           if (t.builtin)
@@ -160,7 +160,7 @@ class _WaTemplatesScreenState extends State<WaTemplatesScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontFamily: 'Cairo', 
                           fontSize: 11.5.sp,
-                          color: Colors.grey[600],
+                          color: SdColors.muted,
                           height: 1.5,
                         ),
                       ),
@@ -169,7 +169,7 @@ class _WaTemplatesScreenState extends State<WaTemplatesScreen> {
                 ),
                 PopupMenuButton<String>(
                   icon: Icon(Icons.more_vert_rounded,
-                      color: Colors.grey[500], size: 20.sp),
+                      color: SdColors.faint, size: 20.sp),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12.r)),
                   onSelected: (v) {
@@ -371,7 +371,7 @@ class _TemplateEditorState extends State<_TemplateEditor> {
                   Text(
                     'المتغيّرات تُستبدل تلقائياً لكل مستلِم عند الإرسال. أي متغيّر بلا قيمة يُحذف سطره.',
                     style: TextStyle(fontFamily: 'Cairo', 
-                        fontSize: 11.sp, color: Colors.grey[600], height: 1.5),
+                        fontSize: 11.sp, color: SdColors.muted, height: 1.5),
                   ),
                 ],
               ),

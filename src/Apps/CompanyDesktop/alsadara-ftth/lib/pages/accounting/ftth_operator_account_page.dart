@@ -2,16 +2,15 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 /// صفحة كشف حساب مشغل FTTH
 /// تعرض ملخص العمليات المالية لمشغل محدد (نقد/آجل/ماستر/وكيل)
 class FtthOperatorAccountPage extends StatefulWidget {
@@ -212,7 +211,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade700),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.warning),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('تصحيح', style: TextStyle(color: Colors.white)),
           ),
@@ -252,10 +251,10 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
           ]),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('العمليات المفحوصة: $totalFound'),
-            Text('تم تحديث: $updated', style: TextStyle(color: updated > 0 ? Colors.green.shade700 : null, fontWeight: FontWeight.bold)),
-            if (accCreated > 0) Text('قيود جديدة: $accCreated', style: TextStyle(color: Colors.blue.shade700)),
-            if (accUpdated > 0) Text('قيود ملغية: $accUpdated', style: TextStyle(color: Colors.orange.shade700)),
-            if (failed > 0) Text('فشل: $failed', style: TextStyle(color: Colors.red.shade700)),
+            Text('تم تحديث: $updated', style: TextStyle(color: updated > 0 ? SdColors.success : null, fontWeight: FontWeight.bold)),
+            if (accCreated > 0) Text('قيود جديدة: $accCreated', style: TextStyle(color: SdColors.info)),
+            if (accUpdated > 0) Text('قيود ملغية: $accUpdated', style: TextStyle(color: SdColors.warning)),
+            if (failed > 0) Text('فشل: $failed', style: TextStyle(color: SdColors.danger)),
           ]),
           actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('حسناً'))],
         ),
@@ -266,7 +265,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red.shade700),
+        SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger),
       );
     }
   }
@@ -305,7 +304,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$msg'),
-          backgroundColor: updated > 0 ? Colors.green.shade700 : Colors.blueGrey,
+          backgroundColor: updated > 0 ? SdColors.success : Colors.blueGrey,
           duration: const Duration(seconds: 5),
         ),
       );
@@ -315,7 +314,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red.shade700),
+        SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger),
       );
     }
   }
@@ -384,13 +383,14 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
         appBar: AppBar(
-          backgroundColor: AccountingTheme.bgSidebar,
+          backgroundColor: SdColors.primary,
           iconTheme: IconThemeData(color: Colors.white),
           title: Text(
             'كشف حساب: ${widget.operatorName}',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: Colors.white,
               fontSize: context.accR.headingSmall,
               fontWeight: FontWeight.w600,
@@ -425,7 +425,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                     Icon(Icons.filter_alt, size: context.accR.iconXS, color: Colors.white70),
                     const SizedBox(width: 4),
                     Text(_dateLabel,
-                        style: GoogleFonts.cairo(fontSize: context.accR.caption, color: Colors.white)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: context.accR.caption, color: Colors.white)),
                     const SizedBox(width: 4),
                     InkWell(
                       onTap: () {
@@ -471,10 +471,10 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.error_outline,
-                            size: context.accR.iconXL, color: Colors.red.shade300),
+                            size: context.accR.iconXL, color: SdColors.dangerTintEdge),
                         SizedBox(height: context.accR.spaceM),
                         Text(_errorMessage!,
-                            style: TextStyle(color: Colors.red.shade700)),
+                            style: TextStyle(color: SdColors.danger)),
                         SizedBox(height: context.accR.spaceM),
                         ElevatedButton(
                             onPressed: _loadData,
@@ -517,18 +517,18 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
     final cards = <Map<String, dynamic>>[
       {'title': 'إجمالي العمليات', 'amount': total, 'count': _data?['totalActivations'] ?? 0,
-       'icon': Icons.receipt_long, 'colors': [const Color(0xFF3498DB), const Color(0xFF2980B9)]},
+       'icon': Icons.receipt_long, 'colors': [SdColors.info, SdColors.info]},
       {'title': 'نقد', 'amount': cash, 'count': _data?['cashCount'] ?? 0,
-       'icon': Icons.attach_money, 'colors': [const Color(0xFF2ECC71), const Color(0xFF27AE60)]},
+       'icon': Icons.attach_money, 'colors': [SdColors.success, SdColors.success]},
       {'title': 'آجل', 'amount': credit, 'count': _data?['creditCount'] ?? 0,
-       'icon': Icons.schedule, 'colors': [const Color(0xFFE67E22), const Color(0xFFD35400)]},
+       'icon': Icons.schedule, 'colors': [SdColors.warning, const Color(0xFFD35400)]},
       {'title': 'ماستر', 'amount': master, 'count': _data?['masterCount'] ?? 0,
-       'icon': Icons.credit_card, 'colors': [const Color(0xFF8E44AD), const Color(0xFF7D3C98)]},
+       'icon': Icons.credit_card, 'colors': [SdColors.platformBase, const Color(0xFF7D3C98)]},
       {'title': 'وكيل', 'amount': agent, 'count': _data?['agentCount'] ?? 0,
-       'icon': Icons.store, 'colors': [const Color(0xFF2C3E50), const Color(0xFF1A252F)]},
+       'icon': Icons.store, 'colors': [SdColors.ink, const Color(0xFF1A252F)]},
       if (unclassified > 0)
         {'title': 'غير مصنف', 'amount': unclassified, 'count': _data?['unclassifiedCount'] ?? 0,
-         'icon': Icons.help_outline, 'colors': [const Color(0xFF95A5A6), const Color(0xFF7F8C8D)]},
+         'icon': Icons.help_outline, 'colors': [SdColors.faint, const Color(0xFF7F8C8D)]},
     ];
 
     return Column(
@@ -577,10 +577,10 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(title, style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                Text(title, style: TextStyle(fontFamily: 'Cairo', fontSize: ar.caption, color: Colors.white, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
                 Text('${_currencyFormat.format(amount)} د.ع',
-                    style: GoogleFonts.cairo(fontSize: ar.small, color: Colors.white, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
-                Text('$count عملية', style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.8)), overflow: TextOverflow.ellipsis),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, color: Colors.white, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                Text('$count عملية', style: TextStyle(fontFamily: 'Cairo', fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.8)), overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
@@ -612,16 +612,16 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title, style: GoogleFonts.cairo(fontSize: ar.caption, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text(title, style: TextStyle(fontFamily: 'Cairo', fontSize: ar.caption, fontWeight: FontWeight.bold, color: Colors.white)),
               SizedBox(height: ar.spaceXS),
               ...items.map((item) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 1),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(item.label, style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.85))),
+                    Text(item.label, style: TextStyle(fontFamily: 'Cairo', fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.85))),
                     Text('${_currencyFormat.format(item.amount)} د.ع',
-                        style: GoogleFonts.cairo(fontSize: ar.caption, fontWeight: item.bold ? FontWeight.bold : FontWeight.w500, color: Colors.white)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: ar.caption, fontWeight: item.bold ? FontWeight.bold : FontWeight.w500, color: Colors.white)),
                   ],
                 ),
               )),
@@ -639,13 +639,13 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
             (label: 'مُجمّع', amount: cashAmount, bold: false),
             (label: 'مُسلَّم', amount: deliveredCash, bold: false),
             (label: 'الباقي', amount: remainingCash, bold: true),
-          ], [const Color(0xFF2ECC71), const Color(0xFF27AE60)]),
+          ], [SdColors.success, SdColors.success]),
           SizedBox(width: ar.spaceXS),
           netMiniCard('الآجل', [
             (label: 'مُسجّل', amount: creditAmount, bold: false),
             (label: 'مُحصّل', amount: collectedCredit, bold: false),
             (label: 'الباقي', amount: remainingCredit, bold: true),
-          ], [const Color(0xFFE67E22), const Color(0xFFD35400)]),
+          ], [SdColors.warning, const Color(0xFFD35400)]),
           SizedBox(width: ar.spaceXS),
           Expanded(
             child: Container(
@@ -653,12 +653,12 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: hasDebt
-                      ? [const Color(0xFFE74C3C), const Color(0xFFC0392B)]
-                      : [const Color(0xFF27AE60), const Color(0xFF1E8449)],
+                      ? [SdColors.danger, const Color(0xFFC0392B)]
+                      : [SdColors.success, const Color(0xFF1E8449)],
                 ),
                 borderRadius: BorderRadius.circular(ar.cardRadius),
                 boxShadow: [BoxShadow(
-                  color: (hasDebt ? const Color(0xFFE74C3C) : const Color(0xFF27AE60)).withValues(alpha: 0.2),
+                  color: (hasDebt ? SdColors.danger : SdColors.success).withValues(alpha: 0.2),
                   blurRadius: 6, offset: const Offset(0, 2),
                 )],
               ),
@@ -670,9 +670,9 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('المستحقة', style: GoogleFonts.cairo(fontSize: ar.caption, fontWeight: FontWeight.bold, color: Colors.white)),
+                      Text('المستحقة', style: TextStyle(fontFamily: 'Cairo', fontSize: ar.caption, fontWeight: FontWeight.bold, color: Colors.white)),
                       Text('${_currencyFormat.format(netOwed)} د.ع',
-                          style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: Colors.white)),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.bold, color: Colors.white)),
                     ],
                   ),
                 ],
@@ -691,10 +691,10 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.8))),
+          Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: ar.caption, color: Colors.white.withValues(alpha: 0.8))),
           SizedBox(width: ar.spaceXS),
           Text('${_currencyFormat.format(amount)} د.ع',
-              style: GoogleFonts.cairo(fontSize: ar.caption, fontWeight: bold ? FontWeight.bold : FontWeight.w500, color: Colors.white)),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: ar.caption, fontWeight: bold ? FontWeight.bold : FontWeight.w500, color: Colors.white)),
         ],
       ),
     );
@@ -828,7 +828,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                   Clipboard.setData(ClipboardData(text: tx['CustomerId']));
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم النسخ'), duration: Duration(seconds: 1)));
                 },
-                child: Padding(padding: EdgeInsets.only(right: 2), child: Icon(Icons.copy, size: ar.iconXS, color: Colors.grey.shade500)),
+                child: Padding(padding: EdgeInsets.only(right: 2), child: Icon(Icons.copy, size: ar.iconXS, color: SdColors.faint)),
               ),
           ],
         )));
@@ -847,7 +847,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                   Clipboard.setData(ClipboardData(text: tx['SubscriptionId']));
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم النسخ'), duration: Duration(seconds: 1)));
                 },
-                child: Padding(padding: EdgeInsets.only(right: 2), child: Icon(Icons.copy, size: ar.iconXS, color: Colors.grey.shade500)),
+                child: Padding(padding: EdgeInsets.only(right: 2), child: Icon(Icons.copy, size: ar.iconXS, color: SdColors.faint)),
               ),
           ],
         )));
@@ -857,7 +857,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         final totalAmt = (tx['PageDeduction'] ?? 0).toDouble() + (tx['Revenue'] ?? 0).toDouble() - (tx['Expense'] ?? 0).toDouble();
         return DataCell(Center(child: Text(
           _currencyFormat.format(totalAmt),
-          style: TextStyle(fontSize: ar.small, fontWeight: FontWeight.w700, color: Colors.green.shade700),
+          style: TextStyle(fontSize: ar.small, fontWeight: FontWeight.w700, color: SdColors.success),
         )));
       case 'pageDeduction':
         return DataCell(Center(child: Text(
@@ -869,14 +869,14 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         return DataCell(Center(child: Text(
           _currencyFormat.format(rev),
           style: TextStyle(fontSize: ar.small, fontWeight: FontWeight.w600,
-              color: rev > 0 ? Colors.green.shade700 : Colors.grey.shade400),
+              color: rev > 0 ? SdColors.success : SdColors.faint),
         )));
       case 'expense':
         final exp = (tx['Expense'] ?? 0).toDouble();
         return DataCell(Center(child: Text(
           _currencyFormat.format(exp),
           style: TextStyle(fontSize: ar.small, fontWeight: FontWeight.w600,
-              color: exp > 0 ? Colors.red.shade700 : Colors.grey.shade400),
+              color: exp > 0 ? SdColors.danger : SdColors.faint),
         )));
       case 'commitment':
         return DataCell(Center(child: Text(
@@ -889,16 +889,16 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         return DataCell(
           Center(child: Builder(builder: (_) {
             if (cycle == null || cycle <= 0) {
-              return Icon(Icons.add_circle_outline, size: ar.iconS, color: Colors.grey.shade400);
+              return Icon(Icons.add_circle_outline, size: ar.iconS, color: SdColors.faint);
             }
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: paid >= cycle ? Colors.green.shade50 : Colors.deepPurple.shade50,
+                color: paid >= cycle ? SdColors.successTint : SdColors.platformTint,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: paid >= cycle ? Colors.green.shade300 : Colors.deepPurple.shade300),
+                border: Border.all(color: paid >= cycle ? SdColors.successTintEdge : SdColors.platformTintEdge),
               ),
-              child: Text('$paid/$cycle شهر', style: TextStyle(fontSize: ar.caption, fontWeight: FontWeight.w700, color: paid >= cycle ? Colors.green.shade700 : Colors.deepPurple.shade700)),
+              child: Text('$paid/$cycle شهر', style: TextStyle(fontSize: ar.caption, fontWeight: FontWeight.w700, color: paid >= cycle ? SdColors.success : SdColors.platformBase)),
             );
           })),
           onTap: () => _showRenewalCycleDialog(tx),
@@ -934,20 +934,20 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         return DataCell(Center(child: Text(tx['DeviceUsername'] ?? '-', style: TextStyle(fontSize: ar.caption), overflow: TextOverflow.ellipsis)));
       case 'printed':
         return DataCell(Center(child: tx['IsPrinted'] == true
-            ? Icon(Icons.print, size: ar.iconS, color: Colors.green.shade600)
-            : Icon(Icons.print_disabled, size: ar.iconS, color: Colors.grey.shade400)));
+            ? Icon(Icons.print, size: ar.iconS, color: SdColors.success)
+            : Icon(Icons.print_disabled, size: ar.iconS, color: SdColors.faint)));
       case 'whatsapp':
         return DataCell(Center(child: tx['IsWhatsAppSent'] == true
-            ? Icon(Icons.check_circle, size: ar.iconS, color: Colors.green.shade600)
-            : Icon(Icons.cancel_outlined, size: ar.iconS, color: Colors.grey.shade400)));
+            ? Icon(Icons.check_circle, size: ar.iconS, color: SdColors.success)
+            : Icon(Icons.cancel_outlined, size: ar.iconS, color: SdColors.faint)));
       case 'reconciled':
         return DataCell(Center(child: tx['IsReconciled'] == true
-            ? Icon(Icons.check_circle, size: ar.iconS, color: Colors.green.shade600)
-            : Icon(Icons.cancel_outlined, size: ar.iconS, color: Colors.grey.shade400)));
+            ? Icon(Icons.check_circle, size: ar.iconS, color: SdColors.success)
+            : Icon(Icons.cancel_outlined, size: ar.iconS, color: SdColors.faint)));
       case 'accounting':
         return DataCell(Center(child: tx['JournalEntryId'] != null
-            ? Icon(Icons.check_circle, size: ar.iconS, color: Colors.green.shade600)
-            : Icon(Icons.remove_circle_outline, size: ar.iconS, color: Colors.grey.shade400)));
+            ? Icon(Icons.check_circle, size: ar.iconS, color: SdColors.success)
+            : Icon(Icons.remove_circle_outline, size: ar.iconS, color: SdColors.faint)));
       case 'notes':
         return DataCell(Center(child: Text(tx['SubscriptionNotes'] ?? '-', style: TextStyle(fontSize: ar.caption), overflow: TextOverflow.ellipsis)));
       case 'edit':
@@ -958,16 +958,16 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.blue.shade200),
+                border: Border.all(color: SdColors.infoTintEdge),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.edit, size: 12, color: Colors.blue.shade700),
+                  Icon(Icons.edit, size: 12, color: SdColors.info),
                   const SizedBox(width: 3),
-                  Text('تعديل', style: TextStyle(fontSize: 10, color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                  Text('تعديل', style: TextStyle(fontSize: 10, color: SdColors.info, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
@@ -980,23 +980,23 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
   Widget _toolbarButton(IconData icon, String label, VoidCallback onTap, {bool highlighted = false, Color? color}) {
     final ar = context.accR;
-    final c = color ?? (highlighted ? Colors.blue.shade700 : Colors.grey.shade600);
+    final c = color ?? (highlighted ? SdColors.info : SdColors.muted);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(ar.btnRadius),
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: ar.spaceS, vertical: ar.spaceXS),
         decoration: BoxDecoration(
-          color: highlighted ? Colors.blue.shade50 : Colors.grey.shade100,
+          color: highlighted ? SdColors.infoTint : SdColors.groundAlt,
           borderRadius: BorderRadius.circular(ar.btnRadius),
-          border: Border.all(color: highlighted ? Colors.blue.shade200 : Colors.grey.shade300),
+          border: Border.all(color: highlighted ? SdColors.infoTintEdge : SdColors.edge),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: ar.iconS, color: c),
             SizedBox(width: ar.spaceXS),
-            Text(label, style: GoogleFonts.cairo(fontSize: ar.small, color: c, fontWeight: highlighted ? FontWeight.w600 : FontWeight.w500)),
+            Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, color: c, fontWeight: highlighted ? FontWeight.w600 : FontWeight.w500)),
           ],
         ),
       ),
@@ -1022,7 +1022,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
             children: [
               Icon(icon, size: ar.iconXS, color: highlighted ? Colors.amber : Colors.white70),
               const SizedBox(width: 4),
-              Text(label, style: GoogleFonts.cairo(fontSize: ar.caption, color: Colors.white)),
+              Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: ar.caption, color: Colors.white)),
             ],
           ),
         ),
@@ -1102,7 +1102,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         child: Padding(
           padding: EdgeInsets.all(context.accR.spaceXXL),
           child: Center(
-            child: Text('لا توجد عمليات', style: TextStyle(color: Colors.grey.shade500)),
+            child: Text('لا توجد عمليات', style: TextStyle(color: SdColors.faint)),
           ),
         ),
       );
@@ -1122,11 +1122,11 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
               child: TextField(
                 controller: _txSearchController,
                 onChanged: (v) => setState(() => _txSearchQuery = v.trim()),
-                style: GoogleFonts.cairo(fontSize: 12),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                 textDirection: TextDirection.rtl,
                 decoration: InputDecoration(
                   hintText: 'بحث عن عميل، هاتف، فني، وكيل، منطقة...',
-                  hintStyle: GoogleFonts.cairo(fontSize: 11, color: Colors.grey),
+                  hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.grey),
                   prefixIcon: const Icon(Icons.search, size: 16, color: Colors.grey),
                   suffixIcon: _txSearchQuery.isNotEmpty
                       ? IconButton(
@@ -1140,7 +1140,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                         )
                       : null,
                   filled: true,
-                  fillColor: Colors.grey.shade50,
+                  fillColor: SdColors.surfaceAlt,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.black, width: 1.5)),
@@ -1154,22 +1154,22 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
             Padding(
               padding: EdgeInsets.symmetric(horizontal: context.accR.spaceL, vertical: 4),
               child: Row(children: [
-                Icon(Icons.filter_alt, size: 14, color: Colors.blue.shade700),
+                Icon(Icons.filter_alt, size: 14, color: SdColors.info),
                 const SizedBox(width: 4),
-                Text('${processed.length} نتيجة من ${_transactions.length}', style: GoogleFonts.cairo(fontSize: 11, color: Colors.blue.shade700)),
+                Text('${processed.length} نتيجة من ${_transactions.length}', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.info)),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: () => setState(() { _columnFilters.clear(); _headerFilterControllers.forEach((_, c) => c.clear()); }),
                   icon: const Icon(Icons.clear_all, size: 14),
-                  label: Text('مسح الكل', style: GoogleFonts.cairo(fontSize: 11)),
-                  style: TextButton.styleFrom(foregroundColor: Colors.red.shade600, padding: EdgeInsets.zero, minimumSize: const Size(0, 28)),
+                  label: Text('مسح الكل', style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
+                  style: TextButton.styleFrom(foregroundColor: SdColors.danger, padding: EdgeInsets.zero, minimumSize: const Size(0, 28)),
                 ),
               ]),
             ),
           if (processed.isEmpty)
             Padding(
               padding: EdgeInsets.all(context.accR.spaceXXL),
-              child: Center(child: Text('لا توجد نتائج مطابقة', style: TextStyle(color: Colors.grey.shade500))),
+              child: Center(child: Text('لا توجد نتائج مطابقة', style: TextStyle(color: SdColors.faint))),
             )
           else
           LayoutBuilder(
@@ -1184,8 +1184,8 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                         ? visibleKeys.indexOf(_sortKey!)
                         : null,
                     sortAscending: _sortAscending,
-                    border: TableBorder.all(color: Colors.grey.shade300, width: 0.5),
-                    headingRowColor: WidgetStateProperty.all(const Color(0xFF2C3E50)),
+                    border: TableBorder.all(color: SdColors.edge, width: 0.5),
+                    headingRowColor: WidgetStateProperty.all(SdColors.ink),
                     headingRowHeight: 56,
                     dataRowMinHeight: context.accR.tableRowMinH,
                     dataRowMaxHeight: context.accR.tableRowMaxH,
@@ -1218,8 +1218,8 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                       final tx = entry.value;
                       return DataRow(
                         color: WidgetStateProperty.resolveWith<Color?>((states) {
-                          if (states.contains(WidgetState.hovered)) return Colors.blue.shade50;
-                          return i.isEven ? Colors.white : Colors.grey.shade50;
+                          if (states.contains(WidgetState.hovered)) return SdColors.infoTint;
+                          return i.isEven ? Colors.white : SdColors.surfaceAlt;
                         }),
                         cells: visibleKeys.map((key) => _buildCell(key, tx, i)).toList(),
                       );
@@ -1241,24 +1241,24 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     Color txtColor;
     if (lower.contains('renew') || lower.contains('تجديد')) {
       label = 'تجديد';
-      bgColor = Colors.blue.shade50;
-      txtColor = Colors.blue.shade700;
+      bgColor = SdColors.infoTint;
+      txtColor = SdColors.info;
     } else if (lower.contains('schedule') || lower.contains('جدولة')) {
       label = 'جدولة';
-      bgColor = Colors.purple.shade50;
-      txtColor = Colors.purple.shade700;
+      bgColor = SdColors.platformTint;
+      txtColor = SdColors.platformBase;
     } else if (lower.contains('change') || lower.contains('تغيير')) {
       label = 'تغيير';
-      bgColor = Colors.orange.shade50;
-      txtColor = Colors.orange.shade700;
+      bgColor = SdColors.warningTint;
+      txtColor = SdColors.warning;
     } else if (lower.contains('purchase') || lower.contains('شراء')) {
       label = 'شراء';
-      bgColor = Colors.teal.shade50;
-      txtColor = Colors.teal.shade700;
+      bgColor = SdColors.accentTint;
+      txtColor = SdColors.accent;
     } else {
       label = type.isNotEmpty ? type : 'تجديد';
-      bgColor = Colors.grey.shade50;
-      txtColor = Colors.grey.shade700;
+      bgColor = SdColors.surfaceAlt;
+      txtColor = SdColors.muted;
     }
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -1275,13 +1275,13 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     final lower = status.toLowerCase();
     Color color;
     if (lower.contains('active')) {
-      color = Colors.green.shade700;
+      color = SdColors.success;
     } else if (lower.contains('suspend') || lower.contains('block')) {
-      color = Colors.red.shade700;
+      color = SdColors.danger;
     } else if (lower.contains('trial')) {
-      color = Colors.orange.shade700;
+      color = SdColors.warning;
     } else {
-      color = Colors.grey.shade700;
+      color = SdColors.muted;
     }
     return Container(
       padding: EdgeInsets.symmetric(horizontal: context.accR.spaceXS, vertical: 2),
@@ -1380,14 +1380,14 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
             title: Container(
               padding: EdgeInsets.all(context.accR.spaceL),
               decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: [Color(0xFF2C3E50), Color(0xFF3498DB)]),
+                gradient: LinearGradient(colors: [SdColors.ink, SdColors.info]),
                 borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.view_column, color: Colors.white),
                   const SizedBox(width: 8),
-                  Text('اختيار الأعمدة', style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: context.accR.body)),
+                  Text('اختيار الأعمدة', style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontWeight: FontWeight.bold, fontSize: context.accR.body)),
                   const Spacer(),
                   TextButton(
                     onPressed: () {
@@ -1402,7 +1402,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                     },
                     child: Text(
                       tempVisible.length == _columnKeys.length ? 'إلغاء الكل' : 'تحديد الكل',
-                      style: GoogleFonts.cairo(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(fontFamily: 'Cairo', color: Colors.white70, fontSize: 12),
                     ),
                   ),
                 ],
@@ -1414,9 +1414,9 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
               child: ListView(
                 children: _columnKeys.map((key) {
                   return CheckboxListTile(
-                    title: Text(_columnLabels[key] ?? key, style: GoogleFonts.cairo(fontSize: 14)),
+                    title: Text(_columnLabels[key] ?? key, style: TextStyle(fontFamily: 'Cairo', fontSize: 14)),
                     value: tempVisible.contains(key),
-                    activeColor: const Color(0xFF3498DB),
+                    activeColor: SdColors.info,
                     onChanged: (val) {
                       setDialogState(() {
                         if (val == true) {
@@ -1434,7 +1434,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade600)),
+                child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted)),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -1443,11 +1443,11 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                   Navigator.pop(ctx);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3498DB),
+                  backgroundColor: SdColors.info,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: Text('تطبيق', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                child: Text('تطبيق', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -1476,14 +1476,14 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
             title: Container(
               padding: EdgeInsets.all(context.accR.spaceL),
               decoration: const BoxDecoration(
-                gradient: LinearGradient(colors: [Color(0xFF2C3E50), Color(0xFF3498DB)]),
+                gradient: LinearGradient(colors: [SdColors.ink, SdColors.info]),
                 borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.filter_list, color: Colors.white),
                   const SizedBox(width: 8),
-                  Text('تصفية البيانات', style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: context.accR.body)),
+                  Text('تصفية البيانات', style: TextStyle(fontFamily: 'Cairo', color: Colors.white, fontWeight: FontWeight.bold, fontSize: context.accR.body)),
                   const Spacer(),
                   if (tempFilters.values.any((v) => v.isNotEmpty))
                     TextButton(
@@ -1495,7 +1495,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                           }
                         });
                       },
-                      child: Text('مسح الكل', style: GoogleFonts.cairo(color: Colors.white70, fontSize: 12)),
+                      child: Text('مسح الكل', style: TextStyle(fontFamily: 'Cairo', color: Colors.white70, fontSize: 12)),
                     ),
                 ],
               ),
@@ -1528,10 +1528,11 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                         children: [
                           SizedBox(
                             width: 85,
-                            child: Text(label, style: GoogleFonts.cairo(
+                            child: Text(label, style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 12,
                               fontWeight: hasValue ? FontWeight.bold : FontWeight.w500,
-                              color: hasValue ? Colors.blue.shade700 : Colors.grey.shade700,
+                              color: hasValue ? SdColors.info : SdColors.muted,
                             )),
                           ),
                           const SizedBox(width: 8),
@@ -1545,13 +1546,13 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: hasValue ? Colors.blue.shade300 : Colors.grey.shade300),
+                                  borderSide: BorderSide(color: hasValue ? SdColors.infoTintEdge : SdColors.edge),
                                 ),
                               ),
-                              hint: Text('الكل', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                              hint: Text('الكل', style: TextStyle(fontSize: 12, color: SdColors.faint)),
                               items: sortedValues.map((v) => DropdownMenuItem(
                                 value: v,
-                                child: Text(v, style: GoogleFonts.cairo(fontSize: 12), overflow: TextOverflow.ellipsis),
+                                child: Text(v, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), overflow: TextOverflow.ellipsis),
                               )).toList(),
                               onChanged: (val) {
                                 setDialogState(() {
@@ -1566,7 +1567,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                           ),
                           if (hasValue)
                             IconButton(
-                              icon: Icon(Icons.close, size: 16, color: Colors.red.shade400),
+                              icon: Icon(Icons.close, size: 16, color: SdColors.danger),
                               onPressed: () => setDialogState(() => tempFilters.remove(key)),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
@@ -1581,34 +1582,35 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                         children: [
                           SizedBox(
                             width: 85,
-                            child: Text(label, style: GoogleFonts.cairo(
+                            child: Text(label, style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 12,
                               fontWeight: hasValue ? FontWeight.bold : FontWeight.w500,
-                              color: hasValue ? Colors.blue.shade700 : Colors.grey.shade700,
+                              color: hasValue ? SdColors.info : SdColors.muted,
                             )),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
                               controller: controllers[key],
-                              style: GoogleFonts.cairo(fontSize: 12),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                               decoration: InputDecoration(
                                 isDense: true,
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: hasValue ? Colors.blue.shade300 : Colors.grey.shade300),
+                                  borderSide: BorderSide(color: hasValue ? SdColors.infoTintEdge : SdColors.edge),
                                 ),
                                 hintText: 'اكتب للتصفية...',
-                                hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
+                                hintStyle: TextStyle(fontSize: 12, color: SdColors.faint),
                               ),
                               onChanged: (val) => tempFilters[key] = val,
                             ),
                           ),
                           if (hasValue)
                             IconButton(
-                              icon: Icon(Icons.close, size: 16, color: Colors.red.shade400),
+                              icon: Icon(Icons.close, size: 16, color: SdColors.danger),
                               onPressed: () {
                                 controllers[key]!.clear();
                                 setDialogState(() => tempFilters.remove(key));
@@ -1630,7 +1632,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                   for (final c in controllers.values) { c.dispose(); }
                   Navigator.pop(ctx);
                 },
-                child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade600)),
+                child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted)),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -1646,11 +1648,11 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                   Navigator.pop(ctx);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3498DB),
+                  backgroundColor: SdColors.info,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: Text('تطبيق', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                child: Text('تطبيق', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -1739,15 +1741,15 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
           Widget sectionTitle(String title) => Padding(
             padding: EdgeInsets.only(top: ar.spaceM, bottom: ar.spaceXS),
-            child: Text(title, style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50))),
+            child: Text(title, style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.bold, color: SdColors.ink)),
           );
 
           InputDecoration fieldDeco(String hint) => InputDecoration(
             filled: true, fillColor: Colors.white, hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 12),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF3498DB), width: 2)),
+            hintStyle: TextStyle(color: SdColors.faint, fontSize: 12),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SdColors.edge)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SdColors.edge)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SdColors.info, width: 2)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             isDense: true,
           );
@@ -1756,7 +1758,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
-                SizedBox(width: 100, child: Text(label, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700))),
+                SizedBox(width: 100, child: Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.w600, color: SdColors.muted))),
                 Expanded(child: child),
               ],
             ),
@@ -1775,14 +1777,14 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                     Container(
                       padding: EdgeInsets.all(ar.spaceM),
                       decoration: const BoxDecoration(
-                        gradient: LinearGradient(colors: [Color(0xFF2C3E50), Color(0xFF3498DB)]),
+                        gradient: LinearGradient(colors: [SdColors.ink, SdColors.info]),
                         borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
                       ),
                       child: Row(
                         children: [
                           const Icon(Icons.edit_note, color: Colors.white, size: 22),
                           SizedBox(width: ar.spaceS),
-                          Text('تعديل المعاملة', style: GoogleFonts.cairo(fontSize: ar.body, fontWeight: FontWeight.bold, color: Colors.white)),
+                          Text('تعديل المعاملة', style: TextStyle(fontFamily: 'Cairo', fontSize: ar.body, fontWeight: FontWeight.bold, color: Colors.white)),
                           const Spacer(),
                           InkWell(onTap: () => Navigator.pop(ctx), child: const Icon(Icons.close, color: Colors.white70, size: 20)),
                         ],
@@ -1797,25 +1799,25 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                           children: [
                             // ═══ بيانات العميل ═══
                             sectionTitle('بيانات العميل'),
-                            fieldRow('اسم العميل', TextField(controller: customerNameCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('اسم العميل'))),
-                            fieldRow('الهاتف', TextField(controller: phoneCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('رقم الهاتف'))),
+                            fieldRow('اسم العميل', TextField(controller: customerNameCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), decoration: fieldDeco('اسم العميل'))),
+                            fieldRow('الهاتف', TextField(controller: phoneCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), decoration: fieldDeco('رقم الهاتف'))),
 
                             // ═══ بيانات الاشتراك ═══
                             sectionTitle('بيانات الاشتراك'),
-                            fieldRow('الباقة', TextField(controller: planNameCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('اسم الباقة'))),
-                            fieldRow('السعر', TextField(controller: planPriceCtrl, readOnly: true, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green.shade700), decoration: fieldDeco('سعر الباقة').copyWith(filled: true, fillColor: Colors.green.shade50))),
-                            fieldRow('الالتزام', TextField(controller: commitmentCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('فترة الالتزام'))),
+                            fieldRow('الباقة', TextField(controller: planNameCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), decoration: fieldDeco('اسم الباقة'))),
+                            fieldRow('السعر', TextField(controller: planPriceCtrl, readOnly: true, style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: SdColors.success), decoration: fieldDeco('سعر الباقة').copyWith(filled: true, fillColor: SdColors.successTint))),
+                            fieldRow('الالتزام', TextField(controller: commitmentCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), decoration: fieldDeco('فترة الالتزام'))),
                             fieldRow('نوع العملية', Wrap(
                               spacing: 6,
                               children: ['تجديد', 'شراء', 'تغيير', 'جدولة'].map((v) => ChoiceChip(
-                                label: Text(v, style: GoogleFonts.cairo(fontSize: 11)),
+                                label: Text(v, style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
                                 selected: operationType == v || operationType.toLowerCase() == v.toLowerCase(),
                                 onSelected: (_) => setDialogState(() => operationType = v),
-                                selectedColor: Colors.blue.shade100,
+                                selectedColor: SdColors.infoTint,
                                 visualDensity: VisualDensity.compact,
                               )).toList(),
                             )),
-                            fieldRow('المنفذ', TextField(controller: activatedByCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('منفذ العملية'))),
+                            fieldRow('المنفذ', TextField(controller: activatedByCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), decoration: fieldDeco('منفذ العملية'))),
                             fieldRow('التاريخ', InkWell(
                               onTap: () async {
                                 final picked = await showDatePicker(context: ctx, initialDate: activationDate, firstDate: DateTime(2024), lastDate: DateTime.now().add(const Duration(days: 1)), locale: const Locale('ar'));
@@ -1823,15 +1825,15 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                               },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8), color: Colors.white),
+                                decoration: BoxDecoration(border: Border.all(color: SdColors.edge), borderRadius: BorderRadius.circular(8), color: Colors.white),
                                 child: Row(children: [
-                                  Text('${activationDate.year}/${activationDate.month.toString().padLeft(2,'0')}/${activationDate.day.toString().padLeft(2,'0')}', style: GoogleFonts.cairo(fontSize: 12)),
+                                  Text('${activationDate.year}/${activationDate.month.toString().padLeft(2,'0')}/${activationDate.day.toString().padLeft(2,'0')}', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                                   const Spacer(),
-                                  Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                                  Icon(Icons.calendar_today, size: 16, color: SdColors.muted),
                                 ]),
                               ),
                             )),
-                            fieldRow('المنطقة', TextField(controller: zoneCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('معرف المنطقة'))),
+                            fieldRow('المنطقة', TextField(controller: zoneCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), decoration: fieldDeco('معرف المنطقة'))),
 
                             // ═══ التحصيل والربط ═══
                             sectionTitle('التحصيل والربط'),
@@ -1844,7 +1846,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                 {'value': 'agent', 'label': 'وكيل'},
                                 {'value': 'master', 'label': 'ماستر'},
                               ].map((o) => ChoiceChip(
-                                label: Text(o['label']!, style: GoogleFonts.cairo(fontSize: 11)),
+                                label: Text(o['label']!, style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
                                 selected: collectionType == o['value'],
                                 onSelected: (_) => setDialogState(() {
                                   collectionType = o['value']!;
@@ -1853,7 +1855,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                   paymentMethodCtrl.text = o['label']!;
                                   if (o['value'] != 'technician') techNameCtrl.clear();
                                 }),
-                                selectedColor: Colors.blue.shade100,
+                                selectedColor: SdColors.infoTint,
                                 visualDensity: VisualDensity.compact,
                               )).toList(),
                             )),
@@ -1897,25 +1899,25 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                               ),
                             fieldRow('حالة الدفع', TextField(
                               controller: TextEditingController(text: paymentStatus),
-                              style: GoogleFonts.cairo(fontSize: 12),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
                               decoration: fieldDeco('مسدد / غير مسدد'),
                               onChanged: (v) => paymentStatus = v,
                             )),
-                            fieldRow('طريقة الدفع', TextField(controller: paymentMethodCtrl, style: GoogleFonts.cairo(fontSize: 12), decoration: fieldDeco('طريقة الدفع'))),
+                            fieldRow('طريقة الدفع', TextField(controller: paymentMethodCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), decoration: fieldDeco('طريقة الدفع'))),
 
                             // ═══ الحالات ═══
                             sectionTitle('الحالات'),
                             Row(
                               children: [
-                                Expanded(child: SwitchListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('طباعة', style: GoogleFonts.cairo(fontSize: 12)), value: isPrinted, onChanged: (v) => setDialogState(() => isPrinted = v))),
-                                Expanded(child: SwitchListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('واتساب', style: GoogleFonts.cairo(fontSize: 12)), value: isWhatsApp, onChanged: (v) => setDialogState(() => isWhatsApp = v))),
-                                Expanded(child: SwitchListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('مطابقة', style: GoogleFonts.cairo(fontSize: 12)), value: isReconciled, onChanged: (v) => setDialogState(() => isReconciled = v))),
+                                Expanded(child: SwitchListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('طباعة', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)), value: isPrinted, onChanged: (v) => setDialogState(() => isPrinted = v))),
+                                Expanded(child: SwitchListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('واتساب', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)), value: isWhatsApp, onChanged: (v) => setDialogState(() => isWhatsApp = v))),
+                                Expanded(child: SwitchListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text('مطابقة', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)), value: isReconciled, onChanged: (v) => setDialogState(() => isReconciled = v))),
                               ],
                             ),
 
                             // ═══ محاسبية ═══
                             sectionTitle('بيانات محاسبية'),
-                            fieldRow('السعر الأساسي', TextField(controller: basePriceCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('سعر الباقة من جدول الأسعار'),
+                            fieldRow('السعر الأساسي', TextField(controller: basePriceCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('سعر الباقة من جدول الأسعار'),
                               onChanged: (_) => setDialogState(() {
                                 final base = double.tryParse(basePriceCtrl.text) ?? 0;
                                 final compDisc = double.tryParse(compDiscountCtrl.text) ?? 0;
@@ -1924,7 +1926,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                 planPriceCtrl.text = (base - compDisc - manDisc + maint).toStringAsFixed(0);
                               }),
                             )),
-                            fieldRow('خصم الشركة', TextField(controller: compDiscountCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'),
+                            fieldRow('خصم الشركة', TextField(controller: compDiscountCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'),
                               onChanged: (_) => setDialogState(() {
                                 final base = double.tryParse(basePriceCtrl.text) ?? 0;
                                 final compDisc = double.tryParse(compDiscountCtrl.text) ?? 0;
@@ -1933,7 +1935,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                 planPriceCtrl.text = (base - compDisc - manDisc + maint).toStringAsFixed(0);
                               }),
                             )),
-                            fieldRow('خصم يدوي', TextField(controller: manDiscountCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'),
+                            fieldRow('خصم يدوي', TextField(controller: manDiscountCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'),
                               onChanged: (_) => setDialogState(() {
                                 final base = double.tryParse(basePriceCtrl.text) ?? 0;
                                 final compDisc = double.tryParse(compDiscountCtrl.text) ?? 0;
@@ -1941,7 +1943,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                 final maint = double.tryParse(maintFeeCtrl.text) ?? 0;
                                 planPriceCtrl.text = (base - compDisc - manDisc + maint).toStringAsFixed(0);
                               }))),
-                            fieldRow('رسوم صيانة', TextField(controller: maintFeeCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'),
+                            fieldRow('رسوم صيانة', TextField(controller: maintFeeCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'),
                               onChanged: (_) => setDialogState(() {
                                 final base = double.tryParse(basePriceCtrl.text) ?? 0;
                                 final compDisc = double.tryParse(compDiscountCtrl.text) ?? 0;
@@ -1952,14 +1954,14 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
                             // ═══ تكرار ═══
                             sectionTitle('التكرار'),
-                            fieldRow('أشهر التكرار', TextField(controller: renewMonthsCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
-                            fieldRow('أشهر مدفوعة', TextField(controller: paidMonthsCtrl, style: GoogleFonts.cairo(fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
+                            fieldRow('أشهر التكرار', TextField(controller: renewMonthsCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
+                            fieldRow('أشهر مدفوعة', TextField(controller: paidMonthsCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), keyboardType: TextInputType.number, decoration: fieldDeco('0'))),
 
                             // ═══ ملاحظات ═══
                             sectionTitle('ملاحظات'),
-                            TextField(controller: notesCtrl, style: GoogleFonts.cairo(fontSize: 12), maxLines: 2, decoration: fieldDeco('ملاحظات الاشتراك')),
+                            TextField(controller: notesCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), maxLines: 2, decoration: fieldDeco('ملاحظات الاشتراك')),
                             const SizedBox(height: 8),
-                            TextField(controller: reconcNotesCtrl, style: GoogleFonts.cairo(fontSize: 12), maxLines: 2, decoration: fieldDeco('ملاحظات المطابقة')),
+                            TextField(controller: reconcNotesCtrl, style: TextStyle(fontFamily: 'Cairo', fontSize: 12), maxLines: 2, decoration: fieldDeco('ملاحظات المطابقة')),
                           ],
                         ),
                       ),
@@ -1967,11 +1969,11 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                     // الأزرار
                     Container(
                       padding: EdgeInsets.all(ar.spaceM),
-                      decoration: BoxDecoration(border: Border(top: BorderSide(color: Colors.grey.shade200))),
+                      decoration: BoxDecoration(border: Border(top: BorderSide(color: SdColors.divider))),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: GoogleFonts.cairo(color: Colors.grey.shade600))),
+                          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: SdColors.muted))),
                           SizedBox(width: ar.spaceS),
                           ElevatedButton(
                             onPressed: isSaving ? null : () async {
@@ -2045,20 +2047,20 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                                 if (!ctx.mounted) return;
                                 Navigator.pop(ctx);
                                 if (result['success'] == true) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم تحديث المعاملة بنجاح'), backgroundColor: Colors.green.shade600, duration: const Duration(seconds: 2)));
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم تحديث المعاملة بنجاح'), backgroundColor: SdColors.success, duration: const Duration(seconds: 2)));
                                   _loadData();
                                 } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'خطأ في التحديث'), backgroundColor: Colors.red.shade600));
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'خطأ في التحديث'), backgroundColor: SdColors.danger));
                                 }
                               } catch (e) {
                                 setDialogState(() => isSaving = false);
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red.shade600));
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
                               }
                             },
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3498DB), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10)),
+                            style: ElevatedButton.styleFrom(backgroundColor: SdColors.info, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10)),
                             child: isSaving
                                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                : Text('حفظ', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                                : Text('حفظ', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
@@ -2079,16 +2081,18 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.grey.shade500),
+          Icon(icon, size: 16, color: SdColors.faint),
           const SizedBox(width: 8),
           Text('$label: ',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: context.accR.caption,
-                color: Colors.grey.shade600,
+                color: SdColors.muted,
               )),
           Expanded(
             child: Text(value,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: context.accR.caption,
                   fontWeight: FontWeight.w600,
                 ),
@@ -2121,19 +2125,20 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       builder: (ctx) => AlertDialog(
         title: Text('تعيين التكرار',
             style:
-                GoogleFonts.cairo(fontSize: context.accR.body, fontWeight: FontWeight.bold)),
+                TextStyle(fontFamily: 'Cairo', fontSize: context.accR.body, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('$customerName - $planName',
-                style: GoogleFonts.cairo(
-                    fontSize: context.accR.small, color: Colors.grey.shade700)),
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: context.accR.small, color: SdColors.muted)),
             if (collectionType == 'cash')
               Padding(
                 padding: EdgeInsets.only(top: 4),
                 child: Text('نقد - الشهر الأول مدفوع تلقائياً',
                     style:
-                        TextStyle(fontSize: context.accR.small, color: Colors.teal.shade700)),
+                        TextStyle(fontSize: context.accR.small, color: SdColors.accent)),
               ),
             SizedBox(height: context.accR.spaceM),
             Wrap(
@@ -2143,9 +2148,9 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
                 final isSelected = (currentCycle ?? 0) == val;
                 return ChoiceChip(
                   label: Text(opt['label'] as String,
-                      style: GoogleFonts.cairo(fontSize: context.accR.small)),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: context.accR.small)),
                   selected: isSelected,
-                  selectedColor: Colors.deepPurple.shade100,
+                  selectedColor: SdColors.platformTint,
                   onSelected: (_) async {
                     Navigator.pop(ctx);
                     await _applyRenewalCycle(
@@ -2183,7 +2188,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
             content: Text(cycleMonths != null
                 ? 'تم تعيين التكرار: $cycleMonths شهر'
                 : 'تم إلغاء التكرار'),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: SdColors.success,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -2192,7 +2197,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'خطأ'),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -2200,7 +2205,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('خطأ'),
-          backgroundColor: Colors.red.shade600,
+          backgroundColor: SdColors.danger,
         ),
       );
     }
@@ -2210,7 +2215,7 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('فلتر التاريخ', style: GoogleFonts.cairo()),
+        title: Text('فلتر التاريخ', style: TextStyle(fontFamily: 'Cairo')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -2244,9 +2249,9 @@ class _FtthOperatorAccountPageState extends State<FtthOperatorAccountPage> {
 
   Widget _dateFilterOption(String label, VoidCallback setDates) {
     return ListTile(
-      title: Text(label, style: GoogleFonts.cairo(fontSize: context.accR.body)),
+      title: Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: context.accR.body)),
       trailing: _dateLabel == label
-          ? Icon(Icons.check, color: Colors.green.shade600)
+          ? Icon(Icons.check, color: SdColors.success)
           : null,
       onTap: () {
         setDates();
@@ -2323,7 +2328,7 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
           height: 45,
           child: TextField(
             controller: _ctrl,
-            style: GoogleFonts.cairo(fontSize: 12, color: Colors.black),
+            style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: Colors.black),
             decoration: widget.fieldDeco(widget.hint).copyWith(
               suffixIcon: _ctrl.text.isNotEmpty
                   ? IconButton(
@@ -2355,7 +2360,7 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: SdColors.edge),
               boxShadow: [
                 BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 6, offset: const Offset(0, 2)),
               ],
@@ -2379,8 +2384,8 @@ class _SearchableDropdownFieldState extends State<_SearchableDropdownField> {
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    color: isSelected ? const Color(0xFF3498DB).withValues(alpha: 0.1) : null,
-                    child: Text(name, style: GoogleFonts.cairo(fontSize: 12)),
+                    color: isSelected ? SdColors.info.withValues(alpha: 0.1) : null,
+                    child: Text(name, style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                   ),
                 );
               },

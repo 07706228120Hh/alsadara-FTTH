@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import '../models/citizen_portal_models.dart';
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class CitizenCard extends StatelessWidget {
   final CitizenModel citizen;
@@ -25,7 +26,7 @@ class CitizenCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: citizen.isBanned ? Colors.red.shade200 : Colors.grey.shade200,
+          color: citizen.isBanned ? SdColors.dangerTintEdge : SdColors.divider,
           width: 1,
         ),
       ),
@@ -42,7 +43,7 @@ class CitizenCard extends StatelessWidget {
                   // صورة المواطن
                   CircleAvatar(
                     radius: 28,
-                    backgroundColor: Colors.blue.shade100,
+                    backgroundColor: SdColors.infoTint,
                     backgroundImage: citizen.profileImageUrl != null
                         ? NetworkImage(citizen.profileImageUrl!)
                         : null,
@@ -54,7 +55,7 @@ class CitizenCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade700,
+                              color: SdColors.info,
                             ),
                           )
                         : null,
@@ -86,14 +87,14 @@ class CitizenCard extends StatelessWidget {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.red.shade100,
+                                  color: SdColors.dangerTint,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: const Text(
                                   'محظور',
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: Colors.red,
+                                    color: SdColors.danger,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -105,14 +106,14 @@ class CitizenCard extends StatelessWidget {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.shade200,
+                                  color: SdColors.divider,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: const Text(
                                   'غير نشط',
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: Colors.grey,
+                                    color: SdColors.faint,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -125,14 +126,14 @@ class CitizenCard extends StatelessWidget {
                             const Icon(
                               Icons.phone,
                               size: 14,
-                              color: Colors.grey,
+                              color: SdColors.faint,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               citizen.phoneNumber,
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey.shade700,
+                                color: SdColors.muted,
                               ),
                             ),
                             if (citizen.isPhoneVerified)
@@ -141,7 +142,7 @@ class CitizenCard extends StatelessWidget {
                                 child: Icon(
                                   Icons.verified,
                                   size: 14,
-                                  color: Colors.green.shade600,
+                                  color: SdColors.success,
                                 ),
                               ),
                           ],
@@ -155,7 +156,7 @@ class CitizenCard extends StatelessWidget {
                     const Icon(
                       Icons.arrow_forward_ios,
                       size: 16,
-                      color: Colors.grey,
+                      color: SdColors.faint,
                     ),
                 ],
               ),
@@ -172,19 +173,19 @@ class CitizenCard extends StatelessWidget {
                     icon: Icons.list_alt,
                     label: 'الطلبات',
                     value: '${citizen.totalRequests}',
-                    color: Colors.blue,
+                    color: SdColors.info,
                   ),
                   _buildStat(
                     icon: Icons.payments,
                     label: 'المدفوعات',
                     value: '${citizen.totalPaid.toStringAsFixed(0)} د.ع',
-                    color: Colors.green,
+                    color: SdColors.success,
                   ),
                   _buildStat(
                     icon: Icons.stars,
                     label: 'النقاط',
                     value: '${citizen.loyaltyPoints}',
-                    color: Colors.amber,
+                    color: SdColors.warning,
                   ),
                 ],
               ),
@@ -198,7 +199,7 @@ class CitizenCard extends StatelessWidget {
                     Icon(
                       Icons.location_on,
                       size: 14,
-                      color: Colors.grey.shade600,
+                      color: SdColors.muted,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
@@ -206,7 +207,7 @@ class CitizenCard extends StatelessWidget {
                         citizen.fullAddress!,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade600,
+                          color: SdColors.muted,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -233,7 +234,7 @@ class CitizenCard extends StatelessWidget {
                       ),
                       style: TextButton.styleFrom(
                         foregroundColor:
-                            citizen.isBanned ? Colors.green : Colors.red,
+                            citizen.isBanned ? SdColors.success : SdColors.danger,
                       ),
                     ),
                   ],
@@ -268,7 +269,7 @@ class CitizenCard extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: Colors.grey.shade600,
+            color: SdColors.muted,
           ),
         ),
       ],

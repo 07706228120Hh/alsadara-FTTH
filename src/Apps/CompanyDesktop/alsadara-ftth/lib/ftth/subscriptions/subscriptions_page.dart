@@ -787,8 +787,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
             backgroundColor: matchedCount > 0
-                ? Colors.green.shade600
-                : Colors.orange.shade600,
+                ? SdColors.success
+                : SdColors.warning,
             duration: const Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
           ),
@@ -803,7 +803,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل جلب الأرقام'),
-            backgroundColor: Colors.red.shade600,
+            backgroundColor: SdColors.danger,
             duration: const Duration(seconds: 3),
           ),
         );
@@ -853,7 +853,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('يرجى إعداد رابط n8n Webhook من الإعدادات أولاً'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
             duration: Duration(seconds: 4),
           ),
         );
@@ -867,7 +867,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           const SnackBar(
             content:
                 Text('يرجى إعداد WhatsApp Business API من الإعدادات أولاً'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
             duration: Duration(seconds: 4),
           ),
         );
@@ -1100,7 +1100,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
               ],
             ),
             duration: const Duration(seconds: 6),
-            backgroundColor: Colors.green.shade600,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -1113,7 +1113,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل التصدير'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -1496,13 +1496,13 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   Color getStatusColor(String status) {
     final lowerStatus = status.toLowerCase();
     if (lowerStatus == 'active' || lowerStatus == 'فعال') {
-      return Colors.green;
+      return SdColors.success;
     } else if (lowerStatus == 'expired' || lowerStatus == 'منتهي') {
-      return Colors.red;
+      return SdColors.danger;
     } else if (lowerStatus == 'suspended' || lowerStatus == 'معلق') {
-      return Colors.orange;
+      return SdColors.warning;
     } else {
-      return Colors.grey;
+      return SdColors.faint;
     }
   }
 
@@ -1580,7 +1580,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('تم إلغاء عملية التصدير'),
-        backgroundColor: Colors.orange,
+        backgroundColor: SdColors.warning,
         duration: Duration(seconds: 2),
       ),
     );
@@ -1757,8 +1757,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                                       horizontal: 8, vertical: 6),
                                   decoration: BoxDecoration(
                                     color: _exportWithLocalPhones
-                                        ? Colors.orange.shade600
-                                        : Colors.grey.shade600,
+                                        ? SdColors.warning
+                                        : SdColors.muted,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
@@ -1787,7 +1787,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                               const SizedBox(width: 8),
                               ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green.shade700,
+                                  backgroundColor: SdColors.success,
                                   foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 10),
@@ -1870,7 +1870,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
               icon: Icon(
                 _localPhonesLoaded ? Icons.phone_enabled : Icons.phone_callback,
                 color:
-                    _localPhonesLoaded ? Colors.green.shade300 : smartIconColor,
+                    _localPhonesLoaded ? SdColors.successTintEdge : smartIconColor,
                 size: 24,
               ),
               onPressed: _loadPhonesFromLocalStorage,
@@ -1929,7 +1929,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                 child: ListTile(
                   leading: Icon(
                     _extrasLoaded ? Icons.cloud_done : Icons.cloud_download,
-                    color: _extrasLoaded ? Colors.green : Colors.blueGrey,
+                    color: _extrasLoaded ? SdColors.success : SdColors.faint,
                     size: 22,
                   ),
                   title: Text(
@@ -1954,7 +1954,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                 PopupMenuItem(
                   value: 'whatsapp',
                   child: ListTile(
-                    leading: Icon(Icons.send, color: Colors.green.shade600, size: 22),
+                    leading: Icon(Icons.send, color: SdColors.success, size: 22),
                     title: const Text('إرسال واتساب جماعي', style: TextStyle(fontSize: 13)),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
@@ -1964,7 +1964,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                 PopupMenuItem(
                   value: 'export',
                   child: ListTile(
-                    leading: Icon(Icons.cloud_upload, color: Colors.blue.shade600, size: 22),
+                    leading: Icon(Icons.cloud_upload, color: SdColors.info, size: 22),
                     title: const Text('تصدير', style: TextStyle(fontSize: 13)),
                     dense: true,
                     contentPadding: EdgeInsets.zero,
@@ -2105,10 +2105,10 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.blueGrey.shade50,
+        color: SdColors.surfaceAlt,
         border: Border(
-          top: BorderSide(color: Colors.blueGrey.shade100),
-          bottom: BorderSide(color: Colors.blueGrey.shade100),
+          top: BorderSide(color: SdColors.groundAlt),
+          bottom: BorderSide(color: SdColors.groundAlt),
         ),
       ),
       child: Column(
@@ -2116,7 +2116,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.area_chart, size: 18, color: Colors.blueGrey.shade700),
+              Icon(Icons.area_chart, size: 18, color: SdColors.muted),
               const SizedBox(width: 6),
               Text(
                 multiZoneCountsLoading
@@ -2124,7 +2124,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                     : 'أعداد المناطق المختارة',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: Colors.blueGrey.shade800,
+                  color: SdColors.ink,
                 ),
               ),
               const Spacer(),
@@ -2152,10 +2152,10 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.blueGrey.shade200),
+                  border: Border.all(color: SdColors.divider),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.blueGrey.shade100.withValues(alpha: .4),
+                      color: SdColors.groundAlt.withValues(alpha: .4),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     )
@@ -2166,7 +2166,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Colors.blueGrey.shade700,
+                    color: SdColors.muted,
                   ),
                 ),
               );
@@ -2179,7 +2179,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
   Widget _buildStatsHeader() {
     final gradient = LinearGradient(
-      colors: [Colors.blue.shade600, Colors.blue.shade800],
+      colors: [SdColors.info, SdColors.info],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     );
@@ -2210,9 +2210,9 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: SdColors.divider),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -2227,9 +2227,9 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
   Widget _buildStatusSegmentedControl() {
     final options = [
-      {'label': 'الكل', 'color': Colors.blue, 'icon': Icons.select_all},
-      {'label': 'الفعال', 'color': Colors.green, 'icon': Icons.check_circle},
-      {'label': 'المنتهي', 'color': Colors.red, 'icon': Icons.error_outline},
+      {'label': 'الكل', 'color': SdColors.info, 'icon': Icons.select_all},
+      {'label': 'الفعال', 'color': SdColors.success, 'icon': Icons.check_circle},
+      {'label': 'المنتهي', 'color': SdColors.danger, 'icon': Icons.error_outline},
     ];
 
     return Container(
@@ -2362,10 +2362,10 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     );
     final focusBorder = OutlineInputBorder(
       borderRadius: radius,
-      borderSide: BorderSide(color: Colors.blue.shade400, width: 1.5),
+      borderSide: BorderSide(color: SdColors.info, width: 1.5),
     );
     const ts = TextStyle(fontSize: 13);
-    final hintTs = TextStyle(fontSize: 12, color: Colors.grey.shade400);
+    final hintTs = TextStyle(fontSize: 12, color: SdColors.faint);
 
     // === حقل إدخال موحد ===
     Widget field(TextEditingController ctrl, String hint, IconData icon,
@@ -2389,7 +2389,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
               focusedBorder: focusBorder,
               contentPadding: const EdgeInsets.symmetric(
                   horizontal: 10, vertical: 10),
-              prefixIcon: Icon(icon, size: 18, color: Colors.grey.shade500),
+              prefixIcon: Icon(icon, size: 18, color: SdColors.faint),
               prefixIconConstraints: const BoxConstraints(minWidth: 36),
               isDense: true,
             ),
@@ -2401,9 +2401,9 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     // === زر جلسة متصل (SegmentedButton style) ===
     Widget sessionSegment() {
       final items = [
-        {'label': 'الكل', 'color': Colors.blueGrey},
+        {'label': 'الكل', 'color': SdColors.faint},
         {'label': 'نشطة', 'color': const Color(0xFF388E3C)},
-        {'label': 'غير نشطة', 'color': const Color(0xFFC62828)},
+        {'label': 'غير نشطة', 'color': SdColors.danger},
       ];
       return Container(
         height: h,
@@ -2436,7 +2436,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: sel ? Colors.white : Colors.grey.shade600,
+                    color: sel ? Colors.white : SdColors.muted,
                   ),
                 ),
               ),
@@ -2507,7 +2507,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Divider(height: 1, color: Colors.grey.shade200),
+          child: Divider(height: 1, color: SdColors.divider),
         ),
         // ── الصف الثاني: الجلسة + ترتيب + بحث/مسح ──
         Row(
@@ -2522,7 +2522,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.blue.shade500, Colors.blue.shade700],
+                    colors: [SdColors.info, SdColors.info],
                   ),
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -2556,10 +2556,10 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.shade200),
+                  border: Border.all(color: SdColors.dangerTintEdge),
                 ),
                 child:
-                    Icon(Icons.close, size: 16, color: Colors.red.shade400),
+                    Icon(Icons.close, size: 16, color: SdColors.danger),
               ),
             ),
           ],
@@ -2570,7 +2570,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   }
 
   Widget _buildSortButton(double h) {
-    final borderColor = Colors.grey.shade300;
+    final borderColor = SdColors.edge;
     return SizedBox(
       height: h,
       child: PopupMenuButton<String>(
@@ -2587,9 +2587,9 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 14, color: Colors.blue.shade600),
+              Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 14, color: SdColors.info),
               const SizedBox(width: 4),
-              Text(_sortField, style: TextStyle(fontSize: 12, color: Colors.blue.shade600, fontWeight: FontWeight.w500)),
+              Text(_sortField, style: TextStyle(fontSize: 12, color: SdColors.info, fontWeight: FontWeight.w500)),
             ],
           ),
         ),
@@ -2621,12 +2621,12 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       height: 34,
       child: Row(
         children: [
-          Icon(icon, size: 15, color: active ? Colors.blue : Colors.grey.shade600),
+          Icon(icon, size: 15, color: active ? SdColors.info : SdColors.muted),
           const SizedBox(width: 6),
           Text(label, style: TextStyle(fontSize: 12, fontWeight: active ? FontWeight.bold : FontWeight.normal)),
           if (active) ...[
             const Spacer(),
-            Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 13, color: Colors.blue),
+            Icon(_sortAsc ? Icons.arrow_upward : Icons.arrow_downward, size: 13, color: SdColors.info),
           ],
         ],
       ),
@@ -2645,9 +2645,9 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         fillColor: fillColor,
         border: border,
         enabledBorder: border,
-        focusedBorder: focusBorder ?? border.copyWith(borderSide: const BorderSide(color: Colors.blue)),
+        focusedBorder: focusBorder ?? border.copyWith(borderSide: const BorderSide(color: SdColors.info)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-        suffixIcon: Icon(Icons.calendar_today, size: 13, color: Colors.grey.shade400),
+        suffixIcon: Icon(Icons.calendar_today, size: 13, color: SdColors.faint),
         suffixIconConstraints: const BoxConstraints(minWidth: 26),
         isDense: true,
       ),
@@ -2724,7 +2724,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
               icon: const Icon(Icons.map, size: 16),
               label: Text('المناطق: $count', style: const TextStyle(fontSize: 12)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade600,
+                backgroundColor: SdColors.info,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               ),
@@ -2844,22 +2844,22 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                       height: 4,
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
+                        color: SdColors.edge,
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                     Row(
                       children: [
-                        const Icon(Icons.map, color: Colors.blue),
+                        const Icon(Icons.map, color: SdColors.info),
                         const SizedBox(width: 8),
                         Text('اختيار المناطق',
                             style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: _fs(context, 16),
-                                color: Colors.blue.shade800)),
+                                color: SdColors.info)),
                         const Spacer(),
                         Text('${tempSelected.length} مختارة',
-                            style: TextStyle(color: Colors.grey.shade700)),
+                            style: TextStyle(color: SdColors.muted)),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -2877,7 +2877,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                         child: Text(
                           'عدد المناطق كبير (${allZones.length}). اكتب على الأقل حرفين لإظهار النتائج.',
                           style: TextStyle(
-                              fontSize: 12, color: Colors.orange.shade700),
+                              fontSize: 12, color: SdColors.warning),
                         ),
                       ),
                     const SizedBox(height: 12),
@@ -2909,7 +2909,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                             },
                             icon: const Icon(Icons.undo, size: 16),
                             label: const Text('تراجع'),
-                            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+                            style: TextButton.styleFrom(foregroundColor: SdColors.warning),
                           ),
                         TextButton(
                           onPressed: () {
@@ -2977,7 +2977,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                         child: Text(
                           'عرض أول $maxDisplay فقط (اكتب مزيد من الأحرف لتصفية أكثر).',
                           style: TextStyle(
-                              fontSize: 11, color: Colors.grey.shade600),
+                              fontSize: 11, color: SdColors.muted),
                         ),
                       ),
                     const SizedBox(height: 12),
@@ -3013,7 +3013,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                             icon: const Icon(Icons.check),
                             label: const Text('حفظ'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue.shade700,
+                              backgroundColor: SdColors.info,
                               foregroundColor: Colors.white,
                             ),
                           ),
@@ -3256,7 +3256,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
               ),
             );
           },
-          child: Icon(Icons.copy, size: 14, color: Colors.grey.shade500),
+          child: Icon(Icons.copy, size: 14, color: SdColors.faint),
         ),
         const SizedBox(width: 6),
         Container(
@@ -3359,30 +3359,30 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     final customerName = customer['displayValue'] ?? 'غير متوفر';
 
     final items = <List<dynamic>>[
-      ['الاسم', customerName, Icons.person, Colors.blueGrey.shade800],
+      ['الاسم', customerName, Icons.person, SdColors.ink],
       [
         'الجلسة',
         session,
         Icons.wifi,
         subscription['hasActiveSession'] == true
-            ? Colors.green.shade700
-            : Colors.red.shade600
+            ? SdColors.success
+            : SdColors.danger
       ],
-      ['الهاتف', phone, Icons.phone, Colors.blue.shade600],
-      ['المنطقة', zoneName, Icons.location_on, Colors.orange.shade700],
-      ['نوع الباقة', bundle, Icons.business_center, Colors.indigo.shade600],
-      ['الانتهاء', end, Icons.stop_circle_outlined, Colors.red.shade600],
-      ['متبقي', remain, Icons.timer, Colors.blue.shade600],
-      ['مدة الالتزام', commit, Icons.schedule, Colors.purple.shade600],
+      ['الهاتف', phone, Icons.phone, SdColors.info],
+      ['المنطقة', zoneName, Icons.location_on, SdColors.warning],
+      ['نوع الباقة', bundle, Icons.business_center, SdColors.primary],
+      ['الانتهاء', end, Icons.stop_circle_outlined, SdColors.danger],
+      ['متبقي', remain, Icons.timer, SdColors.info],
+      ['مدة الالتزام', commit, Icons.schedule, SdColors.platformBase],
       // FAT و ONT Serial يظهران فقط إذا جُلبت البيانات الإضافية وكانت متوفرة
       if (_extrasLoaded && fatName != '-')
-        ['FAT', fatName, Icons.cable, Colors.deepOrange.shade700],
+        ['FAT', fatName, Icons.cable, SdColors.warning],
       if (_extrasLoaded && ontSerial != '-')
         [
           'ONT Serial',
           ontSerial,
           Icons.confirmation_number,
-          Colors.blueGrey.shade700
+          SdColors.muted
         ],
     ];
 
@@ -3430,14 +3430,14 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     final bool canCopy =
         label == 'الاسم' || label == 'الهاتف' || label == 'المعرف' || label == 'المستخدم';
     final Color outerBg = isSessionActive
-        ? Colors.green.shade600
+        ? SdColors.success
         : isSessionInactive
-            ? Colors.red.shade600
+            ? SdColors.danger
             : color.withValues(alpha: 0.04);
     final Color borderColor = isSessionActive
-        ? Colors.green.shade700
+        ? SdColors.success
         : isSessionInactive
-            ? Colors.red.shade700
+            ? SdColors.danger
             : color.withValues(alpha: 0.35);
     final Color headerTextColor = (isSessionActive || isSessionInactive)
         ? Colors.white
@@ -3537,7 +3537,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        border: Border(top: BorderSide(color: SdColors.divider)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -3568,14 +3568,14 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: SdColors.edge),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('$pageSize', style: TextStyle(fontSize: 13, color: Colors.grey.shade800)),
-                  Icon(Icons.arrow_drop_down, size: 18, color: Colors.grey.shade600),
+                  Text('$pageSize', style: TextStyle(fontSize: 13, color: SdColors.ink)),
+                  Icon(Icons.arrow_drop_down, size: 18, color: SdColors.muted),
                 ],
               ),
             ),
@@ -3597,7 +3597,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
               _isPhone(context)
                   ? '$currentPage/$totalPages'
                   : 'صفحة $currentPage من $totalPages',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: SdColors.muted),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -3606,7 +3606,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
             Flexible(
               child: Text(
                 'عرض ${((currentPage - 1) * pageSize) + 1} - ${(currentPage * pageSize).clamp(0, totalSubscriptions)} من $totalSubscriptions',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                style: TextStyle(fontSize: 11, color: SdColors.faint),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -3678,21 +3678,21 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
       'name': 'تذكير قبل الانتهاء',
       'description': 'تذكير المشتركين باقتراب انتهاء اشتراكهم',
       'icon': Icons.alarm,
-      'color': Colors.orange,
+      'color': SdColors.warning,
     },
     {
       'id': 'sadara_renewed',
       'name': 'تم التجديد بنجاح',
       'description': 'إشعار المشتركين بنجاح تجديد اشتراكهم',
       'icon': Icons.check_circle,
-      'color': Colors.green,
+      'color': SdColors.success,
     },
     {
       'id': 'sadara_expired',
       'name': 'اشتراك منتهي + عروض',
       'description': 'إرسال عروض للمشتركين المنتهية اشتراكاتهم',
       'icon': Icons.local_offer,
-      'color': Colors.red,
+      'color': SdColors.danger,
     },
   ];
   String _selectedTemplate = 'sadara_reminder';
@@ -3898,7 +3898,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل البيانات: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -4077,7 +4077,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
               '✅ تم جلب ${phonesByCustomerId.length} رقم من الذاكرة\n'
               'جديد: $updatedCount | محدّث: $alreadyHadPhone',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             duration: const Duration(seconds: 4),
           ),
         );
@@ -4092,7 +4092,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ فشل جلب الأرقام'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -4174,7 +4174,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('يرجى تحديد مشتركين للإرسال'),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
         ),
       );
       return;
@@ -4187,7 +4187,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('المشتركون المحددون ليس لديهم أرقام هواتف'),
-          backgroundColor: Colors.orange,
+          backgroundColor: SdColors.warning,
         ),
       );
       return;
@@ -4208,7 +4208,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.success),
             child: const Text('إرسال', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -4286,7 +4286,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
                         style: TextStyle(fontSize: 12)),
                   ],
                 ),
-                backgroundColor: Colors.blue,
+                backgroundColor: SdColors.info,
                 duration: const Duration(seconds: 6),
                 action: SnackBarAction(
                   label: 'التقارير',
@@ -4304,7 +4304,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
                 content: Text('✅ تم الإرسال بنجاح!\n'
                     'المرسلة: ${data['totalSent'] ?? data['sent'] ?? recipients.length}\n'
                     'الفاشلة: ${data['totalFailed'] ?? data['failed'] ?? 0}'),
-                backgroundColor: Colors.green,
+                backgroundColor: SdColors.success,
                 duration: const Duration(seconds: 5),
               ),
             );
@@ -4315,7 +4315,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
             SnackBar(
               content: Text(
                   '❌ فشل الإرسال: ${result['message'] ?? 'خطأ غير معروف'}'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
               duration: const Duration(seconds: 5),
             ),
           );
@@ -4331,7 +4331,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في الإرسال'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -4345,7 +4345,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4354,7 +4354,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
               style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
-                  color: Colors.blue)),
+                  color: SdColors.info)),
           const SizedBox(height: 4),
           ...items,
         ],
@@ -4374,7 +4374,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
             child: Text('$key:',
                 style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey.shade700,
+                    color: SdColors.muted,
                     fontWeight: FontWeight.w500)),
           ),
           Expanded(
@@ -4383,9 +4383,9 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
               style: TextStyle(
                 fontSize: 11,
                 color: highlight
-                    ? (value == 'فارغ' ? Colors.red : Colors.green.shade700)
+                    ? (value == 'فارغ' ? SdColors.danger : SdColors.success)
                     : (value == 'فارغ' || value == '-'
-                        ? Colors.grey
+                        ? SdColors.faint
                         : Colors.black87),
                 fontWeight: highlight ? FontWeight.bold : FontWeight.normal,
               ),
@@ -4500,17 +4500,17 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: SdColors.infoTint,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStat('إجمالي', _allSubscriptions.length, Colors.blue),
-                    _buildStat('معروض', filtered.length, Colors.purple),
-                    _buildStat('لديهم أرقام', withPhone, Colors.green),
+                    _buildStat('إجمالي', _allSubscriptions.length, SdColors.info),
+                    _buildStat('معروض', filtered.length, SdColors.platformBase),
+                    _buildStat('لديهم أرقام', withPhone, SdColors.success),
                     _buildStat(
-                        'محدد للإرسال', selectedWithPhone, Colors.orange),
+                        'محدد للإرسال', selectedWithPhone, SdColors.warning),
                   ],
                 ),
               ),
@@ -4579,8 +4579,8 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade100,
-                      foregroundColor: Colors.blue.shade800,
+                      backgroundColor: SdColors.infoTint,
+                      foregroundColor: SdColors.info,
                     ),
                   )),
                   const SizedBox(width: 8),
@@ -4619,11 +4619,11 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _localPhonesLoaded
-                          ? Colors.green.shade100
-                          : Colors.orange.shade100,
+                          ? SdColors.successTint
+                          : SdColors.warningTint,
                       foregroundColor: _localPhonesLoaded
-                          ? Colors.green.shade800
-                          : Colors.orange.shade800,
+                          ? SdColors.success
+                          : SdColors.warning,
                     ),
                   )),
                 ],
@@ -4634,7 +4634,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
+                    border: Border.all(color: SdColors.edge),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: ListView.builder(
@@ -4688,7 +4688,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
                                   name,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
-                                    color: hasPhone ? null : Colors.grey,
+                                    color: hasPhone ? null : SdColors.faint,
                                   ),
                                 ),
                               ),
@@ -4697,8 +4697,8 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
                                     horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: status == 'Active'
-                                      ? Colors.green.shade100
-                                      : Colors.red.shade100,
+                                      ? SdColors.successTint
+                                      : SdColors.dangerTint,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -4706,8 +4706,8 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: status == 'Active'
-                                        ? Colors.green.shade800
-                                        : Colors.red.shade800,
+                                        ? SdColors.success
+                                        : SdColors.danger,
                                   ),
                                 ),
                               ),
@@ -4718,7 +4718,7 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
                               Icon(
                                 hasPhone ? Icons.phone : Icons.phone_disabled,
                                 size: 14,
-                                color: hasPhone ? Colors.green : Colors.grey,
+                                color: hasPhone ? SdColors.success : SdColors.faint,
                               ),
                               const SizedBox(width: 4),
                               Expanded(
@@ -4726,25 +4726,25 @@ class _BulkWhatsAppDialogState extends State<_BulkWhatsAppDialog> {
                                   hasPhone ? phone : 'لا يوجد رقم',
                                   style: TextStyle(
                                     color: hasPhone
-                                        ? Colors.green.shade700
-                                        : Colors.grey,
+                                        ? SdColors.success
+                                        : SdColors.faint,
                                     fontSize: 12,
                                   ),
                                 ),
                               ),
                               Icon(Icons.calendar_today,
-                                  size: 14, color: Colors.grey.shade600),
+                                  size: 14, color: SdColors.muted),
                               const SizedBox(width: 4),
                               Text(expires,
                                   style: TextStyle(
                                       fontSize: 12,
-                                      color: Colors.grey.shade600)),
+                                      color: SdColors.muted)),
                             ],
                           ),
                           children: [
                             Container(
                               padding: const EdgeInsets.all(12),
-                              color: Colors.grey.shade50,
+                              color: SdColors.surfaceAlt,
                               width: double.infinity,
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -4835,7 +4835,7 @@ ${customer.toString()}
                                     icon: const Icon(Icons.copy, size: 16),
                                     label: const Text('نسخ المعلومات'),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue,
+                                      backgroundColor: SdColors.info,
                                       foregroundColor: Colors.white,
                                     ),
                                   ),
@@ -4846,7 +4846,7 @@ ${customer.toString()}
                                   Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: Colors.blue.shade50,
+                                      color: SdColors.infoTint,
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Column(
@@ -4883,9 +4883,9 @@ ${customer.toString()}
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: SdColors.successTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade200),
+                  border: Border.all(color: SdColors.successTintEdge),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -4936,7 +4936,7 @@ ${customer.toString()}
                             as String,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade700,
+                          color: SdColors.muted,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -4965,19 +4965,19 @@ ${customer.toString()}
                   padding: const EdgeInsets.all(8),
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: SdColors.warningTint,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange),
+                    border: Border.all(color: SdColors.warning),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.warning, color: Colors.orange),
+                      const Icon(Icons.warning, color: SdColors.warning),
                       const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
                           'المشتركون المحددون ليس لديهم أرقام هواتف!\n'
                           'اضغط على "جلب الأرقام" أولاً.',
-                          style: TextStyle(color: Colors.orange),
+                          style: TextStyle(color: SdColors.warning),
                         ),
                       ),
                     ],
@@ -5003,7 +5003,7 @@ ${customer.toString()}
                       icon: const Icon(Icons.analytics, size: 18),
                       label: const Text('التقارير'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.blue,
+                        foregroundColor: SdColors.info,
                       ),
                     ),
                   ),
@@ -5027,7 +5027,7 @@ ${customer.toString()}
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
+                        backgroundColor: SdColors.success,
                         padding: EdgeInsets.symmetric(
                             horizontal: _isPhone(context) ? 14 : 24, vertical: 12),
                       ),
@@ -5054,7 +5054,7 @@ ${customer.toString()}
         ),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          style: TextStyle(fontSize: 12, color: SdColors.muted),
         ),
       ],
     );

@@ -4,10 +4,10 @@ library;
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../permissions/permissions.dart';
 import '../../../services/employee_profile_service.dart';
 import '../../super_admin/permissions_management_v2_page.dart';
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class PermissionsTab extends StatefulWidget {
   final String companyId;
@@ -38,11 +38,11 @@ class _PermissionsTabState extends State<PermissionsTab> {
   Map<String, dynamic> _firstPerms = {};
   Map<String, dynamic> _secondPerms = {};
 
-  static const _accent = Color(0xFF9C27B0);
-  static const _green = Color(0xFF27AE60);
-  static const _red = Color(0xFFE74C3C);
-  static const _gray = Color(0xFF95A5A6);
-  static const _orange = Color(0xFFF39C12);
+  static const _accent = SdColors.platformBase;
+  static const _green = SdColors.success;
+  static const _red = SdColors.danger;
+  static const _gray = SdColors.faint;
+  static const _orange = SdColors.warning;
 
   @override
   void initState() {
@@ -114,7 +114,7 @@ class _PermissionsTabState extends State<PermissionsTab> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Center(
-          child: CircularProgressIndicator(color: Color(0xFF9C27B0)));
+          child: CircularProgressIndicator(color: SdColors.platformBase));
     }
 
     // حساب الإحصائيات
@@ -184,7 +184,8 @@ class _PermissionsTabState extends State<PermissionsTab> {
               onPressed: _openV2Page,
               icon: const Icon(Icons.security_rounded, size: 20),
               label: Text('إدارة الصلاحيات التفصيلية',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.bold, fontSize: 14)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accent,
@@ -226,12 +227,13 @@ class _PermissionsTabState extends State<PermissionsTab> {
               children: [
                 CircularProgressIndicator(
                   value: ratio,
-                  backgroundColor: Colors.grey.shade200,
+                  backgroundColor: SdColors.divider,
                   color: color,
                   strokeWidth: 6,
                 ),
                 Text('$percent%',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                         color: color)),
@@ -244,13 +246,15 @@ class _PermissionsTabState extends State<PermissionsTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('ملخص الصلاحيات',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                         color: Colors.black87)),
                 const SizedBox(height: 4),
                 Text('$enabled من $total صلاحية مفعّلة',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 13, color: Colors.black54)),
               ],
             ),
@@ -291,7 +295,8 @@ class _PermissionsTabState extends State<PermissionsTab> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(title,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold, fontSize: 12)),
               ),
             ],
@@ -302,17 +307,18 @@ class _PermissionsTabState extends State<PermissionsTab> {
             height: 48,
             child: CircularProgressIndicator(
               value: ratio,
-              backgroundColor: Colors.grey.shade200,
+              backgroundColor: SdColors.divider,
               color: color,
               strokeWidth: 5,
             ),
           ),
           const SizedBox(height: 8),
           Text('$enabled / $total',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontWeight: FontWeight.bold, fontSize: 14)),
           Text('مفعّلة',
-              style: GoogleFonts.cairo(fontSize: 10, color: _gray)),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: _gray)),
         ],
       ),
     );
@@ -345,16 +351,16 @@ class _PermissionsTabState extends State<PermissionsTab> {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: SdColors.divider),
         ),
         child: Column(
           children: [
             Icon(Icons.block_rounded, color: _gray, size: 40),
             const SizedBox(height: 8),
             Text('لا توجد صلاحيات مفعّلة',
-                style: GoogleFonts.cairo(color: _gray, fontSize: 13)),
+                style: TextStyle(fontFamily: 'Cairo', color: _gray, fontSize: 13)),
           ],
         ),
       );
@@ -385,7 +391,8 @@ class _PermissionsTabState extends State<PermissionsTab> {
                     color: _accent, size: 18),
                 const SizedBox(width: 8),
                 Text('الصلاحيات المفعّلة',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                         color: _accent)),
@@ -408,10 +415,12 @@ class _PermissionsTabState extends State<PermissionsTab> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(p.label,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontWeight: FontWeight.w600, fontSize: 12)),
                           Text(p.actions.join(' • '),
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 10, color: _green)),
                         ],
                       ),
@@ -420,15 +429,16 @@ class _PermissionsTabState extends State<PermissionsTab> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: (p.isFirst ? Colors.blue : Colors.teal)
+                        color: (p.isFirst ? SdColors.info : SdColors.accent)
                             .withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         p.isFirst ? 'رئيسي' : 'FTTH',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 9,
-                          color: p.isFirst ? Colors.blue : Colors.teal,
+                          color: p.isFirst ? SdColors.info : SdColors.accent,
                         ),
                       ),
                     ),

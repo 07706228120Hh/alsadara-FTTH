@@ -4,7 +4,6 @@ import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/period_closing_service.dart';
 import '../../services/audit_trail_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../widgets/accounting_skeleton.dart';
 import '../../permissions/permissions.dart';
@@ -462,9 +461,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
         builder: (ctx, ss) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            backgroundColor: AccountingTheme.bgCard,
+            backgroundColor: SdColors.surface,
             title: Text('إضافة مصروف',
-                style: TextStyle(color: AccountingTheme.textPrimary)),
+                style: TextStyle(color: SdColors.ink)),
             content: SizedBox(
               width: context.accR.dialogSmallW,
               child: SingleChildScrollView(
@@ -477,9 +476,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     SizedBox(height: context.accR.spaceM),
                     DropdownButtonFormField<String>(
                       value: selectedAccountId,
-                      dropdownColor: AccountingTheme.bgCard,
+                      dropdownColor: SdColors.surface,
                       style:
-                          const TextStyle(color: AccountingTheme.textPrimary),
+                          const TextStyle(color: SdColors.ink),
                       isExpanded: true,
                       items: accountsList.map<DropdownMenuItem<String>>((a) {
                         return DropdownMenuItem(
@@ -492,9 +491,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       decoration: InputDecoration(
                         labelText: 'الحساب',
                         labelStyle:
-                            const TextStyle(color: AccountingTheme.textMuted),
+                            const TextStyle(color: SdColors.faint),
                         filled: true,
-                        fillColor: AccountingTheme.bgCardHover,
+                        fillColor: SdColors.surfaceAlt,
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide.none),
@@ -503,9 +502,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     SizedBox(height: context.accR.spaceM),
                     DropdownButtonFormField<String>(
                       value: selectedCategory,
-                      dropdownColor: AccountingTheme.bgCard,
+                      dropdownColor: SdColors.surface,
                       style:
-                          const TextStyle(color: AccountingTheme.textPrimary),
+                          const TextStyle(color: SdColors.ink),
                       items: categories.map((c) {
                         return DropdownMenuItem(
                             value: c['value'], child: Text(c['label']!));
@@ -515,9 +514,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                       decoration: InputDecoration(
                         labelText: 'الفئة',
                         labelStyle:
-                            const TextStyle(color: AccountingTheme.textMuted),
+                            const TextStyle(color: SdColors.faint),
                         filled: true,
-                        fillColor: AccountingTheme.bgCardHover,
+                        fillColor: SdColors.surfaceAlt,
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide.none),
@@ -533,17 +532,17 @@ class _ExpensesPageState extends State<ExpensesPage> {
               TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: Text('إلغاء',
-                      style: TextStyle(color: AccountingTheme.textMuted))),
+                      style: TextStyle(color: SdColors.faint))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AccountingTheme.danger,
+                    backgroundColor: SdColors.danger,
                     foregroundColor: Colors.white),
                 onPressed: () async {
                   if (descCtrl.text.isEmpty ||
                       amountCtrl.text.isEmpty ||
                       selectedAccountId == null) {
                     _snack(
-                        'الرجاء ملء الحقول المطلوبة', AccountingTheme.warning);
+                        'الرجاء ملء الحقول المطلوبة', SdColors.warning);
                     return;
                   }
                   Navigator.pop(ctx);
@@ -562,7 +561,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     createdById: VpsAuthService.instance.currentUser?.id,
                   );
                   if (result['success'] == true) {
-                    _snack('تم إضافة المصروف', AccountingTheme.success);
+                    _snack('تم إضافة المصروف', SdColors.success);
                     AuditTrailService.instance.log(
                       action: AuditAction.create,
                       entityType: AuditEntityType.expense,
@@ -571,7 +570,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     );
                     _loadData();
                   } else {
-                    _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                    _snack(result['message'] ?? 'خطأ', SdColors.danger);
                   }
                 },
                 child: const Text('إضافة'),
@@ -587,13 +586,13 @@ class _ExpensesPageState extends State<ExpensesPage> {
       {bool isNumber = false}) {
     return TextField(
       controller: ctrl,
-      style: const TextStyle(color: AccountingTheme.textPrimary),
+      style: const TextStyle(color: SdColors.ink),
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+        labelStyle: const TextStyle(color: SdColors.faint),
         filled: true,
-        fillColor: AccountingTheme.bgCardHover,
+        fillColor: SdColors.surfaceAlt,
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide.none),
@@ -677,9 +676,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: Text('تعديل مصروف',
-              style: TextStyle(color: AccountingTheme.textPrimary)),
+              style: TextStyle(color: SdColors.ink)),
           content: SizedBox(
             width: context.accR.dialogSmallW,
             child: Column(
@@ -697,11 +696,11 @@ class _ExpensesPageState extends State<ExpensesPage> {
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('إلغاء',
-                  style: TextStyle(color: AccountingTheme.textMuted)),
+                  style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.info,
+                  backgroundColor: SdColors.info,
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -723,7 +722,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   },
                 );
                 if (result['success'] == true) {
-                  _snack('تم تحديث المصروف', AccountingTheme.success);
+                  _snack('تم تحديث المصروف', SdColors.success);
                   AuditTrailService.instance.log(
                     action: AuditAction.edit,
                     entityType: AuditEntityType.expense,
@@ -732,7 +731,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   );
                   _loadData();
                 } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                  _snack(result['message'] ?? 'خطأ', SdColors.danger);
                 }
               },
               child: const Text('حفظ'),
@@ -749,22 +748,22 @@ class _ExpensesPageState extends State<ExpensesPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: Text('تأكيد الحذف',
-              style: TextStyle(color: AccountingTheme.danger)),
+              style: TextStyle(color: SdColors.danger)),
           content: Text(
             'هل تريد حذف المصروف "${e['Description']}" بمبلغ ${_fmt(e['Amount'])} د.ع؟\nسيتم إلغاء القيد المحاسبي المرتبط أيضاً.',
-            style: const TextStyle(color: AccountingTheme.textPrimary),
+            style: const TextStyle(color: SdColors.ink),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('إلغاء',
-                  style: TextStyle(color: AccountingTheme.textMuted)),
+                  style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.danger,
+                  backgroundColor: SdColors.danger,
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -779,7 +778,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                 final result = await AccountingService.instance
                     .deleteExpense(e['Id'].toString());
                 if (result['success'] == true) {
-                  _snack('تم حذف المصروف', AccountingTheme.success);
+                  _snack('تم حذف المصروف', SdColors.success);
                   AuditTrailService.instance.log(
                     action: AuditAction.delete,
                     entityType: AuditEntityType.expense,
@@ -788,7 +787,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                   );
                   _loadData();
                 } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                  _snack(result['message'] ?? 'خطأ', SdColors.danger);
                 }
               },
               child: const Text('حذف'),

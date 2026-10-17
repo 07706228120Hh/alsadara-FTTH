@@ -607,7 +607,7 @@ class _NavTileState extends State<_NavTile> {
         ),
         borderRadius: BorderRadius.circular(10),
         border: SdOutline.all,
-        boxShadow: [BoxShadow(color: t.edge, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: t.edge.withValues(alpha: .35), offset: const Offset(0, 2), blurRadius: 4)],
       ),
       child: Icon(item.icon, size: 17, color: t.base),
     );
@@ -681,7 +681,7 @@ class _NavTileState extends State<_NavTile> {
         border: _focus
             ? Border.all(color: SdColors.accentGlow, width: SdOutline.focusWidth)
             : sel
-                ? Border.all(color: SdColors.outline, width: SdOutline.focusWidth)
+                ? Border.all(color: Colors.white, width: SdOutline.focusWidth)
                 : SdOutline.all,
         boxShadow: [
           // لمعة علوية داخلية
@@ -692,8 +692,9 @@ class _NavTileState extends State<_NavTile> {
           ),
           // الحافة الصلبة (سماكة المجسّم)
           BoxShadow(
-              color: t.edge,
-              offset: Offset(0, widget.collapsed ? depth * .75 : depth)),
+              color: t.edge.withValues(alpha: .5),
+              offset: Offset(0, (widget.collapsed ? depth * .75 : depth) * .5),
+              blurRadius: 2),
           // توهّج ناعم بلون الزر
           BoxShadow(
             color: t.base.withValues(alpha: _hover ? .6 : .28),

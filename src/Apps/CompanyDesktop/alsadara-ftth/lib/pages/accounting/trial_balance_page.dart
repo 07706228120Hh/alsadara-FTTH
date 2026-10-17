@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
 import '../../services/accounting_cache_service.dart';
@@ -39,11 +38,11 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
   };
 
   static const _typeColors = {
-    'Assets': AccountingTheme.neonBlue,
-    'Liabilities': AccountingTheme.neonOrange,
-    'Equity': AccountingTheme.neonPurple,
-    'Revenue': AccountingTheme.neonGreen,
-    'Expenses': AccountingTheme.danger,
+    'Assets': SdColors.primary,
+    'Liabilities': SdColors.warning,
+    'Equity': SdColors.platformBase,
+    'Revenue': SdColors.success,
+    'Expenses': SdColors.danger,
   };
 
   static const _typeLabelsAr = {
@@ -234,32 +233,32 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 8 : ar.spaceM),
-      color: AccountingTheme.bgCard,
+      color: SdColors.surface,
       child: Row(
         children: [
           _summaryChip(
             'إجمالي مدين',
             _fmt.format(_totalDebit),
-            AccountingTheme.debitText,
-            AccountingTheme.debitFill,
+            SdColors.success,
+            SdColors.successTint,
             ar,
           ),
           SizedBox(width: isMob ? 6 : ar.spaceM),
           _summaryChip(
             'إجمالي دائن',
             _fmt.format(_totalCredit),
-            AccountingTheme.creditText,
-            AccountingTheme.creditFill,
+            SdColors.danger,
+            SdColors.dangerTint,
             ar,
           ),
           SizedBox(width: isMob ? 6 : ar.spaceM),
           _summaryChip(
             'الفرق',
             _fmt.format(_difference),
-            _isBalanced ? AccountingTheme.success : AccountingTheme.danger,
+            _isBalanced ? SdColors.success : SdColors.danger,
             _isBalanced
-                ? AccountingTheme.success.withOpacity(0.1)
-                : AccountingTheme.danger.withOpacity(0.1),
+                ? SdColors.success.withOpacity(0.1)
+                : SdColors.danger.withOpacity(0.1),
             ar,
           ),
           SizedBox(width: isMob ? 6 : ar.spaceM),
@@ -268,13 +267,13 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                 horizontal: isMob ? 8 : 12, vertical: isMob ? 4 : 6),
             decoration: BoxDecoration(
               color: _isBalanced
-                  ? AccountingTheme.success.withOpacity(0.15)
-                  : AccountingTheme.danger.withOpacity(0.15),
+                  ? SdColors.success.withOpacity(0.15)
+                  : SdColors.danger.withOpacity(0.15),
               borderRadius: BorderRadius.circular(ar.badgeRadius + 4),
               border: Border.all(
                 color: _isBalanced
-                    ? AccountingTheme.success
-                    : AccountingTheme.danger,
+                    ? SdColors.success
+                    : SdColors.danger,
                 width: 1.5,
               ),
             ),
@@ -285,18 +284,19 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                   _isBalanced ? Icons.check_circle : Icons.warning_rounded,
                   size: isMob ? 14 : 18,
                   color: _isBalanced
-                      ? AccountingTheme.success
-                      : AccountingTheme.danger,
+                      ? SdColors.success
+                      : SdColors.danger,
                 ),
                 SizedBox(width: 4),
                 Text(
                   _isBalanced ? 'متوازن' : 'غير متوازن',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 10 : ar.small,
                     fontWeight: FontWeight.bold,
                     color: _isBalanced
-                        ? AccountingTheme.success
-                        : AccountingTheme.danger,
+                        ? SdColors.success
+                        : SdColors.danger,
                   ),
                 ),
               ],
@@ -305,9 +305,10 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
           const Spacer(),
           Text(
             '${_filteredAccounts.length} حساب',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.small,
-                color: AccountingTheme.textMuted),
+                color: SdColors.faint),
           ),
         ],
       ),
@@ -328,11 +329,13 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: isMob ? 8 : ar.caption,
-                  color: AccountingTheme.textMuted)),
+                  color: SdColors.faint)),
           Text(value,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: isMob ? 11 : ar.financialSmall,
                   fontWeight: FontWeight.bold,
                   color: textColor)),
@@ -348,8 +351,8 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
       padding: EdgeInsets.symmetric(
           horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 4 : ar.spaceS),
       decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+        color: SdColors.surface,
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
       child: Row(
         children: [
@@ -359,18 +362,19 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
             height: isMob ? 30 : ar.searchBarH,
             child: TextField(
               onChanged: (v) => setState(() => _searchQuery = v),
-              style: GoogleFonts.cairo(fontSize: isMob ? 11 : ar.inputText),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 11 : ar.inputText),
               decoration: InputDecoration(
                 hintText: 'بحث بالاسم أو الكود...',
-                hintStyle: GoogleFonts.cairo(
+                hintStyle: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 10 : ar.hintText,
-                    color: AccountingTheme.textMuted),
+                    color: SdColors.faint),
                 prefixIcon: Icon(Icons.search, size: isMob ? 14 : 18),
                 isDense: true,
                 contentPadding: EdgeInsets.symmetric(
                     horizontal: 8, vertical: isMob ? 4 : 6),
                 filled: true,
-                fillColor: AccountingTheme.bgSecondary,
+                fillColor: SdColors.groundAlt,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(ar.btnRadius),
                   borderSide: BorderSide.none,
@@ -392,23 +396,24 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                       horizontal: isMob ? 6 : 10, vertical: isMob ? 3 : 5),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AccountingTheme.neonBlue.withOpacity(0.15)
+                        ? SdColors.primary.withOpacity(0.15)
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(ar.badgeRadius + 4),
                     border: Border.all(
                       color: isSelected
-                          ? AccountingTheme.neonBlue
-                          : AccountingTheme.borderColor,
+                          ? SdColors.primary
+                          : SdColors.divider,
                     ),
                   ),
                   child: Text(label,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: isMob ? 9 : ar.small,
                         fontWeight:
                             isSelected ? FontWeight.bold : FontWeight.normal,
                         color: isSelected
-                            ? AccountingTheme.neonBlue
-                            : AccountingTheme.textMuted,
+                            ? SdColors.primary
+                            : SdColors.faint,
                       )),
                 ),
               ),
@@ -458,12 +463,12 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
               final type = acc['AccountType']?.toString() ??
                   acc['Type']?.toString() ??
                   '';
-              final typeColor = _typeColors[type] ?? AccountingTheme.textMuted;
+              final typeColor = _typeColors[type] ?? SdColors.faint;
 
               return Container(
                 color: i.isEven
                     ? Colors.transparent
-                    : AccountingTheme.tableRowAlt,
+                    : SdColors.surfaceAlt,
                 padding: EdgeInsets.symmetric(
                     horizontal: ar.tableCellPadH, vertical: ar.tableCellPadV),
                 child: Row(
@@ -471,21 +476,24 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                     SizedBox(
                         width: ar.colNumW,
                         child: Text('${i + 1}',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: ar.tableCellFont,
-                                color: AccountingTheme.textMuted))),
+                                color: SdColors.faint))),
                     SizedBox(
                         width: isMob ? 50 : 80,
                         child: Text(acc['Code']?.toString() ?? '',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: ar.tableCellFont,
                                 fontWeight: FontWeight.w600,
-                                color: AccountingTheme.textPrimary))),
+                                color: SdColors.ink))),
                     Expanded(
                         child: Text(acc['Name']?.toString() ?? '',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: ar.tableCellFont,
-                                color: AccountingTheme.textSecondary))),
+                                color: SdColors.muted))),
                     SizedBox(
                       width: isMob ? 50 : 80,
                       child: Container(
@@ -498,7 +506,8 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                         child: Text(
                           _typeLabelsAr[type] ?? type,
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: isMob ? 8 : ar.caption,
                               fontWeight: FontWeight.w600,
                               color: typeColor),
@@ -511,10 +520,11 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                       child: Text(
                         isDebit ? _fmt.format(balance) : '',
                         textAlign: TextAlign.left,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: ar.tableCellFont,
                             fontWeight: FontWeight.w600,
-                            color: AccountingTheme.debitText),
+                            color: SdColors.success),
                       ),
                     ),
                     // دائن
@@ -525,10 +535,11 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                             ? _fmt.format(balance.abs())
                             : '',
                         textAlign: TextAlign.left,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: ar.tableCellFont,
                             fontWeight: FontWeight.w600,
-                            color: AccountingTheme.creditText),
+                            color: SdColors.danger),
                       ),
                     ),
                   ],
@@ -538,7 +549,7 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
             // صف الإجمالي
             Container(
               decoration: BoxDecoration(
-                color: AccountingTheme.bgSidebar,
+                color: SdColors.primary,
                 borderRadius:
                     const BorderRadius.vertical(bottom: Radius.circular(10)),
               ),
@@ -550,7 +561,8 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                   SizedBox(width: isMob ? 50 : 80),
                   Expanded(
                       child: Text('الإجمالي',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: ar.tableCellFont + 1,
                               fontWeight: FontWeight.bold,
                               color: Colors.white))),
@@ -560,7 +572,8 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                     child: Text(
                       _fmt.format(_totalDebit),
                       textAlign: TextAlign.left,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: ar.tableCellFont + 1,
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFF82E0AA)),
@@ -571,7 +584,8 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                     child: Text(
                       _fmt.format(_totalCredit),
                       textAlign: TextAlign.left,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: ar.tableCellFont + 1,
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFFF1948A)),
@@ -590,10 +604,11 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
       {TextAlign align = TextAlign.start}) {
     final child = Text(label,
         textAlign: align,
-        style: GoogleFonts.cairo(
+        style: TextStyle(
+          fontFamily: 'Cairo',
           fontSize: ar.tableHeaderFont,
           fontWeight: FontWeight.bold,
-          color: AccountingTheme.tableHeaderText,
+          color: SdColors.surface,
         ));
     return width != null ? SizedBox(width: width, child: child) : child;
   }

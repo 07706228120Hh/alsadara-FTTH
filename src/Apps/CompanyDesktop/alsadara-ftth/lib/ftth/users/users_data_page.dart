@@ -396,7 +396,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
           const SnackBar(
             content:
                 Text('✅ تم تجاوز Cloudflare! جاري إعادة تحميل البيانات...'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             duration: Duration(seconds: 2),
           ),
         );
@@ -410,7 +410,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('فشل في تجاوز Cloudflare'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -473,7 +473,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
                               ? Icons.security
                               : Icons.error_outline,
                           size: 64,
-                          color: isCloudflareError ? Colors.orange : Colors.red,
+                          color: isCloudflareError ? SdColors.warning : SdColors.danger,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -482,15 +482,15 @@ class _UsersDataPageState extends State<UsersDataPage> {
                             fontSize: MediaQuery.of(context).size.width < 500 ? 16 : 20,
                             fontWeight: FontWeight.bold,
                             color: isCloudflareError
-                                ? Colors.orange[800]
-                                : Colors.red,
+                                ? SdColors.warning
+                                : SdColors.danger,
                           ),
                         ),
                         const SizedBox(height: 12),
                         Text(
                           error!,
                           style:
-                              TextStyle(color: Colors.grey[700], fontSize: 16),
+                              TextStyle(color: SdColors.muted, fontSize: 16),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 24),
@@ -515,7 +515,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
                                   ? 'جاري التجاوز...'
                                   : 'تجاوز Cloudflare تلقائياً'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
+                                backgroundColor: SdColors.success,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 24, vertical: 12),
@@ -524,7 +524,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
                             const SizedBox(height: 12),
                             const Text(
                               'أو',
-                              style: TextStyle(color: Colors.grey),
+                              style: TextStyle(color: SdColors.faint),
                             ),
                             const SizedBox(height: 12),
                           ],
@@ -534,7 +534,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
                             icon: const Icon(Icons.open_in_browser),
                             label: const Text('فتح Dashboard في المتصفح'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.indigo,
+                              backgroundColor: SdColors.primary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 24, vertical: 12),
@@ -545,22 +545,22 @@ class _UsersDataPageState extends State<UsersDataPage> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.blue[50],
+                              color: SdColors.infoTint,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.blue[200]!),
+                              border: Border.all(color: SdColors.infoTintEdge),
                             ),
                             child: Column(
                               children: [
                                 Row(
                                   children: [
                                     Icon(Icons.info,
-                                        color: Colors.blue[700], size: 20),
+                                        color: SdColors.info, size: 20),
                                     const SizedBox(width: 8),
                                     Text(
                                       'خطوات الحل:',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.blue[800],
+                                        color: SdColors.info,
                                       ),
                                     ),
                                   ],
@@ -592,17 +592,17 @@ class _UsersDataPageState extends State<UsersDataPage> {
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
-                      color: Colors.indigo[50],
+                      color: SdColors.primaryTint,
                       child: Row(
                         children: [
                           const Icon(Icons.check_circle,
-                              color: Colors.green, size: 20),
+                              color: SdColors.success, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'متصل ✓ | عدد المناطق: ${userZones.length}',
                               style: TextStyle(
-                                color: Colors.indigo[800],
+                                color: SdColors.primary,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -620,7 +620,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
                             child: _buildStatCard(
                               'إجمالي المناطق',
                               userZones.length.toString(),
-                              Colors.indigo,
+                              SdColors.primary,
                               Icons.location_on,
                             ),
                           ),
@@ -629,7 +629,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
                             child: _buildStatCard(
                               'السجلات',
                               usersData.length.toString(),
-                              Colors.teal,
+                              SdColors.accent,
                               Icons.table_chart,
                             ),
                           ),
@@ -675,7 +675,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Row(
                         children: [
-                          const Icon(Icons.list, color: Colors.indigo),
+                          const Icon(Icons.list, color: SdColors.primary),
                           const SizedBox(width: 8),
                           Text(
                             'قائمة المناطق (${filteredZones.length})',
@@ -698,12 +698,12 @@ class _UsersDataPageState extends State<UsersDataPage> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.search_off,
-                                      size: 64, color: Colors.grey[400]),
+                                      size: 64, color: SdColors.faint),
                                   const SizedBox(height: 16),
                                   Text(
                                     'لا توجد نتائج',
                                     style: TextStyle(
-                                        color: Colors.grey[600], fontSize: 16),
+                                        color: SdColors.muted, fontSize: 16),
                                   ),
                                 ],
                               ),
@@ -718,11 +718,11 @@ class _UsersDataPageState extends State<UsersDataPage> {
                                   margin: const EdgeInsets.only(bottom: 8),
                                   child: ListTile(
                                     leading: CircleAvatar(
-                                      backgroundColor: Colors.indigo[100],
+                                      backgroundColor: SdColors.primaryTint,
                                       child: Text(
                                         '${index + 1}',
                                         style: TextStyle(
-                                          color: Colors.indigo[800],
+                                          color: SdColors.primary,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -735,12 +735,12 @@ class _UsersDataPageState extends State<UsersDataPage> {
                                     subtitle: Text(
                                       _getZoneType(zone),
                                       style: TextStyle(
-                                          color: Colors.grey[600],
+                                          color: SdColors.muted,
                                           fontSize: 12),
                                     ),
                                     trailing: Icon(
                                       Icons.chevron_right,
-                                      color: Colors.grey[400],
+                                      color: SdColors.faint,
                                     ),
                                     onTap: () => _showZoneDetails(zone),
                                   ),
@@ -775,7 +775,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
             Text(
               title,
               style: TextStyle(
-                color: Colors.grey[600],
+                color: SdColors.muted,
                 fontSize: 12,
               ),
             ),
@@ -807,7 +807,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.location_on, color: Colors.indigo),
+            Icon(Icons.location_on, color: SdColors.primary),
             const SizedBox(width: 8),
             Expanded(child: Text(zone)),
           ],
@@ -859,7 +859,7 @@ class _UsersDataPageState extends State<UsersDataPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.info_outline, color: Colors.indigo),
+            Icon(Icons.info_outline, color: SdColors.primary),
             SizedBox(width: 8),
             Text('معلومات البيانات'),
           ],

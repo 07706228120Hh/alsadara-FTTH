@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'agents_details_page.dart';
 import '../users/users_data_page.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class DataPage extends StatefulWidget {
   final String authToken;
@@ -43,9 +44,9 @@ class _DataPageState extends State<DataPage>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color(0xFF1A237E),
-                Color(0xFF3949AB),
-                Color(0xFF5C6BC0),
+                SdColors.primary,
+                SdColors.primaryLight,
+                SdColors.primarySoft,
               ],
             ),
           ),

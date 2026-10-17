@@ -5,8 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:google_fonts/google_fonts.dart';
-
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 /// نتيجة اختيار الموقع
 class PickedLocation {
   final double latitude;
@@ -59,7 +58,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
   static const _defaultLat = 33.312805;
   static const _defaultLng = 44.361488;
 
-  static const _accent = Color(0xFF3498DB);
+  static const _accent = SdColors.info;
   static const _textDark = Color(0xFF333333);
   static const _textGray = Color(0xFF999999);
 
@@ -117,8 +116,8 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content:
-              Text('يرجى تحديد موقع على الخريطة', style: GoogleFonts.cairo()),
-          backgroundColor: Colors.orange[700],
+              Text('يرجى تحديد موقع على الخريطة', style: TextStyle(fontFamily: 'Cairo')),
+          backgroundColor: SdColors.warning,
         ),
       );
       return;
@@ -166,7 +165,8 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                     const SizedBox(width: 8),
                     Text(
                       'تحديد الموقع على الخريطة',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -175,7 +175,8 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                     const Spacer(),
                     Text(
                       'انقر على الخريطة لتحديد الموقع',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         color: Colors.white70,
                         fontSize: 11,
                       ),
@@ -217,7 +218,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                                   children: [
                                     Icon(
                                       Icons.location_pin,
-                                      color: Colors.red,
+                                      color: SdColors.danger,
                                       size: 40,
                                     ),
                                     SizedBox(height: 2),
@@ -291,7 +292,8 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                                 const SizedBox(width: 4),
                                 Text(
                                   _isSatellite ? 'خريطة' : 'قمر صناعي',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: 11,
                                     color: _textDark,
                                     fontWeight: FontWeight.w600,
@@ -312,9 +314,9 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8F9FA),
+                  color: SdColors.surfaceAlt,
                   border: Border(
-                    top: BorderSide(color: Colors.grey.shade300),
+                    top: BorderSide(color: SdColors.edge),
                   ),
                 ),
                 child: Row(
@@ -344,7 +346,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                         onPressed: _goToManualCoords,
                         icon: const Icon(Icons.search, size: 16),
                         label: Text('انتقال',
-                            style: GoogleFonts.cairo(fontSize: 12)),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _accent,
                           foregroundColor: Colors.white,
@@ -371,11 +373,12 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                         child: Row(
                           children: [
                             const Icon(Icons.check_circle,
-                                color: Colors.green, size: 16),
+                                color: SdColors.success, size: 16),
                             const SizedBox(width: 4),
                             Text(
                               '${_selectedLocation!.latitude.toStringAsFixed(6)}, ${_selectedLocation!.longitude.toStringAsFixed(6)}',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
                                 color: _textGray,
                                 fontSize: 11,
                               ),
@@ -387,7 +390,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                     TextButton(
                       onPressed: () => Navigator.pop(context),
                       child: Text('إلغاء',
-                          style: GoogleFonts.cairo(color: _textGray)),
+                          style: TextStyle(fontFamily: 'Cairo', color: _textGray)),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton.icon(
@@ -395,7 +398,7 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
                       icon: const Icon(Icons.check, size: 18),
                       label: Text(
                         'تأكيد الموقع',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _accent,
@@ -441,11 +444,11 @@ class _MapLocationPickerState extends State<MapLocationPicker> {
   }) {
     return TextField(
       controller: controller,
-      style: GoogleFonts.cairo(color: _textDark, fontSize: 12),
+      style: TextStyle(fontFamily: 'Cairo', color: _textDark, fontSize: 12),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.cairo(color: _textGray, fontSize: 11),
+        labelStyle: TextStyle(fontFamily: 'Cairo', color: _textGray, fontSize: 11),
         prefixIcon: Icon(icon, color: _accent, size: 16),
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

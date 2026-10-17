@@ -13,6 +13,7 @@ import '../../pages/home_page.dart' as firstSystem;
 import '../core/home_page.dart';
 import '../../services/auth/session_manager.dart';
 import '../../permissions/permissions.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class LoginPage extends StatefulWidget {
   // إضافة معاملات لاستقبال بيانات المستخدم من النظام الأول
@@ -118,7 +119,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('🗑️ تم مسح البيانات المحفوظة بنجاح'),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -127,7 +128,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ خطأ في مسح البيانات'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -381,7 +382,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                             child: Icon(
                                               Icons.person,
                                               size: 60,
-                                              color: Color(0xFF667eea),
+                                              color: SdColors.primaryLight,
                                             ),
                                           ),
                                           const SizedBox(height: 16),
@@ -393,7 +394,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                   BorderRadius.circular(15),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: const Color(0xFF667eea)
+                                                  color: SdColors.primaryLight
                                                       .withValues(alpha: 0.1),
                                                   blurRadius: 10,
                                                   offset: const Offset(0, 5),
@@ -419,8 +420,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                     gradient:
                                                         const LinearGradient(
                                                       colors: [
-                                                        Color(0xFF667eea),
-                                                        Color(0xFF764ba2)
+                                                        SdColors.primaryLight,
+                                                        SdColors.platformBase
                                                       ],
                                                     ),
                                                     borderRadius:
@@ -445,7 +446,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                   borderRadius:
                                                       BorderRadius.circular(15),
                                                   borderSide: const BorderSide(
-                                                    color: Color(0xFF667eea),
+                                                    color: SdColors.primaryLight,
                                                     width: 2,
                                                   ),
                                                 ),
@@ -461,7 +462,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                   BorderRadius.circular(15),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: const Color(0xFF667eea)
+                                                  color: SdColors.primaryLight
                                                       .withValues(alpha: 0.1),
                                                   blurRadius: 10,
                                                   offset: const Offset(0, 5),
@@ -488,8 +489,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                     gradient:
                                                         const LinearGradient(
                                                       colors: [
-                                                        Color(0xFF667eea),
-                                                        Color(0xFF764ba2)
+                                                        SdColors.primaryLight,
+                                                        SdColors.platformBase
                                                       ],
                                                     ),
                                                     borderRadius:
@@ -528,7 +529,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                   borderRadius:
                                                       BorderRadius.circular(15),
                                                   borderSide: const BorderSide(
-                                                    color: Color(0xFF667eea),
+                                                    color: SdColors.primaryLight,
                                                     width: 2,
                                                   ),
                                                 ),
@@ -588,13 +589,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                   icon: const Icon(
                                                     Icons.clear_all_rounded,
                                                     size: 18,
-                                                    color: Colors.red,
+                                                    color: SdColors.danger,
                                                   ),
                                                   label: const Text(
                                                     'مسح البيانات',
                                                     style: TextStyle(
                                                       fontSize: 13,
-                                                      color: Colors.red,
+                                                      color: SdColors.danger,
                                                       fontWeight:
                                                           FontWeight.w500,
                                                     ),
@@ -620,8 +621,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                     gradient:
                                                         const LinearGradient(
                                                       colors: [
-                                                        Color(0xFF667eea),
-                                                        Color(0xFF764ba2)
+                                                        SdColors.primaryLight,
+                                                        SdColors.platformBase
                                                       ],
                                                     ),
                                                     borderRadius:
@@ -645,8 +646,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                                     gradient:
                                                         const LinearGradient(
                                                       colors: [
-                                                        Color(0xFF667eea),
-                                                        Color(0xFF764ba2)
+                                                        SdColors.primaryLight,
+                                                        SdColors.platformBase
                                                       ],
                                                     ),
                                                     borderRadius:
@@ -818,7 +819,7 @@ class _FiberPainter extends CustomPainter {
 
       // ألوان زرقاء ثابتة للأشرطة
       final Color cStart = const Color(0xFF42A5F5); // Blue 400
-      final Color cEnd = const Color(0xFF1E88E5); // Blue 600
+      final Color cEnd = SdColors.info; // Blue 600
 
       final Paint glow = Paint()
         ..style = PaintingStyle.stroke

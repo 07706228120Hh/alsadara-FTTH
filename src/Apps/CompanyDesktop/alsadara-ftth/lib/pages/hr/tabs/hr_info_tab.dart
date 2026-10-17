@@ -4,12 +4,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../services/employee_profile_service.dart';
 import '../../../services/departments_data_service.dart';
 import '../../../services/centers_data_service.dart';
 import '../../../services/attendance_api_service.dart';
 import '../../../permissions/permission_manager.dart';
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class HrInfoTab extends StatefulWidget {
   final Map<String, dynamic> employee;
@@ -83,12 +83,12 @@ class _HrInfoTabState extends State<HrInfoTab> {
 
   // ═══ ألوان ═══
   static const _cardBg = Colors.white;
-  static const _accent = Color(0xFF3498DB);
-  static const _headerDark = Color(0xFF2C3E50);
+  static const _accent = SdColors.info;
+  static const _headerDark = SdColors.ink;
   static const _labelColor = Color(0xFF7F8C8D);
   static const _valueColor = Color(0xFF2D3436);
-  static const _success = Color(0xFF27AE60);
-  static const _warning = Color(0xFFFF9800);
+  static const _success = SdColors.success;
+  static const _warning = SdColors.warning;
   static const _ftthColor = Color(0xFF00BCD4);
 
   static const List<Map<String, String>> _roles = [
@@ -293,8 +293,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('كلمة المرور يجب أن تكون 6 أحرف على الأقل',
-                    style: GoogleFonts.cairo()),
-                backgroundColor: Colors.red,
+                    style: TextStyle(fontFamily: 'Cairo')),
+                backgroundColor: SdColors.danger,
               ),
             );
           }
@@ -316,15 +316,15 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 pwOk
                     ? 'تم الحفظ بنجاح'
                     : 'تم حفظ البيانات لكن فشل تغيير كلمة المرور',
-                style: GoogleFonts.cairo()),
+                style: TextStyle(fontFamily: 'Cairo')),
             backgroundColor: pwOk ? _success : _warning,
           ),
         );
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('فشل في حفظ البيانات', style: GoogleFonts.cairo()),
-            backgroundColor: Colors.red,
+            content: Text('فشل في حفظ البيانات', style: TextStyle(fontFamily: 'Cairo')),
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -332,8 +332,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('خطأ', style: GoogleFonts.cairo()),
-            backgroundColor: Colors.red,
+            content: Text('خطأ', style: TextStyle(fontFamily: 'Cairo')),
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -417,7 +417,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     child: _sectionCard(
                       'المعلومات الوظيفية',
                       Icons.work_outline_rounded,
-                      const Color(0xFF8E44AD),
+                      SdColors.platformBase,
                       [
                         _roleDropdownField(),
                         _departmentDropdownField(),
@@ -434,7 +434,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     child: _sectionCard(
                       'المعلومات الشخصية',
                       Icons.account_circle_outlined,
-                      const Color(0xFFE67E22),
+                      SdColors.warning,
                       [
                         _field(
                             'رقم الهوية', _nationalIdCtrl, Icons.credit_card),
@@ -474,7 +474,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     child: _sectionCard(
                       'جهة اتصال الطوارئ',
                       Icons.emergency_outlined,
-                      Colors.red,
+                      SdColors.danger,
                       [
                         _field('اسم جهة الطوارئ', _emergNameCtrl,
                             Icons.person_pin),
@@ -525,10 +525,10 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       setState(() => _editing = false);
                       _initControllers();
                     },
-                    backgroundColor: Colors.grey,
+                    backgroundColor: SdColors.faint,
                     icon: const Icon(Icons.close, color: Colors.white),
                     label: Text('إلغاء',
-                        style: GoogleFonts.cairo(color: Colors.white)),
+                        style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
                   ),
                   const SizedBox(width: 12),
                   FloatingActionButton.extended(
@@ -545,7 +545,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                             ))
                         : const Icon(Icons.save, color: Colors.white),
                     label: Text('حفظ',
-                        style: GoogleFonts.cairo(color: Colors.white)),
+                        style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
                   ),
                 ] else
                   FloatingActionButton.extended(
@@ -554,7 +554,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     backgroundColor: _accent,
                     icon: const Icon(Icons.edit, color: Colors.white),
                     label: Text('تعديل',
-                        style: GoogleFonts.cairo(color: Colors.white)),
+                        style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
                   ),
               ],
             ),
@@ -580,7 +580,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
               blurRadius: isSmall ? 6 : 10,
               offset: Offset(0, isSmall ? 1 : 3)),
         ],
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -617,7 +617,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 SizedBox(width: isSmall ? 6 : 10),
                 Text(
                   title,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.bold,
                     fontSize: isSmall ? 12 : 14,
                     color: _headerDark,
@@ -659,7 +660,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 Expanded(
                   child: Text(label,
                       style:
-                          GoogleFonts.cairo(color: _labelColor, fontSize: isSmall ? 10 : 12)),
+                          TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: isSmall ? 10 : 12)),
                 ),
               ],
             ),
@@ -671,18 +672,18 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     controller: ctrl,
                     keyboardType:
                         isNumber ? TextInputType.number : TextInputType.text,
-                    style: GoogleFonts.cairo(fontSize: isSmall ? 11 : 13),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: isSmall ? 11 : 13),
                     decoration: InputDecoration(
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 8),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+                        borderSide: const BorderSide(color: SdColors.edge),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+                        borderSide: const BorderSide(color: SdColors.edge),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -696,13 +697,14 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
+                      color: SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFEEEEEE)),
+                      border: Border.all(color: SdColors.divider),
                     ),
                     child: Text(
                       ctrl.text.isEmpty ? '—' : ctrl.text,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 13,
                         color: ctrl.text.isEmpty ? _labelColor : _valueColor,
                       ),
@@ -731,7 +733,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 Expanded(
                   child: Text(label,
                       style:
-                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                          TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: 12)),
                 ),
               ],
             ),
@@ -746,7 +748,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
             ),
             child: Text(
               value,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: badgeColor,
@@ -776,7 +779,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 Expanded(
                   child: Text('الدور',
                       style:
-                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                          TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: 12)),
                 ),
               ],
             ),
@@ -787,18 +790,18 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 ? DropdownButtonFormField<String>(
                     value: _selectedRole,
                     isDense: true,
-                    style: GoogleFonts.cairo(fontSize: 13, color: _valueColor),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: _valueColor),
                     decoration: InputDecoration(
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 8),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+                        borderSide: const BorderSide(color: SdColors.edge),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+                        borderSide: const BorderSide(color: SdColors.edge),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -810,7 +813,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                         .map((r) => DropdownMenuItem<String>(
                               value: r['value'],
                               child: Text(r['label']!,
-                                  style: GoogleFonts.cairo(fontSize: 13)),
+                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                             ))
                         .toList(),
                     onChanged: (v) {
@@ -827,7 +830,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     ),
                     child: Text(
                       _getRoleLabel(_selectedRole),
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                         color: badgeColor,
@@ -861,7 +865,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text('القسم',
-                        style: GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                        style: TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: 12)),
                   ),
                 ],
               ),
@@ -880,7 +884,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFDDDDDD)),
+                          border: Border.all(color: SdColors.edge),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -897,10 +901,10 @@ class _HrInfoTabState extends State<HrInfoTab> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         if (isFirst) ...[
-                                          Icon(Icons.star, size: 14, color: Colors.amber[700]),
+                                          Icon(Icons.star, size: 14, color: SdColors.warning),
                                           const SizedBox(width: 4),
                                         ],
-                                        Text(dept, style: GoogleFonts.cairo(fontSize: 12)),
+                                        Text(dept, style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                                       ],
                                     ),
                                     deleteIcon: const Icon(Icons.close, size: 16),
@@ -910,8 +914,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                                         _deptCtrl.text = _selectedDepts.join(',');
                                       });
                                     },
-                                    backgroundColor: isFirst ? Colors.amber[50] : Colors.grey[100],
-                                    side: BorderSide(color: isFirst ? Colors.amber[300]! : Colors.grey[300]!),
+                                    backgroundColor: isFirst ? SdColors.warningTint : SdColors.groundAlt,
+                                    side: BorderSide(color: isFirst ? SdColors.warningTintEdge : SdColors.edge),
                                     visualDensity: VisualDensity.compact,
                                   );
                                 }).toList(),
@@ -928,7 +932,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                                     });
                                   },
                                   itemBuilder: (ctx) => availableDepts
-                                      .map((d) => PopupMenuItem(value: d, child: Text(d, style: GoogleFonts.cairo(fontSize: 13))))
+                                      .map((d) => PopupMenuItem(value: d, child: Text(d, style: TextStyle(fontFamily: 'Cairo', fontSize: 13))))
                                       .toList(),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -941,7 +945,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                                       children: [
                                         Icon(Icons.add, size: 16, color: _accent),
                                         const SizedBox(width: 4),
-                                        Text('إضافة قسم', style: GoogleFonts.cairo(fontSize: 12, color: _accent)),
+                                        Text('إضافة قسم', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: _accent)),
                                       ],
                                     ),
                                   ),
@@ -954,12 +958,12 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
+                      color: SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFEEEEEE)),
+                      border: Border.all(color: SdColors.divider),
                     ),
                     child: _selectedDepts.isEmpty
-                        ? Text('—', style: GoogleFonts.cairo(fontSize: 13, color: _labelColor))
+                        ? Text('—', style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: _labelColor))
                         : Wrap(
                             spacing: 6,
                             runSpacing: 4,
@@ -968,18 +972,18 @@ class _HrInfoTabState extends State<HrInfoTab> {
                               return Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: isFirst ? Colors.amber[50] : Colors.grey[100],
+                                  color: isFirst ? SdColors.warningTint : SdColors.groundAlt,
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: isFirst ? Colors.amber[300]! : Colors.grey[300]!),
+                                  border: Border.all(color: isFirst ? SdColors.warningTintEdge : SdColors.edge),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     if (isFirst) ...[
-                                      Icon(Icons.star, size: 12, color: Colors.amber[700]),
+                                      Icon(Icons.star, size: 12, color: SdColors.warning),
                                       const SizedBox(width: 3),
                                     ],
-                                    Text(e.value, style: GoogleFonts.cairo(fontSize: 12, color: _valueColor)),
+                                    Text(e.value, style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: _valueColor)),
                                   ],
                                 ),
                               );
@@ -1012,7 +1016,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 Expanded(
                   child: Text('المركز',
                       style:
-                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                          TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: 12)),
                 ),
               ],
             ),
@@ -1038,23 +1042,24 @@ class _HrInfoTabState extends State<HrInfoTab> {
                             : null,
                         isDense: true,
                         style:
-                            GoogleFonts.cairo(fontSize: 13, color: _valueColor),
+                            TextStyle(fontFamily: 'Cairo', fontSize: 13, color: _valueColor),
                         decoration: InputDecoration(
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 8),
                           hintText: 'اختر المركز',
-                          hintStyle: GoogleFonts.cairo(
+                          hintStyle: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 12, color: _labelColor),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide:
-                                const BorderSide(color: Color(0xFFDDDDDD)),
+                                const BorderSide(color: SdColors.edge),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide:
-                                const BorderSide(color: Color(0xFFDDDDDD)),
+                                const BorderSide(color: SdColors.edge),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -1066,7 +1071,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                             .map((c) => DropdownMenuItem<String>(
                                   value: c,
                                   child: Text(c,
-                                      style: GoogleFonts.cairo(fontSize: 13)),
+                                      style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                                 ))
                             .toList(),
                         onChanged: (v) {
@@ -1080,13 +1085,14 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
+                      color: SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFEEEEEE)),
+                      border: Border.all(color: SdColors.divider),
                     ),
                     child: Text(
                       currentCenter.isEmpty ? '—' : currentCenter,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 13,
                         color:
                             currentCenter.isEmpty ? _labelColor : _valueColor,
@@ -1116,7 +1122,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text('كلمة مرور جديدة',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             color: _labelColor, fontSize: 12)),
                   ),
                 ],
@@ -1127,11 +1134,12 @@ class _HrInfoTabState extends State<HrInfoTab> {
               child: TextField(
                 controller: _newPasswordCtrl,
                 obscureText: !_showPassword,
-                style: GoogleFonts.cairo(fontSize: 13),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
                 decoration: InputDecoration(
                   isDense: true,
                   hintText: 'اتركه فارغاً إذا لا تريد التغيير',
-                  hintStyle: GoogleFonts.cairo(
+                  hintStyle: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 11, color: _labelColor.withOpacity(0.6)),
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -1182,7 +1190,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 Expanded(
                   child: Text('كلمة المرور',
                       style:
-                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                          TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: 12)),
                 ),
               ],
             ),
@@ -1212,7 +1220,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                               color: _valueColor,
                               letterSpacing: _showPassword ? 0 : 2,
                             )
-                          : GoogleFonts.cairo(
+                          : TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 13,
                               color: _labelColor,
                             ),
@@ -1241,7 +1250,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('تم نسخ كلمة المرور',
-                                style: GoogleFonts.cairo()),
+                                style: TextStyle(fontFamily: 'Cairo')),
                             duration: const Duration(seconds: 1),
                           ),
                         );
@@ -1301,7 +1310,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       const Icon(Icons.toggle_on, size: 15, color: _labelColor),
                       const SizedBox(width: 6),
                       Text('وقت خاص',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               color: _labelColor, fontSize: 12)),
                     ],
                   ),
@@ -1315,7 +1325,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 const SizedBox(width: 8),
                 Text(
                   _useCustomTime ? 'مفعّل' : 'معطّل',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 12,
                       color: _useCustomTime ? scheduleColor : _labelColor),
                 ),
@@ -1353,7 +1364,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 Expanded(
                   child: Text('جدول الدوام',
                       style:
-                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                          TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: 12)),
                 ),
               ],
             ),
@@ -1377,22 +1388,22 @@ class _HrInfoTabState extends State<HrInfoTab> {
                         ? _selectedScheduleId
                         : null,
                     isDense: true,
-                    style: GoogleFonts.cairo(fontSize: 13, color: _valueColor),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: _valueColor),
                     decoration: InputDecoration(
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 8),
                       hintText: 'افتراضي (حسب المركز)',
                       hintStyle:
-                          GoogleFonts.cairo(fontSize: 12, color: _labelColor),
+                          TextStyle(fontFamily: 'Cairo', fontSize: 12, color: _labelColor),
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide:
-                              const BorderSide(color: Color(0xFFDDDDDD))),
+                              const BorderSide(color: SdColors.edge)),
                       enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide:
-                              const BorderSide(color: Color(0xFFDDDDDD))),
+                              const BorderSide(color: SdColors.edge)),
                       focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                           borderSide:
@@ -1402,7 +1413,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       DropdownMenuItem<int?>(
                           value: null,
                           child: Text('افتراضي (حسب المركز)',
-                              style: GoogleFonts.cairo(fontSize: 13))),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 13))),
                       ..._schedulesList.map((s) {
                         final id = s['id'] ?? s['Id'];
                         final name = s['name'] ?? s['Name'] ?? '';
@@ -1412,7 +1423,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                         return DropdownMenuItem<int?>(
                           value: id is int ? id : int.tryParse(id.toString()),
                           child: Text('$name ($start - $end)',
-                              style: GoogleFonts.cairo(fontSize: 13)),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                         );
                       }),
                     ],
@@ -1442,7 +1453,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 const SizedBox(width: 6),
                 Expanded(
                     child: Text(label,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             color: _labelColor, fontSize: 12))),
               ],
             ),
@@ -1466,13 +1478,14 @@ class _HrInfoTabState extends State<HrInfoTab> {
                           horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFDDDDDD)),
+                        border: Border.all(color: SdColors.edge),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(displayText,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 13, color: _valueColor)),
                           const Icon(Icons.access_time,
                               size: 16, color: _labelColor),
@@ -1485,12 +1498,13 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
+                      color: SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFEEEEEE)),
+                      border: Border.all(color: SdColors.divider),
                     ),
                     child: Text(displayText,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: 13,
                             color: value == null ? _labelColor : _valueColor)),
                   ),
@@ -1522,7 +1536,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text('كود الأمان',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               color: _labelColor, fontSize: 12)),
                     ),
                   ],
@@ -1533,7 +1548,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 child: TextField(
                   controller: _securityCodeCtrl,
                   keyboardType: TextInputType.number,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 4,
@@ -1543,15 +1559,16 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 8),
                     hintText: 'مثال: 1234',
-                    hintStyle: GoogleFonts.cairo(
+                    hintStyle: TextStyle(
+                        fontFamily: 'Cairo',
                         color: _labelColor.withOpacity(0.4), fontSize: 13),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+                      borderSide: const BorderSide(color: SdColors.edge),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFFDDDDDD)),
+                      borderSide: const BorderSide(color: SdColors.edge),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -1576,7 +1593,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
             padding: const EdgeInsets.only(top: 6),
             child: Text(
               'يجب أن يكون الكود فريداً لكل موظف. السيرفر سيرفض الأكواد المكررة.',
-              style: GoogleFonts.cairo(color: _labelColor, fontSize: 11),
+              style: TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: 11),
             ),
           ),
         ] else ...[
@@ -1587,7 +1604,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
               hasCode
                   ? 'عند البصمة سيُطابق السيرفر هذا الكود مع الكود المحفوظ في جهاز الموظف'
                   : 'لم يتم تعيين كود — البصمة لا تحتاج كود',
-              style: GoogleFonts.cairo(color: _labelColor, fontSize: 11),
+              style: TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: 11),
             ),
           ),
         ],
@@ -1611,7 +1628,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
               blurRadius: 10,
               offset: const Offset(0, 3)),
         ],
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1648,7 +1665,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 const SizedBox(width: 10),
                 Text(
                   'معلومات نظام FTTH',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                     color: _headerDark,
@@ -1684,7 +1702,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       const SizedBox(width: 5),
                       Text(
                         isLinked ? 'مربوط' : 'غير مربوط',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: isLinked ? _success : _warning,
@@ -1721,7 +1740,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text('كلمة مرور FTTH جديدة',
-                                        style: GoogleFonts.cairo(
+                                        style: TextStyle(
+                                            fontFamily: 'Cairo',
                                             color: _labelColor, fontSize: 12)),
                                   ),
                                 ],
@@ -1732,11 +1752,12 @@ class _HrInfoTabState extends State<HrInfoTab> {
                               child: TextField(
                                 controller: _ftthPasswordCtrl,
                                 obscureText: !_showFtthPassword,
-                                style: GoogleFonts.cairo(fontSize: 13),
+                                style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
                                 decoration: InputDecoration(
                                   isDense: true,
                                   hintText: 'اتركه فارغاً إذا لا تريد التغيير',
-                                  hintStyle: GoogleFonts.cairo(
+                                  hintStyle: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontSize: 11,
                                       color: _labelColor.withOpacity(0.6)),
                                   contentPadding: const EdgeInsets.symmetric(
@@ -1793,7 +1814,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                           const SizedBox(height: 8),
                           Text(
                             'هذا الموظف غير مربوط بنظام FTTH',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               color: _labelColor,
                               fontSize: 13,
                             ),
@@ -1801,7 +1823,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                           const SizedBox(height: 4),
                           Text(
                             'يمكنك ربطه من شاشة حسابات ← ربط المشغلين',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               color: _labelColor.withOpacity(0.7),
                               fontSize: 11,
                             ),
@@ -1835,7 +1858,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(label,
-                    style: GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                    style: TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: 12)),
               ),
             ],
           ),
@@ -1860,7 +1883,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                             fontFamily: 'monospace',
                             color: _valueColor,
                           )
-                        : GoogleFonts.cairo(
+                        : TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: 13,
                             color: value.isNotEmpty ? _valueColor : _labelColor,
                           ),
@@ -1888,7 +1912,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       Clipboard.setData(ClipboardData(text: value));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('تم النسخ', style: GoogleFonts.cairo()),
+                          content: Text('تم النسخ', style: TextStyle(fontFamily: 'Cairo')),
                           duration: const Duration(seconds: 1),
                         ),
                       );
@@ -1925,7 +1949,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 Expanded(
                   child: Text(label,
                       style:
-                          GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                          TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: 12)),
                 ),
               ],
             ),
@@ -1947,13 +1971,13 @@ class _HrInfoTabState extends State<HrInfoTab> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 8),
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color(0xFFDDDDDD)),
+                        border: Border.all(color: SdColors.edge),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(display, style: GoogleFonts.cairo(fontSize: 13)),
+                          Text(display, style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                           const Icon(Icons.calendar_today,
                               size: 14, color: _accent),
                         ],
@@ -1965,12 +1989,13 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
+                      color: SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFEEEEEE)),
+                      border: Border.all(color: SdColors.divider),
                     ),
                     child: Text(display,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: 13,
                             color: value != null ? _valueColor : _labelColor)),
                   ),
@@ -2000,7 +2025,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                 const Icon(Icons.work, size: 15, color: _labelColor),
                 const SizedBox(width: 6),
                 Text('نوع العقد',
-                    style: GoogleFonts.cairo(color: _labelColor, fontSize: 12)),
+                    style: TextStyle(fontFamily: 'Cairo', color: _labelColor, fontSize: 12)),
               ],
             ),
           ),
@@ -2013,7 +2038,7 @@ class _HrInfoTabState extends State<HrInfoTab> {
                         .map((t) => DropdownMenuItem(
                               value: t.$1,
                               child: Text(t.$2,
-                                  style: GoogleFonts.cairo(fontSize: 13)),
+                                  style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                             ))
                         .toList(),
                     onChanged: (v) => setState(() => _contractType = v),
@@ -2031,9 +2056,9 @@ class _HrInfoTabState extends State<HrInfoTab> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
+                      color: SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFEEEEEE)),
+                      border: Border.all(color: SdColors.divider),
                     ),
                     child: Text(
                       types
@@ -2041,7 +2066,8 @@ class _HrInfoTabState extends State<HrInfoTab> {
                               .map((t) => t.$2)
                               .firstOrNull ??
                           '—',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 13,
                           color: _contractType != null
                               ? _valueColor
@@ -2061,10 +2087,10 @@ class _HrInfoTabState extends State<HrInfoTab> {
         ? TextField(
             controller: _hrNotesCtrl,
             maxLines: 4,
-            style: GoogleFonts.cairo(fontSize: 13),
+            style: TextStyle(fontFamily: 'Cairo', fontSize: 13),
             decoration: InputDecoration(
               hintText: 'ملاحظات HR...',
-              hintStyle: GoogleFonts.cairo(color: _labelColor),
+              hintStyle: TextStyle(fontFamily: 'Cairo', color: _labelColor),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -2074,13 +2100,14 @@ class _HrInfoTabState extends State<HrInfoTab> {
             width: double.infinity,
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
+              color: SdColors.surfaceAlt,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFEEEEEE)),
+              border: Border.all(color: SdColors.divider),
             ),
             child: Text(
               _hrNotesCtrl.text.isEmpty ? 'لا توجد ملاحظات' : _hrNotesCtrl.text,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 13,
                 color: _hrNotesCtrl.text.isEmpty ? _labelColor : _valueColor,
               ),
@@ -2093,19 +2120,19 @@ class _HrInfoTabState extends State<HrInfoTab> {
   Color _getRoleColor(String role) {
     switch (role) {
       case 'SuperAdmin':
-        return const Color(0xFFE74C3C);
+        return SdColors.danger;
       case 'CompanyAdmin':
-        return const Color(0xFF8E44AD);
+        return SdColors.platformBase;
       case 'Manager':
-        return const Color(0xFF2980B9);
+        return SdColors.info;
       case 'TechnicalLeader':
-        return const Color(0xFF16A085);
+        return SdColors.accent;
       case 'Technician':
-        return const Color(0xFF27AE60);
+        return SdColors.success;
       case 'Viewer':
-        return const Color(0xFF95A5A6);
+        return SdColors.faint;
       case 'Employee':
-        return const Color(0xFF3498DB);
+        return SdColors.info;
       default:
         return const Color(0xFF7F8C8D);
     }

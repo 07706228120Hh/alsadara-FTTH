@@ -203,7 +203,7 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
         gradient: const LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
+          colors: [SdColors.success, SdColors.successEdge],
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: raisedShadow(
@@ -298,7 +298,7 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
     final rating = _loadRating(frac);
     final shade = recommended
         ? const IsoShade(
-            Color(0xFF81C784), Color(0xFF43A047), Color(0xFF2E7D32))
+            Color(0xFF81C784), SdColors.success, SdColors.success)
         : ratingShade(rating);
     return SizedBox(
       width: colW,
@@ -309,7 +309,7 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
             height: 16,
             child: recommended
                 ? const Icon(Icons.emoji_events_rounded,
-                    color: Color(0xFF2E7D32), size: 15)
+                    color: SdColors.success, size: 15)
                 : null,
           ),
           IsoSpeedColumn(
@@ -321,7 +321,7 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
               style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.w900,
-                  color: recommended ? const Color(0xFF2E7D32) : SdColors.muted)),
+                  color: recommended ? SdColors.success : SdColors.muted)),
         ],
       ),
     );
@@ -338,10 +338,10 @@ class _WifiChannelAnalyzerPageState extends State<WifiChannelAnalyzerPage> {
   Widget _netCard(NearbyNetwork n) {
     final sig = n.signalPercent ?? 0;
     final sigColor = sig >= 66
-        ? const Color(0xFF2E7D32)
+        ? SdColors.success
         : sig >= 40
-            ? const Color(0xFFF9A825)
-            : const Color(0xFFC62828);
+            ? SdColors.warning
+            : SdColors.danger;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 3),
       padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),

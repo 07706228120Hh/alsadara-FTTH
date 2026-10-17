@@ -11,6 +11,7 @@ import '../../services/company_settings_service.dart';
 import '../../services/custom_auth_service.dart';
 import '../../services/vps_auth_service.dart';
 import 'tktats_page.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class TicketsLoginPage extends StatefulWidget {
   const TicketsLoginPage({super.key});
@@ -193,9 +194,9 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1E88E5),
-              Color(0xFF1976D2),
-              Color(0xFF1565C0),
+              SdColors.info,
+              SdColors.info,
+              SdColors.info,
             ],
           ),
         ),
@@ -235,8 +236,8 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      Color(0xFF1E88E5),
-                                      Color(0xFF1976D2)
+                                      SdColors.info,
+                                      SdColors.info
                                     ],
                                   ),
                                   shape: BoxShape.circle,
@@ -264,10 +265,10 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                 padding: EdgeInsets.symmetric(
                                     vertical: 12, horizontal: 16),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue[50],
+                                  color: SdColors.infoTint,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: Colors.blue[200]!,
+                                    color: SdColors.infoTintEdge,
                                     width: 1,
                                   ),
                                 ),
@@ -281,7 +282,7 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                             ? 28
                                             : 24,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1976D2),
+                                        color: SdColors.info,
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
@@ -297,7 +298,7 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                           fontSize: constraints.maxWidth > 400
                                               ? 16
                                               : 14,
-                                          color: Colors.grey[700],
+                                          color: SdColors.muted,
                                           fontWeight: FontWeight.w500,
                                         ),
                                         textAlign: TextAlign.center,
@@ -320,16 +321,16 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                   decoration: InputDecoration(
                                     labelText: 'اسم المستخدم',
                                     prefixIcon: Icon(Icons.person,
-                                        color: Color(0xFF1976D2)),
+                                        color: SdColors.info),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                       borderSide:
-                                          BorderSide(color: Color(0xFF1976D2)),
+                                          BorderSide(color: SdColors.info),
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                       borderSide: BorderSide(
-                                          color: Color(0xFF1976D2), width: 2),
+                                          color: SdColors.info, width: 2),
                                     ),
                                     contentPadding: EdgeInsets.symmetric(
                                       horizontal: 16,
@@ -352,13 +353,13 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                   decoration: InputDecoration(
                                     labelText: 'كلمة المرور',
                                     prefixIcon: Icon(Icons.lock,
-                                        color: Color(0xFF1976D2)),
+                                        color: SdColors.info),
                                     suffixIcon: IconButton(
                                       icon: Icon(
                                         showPassword
                                             ? Icons.visibility_off
                                             : Icons.visibility,
-                                        color: Color(0xFF1976D2),
+                                        color: SdColors.info,
                                       ),
                                       onPressed: () {
                                         setState(() {
@@ -369,12 +370,12 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                       borderSide:
-                                          BorderSide(color: Color(0xFF1976D2)),
+                                          BorderSide(color: SdColors.info),
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
                                       borderSide: BorderSide(
-                                          color: Color(0xFF1976D2), width: 2),
+                                          color: SdColors.info, width: 2),
                                     ),
                                     contentPadding: EdgeInsets.symmetric(
                                       horizontal: 16,
@@ -394,7 +395,7 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                   children: [
                                     Checkbox(
                                       value: rememberMe,
-                                      activeColor: Color(0xFF1976D2),
+                                      activeColor: SdColors.info,
                                       onChanged: (value) {
                                         setState(() {
                                           rememberMe = value ?? false;
@@ -405,7 +406,7 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                       child: Text(
                                         'تذكر بيانات الدخول',
                                         style: TextStyle(
-                                          color: Colors.grey[700],
+                                          color: SdColors.muted,
                                           fontSize: 14,
                                         ),
                                       ),
@@ -423,7 +424,7 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                 child: ElevatedButton(
                                   onPressed: isLoading ? null : handleLogin,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Color(0xFF1976D2),
+                                    backgroundColor: SdColors.info,
                                     foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
@@ -468,14 +469,14 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                   decoration: BoxDecoration(
                                     color: loginMessage.contains('خطأ') ||
                                             loginMessage.contains('فشل')
-                                        ? Colors.red[50]
-                                        : Colors.green[50],
+                                        ? SdColors.dangerTint
+                                        : SdColors.successTint,
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
                                       color: loginMessage.contains('خطأ') ||
                                               loginMessage.contains('فشل')
-                                          ? Colors.red[200]!
-                                          : Colors.green[200]!,
+                                          ? SdColors.dangerTintEdge
+                                          : SdColors.successTintEdge,
                                       width: 1,
                                     ),
                                   ),
@@ -488,8 +489,8 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                             : Icons.check_circle_outline,
                                         color: loginMessage.contains('خطأ') ||
                                                 loginMessage.contains('فشل')
-                                            ? Colors.red[600]
-                                            : Colors.green[600],
+                                            ? SdColors.danger
+                                            : SdColors.success,
                                         size: 20,
                                       ),
                                       SizedBox(width: 8),
@@ -500,8 +501,8 @@ class _TicketsLoginPageState extends State<TicketsLoginPage>
                                             color: loginMessage
                                                         .contains('خطأ') ||
                                                     loginMessage.contains('فشل')
-                                                ? Colors.red[700]
-                                                : Colors.green[700],
+                                                ? SdColors.danger
+                                                : SdColors.success,
                                             fontSize: 14,
                                           ),
                                         ),

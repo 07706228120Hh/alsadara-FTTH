@@ -414,7 +414,7 @@ class _AddCompanyPageState extends State<AddCompanyPage> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
+                          border: Border.all(color: SdColors.faint),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(

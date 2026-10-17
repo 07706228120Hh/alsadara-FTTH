@@ -7,8 +7,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../../models/property.dart';
 import '../../permissions/permission_manager.dart';
 import '../../services/property_api_service.dart';
@@ -361,20 +359,20 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: Text('تأكيد الحذف',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
           content: Text(message,
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text('إلغاء', style: GoogleFonts.cairo()),
+              child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
             ),
             FilledButton(
               style:
                   FilledButton.styleFrom(backgroundColor: SdColors.danger),
               onPressed: () => Navigator.of(ctx).pop(true),
               child: Text('حذف',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -386,7 +384,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(m, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+        content: Text(m, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
         backgroundColor: err ? SdColors.danger : SdColors.success,
       ),
     );
@@ -463,7 +461,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
       backgroundColor: SdColors.primary,
       icon: Icon(icon),
       label:
-          Text(label, style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+          Text(label, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
     );
   }
 
@@ -528,17 +526,18 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
   Widget _sep() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Icon(Icons.chevron_left_rounded,
-            size: 18, color: Colors.grey[400]),
+            size: 18, color: SdColors.faint),
       );
 
   Widget _crumb(String label, bool active, VoidCallback? onTap) {
     final text = Text(label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.cairo(
+        style: TextStyle(
+            fontFamily: 'Cairo',
             fontWeight: active ? FontWeight.w800 : FontWeight.w600,
             fontSize: 13,
-            color: active ? SdColors.primary : Colors.grey[600]));
+            color: active ? SdColors.primary : SdColors.muted));
     if (onTap == null || active) return text;
     return InkWell(onTap: onTap, child: text);
   }
@@ -577,7 +576,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                 ),
                 icon: const Icon(Icons.add_location_alt_rounded),
                 label: Text('منطقة جديدة',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
               )
             : null,
       );
@@ -619,7 +618,8 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                           child: Text(r.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontWeight: FontWeight.w800,
                                   fontSize: 15,
                                   color: PropUi.ink)),
@@ -629,7 +629,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                           label: r.isActive ? 'نشط' : 'موقوف',
                           color: r.isActive
                               ? SdColors.success
-                              : Colors.grey,
+                              : SdColors.faint,
                           icon: r.isActive
                               ? Icons.check_circle_rounded
                               : Icons.pause_circle_rounded,
@@ -655,7 +655,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                 ),
               ),
               if (_canManage) _rowActions(() => _editRegion(r), () => _deleteRegion(r)),
-              const Icon(Icons.chevron_left_rounded, color: Colors.grey),
+              const Icon(Icons.chevron_left_rounded, color: SdColors.faint),
             ],
           ),
         ),
@@ -707,7 +707,8 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                               child: Text(n.name,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontWeight: FontWeight.w800,
                                       fontSize: 14,
                                       color: PropUi.ink)),
@@ -717,7 +718,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                               label: n.isActive ? 'نشط' : 'موقوف',
                               color: n.isActive
                                   ? SdColors.success
-                                  : Colors.grey,
+                                  : SdColors.faint,
                             ),
                           ],
                         ),
@@ -732,7 +733,7 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
                   if (_canManage)
                     _rowActions(() => onEdit(n), () => onDelete(n)),
                   if (onOpen != null)
-                    const Icon(Icons.chevron_left_rounded, color: Colors.grey),
+                    const Icon(Icons.chevron_left_rounded, color: SdColors.faint),
                 ],
               ),
             ),
@@ -774,7 +775,8 @@ class _LocationMasterPageState extends State<LocationMasterPage> {
           border: Border.all(color: c.withValues(alpha: 0.22)),
         ),
         child: Text(t,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 color: c, fontWeight: FontWeight.w700, fontSize: 11)),
       );
 
@@ -866,7 +868,7 @@ class _RegionDialogState extends State<_RegionDialog> {
       textDirection: TextDirection.rtl,
       child: AlertDialog(
         title: Text(editing ? 'تعديل منطقة' : 'منطقة جديدة',
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
         content: SizedBox(
           width: 420,
           child: Form(
@@ -892,7 +894,7 @@ class _RegionDialogState extends State<_RegionDialog> {
                     value: _active,
                     activeThumbColor: SdColors.success,
                     title: Text('نشطة',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                     onChanged: (v) => setState(() => _active = v),
                   ),
                 ],
@@ -903,14 +905,14 @@ class _RegionDialogState extends State<_RegionDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
           ),
           FilledButton(
             style:
                 FilledButton.styleFrom(backgroundColor: SdColors.primary),
             onPressed: _submit,
             child: Text(editing ? 'حفظ' : 'إضافة',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -930,7 +932,7 @@ class _RegionDialogState extends State<_RegionDialog> {
       child: TextFormField(
         controller: c,
         keyboardType: keyboard,
-        style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
         validator: (v) {
           final t = (v ?? '').trim();
           if (required && t.isEmpty) return 'حقل مطلوب';
@@ -941,7 +943,7 @@ class _RegionDialogState extends State<_RegionDialog> {
         },
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: GoogleFonts.cairo(),
+          labelStyle: TextStyle(fontFamily: 'Cairo'),
           prefixIcon: icon == null
               ? null
               : Icon(icon, color: SdColors.primary, size: 20),
@@ -999,7 +1001,7 @@ class _NodeDialogState extends State<_NodeDialog> {
       textDirection: TextDirection.rtl,
       child: AlertDialog(
         title: Text(widget.title,
-            style: GoogleFonts.cairo(fontWeight: FontWeight.w800)),
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
         content: SizedBox(
           width: 400,
           child: Form(
@@ -1009,12 +1011,12 @@ class _NodeDialogState extends State<_NodeDialog> {
               children: [
                 TextFormField(
                   controller: _name,
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'حقل مطلوب' : null,
                   decoration: InputDecoration(
                     labelText: 'الاسم',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     prefixIcon: const Icon(Icons.signpost_rounded,
                         color: SdColors.primary, size: 20),
                     isDense: true,
@@ -1025,7 +1027,7 @@ class _NodeDialogState extends State<_NodeDialog> {
                   controller: _fee,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
                   validator: (v) {
                     final t = (v ?? '').trim();
                     if (t.isNotEmpty && num.tryParse(t) == null) {
@@ -1035,7 +1037,7 @@ class _NodeDialogState extends State<_NodeDialog> {
                   },
                   decoration: InputDecoration(
                     labelText: 'أجر الصيانة الشهري',
-                    labelStyle: GoogleFonts.cairo(),
+                    labelStyle: TextStyle(fontFamily: 'Cairo'),
                     prefixIcon: const Icon(Icons.payments_rounded,
                         color: SdColors.primary, size: 20),
                     isDense: true,
@@ -1046,7 +1048,7 @@ class _NodeDialogState extends State<_NodeDialog> {
                   value: _active,
                   activeThumbColor: SdColors.success,
                   title: Text('نشط',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
                   onChanged: (v) => setState(() => _active = v),
                 ),
               ],
@@ -1056,14 +1058,14 @@ class _NodeDialogState extends State<_NodeDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('إلغاء', style: GoogleFonts.cairo()),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
           ),
           FilledButton(
             style:
                 FilledButton.styleFrom(backgroundColor: SdColors.primary),
             onPressed: _submit,
             child: Text(widget.existing == null ? 'إضافة' : 'حفظ',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w700)),
           ),
         ],
       ),

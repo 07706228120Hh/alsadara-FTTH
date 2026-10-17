@@ -518,7 +518,7 @@ class _SasSubscribersTabState extends State<SasSubscribersTab> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: SdText.bodySm.copyWith(
-                            color: const Color(0xFF475569),
+                            color: SdColors.muted,
                             fontWeight: FontWeight.w700),
                       ),
                     ],

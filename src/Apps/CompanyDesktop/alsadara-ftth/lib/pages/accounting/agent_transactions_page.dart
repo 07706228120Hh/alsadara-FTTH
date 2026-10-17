@@ -1,11 +1,10 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import '../../services/agent_api_service.dart';
 import '../../services/vps_auth_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 /// صفحة معاملات الوكلاء
 /// تعرض جميع المعاملات المالية للوكلاء (أجور، تسديدات، خصومات، تعديلات)
 class AgentTransactionsPage extends StatefulWidget {
@@ -76,7 +75,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Container(
-        color: AccountingTheme.bgPrimary,
+        color: SdColors.ground,
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
             : _errorMessage != null
@@ -92,15 +91,15 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.error_outline,
-              size: context.accR.iconEmpty, color: AccountingTheme.danger),
+              size: context.accR.iconEmpty, color: SdColors.danger),
           SizedBox(height: context.accR.spaceXL),
           Text(_errorMessage!,
-              style: GoogleFonts.cairo(fontSize: context.accR.headingSmall)),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: context.accR.headingSmall)),
           SizedBox(height: context.accR.spaceXL),
           ElevatedButton.icon(
             onPressed: _loadData,
             icon: const Icon(Icons.refresh),
-            label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
+            label: Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -149,12 +148,12 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
         children: [
           Expanded(
             child: _buildMiniSummaryCard('الأجور', _formatNumber(charges),
-                Icons.trending_down, AccountingTheme.danger),
+                Icons.trending_down, SdColors.danger),
           ),
           const SizedBox(width: 4),
           Expanded(
             child: _buildMiniSummaryCard('التسديدات', _formatNumber(payments),
-                Icons.trending_up, AccountingTheme.success),
+                Icons.trending_up, SdColors.success),
           ),
           const SizedBox(width: 4),
           Expanded(
@@ -162,12 +161,12 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                 'الصافي',
                 _formatNumber(net),
                 Icons.account_balance_wallet,
-                net >= 0 ? AccountingTheme.neonBlue : AccountingTheme.danger),
+                net >= 0 ? SdColors.primary : SdColors.danger),
           ),
           const SizedBox(width: 4),
           Expanded(
             child: _buildMiniSummaryCard('الوكلاء', agentCount.toString(),
-                Icons.people, AccountingTheme.neonPurple),
+                Icons.people, SdColors.platformBase),
           ),
           const SizedBox(width: 4),
           Expanded(
@@ -186,7 +185,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
             'إجمالي الأجور',
             charges,
             Icons.trending_down,
-            AccountingTheme.danger,
+            SdColors.danger,
           ),
         ),
         SizedBox(width: context.accR.spaceM),
@@ -195,7 +194,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
             'إجمالي التسديدات',
             payments,
             Icons.trending_up,
-            AccountingTheme.success,
+            SdColors.success,
           ),
         ),
         SizedBox(width: context.accR.spaceM),
@@ -204,7 +203,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
             'الصافي',
             net,
             Icons.account_balance_wallet,
-            net >= 0 ? AccountingTheme.neonBlue : AccountingTheme.danger,
+            net >= 0 ? SdColors.primary : SdColors.danger,
           ),
         ),
         SizedBox(width: context.accR.spaceM),
@@ -213,7 +212,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
             'عدد الوكلاء',
             agentCount.toString(),
             Icons.people,
-            AccountingTheme.neonPurple,
+            SdColors.platformBase,
           ),
         ),
         SizedBox(width: context.accR.spaceM),
@@ -244,13 +243,14 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
           Icon(icon, size: 14, color: color),
           const SizedBox(height: 2),
           Text(value,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 11, fontWeight: FontWeight.bold, color: color),
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
           Text(label,
               style:
-                  GoogleFonts.cairo(fontSize: 8, color: color.withOpacity(0.8)),
+                  TextStyle(fontFamily: 'Cairo', fontSize: 8, color: color.withOpacity(0.8)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
         ],
@@ -263,7 +263,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     return Container(
       padding: EdgeInsets.all(context.accR.spaceXL),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(context.accR.cardRadius),
         border: Border.all(color: color.withValues(alpha: 0.3)),
         boxShadow: [
@@ -283,9 +283,10 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
               SizedBox(width: context.accR.spaceS),
               Flexible(
                 child: Text(label,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.small,
-                        color: AccountingTheme.textMuted),
+                        color: SdColors.faint),
                     overflow: TextOverflow.ellipsis),
               ),
             ],
@@ -293,7 +294,8 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
           SizedBox(height: context.accR.spaceS),
           Text(
             '${_formatNumber(amount)} د.ع',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: context.accR.headingSmall,
               fontWeight: FontWeight.bold,
               color: color,
@@ -311,7 +313,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     return Container(
       padding: EdgeInsets.all(context.accR.spaceXL),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(context.accR.cardRadius),
         border: Border.all(color: color.withValues(alpha: 0.3)),
         boxShadow: [
@@ -331,9 +333,10 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
               SizedBox(width: context.accR.spaceS),
               Flexible(
                 child: Text(label,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.small,
-                        color: AccountingTheme.textMuted),
+                        color: SdColors.faint),
                     overflow: TextOverflow.ellipsis),
               ),
             ],
@@ -341,7 +344,8 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
           SizedBox(height: context.accR.spaceS),
           Text(
             value,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: context.accR.headingSmall,
               fontWeight: FontWeight.bold,
               color: color,
@@ -381,7 +385,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
           child: Theme(
             data: Theme.of(context).copyWith(
               colorScheme: const ColorScheme.light(
-                primary: AccountingTheme.neonBlue,
+                primary: SdColors.primary,
               ),
             ),
             child: child!,
@@ -423,12 +427,12 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                 horizontal: context.accR.paddingH,
                 vertical: context.accR.spaceM),
             decoration: BoxDecoration(
-              color: AccountingTheme.bgCard,
+              color: SdColors.surface,
               borderRadius: BorderRadius.circular(context.accR.cardRadius),
               border: Border.all(
                 color: _showDateFilter
-                    ? AccountingTheme.neonBlue
-                    : AccountingTheme.borderColor,
+                    ? SdColors.primary
+                    : SdColors.divider,
               ),
             ),
             child: Row(
@@ -436,23 +440,25 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                 Icon(Icons.calendar_today,
                     size: context.accR.iconM,
                     color: hasFilter
-                        ? AccountingTheme.neonBlue
-                        : AccountingTheme.textMuted),
+                        ? SdColors.primary
+                        : SdColors.faint),
                 SizedBox(width: context.accR.spaceS),
                 Text('التاريخ:',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.w600,
-                        color: AccountingTheme.textPrimary)),
+                        color: SdColors.ink)),
                 SizedBox(width: context.accR.spaceS),
                 if (hasFilter)
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AccountingTheme.neonBlue,
+                      color: SdColors.primary,
                       borderRadius: BorderRadius.circular(context.accR.radiusL),
                     ),
                     child: Text(_dateLabel,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: context.accR.small,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
@@ -460,15 +466,16 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                   )
                 else
                   Text('الكل',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: context.accR.financialSmall,
-                          color: AccountingTheme.textMuted)),
+                          color: SdColors.faint)),
                 const Spacer(),
                 AnimatedRotation(
                   turns: _showDateFilter ? 0.5 : 0,
                   duration: const Duration(milliseconds: 200),
                   child: Icon(Icons.keyboard_arrow_down,
-                      color: AccountingTheme.textMuted),
+                      color: SdColors.faint),
                 ),
               ],
             ),
@@ -484,10 +491,10 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                 horizontal: context.accR.paddingH,
                 vertical: context.accR.spaceM),
             decoration: BoxDecoration(
-              color: AccountingTheme.bgCard,
+              color: SdColors.surface,
               borderRadius: BorderRadius.circular(context.accR.cardRadius),
               border: Border.all(
-                  color: AccountingTheme.neonBlue.withValues(alpha: 0.3)),
+                  color: SdColors.primary.withValues(alpha: 0.3)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.06),
@@ -516,9 +523,10 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                               _dateLabel != 'آخر 7 أيام' &&
                               _dateLabel != 'آخر 30 يوم'
                           ? Colors.white
-                          : AccountingTheme.textMuted),
+                          : SdColors.faint),
                   label: Text('تحديد فترة...',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.small,
                         fontWeight: FontWeight.w600,
                         color: _dateLabel != 'الكل' &&
@@ -527,15 +535,15 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                                 _dateLabel != 'آخر 7 أيام' &&
                                 _dateLabel != 'آخر 30 يوم'
                             ? Colors.white
-                            : AccountingTheme.textSecondary,
+                            : SdColors.muted,
                       )),
                   backgroundColor: _dateLabel != 'الكل' &&
                           _dateLabel != 'اليوم' &&
                           _dateLabel != 'أمس' &&
                           _dateLabel != 'آخر 7 أيام' &&
                           _dateLabel != 'آخر 30 يوم'
-                      ? AccountingTheme.neonBlue
-                      : AccountingTheme.bgSecondary,
+                      ? SdColors.primary
+                      : SdColors.groundAlt,
                   onPressed: _pickCustomDateRange,
                 ),
               ],
@@ -555,14 +563,15 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     final isSelected = _dateLabel == matchLabel;
     return FilterChip(
       label: Text(label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: context.accR.small,
             fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : AccountingTheme.textSecondary,
+            color: isSelected ? Colors.white : SdColors.muted,
           )),
       selected: isSelected,
-      selectedColor: AccountingTheme.neonBlue,
-      backgroundColor: AccountingTheme.bgSecondary,
+      selectedColor: SdColors.primary,
+      backgroundColor: SdColors.groundAlt,
       checkmarkColor: Colors.white,
       onSelected: (_) => _setDateFilter(matchLabel, from, to),
     );
@@ -575,9 +584,9 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
           horizontal: isMob ? 8 : context.accR.paddingH,
           vertical: context.accR.spaceS),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(context.accR.cardRadius),
-        border: Border.all(color: AccountingTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Wrap(
         spacing: 6,
@@ -585,10 +594,11 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text('النوع:',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: isMob ? 11 : 14,
                   fontWeight: FontWeight.w600,
-                  color: AccountingTheme.textPrimary)),
+                  color: SdColors.ink)),
           _buildFilterChip('الكل', null),
           _buildFilterChip('أجور', 0),
           _buildFilterChip('تسديد', 1),
@@ -603,14 +613,15 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     final isSelected = _typeFilter == type;
     return FilterChip(
       label: Text(label,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: context.accR.small,
             fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : AccountingTheme.textSecondary,
+            color: isSelected ? Colors.white : SdColors.muted,
           )),
       selected: isSelected,
-      selectedColor: AccountingTheme.neonBlue,
-      backgroundColor: AccountingTheme.bgSecondary,
+      selectedColor: SdColors.primary,
+      backgroundColor: SdColors.groundAlt,
       checkmarkColor: Colors.white,
       onSelected: (_) {
         setState(() {
@@ -630,12 +641,13 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
           children: [
             Icon(Icons.receipt_long,
                 size: context.accR.iconEmpty,
-                color: AccountingTheme.textMuted.withValues(alpha: 0.3)),
+                color: SdColors.faint.withValues(alpha: 0.3)),
             SizedBox(height: context.accR.spaceXL),
             Text('لا توجد معاملات',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: context.accR.headingSmall,
-                    color: AccountingTheme.textMuted)),
+                    color: SdColors.faint)),
           ],
         ),
       );
@@ -661,7 +673,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
         return Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AccountingTheme.bgCard,
+            color: SdColors.surface,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: color.withOpacity(0.25)),
           ),
@@ -675,12 +687,13 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AccountingTheme.textMuted.withOpacity(0.15),
+                      color: SdColors.faint.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text('$rowNum',
-                        style: GoogleFonts.cairo(
-                            fontSize: 10, color: AccountingTheme.textMuted)),
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 10, color: SdColors.faint)),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -688,15 +701,17 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(tx['agentName'] ?? '',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 12, fontWeight: FontWeight.w600),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1),
                         if ((tx['agentCode'] ?? '').toString().isNotEmpty)
                           Text(tx['agentCode'] ?? '',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 9,
-                                  color: AccountingTheme.textMuted)),
+                                  color: SdColors.faint)),
                       ],
                     ),
                   ),
@@ -713,10 +728,12 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('المبلغ',
-                            style: GoogleFonts.cairo(
-                                fontSize: 9, color: AccountingTheme.textMuted)),
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 9, color: SdColors.faint)),
                         Text('${_formatNumber(tx['amount'])} د.ع',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: color)),
@@ -728,10 +745,11 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('الرصيد بعدها',
-                            style: GoogleFonts.cairo(
-                                fontSize: 9, color: AccountingTheme.textMuted)),
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 9, color: SdColors.faint)),
                         Text('${_formatNumber(tx['balanceAfter'])} د.ع',
-                            style: GoogleFonts.cairo(fontSize: 11)),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 11)),
                       ],
                     ),
                   ),
@@ -740,12 +758,13 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('الفئة',
-                            style: GoogleFonts.cairo(
-                                fontSize: 9, color: AccountingTheme.textMuted)),
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 9, color: SdColors.faint)),
                         Text(
                             _categoryLabel(
                                 tx['category'] ?? '', tx['categoryValue']),
-                            style: GoogleFonts.cairo(fontSize: 10),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 10),
                             overflow: TextOverflow.ellipsis),
                       ],
                     ),
@@ -762,20 +781,23 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                       if ((tx['description'] ?? '').toString().isNotEmpty)
                         Expanded(
                           child: Text(tx['description'] ?? '',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 9,
-                                  color: AccountingTheme.textSecondary),
+                                  color: SdColors.muted),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis),
                         ),
                       if (tx['journalEntryNumber'] != null)
                         Text('قيد: ${tx['journalEntryNumber']}',
-                            style: GoogleFonts.cairo(
-                                fontSize: 9, color: AccountingTheme.textMuted)),
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 9, color: SdColors.faint)),
                       const SizedBox(width: 8),
                       Text(_formatDate(tx['createdAt']),
-                          style: GoogleFonts.cairo(
-                              fontSize: 9, color: AccountingTheme.textMuted)),
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 9, color: SdColors.faint)),
                     ],
                   ),
                 ),
@@ -790,7 +812,7 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     return Container(
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(context.accR.cardRadius),
         boxShadow: [
           BoxShadow(
@@ -807,46 +829,55 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
             width: double.infinity,
             child: DataTable(
               headingRowColor:
-                  WidgetStateProperty.all(AccountingTheme.bgSecondary),
+                  WidgetStateProperty.all(SdColors.groundAlt),
               columnSpacing: screenWidth > 1200 ? 20 : 12,
               dataRowMinHeight: 44,
               dataRowMaxHeight: 60,
               columns: [
                 DataColumn(
                     label: Text('#',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('الوكيل',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('النوع',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('الفئة',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('المبلغ',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('الرصيد بعدها',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('الوصف',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('القيد',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.bold, fontSize: 12))),
                 DataColumn(
                     label: Text('التاريخ',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.bold, fontSize: 12))),
               ],
               rows: _transactions.asMap().entries.map((entry) {
@@ -856,8 +887,9 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
 
                 return DataRow(cells: [
                   DataCell(Text('$rowNum',
-                      style: GoogleFonts.cairo(
-                          fontSize: 11, color: AccountingTheme.textMuted))),
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11, color: SdColors.faint))),
                   DataCell(
                     ConstrainedBox(
                       constraints: BoxConstraints(maxWidth: screenWidth * 0.12),
@@ -867,14 +899,16 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                         children: [
                           Text(
                             tx['agentName'] ?? '',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontWeight: FontWeight.w600, fontSize: 11),
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
                             tx['agentCode'] ?? '',
-                            style: GoogleFonts.cairo(
-                                fontSize: 10, color: AccountingTheme.textMuted),
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 10, color: SdColors.faint),
                           ),
                         ],
                       ),
@@ -885,13 +919,14 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                     constraints: BoxConstraints(maxWidth: screenWidth * 0.08),
                     child: Text(
                       _categoryLabel(tx['category'] ?? '', tx['categoryValue']),
-                      style: GoogleFonts.cairo(fontSize: 11),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
                       overflow: TextOverflow.ellipsis,
                     ),
                   )),
                   DataCell(Text(
                     '${_formatNumber(tx['amount'])} د.ع',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.bold,
                       fontSize: 11,
                       color: _typeColor(tx['typeValue']),
@@ -899,14 +934,14 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                   )),
                   DataCell(Text(
                     '${_formatNumber(tx['balanceAfter'])} د.ع',
-                    style: GoogleFonts.cairo(fontSize: 11),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
                   )),
                   DataCell(
                     ConstrainedBox(
                       constraints: BoxConstraints(maxWidth: screenWidth * 0.12),
                       child: Text(
                         tx['description'] ?? '',
-                        style: GoogleFonts.cairo(fontSize: 11),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 2,
                       ),
@@ -914,15 +949,17 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                   ),
                   DataCell(Text(
                     tx['journalEntryNumber']?.toString() ?? '-',
-                    style: GoogleFonts.cairo(
-                        fontSize: 11, color: AccountingTheme.textMuted),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 11, color: SdColors.faint),
                   )),
                   DataCell(ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: screenWidth * 0.1),
                     child: Text(
                       _formatDate(tx['createdAt']),
-                      style: GoogleFonts.cairo(
-                          fontSize: 10, color: AccountingTheme.textMuted),
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 10, color: SdColors.faint),
                       overflow: TextOverflow.ellipsis,
                     ),
                   )),
@@ -944,27 +981,27 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     switch (tv) {
       case 0:
         label = 'أجور';
-        color = AccountingTheme.danger;
+        color = SdColors.danger;
         icon = Icons.arrow_downward;
         break;
       case 1:
         label = 'تسديد';
-        color = AccountingTheme.success;
+        color = SdColors.success;
         icon = Icons.arrow_upward;
         break;
       case 2:
         label = 'خصم';
-        color = const Color(0xFFE67E22);
+        color = SdColors.warning;
         icon = Icons.remove_circle_outline;
         break;
       case 3:
         label = 'تعديل';
-        color = AccountingTheme.neonBlue;
+        color = SdColors.primary;
         icon = Icons.edit;
         break;
       default:
         label = type;
-        color = AccountingTheme.textMuted;
+        color = SdColors.faint;
         icon = Icons.help_outline;
     }
 
@@ -982,7 +1019,8 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
           Icon(icon, size: context.accR.iconS, color: color),
           SizedBox(width: context.accR.spaceXS),
           Text(label,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: context.accR.small,
                   fontWeight: FontWeight.bold,
                   color: color)),
@@ -995,15 +1033,15 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
     final int tv = (typeValue is int) ? typeValue : 0;
     switch (tv) {
       case 0:
-        return AccountingTheme.danger;
+        return SdColors.danger;
       case 1:
-        return AccountingTheme.success;
+        return SdColors.success;
       case 2:
-        return const Color(0xFFE67E22);
+        return SdColors.warning;
       case 3:
-        return AccountingTheme.neonBlue;
+        return SdColors.primary;
       default:
-        return AccountingTheme.textPrimary;
+        return SdColors.ink;
     }
   }
 
@@ -1055,15 +1093,16 @@ class _AgentTransactionsPageState extends State<AgentTransactionsPage> {
                 horizontal: context.accR.paddingH,
                 vertical: context.accR.spaceS),
             decoration: BoxDecoration(
-              color: AccountingTheme.bgCard,
+              color: SdColors.surface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AccountingTheme.borderColor),
+              border: Border.all(color: SdColors.divider),
             ),
             child: Text(
               'صفحة $_currentPage من $_totalPages  (${_formatNumber(_total)} معاملة)',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: context.accR.financialSmall,
-                  color: AccountingTheme.textSecondary),
+                  color: SdColors.muted),
             ),
           ),
           SizedBox(width: context.accR.spaceS),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
 import '../../services/accounting_export_service.dart';
@@ -37,11 +36,11 @@ class _CashFlowPageState extends State<CashFlowPage> {
   final _dateFmt = DateFormat('yyyy/MM/dd');
 
   // ألوان الأقسام
-  static const _operatingColor = Color(0xFF3498DB);
-  static const _investingColor = Color(0xFF8E44AD);
-  static const _financingColor = Color(0xFFE67E22);
-  static const _positiveColor = Color(0xFF27AE60);
-  static const _negativeColor = Color(0xFFE74C3C);
+  static const _operatingColor = SdColors.info;
+  static const _investingColor = SdColors.platformBase;
+  static const _financingColor = SdColors.warning;
+  static const _positiveColor = SdColors.success;
+  static const _negativeColor = SdColors.danger;
 
   @override
   void initState() {
@@ -225,7 +224,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
             child: _isLoading
                 ? const Center(
                     child: CircularProgressIndicator(
-                        color: AccountingTheme.neonGreen))
+                        color: SdColors.success))
                 : _errorMessage != null
                     ? AccountingTheme.errorView(_errorMessage!, _loadData)
                     : _buildContent(ar),
@@ -245,8 +244,8 @@ class _CashFlowPageState extends State<CashFlowPage> {
       padding: EdgeInsets.symmetric(
           horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceS),
       decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+        color: SdColors.surface,
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
       child: Row(
         children: [
@@ -257,22 +256,23 @@ class _CashFlowPageState extends State<CashFlowPage> {
               padding: EdgeInsets.symmetric(
                   horizontal: isMob ? 6 : 10, vertical: isMob ? 3 : 5),
               decoration: BoxDecoration(
-                color: AccountingTheme.bgSecondary,
+                color: SdColors.groundAlt,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AccountingTheme.borderColor),
+                border: Border.all(color: SdColors.divider),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.calendar_month,
-                      size: isMob ? 12 : 16, color: AccountingTheme.neonBlue),
+                      size: isMob ? 12 : 16, color: SdColors.primary),
                   const SizedBox(width: 4),
                   Flexible(
                     child: Text(
                       '${_dateFmt.format(_dateFrom)} - ${_dateFmt.format(_dateTo)}',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: isMob ? 9 : ar.small,
-                          color: AccountingTheme.textSecondary),
+                          color: SdColors.muted),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -328,8 +328,8 @@ class _CashFlowPageState extends State<CashFlowPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content:
-              Text('تم التصدير: $path', style: GoogleFonts.cairo(fontSize: 12)),
-          backgroundColor: AccountingTheme.success,
+              Text('تم التصدير: $path', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+          backgroundColor: SdColors.success,
           duration: const Duration(seconds: 4),
         ),
       );
@@ -338,8 +338,8 @@ class _CashFlowPageState extends State<CashFlowPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content:
-              Text('خطأ في التصدير', style: GoogleFonts.cairo(fontSize: 12)),
-          backgroundColor: AccountingTheme.danger,
+              Text('خطأ في التصدير', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+          backgroundColor: SdColors.danger,
         ),
       );
     }
@@ -362,7 +362,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
             icon: Icons.settings_rounded,
             color: _operatingColor,
             gradient: const LinearGradient(
-              colors: [Color(0xFF3498DB), Color(0xFF2980B9)],
+              colors: [SdColors.info, SdColors.info],
             ),
             items: _operatingItems,
             total: _totalOperating,
@@ -374,7 +374,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
             icon: Icons.trending_up_rounded,
             color: _investingColor,
             gradient: const LinearGradient(
-              colors: [Color(0xFF8E44AD), Color(0xFF7D3C98)],
+              colors: [SdColors.platformBase, Color(0xFF7D3C98)],
             ),
             items: _investingItems,
             total: _totalInvesting,
@@ -386,7 +386,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
             icon: Icons.account_balance_rounded,
             color: _financingColor,
             gradient: const LinearGradient(
-              colors: [Color(0xFFE67E22), Color(0xFFD35400)],
+              colors: [SdColors.warning, Color(0xFFD35400)],
             ),
             items: _financingItems,
             total: _totalFinancing,
@@ -409,15 +409,15 @@ class _CashFlowPageState extends State<CashFlowPage> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: _isPositive
-              ? [const Color(0xFF27AE60), const Color(0xFF1E8449)]
-              : [const Color(0xFFE74C3C), const Color(0xFFC0392B)],
+              ? [SdColors.success, const Color(0xFF1E8449)]
+              : [SdColors.danger, const Color(0xFFC0392B)],
         ),
         borderRadius: BorderRadius.circular(ar.cardRadius + 4),
         boxShadow: [
           BoxShadow(
             color: (_isPositive
-                    ? const Color(0xFF27AE60)
-                    : const Color(0xFFE74C3C))
+                    ? SdColors.success
+                    : SdColors.danger)
                 .withOpacity(0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
@@ -447,14 +447,16 @@ class _CashFlowPageState extends State<CashFlowPage> {
               children: [
                 Text(
                   'صافي التدفق النقدي',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 12 : ar.headingSmall,
                     color: Colors.white.withOpacity(0.9),
                   ),
                 ),
                 Text(
                   _formatCurrency(_netCashFlow),
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 20 : ar.financialLarge,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
@@ -484,12 +486,14 @@ class _CashFlowPageState extends State<CashFlowPage> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(label,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 9 : ar.caption,
                 color: Colors.white.withOpacity(0.7))),
         const SizedBox(width: 6),
         Text(value,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.small,
                 fontWeight: FontWeight.bold,
                 color: Colors.white)),
@@ -537,15 +541,17 @@ class _CashFlowPageState extends State<CashFlowPage> {
                 ),
                 SizedBox(width: isMob ? 6 : 10),
                 Text(title,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: isMob ? 13 : ar.headingSmall,
                       fontWeight: FontWeight.bold,
-                      color: AccountingTheme.textPrimary,
+                      color: SdColors.ink,
                     )),
                 const Spacer(),
                 Text(
                   _formatCurrency(total),
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 12 : ar.financialSmall,
                     fontWeight: FontWeight.w900,
                     color: total >= 0 ? _positiveColor : _negativeColor,
@@ -559,8 +565,9 @@ class _CashFlowPageState extends State<CashFlowPage> {
             Padding(
               padding: EdgeInsets.all(isMob ? 16 : 24),
               child: Text('لا توجد بيانات',
-                  style: GoogleFonts.cairo(
-                      color: AccountingTheme.textMuted,
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.faint,
                       fontSize: isMob ? 12 : ar.body)),
             )
           else
@@ -572,7 +579,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
 
               return Container(
                 color:
-                    i.isEven ? Colors.transparent : AccountingTheme.tableRowAlt,
+                    i.isEven ? Colors.transparent : SdColors.surfaceAlt,
                 padding: EdgeInsets.symmetric(
                     horizontal: isMob ? 10 : ar.spaceL,
                     vertical: isMob ? 6 : ar.spaceS),
@@ -595,14 +602,16 @@ class _CashFlowPageState extends State<CashFlowPage> {
                           Text(description,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: ar.tableCellFont,
-                                  color: AccountingTheme.textSecondary)),
+                                  color: SdColors.muted)),
                           if (refType.isNotEmpty)
                             Text(refType,
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: isMob ? 9 : ar.caption,
-                                    color: AccountingTheme.textMuted)),
+                                    color: SdColors.faint)),
                         ],
                       ),
                     ),
@@ -612,7 +621,8 @@ class _CashFlowPageState extends State<CashFlowPage> {
                       child: Text(
                         _formatCurrency(amount),
                         textAlign: TextAlign.left,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: ar.tableCellFont,
                           fontWeight: FontWeight.w600,
                           color: amount >= 0 ? _positiveColor : _negativeColor,
@@ -635,23 +645,26 @@ class _CashFlowPageState extends State<CashFlowPage> {
             child: Row(
               children: [
                 Text('الإجمالي',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: isMob ? 12 : ar.body,
                         fontWeight: FontWeight.bold,
-                        color: AccountingTheme.textPrimary)),
+                        color: SdColors.ink)),
                 if (items.isNotEmpty) ...[
                   const SizedBox(width: 8),
                   Text(
                     '(${items.length} عنصر)',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: isMob ? 9 : ar.caption,
-                        color: AccountingTheme.textMuted),
+                        color: SdColors.faint),
                   ),
                 ],
                 const Spacer(),
                 Text(
                   _formatCurrency(total),
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 14 : ar.financialMedium,
                     fontWeight: FontWeight.w900,
                     color: total >= 0 ? _positiveColor : _negativeColor,

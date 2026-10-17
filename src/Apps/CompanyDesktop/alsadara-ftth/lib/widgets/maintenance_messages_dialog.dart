@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/maintenance_messages.dart';
 import '../services/maintenance_messages_service.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class MaintenanceMessagesDialog extends StatefulWidget {
   final String currentUserName;
@@ -60,7 +61,7 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
 
   Future<void> _verifyPassword() async {
     if (_passwordController.text.isEmpty) {
-      _showSnackBar('يرجى إدخال كلمة المرور', Colors.orange);
+      _showSnackBar('يرجى إدخال كلمة المرور', SdColors.warning);
       return;
     }
 
@@ -76,15 +77,15 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
     });
 
     if (isValid) {
-      _showSnackBar('تم التحقق من كلمة المرور بنجاح', Colors.green);
+      _showSnackBar('تم التحقق من كلمة المرور بنجاح', SdColors.success);
     } else {
-      _showSnackBar('كلمة المرور غير صحيحة', Colors.red);
+      _showSnackBar('كلمة المرور غير صحيحة', SdColors.danger);
     }
   }
 
   Future<void> _saveMessages() async {
     if (!_isPasswordVerified) {
-      _showSnackBar('يجب التحقق من كلمة المرور أولاً', Colors.orange);
+      _showSnackBar('يجب التحقق من كلمة المرور أولاً', SdColors.warning);
       return;
     }
 
@@ -95,7 +96,7 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
         _cancelledController.text.isEmpty ||
         _supportPhoneController.text.isEmpty ||
         _companyNameController.text.isEmpty) {
-      _showSnackBar('يرجى ملء جميع الحقول المطلوبة', Colors.orange);
+      _showSnackBar('يرجى ملء جميع الحقول المطلوبة', SdColors.warning);
       return;
     }
 
@@ -122,10 +123,10 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
     });
 
     if (success) {
-      _showSnackBar('تم حفظ الرسائل بنجاح', Colors.green);
+      _showSnackBar('تم حفظ الرسائل بنجاح', SdColors.success);
       Navigator.of(context).pop(true); // إرجاع true للإشارة إلى نجاح الحفظ
     } else {
-      _showSnackBar('فشل في حفظ الرسائل', Colors.red);
+      _showSnackBar('فشل في حفظ الرسائل', SdColors.danger);
     }
   }
 
@@ -144,9 +145,9 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
 
       if (success) {
         await _loadCurrentMessages();
-        _showSnackBar('تم إعادة التعيين بنجاح', Colors.green);
+        _showSnackBar('تم إعادة التعيين بنجاح', SdColors.success);
       } else {
-        _showSnackBar('فشل في إعادة التعيين', Colors.red);
+        _showSnackBar('فشل في إعادة التعيين', SdColors.danger);
       }
 
       setState(() {
@@ -168,7 +169,7 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('تأكيد', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -198,7 +199,7 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
             // العنوان
             Row(
               children: [
-                Icon(Icons.message, color: Colors.blue, size: 28),
+                Icon(Icons.message, color: SdColors.info, size: 28),
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
@@ -233,7 +234,7 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.lock, size: 80, color: Colors.blue.shade300),
+            Icon(Icons.lock, size: 80, color: SdColors.infoTintEdge),
             const SizedBox(height: 24),
             const Text(
               'يرجى إدخال كلمة المرور للوصول إلى إعدادات الرسائل',
@@ -285,18 +286,18 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: SdColors.infoTint,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.shade200),
+              border: Border.all(color: SdColors.infoTintEdge),
             ),
             child: Row(
               children: [
-                Icon(Icons.info, color: Colors.blue.shade700),
+                Icon(Icons.info, color: SdColors.info),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'آخر تحديث: ${DateFormat('yyyy-MM-dd HH:mm').format(_currentMessages!.lastUpdated)} بواسطة ${_currentMessages!.updatedBy}',
-                    style: TextStyle(color: Colors.blue.shade700, fontSize: 12),
+                    style: TextStyle(color: SdColors.info, fontSize: 12),
                   ),
                 ),
               ],
@@ -328,7 +329,7 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
           const SizedBox(height: 16),
           Text(
             'تغيير كلمة المرور',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue.shade800),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: SdColors.info),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -440,12 +441,12 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
 
   Future<void> _changePassword() async {
     if (_oldPasswordController.text.isEmpty || _newPasswordController.text.isEmpty || _confirmPasswordController.text.isEmpty) {
-      _showSnackBar('يرجى ملء جميع حقول كلمة المرور', Colors.orange);
+      _showSnackBar('يرجى ملء جميع حقول كلمة المرور', SdColors.warning);
       return;
     }
 
     if (_newPasswordController.text != _confirmPasswordController.text) {
-      _showSnackBar('كلمة المرور الجديدة وتأكيد كلمة المرور غير متطابقتين', Colors.orange);
+      _showSnackBar('كلمة المرور الجديدة وتأكيد كلمة المرور غير متطابقتين', SdColors.warning);
       return;
     }
 
@@ -463,7 +464,7 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
     });
 
     if (success) {
-      _showSnackBar('تم تغيير كلمة المرور بنجاح', Colors.green);
+      _showSnackBar('تم تغيير كلمة المرور بنجاح', SdColors.success);
       setState(() {
         _showPasswordChangeSection = false;
         _oldPasswordController.clear();
@@ -471,7 +472,7 @@ class _MaintenanceMessagesDialogState extends State<MaintenanceMessagesDialog> {
         _confirmPasswordController.clear();
       });
     } else {
-      _showSnackBar('فشل في تغيير كلمة المرور', Colors.red);
+      _showSnackBar('فشل في تغيير كلمة المرور', SdColors.danger);
     }
   }
 

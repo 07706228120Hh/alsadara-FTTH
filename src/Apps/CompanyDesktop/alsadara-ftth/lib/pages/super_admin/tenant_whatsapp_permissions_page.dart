@@ -3,9 +3,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../models/tenant.dart';
 import '../../whatsapp/services/whatsapp_permissions_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class TenantWhatsAppPermissionsPage extends StatefulWidget {
   final Tenant tenant;
@@ -58,9 +58,9 @@ class _TenantWhatsAppPermissionsPageState
         SnackBar(
           content: Text(
             success ? '✅ تم حفظ الصلاحيات بنجاح' : '❌ فشل في حفظ الصلاحيات',
-            style: GoogleFonts.cairo(),
+            style: TextStyle(fontFamily: 'Cairo'),
           ),
-          backgroundColor: success ? Colors.green : Colors.red,
+          backgroundColor: success ? SdColors.success : SdColors.danger,
         ),
       );
 
@@ -100,21 +100,23 @@ class _TenantWhatsAppPermissionsPageState
           children: [
             Text(
               'صلاحيات الواتساب',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
             ),
             Text(
               widget.tenant.name,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 12,
                 fontWeight: FontWeight.normal,
               ),
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF25D366), // لون الواتساب
+        backgroundColor: SdColors.whatsapp, // لون الواتساب
         foregroundColor: Colors.white,
         actions: [
           if (_hasChanges && !_isSaving)
@@ -123,7 +125,7 @@ class _TenantWhatsAppPermissionsPageState
               icon: const Icon(Icons.save, color: Colors.white),
               label: Text(
                 'حفظ',
-                style: GoogleFonts.cairo(color: Colors.white),
+                style: TextStyle(fontFamily: 'Cairo', color: Colors.white),
               ),
             ),
           if (_isSaving)
@@ -153,26 +155,27 @@ class _TenantWhatsAppPermissionsPageState
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFF25D366).withOpacity(0.1),
-                          const Color(0xFF128C7E).withOpacity(0.1),
+                          SdColors.whatsapp.withOpacity(0.1),
+                          SdColors.whatsappEdge.withOpacity(0.1),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: const Color(0xFF25D366).withOpacity(0.3)),
+                          color: SdColors.whatsapp.withOpacity(0.3)),
                     ),
                     child: Row(
                       children: [
                         const Icon(Icons.info_outline,
-                            color: Color(0xFF25D366), size: 28),
+                            color: SdColors.whatsapp, size: 28),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'حدد أنظمة الواتساب المتاحة لهذه الشركة.\n'
                             'الأنظمة المعطلة لن تظهر لأي مستخدم في الشركة.',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 13,
-                              color: const Color(0xFF128C7E),
+                              color: SdColors.whatsappEdge,
                               height: 1.5,
                             ),
                           ),
@@ -189,9 +192,9 @@ class _TenantWhatsAppPermissionsPageState
                       ElevatedButton.icon(
                         onPressed: _enableAll,
                         icon: const Icon(Icons.check_circle, size: 18),
-                        label: Text('تفعيل الكل', style: GoogleFonts.cairo()),
+                        label: Text('تفعيل الكل', style: TextStyle(fontFamily: 'Cairo')),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: SdColors.success,
                           foregroundColor: Colors.white,
                         ),
                       ),
@@ -199,9 +202,9 @@ class _TenantWhatsAppPermissionsPageState
                       OutlinedButton.icon(
                         onPressed: _disableAll,
                         icon: const Icon(Icons.cancel, size: 18),
-                        label: Text('تعطيل الكل', style: GoogleFonts.cairo()),
+                        label: Text('تعطيل الكل', style: TextStyle(fontFamily: 'Cairo')),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
+                          foregroundColor: SdColors.danger,
                         ),
                       ),
                     ],
@@ -211,7 +214,8 @@ class _TenantWhatsAppPermissionsPageState
                   // قائمة الأنظمة
                   Text(
                     'أنظمة الواتساب المتاحة',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -225,7 +229,7 @@ class _TenantWhatsAppPermissionsPageState
                     description:
                         'إرسال الرسائل عبر تطبيق WhatsApp Desktop المثبت على الجهاز',
                     icon: Icons.computer,
-                    color: const Color(0xFF25D366),
+                    color: SdColors.whatsapp,
                   ),
 
                   // واتساب ويب
@@ -235,7 +239,7 @@ class _TenantWhatsAppPermissionsPageState
                     description:
                         'استخدام واتساب ويب داخل التطبيق مباشرة بدون فتح المتصفح',
                     icon: Icons.web,
-                    color: const Color(0xFF128C7E),
+                    color: SdColors.whatsappEdge,
                   ),
 
                   // واتساب السيرفر
@@ -266,9 +270,9 @@ class _TenantWhatsAppPermissionsPageState
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
+                      color: SdColors.warningTint,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.orange.shade200),
+                      border: Border.all(color: SdColors.warningTintEdge),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,13 +280,14 @@ class _TenantWhatsAppPermissionsPageState
                         Row(
                           children: [
                             Icon(Icons.lightbulb_outline,
-                                color: Colors.orange.shade700),
+                                color: SdColors.warning),
                             const SizedBox(width: 8),
                             Text(
                               'ملاحظات هامة',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontWeight: FontWeight.bold,
-                                color: Colors.orange.shade800,
+                                color: SdColors.warning,
                               ),
                             ),
                           ],
@@ -318,10 +323,10 @@ class _TenantWhatsAppPermissionsPageState
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isEnabled ? color.withOpacity(0.05) : Colors.grey.shade50,
+        color: isEnabled ? color.withOpacity(0.05) : SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isEnabled ? color.withOpacity(0.5) : Colors.grey.shade300,
+          color: isEnabled ? color.withOpacity(0.5) : SdColors.edge,
           width: isEnabled ? 2 : 1,
         ),
         boxShadow: isEnabled
@@ -339,7 +344,7 @@ class _TenantWhatsAppPermissionsPageState
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: isEnabled ? color : Colors.grey.shade400,
+            color: isEnabled ? color : SdColors.faint,
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: Colors.white, size: 24),
@@ -348,9 +353,10 @@ class _TenantWhatsAppPermissionsPageState
           children: [
             Text(
               title,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontWeight: FontWeight.bold,
-                color: isEnabled ? color : Colors.grey.shade600,
+                color: isEnabled ? color : SdColors.muted,
               ),
             ),
             if (isPremium) ...[
@@ -358,12 +364,13 @@ class _TenantWhatsAppPermissionsPageState
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.amber,
+                  color: SdColors.warning,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   'Premium',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
@@ -377,9 +384,10 @@ class _TenantWhatsAppPermissionsPageState
           padding: const EdgeInsets.only(top: 4),
           child: Text(
             description,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: 12,
-              color: Colors.grey.shade600,
+              color: SdColors.muted,
             ),
           ),
         ),
@@ -397,9 +405,10 @@ class _TenantWhatsAppPermissionsPageState
       padding: const EdgeInsets.only(bottom: 4),
       child: Text(
         text,
-        style: GoogleFonts.cairo(
+        style: TextStyle(
+          fontFamily: 'Cairo',
           fontSize: 12,
-          color: Colors.orange.shade700,
+          color: SdColors.warning,
         ),
       ),
     );

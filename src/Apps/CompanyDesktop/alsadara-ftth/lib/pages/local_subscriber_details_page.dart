@@ -314,8 +314,8 @@ class _LocalSubscriberDetailsPageState
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: svc['type'] == 'Base'
-                        ? Colors.blue.shade100
-                        : Colors.orange.shade100,
+                        ? SdColors.infoTint
+                        : SdColors.warningTint,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -324,8 +324,8 @@ class _LocalSubscriberDetailsPageState
                         '-',
                     style: TextStyle(
                       color: svc['type'] == 'Base'
-                          ? Colors.blue.shade900
-                          : Colors.orange.shade900,
+                          ? SdColors.infoEdge
+                          : SdColors.warningEdge,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -333,7 +333,7 @@ class _LocalSubscriberDetailsPageState
                 const SizedBox(width: 8),
                 Text(
                   '(${svc['type'] ?? ''})',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  style: TextStyle(color: SdColors.muted, fontSize: 12),
                 ),
               ],
             ),

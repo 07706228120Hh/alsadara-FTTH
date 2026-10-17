@@ -13,6 +13,7 @@ import 'edit_company_page.dart';
 import '../../models/tenant.dart';
 import '../home_page.dart';
 import '../../permissions/permissions.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// حالة الاشتراك
 enum VpsSubscriptionStatus {
@@ -141,15 +142,15 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
   Color _getStatusColor(VpsSubscriptionStatus status) {
     switch (status) {
       case VpsSubscriptionStatus.active:
-        return Colors.green;
+        return SdColors.success;
       case VpsSubscriptionStatus.warning:
-        return Colors.orange;
+        return SdColors.warning;
       case VpsSubscriptionStatus.critical:
-        return Colors.deepOrange;
+        return SdColors.warning;
       case VpsSubscriptionStatus.expired:
-        return Colors.red;
+        return SdColors.danger;
       case VpsSubscriptionStatus.suspended:
-        return Colors.grey;
+        return SdColors.faint;
     }
   }
 
@@ -231,7 +232,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
                 icon: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
+                    border: Border.all(color: SdColors.faint),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -261,15 +262,15 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
                   const PopupMenuItem(value: null, child: Text('جميع الحالات')),
                   const PopupMenuDivider(),
                   _buildFilterMenuItem(
-                      VpsSubscriptionStatus.active, 'نشط', Colors.green),
+                      VpsSubscriptionStatus.active, 'نشط', SdColors.success),
                   _buildFilterMenuItem(
-                      VpsSubscriptionStatus.warning, 'تحذير', Colors.orange),
+                      VpsSubscriptionStatus.warning, 'تحذير', SdColors.warning),
                   _buildFilterMenuItem(
-                      VpsSubscriptionStatus.critical, 'حرج', Colors.deepOrange),
+                      VpsSubscriptionStatus.critical, 'حرج', SdColors.warning),
                   _buildFilterMenuItem(
-                      VpsSubscriptionStatus.expired, 'منتهي', Colors.red),
+                      VpsSubscriptionStatus.expired, 'منتهي', SdColors.danger),
                   _buildFilterMenuItem(
-                      VpsSubscriptionStatus.suspended, 'معلق', Colors.grey),
+                      VpsSubscriptionStatus.suspended, 'معلق', SdColors.faint),
                 ],
               ),
             ],
@@ -284,19 +285,19 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.green[100],
+                  color: SdColors.successTint,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.cloud_done, size: 14, color: Colors.green[700]),
+                    Icon(Icons.cloud_done, size: 14, color: SdColors.success),
                     const SizedBox(width: 4),
                     Text(
                       'VPS API',
                       style: TextStyle(
                         fontSize: 11,
-                        color: Colors.green[700],
+                        color: SdColors.success,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -306,7 +307,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
               const SizedBox(width: 8),
               Text(
                 '${_filteredCompanies.length} شركة',
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                style: TextStyle(color: SdColors.muted, fontSize: 13),
               ),
             ],
           ),
@@ -334,7 +335,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
             const Icon(
               Icons.error_outline,
               size: 64,
-              color: Colors.red,
+              color: SdColors.danger,
             ),
             const SizedBox(height: 16),
             Text(
@@ -342,7 +343,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 16,
-                color: Colors.red,
+                color: SdColors.danger,
               ),
             ),
             const SizedBox(height: 24),
@@ -363,13 +364,13 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.business_outlined, size: 64, color: Colors.grey),
+            const Icon(Icons.business_outlined, size: 64, color: SdColors.faint),
             const SizedBox(height: 16),
             Text(
               _searchQuery.isNotEmpty || _statusFilter != null
                   ? 'لا توجد نتائج'
                   : 'لا توجد شركات',
-              style: const TextStyle(fontSize: 18, color: Colors.grey),
+              style: const TextStyle(fontSize: 18, color: SdColors.faint),
             ),
             const SizedBox(height: 16),
             if (_searchQuery.isEmpty && _statusFilter == null)
@@ -436,7 +437,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.login, color: Color(0xFF1a237e)),
+            Icon(Icons.login, color: SdColors.primary),
             SizedBox(width: 8),
             Text('الدخول للشركة'),
           ],
@@ -450,17 +451,17 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue),
+                  Icon(Icons.info_outline, color: SdColors.info),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'ستحصل على جميع صلاحيات المدير',
-                      style: TextStyle(color: Colors.blue),
+                      style: TextStyle(color: SdColors.info),
                     ),
                   ),
                 ],
@@ -478,7 +479,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
             icon: const Icon(Icons.login),
             label: const Text('دخول'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1a237e),
+              backgroundColor: SdColors.primary,
               foregroundColor: Colors.white,
             ),
           ),
@@ -548,7 +549,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: SdColors.edge,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -559,14 +560,14 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
             ),
             Text(
               'كود: ${company.code}',
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: SdColors.muted),
             ),
             const SizedBox(height: 24),
 
             // الدخول للشركة
             ListTile(
               leading: const CircleAvatar(
-                backgroundColor: Color(0xFF1a237e),
+                backgroundColor: SdColors.primary,
                 child: Icon(Icons.login, color: Colors.white),
               ),
               title: const Text('الدخول للشركة'),
@@ -580,7 +581,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
             // تعديل الشركة
             ListTile(
               leading: const CircleAvatar(
-                backgroundColor: Colors.blue,
+                backgroundColor: SdColors.info,
                 child: Icon(Icons.edit, color: Colors.white),
               ),
               title: const Text('تعديل الشركة'),
@@ -599,7 +600,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
             ListTile(
               leading: CircleAvatar(
                 backgroundColor:
-                    company.isActive ? Colors.orange : Colors.green,
+                    company.isActive ? SdColors.warning : SdColors.success,
                 child: Icon(
                   company.isActive ? Icons.pause : Icons.play_arrow,
                   color: Colors.white,
@@ -615,7 +616,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
             // تجديد الاشتراك
             ListTile(
               leading: const CircleAvatar(
-                backgroundColor: Colors.teal,
+                backgroundColor: SdColors.accent,
                 child: Icon(Icons.refresh, color: Colors.white),
               ),
               title: const Text('تجديد الاشتراك'),
@@ -629,7 +630,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
             // حذف الشركة
             ListTile(
               leading: const CircleAvatar(
-                backgroundColor: Colors.red,
+                backgroundColor: SdColors.danger,
                 child: Icon(Icons.delete, color: Colors.white),
               ),
               title: const Text('حذف الشركة'),
@@ -753,7 +754,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.warning, color: Colors.red),
+            Icon(Icons.warning, color: SdColors.danger),
             SizedBox(width: 8),
             Text('حذف الشركة'),
           ],
@@ -767,17 +768,17 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
+                color: SdColors.dangerTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red),
+                  Icon(Icons.error_outline, color: SdColors.danger),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'هذا الإجراء لا يمكن التراجع عنه!',
-                      style: TextStyle(color: Colors.red),
+                      style: TextStyle(color: SdColors.danger),
                     ),
                   ),
                 ],
@@ -792,7 +793,7 @@ class _VpsCompaniesListPageState extends State<VpsCompaniesListPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('حذف'),
           ),
         ],
@@ -838,15 +839,15 @@ class _VpsCompanyCard extends StatelessWidget {
   Color get _statusColor {
     switch (status) {
       case VpsSubscriptionStatus.active:
-        return Colors.green;
+        return SdColors.success;
       case VpsSubscriptionStatus.warning:
-        return Colors.orange;
+        return SdColors.warning;
       case VpsSubscriptionStatus.critical:
-        return Colors.deepOrange;
+        return SdColors.warning;
       case VpsSubscriptionStatus.expired:
-        return Colors.red;
+        return SdColors.danger;
       case VpsSubscriptionStatus.suspended:
-        return Colors.grey;
+        return SdColors.faint;
     }
   }
 
@@ -876,7 +877,7 @@ class _VpsCompanyCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isLinked
-            ? const BorderSide(color: Colors.teal, width: 2)
+            ? const BorderSide(color: SdColors.accent, width: 2)
             : BorderSide.none,
       ),
       child: InkWell(
@@ -895,7 +896,7 @@ class _VpsCompanyCard extends StatelessWidget {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1a237e).withValues(alpha: 0.1),
+                      color: SdColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: company.logoUrl != null
@@ -906,11 +907,11 @@ class _VpsCompanyCard extends StatelessWidget {
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => const Icon(
                                 Icons.business,
-                                color: Color(0xFF1a237e),
+                                color: SdColors.primary,
                               ),
                             ),
                           )
-                        : const Icon(Icons.business, color: Color(0xFF1a237e)),
+                        : const Icon(Icons.business, color: SdColors.primary),
                   ),
                   const SizedBox(width: 12),
 
@@ -937,7 +938,7 @@ class _VpsCompanyCard extends StatelessWidget {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.teal,
+                                  color: SdColors.accent,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Row(
@@ -962,7 +963,7 @@ class _VpsCompanyCard extends StatelessWidget {
                         Text(
                           'كود: ${company.code}',
                           style:
-                              TextStyle(color: Colors.grey[600], fontSize: 13),
+                              TextStyle(color: SdColors.muted, fontSize: 13),
                         ),
                       ],
                     ),
@@ -999,11 +1000,11 @@ class _VpsCompanyCard extends StatelessWidget {
                   Row(
                     children: [
                       Icon(Icons.calendar_today,
-                          size: 16, color: Colors.grey[600]),
+                          size: 16, color: SdColors.muted),
                       const SizedBox(width: 4),
                       Text(
                         'ينتهي: ${dateFormat.format(company.subscriptionEndDate)}',
-                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                        style: TextStyle(fontSize: 13, color: SdColors.muted),
                       ),
                     ],
                   ),
@@ -1015,8 +1016,8 @@ class _VpsCompanyCard extends StatelessWidget {
                         Icons.timer,
                         size: 16,
                         color: company.daysRemaining <= 7
-                            ? Colors.red
-                            : Colors.grey[600],
+                            ? SdColors.danger
+                            : SdColors.muted,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -1024,8 +1025,8 @@ class _VpsCompanyCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           color: company.daysRemaining <= 7
-                              ? Colors.red
-                              : Colors.grey[700],
+                              ? SdColors.danger
+                              : SdColors.muted,
                           fontWeight: company.daysRemaining <= 7
                               ? FontWeight.bold
                               : FontWeight.normal,
@@ -1037,11 +1038,11 @@ class _VpsCompanyCard extends StatelessWidget {
                   // عدد الموظفين
                   Row(
                     children: [
-                      Icon(Icons.people, size: 16, color: Colors.grey[600]),
+                      Icon(Icons.people, size: 16, color: SdColors.muted),
                       const SizedBox(width: 4),
                       Text(
                         '${company.employeeCount}/${company.maxUsers}',
-                        style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                        style: TextStyle(fontSize: 13, color: SdColors.muted),
                       ),
                     ],
                   ),
@@ -1059,7 +1060,7 @@ class _VpsCompanyCard extends StatelessWidget {
                     icon: const Icon(Icons.login, size: 18),
                     label: const Text('دخول'),
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF1a237e),
+                      foregroundColor: SdColors.primary,
                     ),
                   ),
                 ],

@@ -36,7 +36,7 @@ class QualityResultsPage extends StatefulWidget {
 class _QualityResultsPageState extends State<QualityResultsPage> {
   static const _indigo = SdColors.primary;
   static const _teal = SdColors.accent;
-  static const _purple = Color(0xFF6A1B9A);
+  static const _purple = SdColors.platformBase;
   static const _green = SdColors.success;
 
   // ألوان البطل: خلفية كحلي/فحمي محايدة + accentان حيويان متمايزان + أبيض.
@@ -369,7 +369,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
             const SizedBox(height: 14),
             Text('جارٍ تتبّع المسار... قد يستغرق حتى 30 ثانية',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700)),
+                style: TextStyle(fontSize: 12.5, color: SdColors.muted)),
           ],
         ),
       );
@@ -389,7 +389,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
               child: Text(
                 'اكتشف الطريق الذي تسلكه حزم بياناتك عبر الشبكة حتى الوصول للخادم.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 12, color: SdColors.muted),
               ),
             ),
           ],
@@ -489,7 +489,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
       decoration: BoxDecoration(
         color: const Color(0xFFF7F9FA),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: SdColors.faint.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
@@ -515,7 +515,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'monospace',
-                  color: timedOut ? Colors.grey.shade500 : Colors.black87),
+                  color: timedOut ? SdColors.faint : Colors.black87),
             ),
           ),
           if (h.ms != null)
@@ -679,7 +679,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
                     style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: Colors.grey.shade700)),
+                        color: SdColors.muted)),
               ),
             ],
           ),
@@ -760,7 +760,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
                                 style: TextStyle(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade700)),
+                                    color: SdColors.muted)),
                             const SizedBox(height: 2),
                             ValueUnit(
                               w.rssiDbm != null ? '${w.rssiDbm} dBm' : '—',
@@ -771,7 +771,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
                               Text('النسبة ${w.signalPercent}%',
                                   style: TextStyle(
                                       fontSize: 10.5,
-                                      color: Colors.grey.shade600)),
+                                      color: SdColors.muted)),
                           ],
                         ),
                       ),
@@ -787,11 +787,11 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
                     endLabel: '-30 (ممتاز)',
                     valueLabel: '${w.rssiDbm} dBm',
                     gradientColors: const [
-                      Color(0xFFC62828),
-                      Color(0xFFEF6C00),
-                      Color(0xFFF9A825),
+                      SdColors.danger,
+                      SdColors.warning,
+                      SdColors.warning,
                       Color(0xFF66BB6A),
-                      Color(0xFF2E7D32),
+                      SdColors.success,
                     ],
                   ),
                 const SizedBox(height: 12),
@@ -870,7 +870,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
       title: 'ملخّص أبعاد الجودة',
       subtitle: 'نظرة شاملة على أبعاد الأداء الأربعة',
       icon: Icons.radar_rounded,
-      accent: const Color(0xFF00897B),
+      accent: SdColors.accent,
       child: maxDim <= 0
           ? _emptyNote('لا تتوفّر بيانات كافية لرسم ملخّص الأبعاد.')
           : Column(
@@ -881,7 +881,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
                 Text(
                   'كلّما اتّسع الشكل نحو الأطراف كانت الجودة أعلى في ذلك البُعد.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 10.5, color: SdColors.muted),
                 ),
               ],
             ),
@@ -896,7 +896,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
       return SectionCard(
         title: 'الأجهزة على الشبكة',
         icon: Icons.lan_rounded,
-        accent: const Color(0xFF00695C),
+        accent: SdColors.accent,
         child: _emptyNote('لم يُفعّل اكتشاف الأجهزة في هذا الفحص.'),
       );
     }
@@ -904,7 +904,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
       return SectionCard(
         title: 'الأجهزة على الشبكة',
         icon: Icons.lan_rounded,
-        accent: const Color(0xFF00695C),
+        accent: SdColors.accent,
         child: _emptyNote(disc.note.isNotEmpty
             ? disc.note
             : 'لم يُعثر على أجهزة على الشبكة.'),
@@ -925,15 +925,15 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
       title: 'الأجهزة على الشبكة',
       subtitle: 'المكوّنات والأجهزة المتصلة بالشبكة المحلية',
       icon: Icons.lan_rounded,
-      accent: const Color(0xFF00695C),
+      accent: SdColors.accent,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (disc.doubleNat) ...[
-            _statusChip('Double-NAT', const Color(0xFFEF6C00)),
+            _statusChip('Double-NAT', SdColors.warning),
             const SizedBox(width: 6),
           ],
-          _statusChip('${disc.devices.length} جهاز', const Color(0xFF00695C)),
+          _statusChip('${disc.devices.length} جهاز', SdColors.accent),
         ],
       ),
       child: Column(
@@ -944,7 +944,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(disc.note,
                   style:
-                      TextStyle(fontSize: 11.5, color: Colors.grey.shade600)),
+                      TextStyle(fontSize: 11.5, color: SdColors.muted)),
             ),
           ...structural.map((d) => _deviceRow(context, d)),
           if (clients.isNotEmpty) ...[
@@ -952,7 +952,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
             Row(
               children: [
                 Icon(Icons.devices_other_rounded,
-                    size: 15, color: Colors.grey.shade500),
+                    size: 15, color: SdColors.faint),
                 const SizedBox(width: 6),
                 Text('الأجهزة المتصلة (${clients.length})',
                     style: const TextStyle(
@@ -965,7 +965,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
             Text(
               'الأسماء الوديّة الكاملة تحتاج قائمة DHCP من الراوتر؛ ما يظهر هنا '
               'أفضل جهد عبر DNS العكسي/NetBIOS والمصنّع.',
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+              style: TextStyle(fontSize: 10, color: SdColors.faint),
             ),
           ],
         ],
@@ -986,7 +986,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
         color = _purple;
         break;
       default:
-        color = Colors.grey;
+        color = SdColors.faint;
     }
     final rx = d.optical?.rxPowerDbm;
     final subtitle = <String>[
@@ -1036,22 +1036,22 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                fontSize: 10, color: Colors.grey.shade500)),
+                                fontSize: 10, color: SdColors.faint)),
                       ),
                     ],
                   ),
                   Text(subtitle,
                       style: TextStyle(
                           fontSize: 10.5,
-                          color: Colors.grey.shade600,
+                          color: SdColors.muted,
                           fontFamily: 'monospace')),
                 ],
               ),
             ),
             if (d.status == InspectStatus.needsCredentials)
-              Icon(Icons.key_rounded, size: 16, color: Colors.orange.shade700)
+              Icon(Icons.key_rounded, size: 16, color: SdColors.warning)
             else if (d.status == InspectStatus.authenticated)
-              const Icon(Icons.check_circle, size: 16, color: Colors.green),
+              const Icon(Icons.check_circle, size: 16, color: SdColors.success),
             // فتح واجهة الجهاز مباشرةً في المتصفح (وصول سريع بلا فتح التفاصيل).
             IconButton(
               tooltip: 'فتح واجهة الجهاز',
@@ -1059,7 +1059,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
               icon: Icon(Icons.open_in_browser_rounded, size: 18, color: color),
               onPressed: () => _openDeviceWeb(d.ip),
             ),
-            const Icon(Icons.chevron_left_rounded, color: Colors.grey),
+            const Icon(Icons.chevron_left_rounded, color: SdColors.faint),
           ],
         ),
       ),
@@ -1096,7 +1096,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
   /// بطاقة جهاز متصل قابلة للتوسيع: الاسم عنوان أساسي، الـIP ثانوي، والتفاصيل
   /// (IP/MAC/المصنّع/النوع/الحالة) عند التوسيع.
   Widget _clientCard(NetworkDevice c) {
-    const accent = Color(0xFF00695C);
+    const accent = SdColors.accent;
     final kind = _guessClientKind(c);
     final hasName = c.hostname.isNotEmpty;
     final title = hasName
@@ -1111,7 +1111,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
       decoration: BoxDecoration(
         color: const Color(0xFFF7F9FA),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: SdColors.faint.withValues(alpha: 0.12)),
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -1134,7 +1134,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
           subtitle: Text(subtitle,
               style: TextStyle(
                   fontSize: 10.5,
-                  color: Colors.grey.shade600,
+                  color: SdColors.muted,
                   fontFamily: 'monospace')),
           trailing: c.vendor.isNotEmpty
               ? Container(
@@ -1149,7 +1149,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
                           fontWeight: FontWeight.w700,
                           color: accent.withValues(alpha: 0.9))),
                 )
-              : const Icon(Icons.expand_more_rounded, color: Colors.grey),
+              : const Icon(Icons.expand_more_rounded, color: SdColors.faint),
           children: [
             SpecGrid(
               accent: accent,
@@ -1197,8 +1197,8 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
       title: 'جهاز الفحص (الحاسبة/الهاتف)',
       subtitle: 'مواصفات الجهاز الذي أجرى الفحص',
       icon: Icons.computer_rounded,
-      accent: const Color(0xFF607D8B),
-      trailing: _statusChip(d.platform, const Color(0xFF607D8B)),
+      accent: SdColors.muted,
+      trailing: _statusChip(d.platform, SdColors.muted),
       child: Theme(
         data: ThemeData(dividerColor: Colors.transparent, fontFamily: 'Cairo'),
         child: ExpansionTile(
@@ -1208,7 +1208,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
               style:
                   const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
           subtitle: Text('اضغط لعرض مواصفات جهاز الفحص (ثانوي)',
-              style: TextStyle(fontSize: 10.5, color: Colors.grey.shade500)),
+              style: TextStyle(fontSize: 10.5, color: SdColors.faint)),
           children: [_hostDeviceBody(d)],
         ),
       ),
@@ -1217,7 +1217,7 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
 
   Widget _hostDeviceBody(DeviceSpecs d) {
     return SpecGrid(
-      accent: const Color(0xFF607D8B),
+      accent: SdColors.muted,
       items: [
         (label: 'المنصّة', value: d.platform, icon: Icons.devices_rounded),
         if (d.model.isNotEmpty)
@@ -1270,18 +1270,18 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
       return (Icons.speed_rounded, _indigo);
     }
     if (r.contains('زمن') || r.contains('تذبذب') || r.contains('الاستجابة')) {
-      return (Icons.timer_rounded, const Color(0xFFEF6C00));
+      return (Icons.timer_rounded, SdColors.warning);
     }
     if (r.contains('الحزم')) {
-      return (Icons.lan_rounded, const Color(0xFFC62828));
+      return (Icons.lan_rounded, SdColors.danger);
     }
     if (r.contains('ذاكرة') || r.contains('الجهاز')) {
-      return (Icons.sd_card_rounded, const Color(0xFF607D8B));
+      return (Icons.sd_card_rounded, SdColors.muted);
     }
     if (r.contains('لا توجد') || r.contains('ضمن النطاق')) {
       return (Icons.verified_rounded, _green);
     }
-    return (Icons.lightbulb_rounded, const Color(0xFFF9A825));
+    return (Icons.lightbulb_rounded, SdColors.warning);
   }
 
   Widget _buildRecommendations() {
@@ -1289,9 +1289,9 @@ class _QualityResultsPageState extends State<QualityResultsPage> {
       title: 'التوصيات',
       subtitle: 'إرشادات لتحسين جودة الاتصال',
       icon: Icons.lightbulb_rounded,
-      accent: const Color(0xFFF9A825),
+      accent: SdColors.warning,
       trailing: _statusChip(
-          '${report.recommendations.length}', const Color(0xFFF9A825)),
+          '${report.recommendations.length}', SdColors.warning),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: report.recommendations.map((r) {

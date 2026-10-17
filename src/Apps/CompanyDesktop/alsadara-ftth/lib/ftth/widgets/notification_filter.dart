@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// فلتر إشعارات خاص بصفحات FTTH: يمنع ظهور رسالة فشل جلب الرصيد فقط
 /// ويسمح بتمرير باقي الرسائل (نجاح / أخطاء أخرى).
@@ -35,7 +36,7 @@ class FtthNotificationFilter {
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: backgroundColor ?? Colors.green.shade600,
+              color: backgroundColor ?? SdColors.success,
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
@@ -108,7 +109,7 @@ void ftthShowSuccessNotification(BuildContext context, String message) {
   FtthNotificationFilter.showTopNotification(
     context,
     message,
-    backgroundColor: Colors.green.shade600,
+    backgroundColor: SdColors.success,
   );
 }
 
@@ -117,7 +118,7 @@ void ftthShowErrorNotification(BuildContext context, String message) {
   FtthNotificationFilter.showTopNotification(
     context,
     message,
-    backgroundColor: Colors.red.shade600,
+    backgroundColor: SdColors.danger,
     duration: const Duration(seconds: 4),
   );
 }
@@ -127,7 +128,7 @@ void ftthShowInfoNotification(BuildContext context, String message) {
   FtthNotificationFilter.showTopNotification(
     context,
     message,
-    backgroundColor: Colors.blue.shade600,
+    backgroundColor: SdColors.info,
   );
 }
 

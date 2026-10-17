@@ -2,8 +2,8 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../services/employee_profile_service.dart';
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class FtthTab extends StatefulWidget {
   final String employeeId;
@@ -26,11 +26,11 @@ class _FtthTabState extends State<FtthTab> {
   bool _loading = true;
   Map<String, dynamic> _summary = {};
 
-  static const _accent = Color(0xFF3498DB);
-  static const _green = Color(0xFF27AE60);
-  static const _orange = Color(0xFFF39C12);
-  static const _purple = Color(0xFF8E44AD);
-  static const _gray = Color(0xFF95A5A6);
+  static const _accent = SdColors.info;
+  static const _green = SdColors.success;
+  static const _orange = SdColors.warning;
+  static const _purple = SdColors.platformBase;
+  static const _gray = SdColors.faint;
 
   @override
   void initState() {
@@ -98,7 +98,8 @@ class _FtthTabState extends State<FtthTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('مشغل FTTH',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 4),
                 Row(
@@ -107,7 +108,7 @@ class _FtthTabState extends State<FtthTab> {
                     const SizedBox(width: 4),
                     Text(
                       'اسم المستخدم: ${widget.ftthUsername ?? "غير مربوط"}',
-                      style: GoogleFonts.cairo(fontSize: 12, color: _gray),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: _gray),
                     ),
                   ],
                 ),
@@ -124,7 +125,8 @@ class _FtthTabState extends State<FtthTab> {
             ),
             child: Text(
               widget.ftthUsername != null ? 'مربوط' : 'غير مربوط',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 color: widget.ftthUsername != null ? _green : _orange,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
@@ -187,10 +189,11 @@ class _FtthTabState extends State<FtthTab> {
             const SizedBox(height: 6),
             Text(
               value.toString(),
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 20, fontWeight: FontWeight.bold, color: color),
             ),
-            Text(label, style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
+            Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: _gray)),
           ],
         ),
       ),
@@ -225,7 +228,8 @@ class _FtthTabState extends State<FtthTab> {
                 const Icon(Icons.history, color: _accent, size: 20),
                 const SizedBox(width: 8),
                 Text('آخر العمليات',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontWeight: FontWeight.bold, fontSize: 14)),
               ],
             ),
@@ -235,7 +239,7 @@ class _FtthTabState extends State<FtthTab> {
               padding: const EdgeInsets.all(30),
               child: Center(
                 child: Text('لا توجد عمليات حديثة',
-                    style: GoogleFonts.cairo(color: _gray)),
+                    style: TextStyle(fontFamily: 'Cairo', color: _gray)),
               ),
             )
           else
@@ -251,11 +255,11 @@ class _FtthTabState extends State<FtthTab> {
                   child: const Icon(Icons.build, size: 16, color: _accent),
                 ),
                 title: Text(type.toString(),
-                    style: GoogleFonts.cairo(fontSize: 13)),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                 subtitle: Text(desc.toString(),
-                    style: GoogleFonts.cairo(fontSize: 11, color: _gray)),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: _gray)),
                 trailing: Text(_formatDate(dateStr.toString()),
-                    style: GoogleFonts.cairo(fontSize: 10, color: _gray)),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: _gray)),
               );
             }),
         ],

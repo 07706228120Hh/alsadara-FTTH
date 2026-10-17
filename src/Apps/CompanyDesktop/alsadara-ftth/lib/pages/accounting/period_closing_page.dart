@@ -82,7 +82,7 @@ class _PeriodClosingPageState extends State<PeriodClosingPage> {
     final message = closed
         ? 'هل تريد إعادة فتح فترة $monthName $_selectedYear؟ سيتمكن الجميع من التعديل والحذف.'
         : 'هل تريد إقفال فترة $monthName $_selectedYear؟ لن يتمكن الموظفون من التعديل أو الحذف في هذه الفترة.';
-    final confirmColor = closed ? AccountingTheme.warning : AccountingTheme.danger;
+    final confirmColor = closed ? SdColors.warning : SdColors.danger;
 
     final confirmed = await AccountingTheme.confirmDialog(
       context,
@@ -128,12 +128,12 @@ class _PeriodClosingPageState extends State<PeriodClosingPage> {
           closed
               ? 'تم إعادة فتح فترة $monthName $_selectedYear'
               : 'تم إقفال فترة $monthName $_selectedYear',
-          closed ? AccountingTheme.success : AccountingTheme.danger,
+          closed ? SdColors.success : SdColors.danger,
         );
       }
     } catch (e) {
       if (mounted) {
-        AccountingTheme.showSnack(context, 'خطأ', AccountingTheme.danger);
+        AccountingTheme.showSnack(context, 'خطأ', SdColors.danger);
       }
     }
 

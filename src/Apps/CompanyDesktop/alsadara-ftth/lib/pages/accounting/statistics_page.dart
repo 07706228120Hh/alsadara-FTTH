@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../theme/accounting_theme.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -150,7 +149,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
           child: _isLoading
               ? const Center(
                   child: CircularProgressIndicator(
-                      color: AccountingTheme.neonBlue))
+                      color: SdColors.primary))
               : _errorMessage != null
                   ? _buildErrorView()
                   : _buildDashboard(),
@@ -228,14 +227,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
           SizedBox(
               height: 280,
               child: _chartPanel('الميزانية العمومية', Icons.pie_chart_rounded,
-                  AccountingTheme.neonPurple, _buildBalanceSheetChart(balances))),
+                  SdColors.platformBase, _buildBalanceSheetChart(balances))),
           SizedBox(height: context.accR.spaceS),
           SizedBox(
               height: 300,
               child: _chartPanel(
                   'الإيرادات vs المصروفات',
                   Icons.bar_chart_rounded,
-                  AccountingTheme.neonBlue,
+                  SdColors.primary,
                   _buildRevenueExpenseChart(balances, collections, expenses))),
           SizedBox(height: context.accR.spaceS),
           SizedBox(
@@ -243,7 +242,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
               child: _chartPanel(
                   'إحصائيات الشهر',
                   Icons.calendar_month_rounded,
-                  AccountingTheme.neonOrange,
+                  SdColors.warning,
                   _buildMonthlyChart(collections, expenses, salaries, data))),
           SizedBox(height: context.accR.spaceS),
           SizedBox(
@@ -251,7 +250,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
               child: _chartPanel(
                   'المعلقات والذمم',
                   Icons.pending_actions_rounded,
-                  AccountingTheme.neonPurple,
+                  SdColors.platformBase,
                   _buildPendingChart(
                       collections, salaries, agentNet, techNet))),
           SizedBox(height: context.accR.spaceS),
@@ -260,7 +259,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
               child: _chartPanel(
                   'الإجماليات الكلية',
                   Icons.analytics_rounded,
-                  AccountingTheme.neonBlue,
+                  SdColors.primary,
                   _buildTotalsView(collections, expenses, salaries, journal))),
           SizedBox(height: context.accR.spaceS),
           SizedBox(
@@ -268,7 +267,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
               child: _chartPanel(
                   'الصناديق النقدية',
                   Icons.account_balance_wallet_rounded,
-                  AccountingTheme.neonOrange,
+                  SdColors.warning,
                   _buildCashBoxesList(cashBoxes, balances))),
         ],
       ),
@@ -309,7 +308,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   child: _chartPanel(
                       'الميزانية العمومية',
                       Icons.pie_chart_rounded,
-                      AccountingTheme.neonPurple,
+                      SdColors.platformBase,
                       _buildBalanceSheetChart(balances))),
               SizedBox(width: context.accR.spaceS),
               Expanded(
@@ -317,7 +316,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   child: _chartPanel(
                       'الإيرادات vs المصروفات',
                       Icons.bar_chart_rounded,
-                      AccountingTheme.neonBlue,
+                      SdColors.primary,
                       _buildRevenueExpenseChart(
                           balances, collections, expenses))),
               SizedBox(width: context.accR.spaceS),
@@ -326,7 +325,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   child: _chartPanel(
                       'إحصائيات الشهر',
                       Icons.calendar_month_rounded,
-                      AccountingTheme.neonOrange,
+                      SdColors.warning,
                       _buildMonthlyChart(
                           collections, expenses, salaries, data))),
             ],
@@ -343,7 +342,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   child: _chartPanel(
                       'المعلقات والذمم',
                       Icons.pending_actions_rounded,
-                      AccountingTheme.neonPurple,
+                      SdColors.platformBase,
                       _buildPendingChart(
                           collections, salaries, agentNet, techNet))),
               SizedBox(width: context.accR.spaceS),
@@ -352,7 +351,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   child: _chartPanel(
                       'الإجماليات الكلية',
                       Icons.analytics_rounded,
-                      AccountingTheme.neonBlue,
+                      SdColors.primary,
                       _buildTotalsView(
                           collections, expenses, salaries, journal))),
               SizedBox(width: context.accR.spaceS),
@@ -361,7 +360,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   child: _chartPanel(
                       'الصناديق النقدية',
                       Icons.account_balance_wallet_rounded,
-                      AccountingTheme.neonOrange,
+                      SdColors.warning,
                       _buildCashBoxesList(cashBoxes, balances))),
             ],
           ),
@@ -373,16 +372,16 @@ class _StatisticsPageState extends State<StatisticsPage> {
   List<Widget> _buildKpiList(Map<String, dynamic> balances) {
     return [
       _kpi('القاصة', balances['CashRegisterBalance'],
-          AccountingTheme.neonBlue, Icons.point_of_sale_rounded),
+          SdColors.primary, Icons.point_of_sale_rounded),
       _kpi('الصندوق الرئيسي', balances['MainCashBoxBalance'],
           const Color(0xFF34495E), Icons.account_balance_rounded),
-      _kpi('رصيد الصفحة', balances['PageBalance'], AccountingTheme.info,
+      _kpi('رصيد الصفحة', balances['PageBalance'], SdColors.info,
           Icons.account_balance_wallet_rounded),
       _kpi('الصندوق النقدي', balances['CashAccountBalance'],
-          AccountingTheme.success, Icons.savings_rounded),
+          SdColors.success, Icons.savings_rounded),
       _kpiHighlight('صافي الدخل', balances['NetIncome']),
       _kpi('مستحقات المشغلين', balances['OperatorReceivables'],
-          AccountingTheme.neonPurple, Icons.people_rounded),
+          SdColors.platformBase, Icons.people_rounded),
     ];
   }
 
@@ -394,7 +393,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         padding: EdgeInsets.symmetric(
             horizontal: context.accR.spaceS, vertical: context.accR.spaceXS),
         decoration: BoxDecoration(
-          color: AccountingTheme.bgCard,
+          color: SdColors.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: color.withOpacity(0.15)),
           boxShadow: AccountingTheme.cardShadow,
@@ -420,19 +419,21 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     alignment: AlignmentDirectional.centerStart,
                     child: Text(
                       _fmt(value),
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.financialSmall,
                         fontWeight: FontWeight.bold,
-                        color: AccountingTheme.textPrimary,
+                        color: SdColors.ink,
                       ),
                     ),
                   ),
                   Text(label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: context.accR.caption,
-                          color: AccountingTheme.textMuted)),
+                          color: SdColors.faint)),
                 ],
               ),
             ),
@@ -444,7 +445,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   Widget _kpiHighlight(String label, dynamic value) {
     final isPos = _isPositive(value);
-    final color = isPos ? AccountingTheme.success : AccountingTheme.danger;
+    final color = isPos ? SdColors.success : SdColors.danger;
     return Expanded(
       child: Container(
         padding: EdgeInsets.symmetric(
@@ -483,7 +484,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     alignment: AlignmentDirectional.centerStart,
                     child: Text(
                       _fmt(value),
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.financialSmall,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -493,7 +495,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   Text('$label (${isPos ? 'ربح' : 'خسارة'})',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: context.accR.caption,
                           color: Colors.white.withOpacity(0.85))),
                 ],
@@ -510,9 +513,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
   Widget _chartPanel(String title, IconData icon, Color color, Widget child) {
     return Container(
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AccountingTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
         boxShadow: AccountingTheme.cardShadow,
       ),
       child: Column(
@@ -541,10 +544,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 ),
                 SizedBox(width: context.accR.spaceXS),
                 Text(title,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.small,
                         fontWeight: FontWeight.bold,
-                        color: AccountingTheme.textPrimary)),
+                        color: SdColors.ink)),
               ],
             ),
           ),
@@ -570,15 +574,16 @@ class _StatisticsPageState extends State<StatisticsPage> {
     if (total == 0) {
       return Center(
           child: Text('لا توجد بيانات',
-              style: GoogleFonts.cairo(
-                  color: AccountingTheme.textMuted,
+              style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.faint,
                   fontSize: context.accR.small)));
     }
 
     final items = [
-      _PieItem('الأصول', assets, AccountingTheme.neonBlue),
-      _PieItem('الالتزامات', liabilities, AccountingTheme.neonOrange),
-      _PieItem('حقوق الملكية', equity, AccountingTheme.neonPurple),
+      _PieItem('الأصول', assets, SdColors.primary),
+      _PieItem('الالتزامات', liabilities, SdColors.warning),
+      _PieItem('حقوق الملكية', equity, SdColors.platformBase),
     ];
 
     return Row(
@@ -603,7 +608,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                           color: e.color,
                           radius: 34,
                           title: pct >= 5 ? '${pct.toStringAsFixed(0)}%' : '',
-                          titleStyle: GoogleFonts.cairo(
+                          titleStyle: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -619,13 +625,15 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('الإجمالي',
-                      style: GoogleFonts.cairo(
-                          fontSize: 7, color: AccountingTheme.textMuted)),
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 7, color: SdColors.faint)),
                   Text(_fmtShort(total),
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: AccountingTheme.textPrimary)),
+                          color: SdColors.ink)),
                 ],
               ),
             ],
@@ -670,20 +678,23 @@ class _StatisticsPageState extends State<StatisticsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: GoogleFonts.cairo(
-                        fontSize: 9, color: AccountingTheme.textMuted),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 9, color: SdColors.faint),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 Text(_fmtShort(value),
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: AccountingTheme.textPrimary)),
+                        color: SdColors.ink)),
               ],
             ),
           ),
           Text('${pct.toStringAsFixed(0)}%',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 9,
                   fontWeight: FontWeight.bold,
                   color: color)),
@@ -715,13 +726,13 @@ class _StatisticsPageState extends State<StatisticsPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _chartLegendDot('إجمالي الإيرادات', AccountingTheme.success),
+              _chartLegendDot('إجمالي الإيرادات', SdColors.success),
               const SizedBox(width: 12),
-              _chartLegendDot('إجمالي المصروفات', AccountingTheme.danger),
+              _chartLegendDot('إجمالي المصروفات', SdColors.danger),
               const SizedBox(width: 12),
-              _chartLegendDot('تحصيل الشهر', AccountingTheme.neonBlue),
+              _chartLegendDot('تحصيل الشهر', SdColors.primary),
               const SizedBox(width: 12),
-              _chartLegendDot('صرف الشهر', AccountingTheme.neonOrange),
+              _chartLegendDot('صرف الشهر', SdColors.warning),
             ],
           ),
         ),
@@ -748,7 +759,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     final idx = group.x;
                     return BarTooltipItem(
                       '${idx < labels.length ? labels[idx] : ''}\n${_fmt(rod.toY)}',
-                      GoogleFonts.cairo(
+                      TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 10,
                           color: Colors.white,
                           fontWeight: FontWeight.bold),
@@ -766,9 +778,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       return Padding(
                         padding: const EdgeInsetsDirectional.only(end: 4),
                         child: Text(_fmtShort(val),
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 8,
-                                color: AccountingTheme.textMuted)),
+                                color: SdColors.faint)),
                       );
                     },
                     interval: maxVal > 0 ? maxVal / 3 : 1,
@@ -790,9 +803,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(labels[idx],
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 9,
-                                color: AccountingTheme.textSecondary)),
+                                color: SdColors.muted)),
                       );
                     },
                     reservedSize: 22,
@@ -810,10 +824,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     dashArray: [4, 3]),
               ),
               barGroups: [
-                _styledBar(0, totalRevenue.abs(), AccountingTheme.success),
-                _styledBar(1, totalExpenses.abs(), AccountingTheme.danger),
-                _styledBar(2, monthCollections.abs(), AccountingTheme.neonBlue),
-                _styledBar(3, monthExpenses.abs(), AccountingTheme.neonOrange),
+                _styledBar(0, totalRevenue.abs(), SdColors.success),
+                _styledBar(1, totalExpenses.abs(), SdColors.danger),
+                _styledBar(2, monthCollections.abs(), SdColors.primary),
+                _styledBar(3, monthExpenses.abs(), SdColors.warning),
               ],
             ),
           ),
@@ -823,7 +837,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: AccountingTheme.bgSecondary,
+            color: SdColors.groundAlt,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
@@ -831,7 +845,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
             children: [
               _summaryChip('صافي إجمالي',
                   totalRevenue.abs() - totalExpenses.abs(), null),
-              Container(width: 1, height: 16, color: AccountingTheme.borderColor),
+              Container(width: 1, height: 16, color: SdColors.divider),
               _summaryChip('صافي الشهر',
                   monthCollections.abs() - monthExpenses.abs(), null),
             ],
@@ -843,7 +857,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   Widget _summaryChip(String label, double value, Color? overrideColor) {
     final color = overrideColor ??
-        (value >= 0 ? AccountingTheme.success : AccountingTheme.danger);
+        (value >= 0 ? SdColors.success : SdColors.danger);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -851,11 +865,13 @@ class _StatisticsPageState extends State<StatisticsPage> {
             size: 12, color: color),
         const SizedBox(width: 3),
         Text(label,
-            style: GoogleFonts.cairo(
-                fontSize: 9, color: AccountingTheme.textMuted)),
+            style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 9, color: SdColors.faint)),
         const SizedBox(width: 4),
         Text(_fmtShort(value.abs()),
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 10, fontWeight: FontWeight.bold, color: color)),
       ],
     );
@@ -874,7 +890,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         const SizedBox(width: 3),
         Text(label,
             style:
-                GoogleFonts.cairo(fontSize: 8, color: AccountingTheme.textMuted)),
+                TextStyle(fontFamily: 'Cairo', fontSize: 8, color: SdColors.faint)),
       ],
     );
   }
@@ -919,11 +935,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
     final sCount = salaries['MonthlyCount'] ?? 0;
 
     final items = [
-      _MonthlyItem('تحصيلات', c, cCount, const Color(0xFF1ABC9C),
+      _MonthlyItem('تحصيلات', c, cCount, SdColors.accent,
           Icons.arrow_downward_rounded),
-      _MonthlyItem('مصروفات', e, eCount, AccountingTheme.neonOrange,
+      _MonthlyItem('مصروفات', e, eCount, SdColors.warning,
           Icons.arrow_upward_rounded),
-      _MonthlyItem('رواتب', s, sCount, AccountingTheme.neonPink,
+      _MonthlyItem('رواتب', s, sCount, SdColors.platformLight,
           Icons.people_rounded),
     ];
 
@@ -936,11 +952,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: (n >= 0 ? AccountingTheme.success : AccountingTheme.danger)
+            color: (n >= 0 ? SdColors.success : SdColors.danger)
                 .withOpacity(0.08),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: (n >= 0 ? AccountingTheme.success : AccountingTheme.danger)
+              color: (n >= 0 ? SdColors.success : SdColors.danger)
                   .withOpacity(0.15),
             ),
           ),
@@ -953,20 +969,22 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       : Icons.trending_down_rounded,
                   size: 16,
                   color: n >= 0
-                      ? AccountingTheme.success
-                      : AccountingTheme.danger),
+                      ? SdColors.success
+                      : SdColors.danger),
               const SizedBox(width: 6),
               Text('صافي الشهر',
-                  style: GoogleFonts.cairo(
-                      fontSize: 10, color: AccountingTheme.textSecondary)),
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 10, color: SdColors.muted)),
               const SizedBox(width: 8),
               Text(_fmt(n),
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: n >= 0
-                          ? AccountingTheme.success
-                          : AccountingTheme.danger)),
+                          ? SdColors.success
+                          : SdColors.danger)),
             ],
           ),
         ),
@@ -1002,16 +1020,18 @@ class _StatisticsPageState extends State<StatisticsPage> {
                         ),
                         const SizedBox(width: 6),
                         Text(item.label,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
-                                color: AccountingTheme.textSecondary)),
+                                color: SdColors.muted)),
                         const Spacer(),
                         Text(_fmtShort(item.value.abs()),
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
-                                color: AccountingTheme.textPrimary)),
+                                color: SdColors.ink)),
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -1021,7 +1041,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text('${item.count}',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 8,
                                   fontWeight: FontWeight.bold,
                                   color: item.color)),
@@ -1060,18 +1081,18 @@ class _StatisticsPageState extends State<StatisticsPage> {
   ) {
     final items = [
       _HBarItem('تحصيلات غير مسلمة', _num(collections['PendingDelivery']),
-          AccountingTheme.neonPurple, Icons.local_shipping_rounded),
+          SdColors.platformBase, Icons.local_shipping_rounded),
       _HBarItem('رواتب غير مصروفة', _num(salaries['UnpaidTotal']),
-          AccountingTheme.danger, Icons.payments_rounded),
+          SdColors.danger, Icons.payments_rounded),
       _HBarItem(
           agentNet < 0 ? 'وكلاء (مدينون)' : 'وكلاء (دائنون)',
           agentNet.toDouble().abs(),
-          agentNet < 0 ? AccountingTheme.danger : AccountingTheme.success,
+          agentNet < 0 ? SdColors.danger : SdColors.success,
           Icons.support_agent_rounded),
       _HBarItem(
           techNet < 0 ? 'فنيين (مدينون)' : 'فنيين (دائنون)',
           techNet.toDouble().abs(),
-          techNet < 0 ? AccountingTheme.neonPurple : AccountingTheme.success,
+          techNet < 0 ? SdColors.platformBase : SdColors.success,
           Icons.engineering_rounded),
     ];
 
@@ -1113,15 +1134,17 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       child: Text(item.label,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 10,
-                              color: AccountingTheme.textSecondary)),
+                              color: SdColors.muted)),
                     ),
                     Text(_fmtShort(item.value),
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: AccountingTheme.textPrimary)),
+                            color: SdColors.ink)),
                   ],
                 ),
                 const SizedBox(height: 3),
@@ -1161,25 +1184,25 @@ class _StatisticsPageState extends State<StatisticsPage> {
           'إجمالي التحصيلات',
           totalCollected,
           '${collections['TotalCount'] ?? 0}',
-          AccountingTheme.success,
+          SdColors.success,
           Icons.monetization_on_rounded),
       _TotalItem(
           'إجمالي المصروفات',
           totalExpenses,
           '${expenses['TotalCount'] ?? 0}',
-          AccountingTheme.danger,
+          SdColors.danger,
           Icons.receipt_long_rounded),
       _TotalItem(
           'إجمالي الرواتب',
           totalSalaries,
           '${salaries['TotalCount'] ?? 0}',
-          AccountingTheme.neonPink,
+          SdColors.platformLight,
           Icons.payments_rounded),
       _TotalItem(
           'القيود المحاسبية',
           _num(journal['TotalCount']),
           'شهري: ${journal['MonthlyCount'] ?? 0}',
-          const Color(0xFF5C6BC0),
+          SdColors.primarySoft,
           Icons.menu_book_rounded),
     ];
 
@@ -1220,19 +1243,21 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(item.label,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: 10,
-                            color: AccountingTheme.textMuted),
+                            color: SdColors.faint),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                     Text(
                       item.label == 'القيود المحاسبية'
                           ? item.value.toStringAsFixed(0)
                           : _fmtShort(item.value),
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: AccountingTheme.textPrimary),
+                          color: SdColors.ink),
                     ),
                   ],
                 ),
@@ -1242,7 +1267,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 children: [
                   if (showPct)
                     Text('${pct.toStringAsFixed(0)}%',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
                             color: item.color)),
@@ -1254,7 +1280,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(item.count,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: 8,
                             fontWeight: FontWeight.bold,
                             color: item.color)),
@@ -1286,11 +1313,12 @@ class _StatisticsPageState extends State<StatisticsPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.inventory_2_outlined,
-              color: AccountingTheme.textMuted.withOpacity(0.4), size: 32),
+              color: SdColors.faint.withOpacity(0.4), size: 32),
           const SizedBox(height: 6),
           Text('لا توجد صناديق',
-              style: GoogleFonts.cairo(
-                  color: AccountingTheme.textMuted,
+              style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.faint,
                   fontSize: context.accR.caption)),
         ],
       ));
@@ -1305,27 +1333,29 @@ class _StatisticsPageState extends State<StatisticsPage> {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           margin: const EdgeInsets.only(bottom: 6),
           decoration: BoxDecoration(
-            color: AccountingTheme.bgSecondary,
+            color: SdColors.groundAlt,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
             children: [
               Icon(Icons.account_balance_rounded,
-                  size: 14, color: AccountingTheme.textSecondary),
+                  size: 14, color: SdColors.muted),
               const SizedBox(width: 6),
               Text('إجمالي الصناديق',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: AccountingTheme.textSecondary)),
+                      color: SdColors.muted)),
               const Spacer(),
               Text(_fmtShort(totalBalance),
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: totalBalance >= 0
-                          ? AccountingTheme.success
-                          : AccountingTheme.danger)),
+                          ? SdColors.success
+                          : SdColors.danger)),
             ],
           ),
         ),
@@ -1346,8 +1376,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(
                   color: (b.balance >= 0
-                          ? AccountingTheme.success
-                          : AccountingTheme.danger)
+                          ? SdColors.success
+                          : SdColors.danger)
                       .withOpacity(0.04),
                   borderRadius: BorderRadius.circular(6),
                 ),
@@ -1356,23 +1386,25 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     Row(
                       children: [
                         Icon(Icons.inventory_2_outlined,
-                            color: AccountingTheme.neonBlue, size: 14),
+                            color: SdColors.primary, size: 14),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(b.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 10,
-                                  color: AccountingTheme.textPrimary)),
+                                  color: SdColors.ink)),
                         ),
                         Text(_fmtShort(b.balance),
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: b.balance >= 0
-                                    ? AccountingTheme.success
-                                    : AccountingTheme.danger)),
+                                    ? SdColors.success
+                                    : SdColors.danger)),
                       ],
                     ),
                     const SizedBox(height: 3),
@@ -1381,11 +1413,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       child: LinearProgressIndicator(
                         value: pct,
                         minHeight: 3,
-                        backgroundColor: AccountingTheme.borderColor,
+                        backgroundColor: SdColors.divider,
                         valueColor: AlwaysStoppedAnimation<Color>(
                             b.balance >= 0
-                                ? AccountingTheme.success
-                                : AccountingTheme.danger),
+                                ? SdColors.success
+                                : SdColors.danger),
                       ),
                     ),
                   ],

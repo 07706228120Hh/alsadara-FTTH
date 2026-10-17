@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'vps_auth_service.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// خدمة إقفال الفترات المحاسبية
 /// التخزين: SharedPreferences بمفتاح closed_periods_{companyId}
@@ -100,9 +100,9 @@ class PeriodClosingService {
           SnackBar(
             content: Text(
               'لا يمكن تنفيذ هذه العملية — الفترة ${date.year}/${date.month} مقفلة',
-              style: GoogleFonts.cairo(),
+              style: TextStyle(fontFamily: 'Cairo'),
             ),
-            backgroundColor: const Color(0xFFE74C3C),
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -122,34 +122,37 @@ class PeriodClosingService {
           title: Row(
             children: [
               const Icon(Icons.warning_amber_rounded,
-                  color: Color(0xFFFF9800), size: 24),
+                  color: SdColors.warning, size: 24),
               const SizedBox(width: 8),
               Text('فترة مقفلة',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: Colors.white, fontWeight: FontWeight.bold)),
             ],
           ),
           content: Text(
             'الفترة ${date.year}/${date.month} مقفلة.\n\n'
             'بصفتك مدير الشركة، يمكنك المتابعة.\nهل تريد الاستمرار؟',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 color: Colors.white70, fontSize: 14, height: 1.6),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: Text('إلغاء',
-                  style: GoogleFonts.cairo(color: Colors.white54)),
+                  style: TextStyle(fontFamily: 'Cairo', color: Colors.white54)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF9800),
+                backgroundColor: SdColors.warning,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () => Navigator.pop(ctx, true),
               child: Text('متابعة',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],

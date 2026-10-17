@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'sync_service.dart';
 import 'local_database_service.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// حالة المزامنة في الخلفية
 enum BackgroundSyncStatus {
@@ -255,7 +256,7 @@ class BackgroundSyncIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.1),
+        color: SdColors.info.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -283,19 +284,19 @@ class BackgroundSyncIndicator extends StatelessWidget {
 
     switch (progress.status) {
       case BackgroundSyncStatus.syncing:
-        statusColor = Colors.blue;
+        statusColor = SdColors.info;
         statusIcon = Icons.sync;
         break;
       case BackgroundSyncStatus.completed:
-        statusColor = Colors.green;
+        statusColor = SdColors.success;
         statusIcon = Icons.check_circle;
         break;
       case BackgroundSyncStatus.failed:
-        statusColor = Colors.red;
+        statusColor = SdColors.danger;
         statusIcon = Icons.error;
         break;
       case BackgroundSyncStatus.idle:
-        statusColor = Colors.grey;
+        statusColor = SdColors.faint;
         statusIcon = Icons.cloud_off;
     }
 
@@ -331,7 +332,7 @@ class BackgroundSyncIndicator extends StatelessWidget {
                 value: progress.total > 0
                     ? progress.current / progress.total
                     : null,
-                backgroundColor: Colors.grey[300],
+                backgroundColor: SdColors.edge,
                 valueColor: AlwaysStoppedAnimation<Color>(statusColor),
               ),
               const SizedBox(height: 4),

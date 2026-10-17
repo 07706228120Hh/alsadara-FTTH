@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'dart:io';
 import '../services/app_close_handler.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 // مفتاح global للوصول للNavigator
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -187,7 +188,7 @@ class _WindowCloseHandlerState extends State<WindowCloseHandler>
               SizedBox(height: 16),
               Row(
                 children: [
-                  Icon(Icons.delete_sweep, color: Colors.red, size: 20),
+                  Icon(Icons.delete_sweep, color: SdColors.danger, size: 20),
                   SizedBox(width: 8),
                   Text(
                     'مسح البيانات والإغلاق',
@@ -198,16 +199,16 @@ class _WindowCloseHandlerState extends State<WindowCloseHandler>
               SizedBox(height: 4),
               Text(
                 '• سيتم مسح بيانات تسجيل الدخول المحفوظة',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+                style: TextStyle(fontSize: 13, color: SdColors.faint),
               ),
               Text(
                 '• ستحتاج لتسجيل الدخول مرة أخرى',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+                style: TextStyle(fontSize: 13, color: SdColors.faint),
               ),
               SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.exit_to_app, color: Colors.green, size: 20),
+                  Icon(Icons.exit_to_app, color: SdColors.success, size: 20),
                   SizedBox(width: 8),
                   Text(
                     'الإغلاق فقط',
@@ -218,11 +219,11 @@ class _WindowCloseHandlerState extends State<WindowCloseHandler>
               SizedBox(height: 4),
               Text(
                 '• ستبقى بيانات تسجيل الدخول محفوظة',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+                style: TextStyle(fontSize: 13, color: SdColors.faint),
               ),
               Text(
                 '• يمكنك الدخول تلقائياً في المرة القادمة',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+                style: TextStyle(fontSize: 13, color: SdColors.faint),
               ),
             ],
           ),
@@ -240,7 +241,7 @@ class _WindowCloseHandlerState extends State<WindowCloseHandler>
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop('close_only'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: SdColors.success,
                 foregroundColor: Colors.white,
               ),
               child: const Text(
@@ -254,7 +255,7 @@ class _WindowCloseHandlerState extends State<WindowCloseHandler>
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop('clear_and_close'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: SdColors.danger,
                 foregroundColor: Colors.white,
               ),
               child: const Text(

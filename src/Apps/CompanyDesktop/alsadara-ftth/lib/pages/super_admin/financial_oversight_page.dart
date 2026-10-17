@@ -3,12 +3,11 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../../theme/energy_dashboard_theme.dart';
 import '../../services/api/auth/super_admin_api.dart';
 import 'widgets/super_admin_widgets.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 class FinancialOversightPage extends StatefulWidget {
   const FinancialOversightPage({super.key});
 
@@ -76,11 +75,11 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: EnergyDashboardTheme.bgPrimary,
+      color: SdColors.ground,
       child: _isLoading
           ? const Center(
               child: CircularProgressIndicator(
-                  color: EnergyDashboardTheme.neonGreen))
+                  color: SdColors.success))
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -102,8 +101,8 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
       title: 'المراقبة المالية',
       subtitle: 'نظرة شاملة على الاشتراكات والموارد',
       icon: Icons.account_balance_rounded,
-      color: EnergyDashboardTheme.neonOrange,
-      secondaryColor: EnergyDashboardTheme.neonGreen,
+      color: SdColors.warning,
+      secondaryColor: SdColors.success,
       onRefresh: _loadData,
       actions: [
         SADropdown(
@@ -145,7 +144,7 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
             value: '$activeCompanies / $totalCompanies',
             subtitle: '$renewalRate%',
             icon: Icons.business_center_rounded,
-            color: EnergyDashboardTheme.neonGreen,
+            color: SdColors.success,
           ),
         ),
         const SizedBox(width: 10),
@@ -156,8 +155,8 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
             subtitle: expiredCompanies > 0 ? 'تحتاج تجديد' : 'لا يوجد',
             icon: Icons.timer_off_rounded,
             color: expiredCompanies > 0
-                ? EnergyDashboardTheme.danger
-                : EnergyDashboardTheme.success,
+                ? SdColors.danger
+                : SdColors.success,
             alert: expiredCompanies > 0,
           ),
         ),
@@ -168,7 +167,7 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
             value: _currencyFormat.format(totalUsers),
             subtitle: 'من أصل ${_currencyFormat.format(totalMaxUsers)}',
             icon: Icons.people_rounded,
-            color: EnergyDashboardTheme.neonBlue,
+            color: SdColors.info,
           ),
         ),
         const SizedBox(width: 10),
@@ -178,7 +177,7 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
             value: '$utilizationRate%',
             subtitle: 'استخدام الموارد',
             icon: Icons.donut_large_rounded,
-            color: EnergyDashboardTheme.neonPurple,
+            color: SdColors.platformBase,
           ),
         ),
       ],
@@ -201,7 +200,7 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
     return SASection(
       title: 'توزيع حالة الاشتراكات',
       icon: Icons.bar_chart_rounded,
-      iconColor: EnergyDashboardTheme.neonGreen,
+      iconColor: SdColors.success,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: total > 0
           ? Column(
@@ -216,31 +215,31 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
                           Expanded(
                             flex: active,
                             child:
-                                Container(color: EnergyDashboardTheme.success),
+                                Container(color: SdColors.success),
                           ),
                         if (warning > 0)
                           Expanded(
                             flex: warning,
                             child:
-                                Container(color: EnergyDashboardTheme.warning),
+                                Container(color: SdColors.warning),
                           ),
                         if (critical > 0)
                           Expanded(
                             flex: critical,
                             child: Container(
-                                color: EnergyDashboardTheme.neonOrange),
+                                color: SdColors.warning),
                           ),
                         if (expired > 0)
                           Expanded(
                             flex: expired,
                             child:
-                                Container(color: EnergyDashboardTheme.danger),
+                                Container(color: SdColors.danger),
                           ),
                         if (suspended > 0)
                           Expanded(
                             flex: suspended,
                             child:
-                                Container(color: EnergyDashboardTheme.textMuted),
+                                Container(color: SdColors.faint),
                           ),
                       ],
                     ),
@@ -251,23 +250,24 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
                   spacing: 16,
                   runSpacing: 8,
                   children: [
-                    _chartLegend('نشطة ($active)', EnergyDashboardTheme.success),
+                    _chartLegend('نشطة ($active)', SdColors.success),
                     _chartLegend(
-                        'تحذير ($warning)', EnergyDashboardTheme.warning),
+                        'تحذير ($warning)', SdColors.warning),
                     _chartLegend(
-                        'حرجة ($critical)', EnergyDashboardTheme.neonOrange),
+                        'حرجة ($critical)', SdColors.warning),
                     _chartLegend(
-                        'منتهية ($expired)', EnergyDashboardTheme.danger),
+                        'منتهية ($expired)', SdColors.danger),
                     _chartLegend(
-                        'معلقة ($suspended)', EnergyDashboardTheme.textMuted),
+                        'معلقة ($suspended)', SdColors.faint),
                   ],
                 ),
               ],
             )
           : Center(
               child: Text('لا توجد بيانات',
-                  style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textMuted)),
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.faint)),
             ),
     );
   }
@@ -287,8 +287,9 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
         const SizedBox(width: 4),
         Text(
           label,
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.textSecondary,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.muted,
             fontSize: 11,
           ),
         ),
@@ -303,7 +304,7 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
     return SASection(
       title: 'تفاصيل اشتراكات الشركات',
       icon: Icons.receipt_long_rounded,
-      iconColor: EnergyDashboardTheme.neonOrange,
+      iconColor: SdColors.warning,
       padding: EdgeInsets.zero,
       child: Column(
         children: [
@@ -340,13 +341,14 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
     return SATableRow(
       flexes: const [3, 2, 1, 1, 2, 2, 2, 1],
       highlightColor:
-          c.isExpired ? EnergyDashboardTheme.danger.withOpacity(0.04) : null,
+          c.isExpired ? SdColors.danger.withOpacity(0.04) : null,
       cells: [
         // Company name
         Text(
           c.name,
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.textPrimary,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.ink,
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
@@ -358,14 +360,16 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
         // Employee count
         Text(
           '${fd.employeeCount}',
-          style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textSecondary, fontSize: 12),
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.muted, fontSize: 12),
         ),
         // Max users
         Text(
           '${fd.maxUsers}',
-          style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textSecondary, fontSize: 12),
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.muted, fontSize: 12),
         ),
         // Utilization progress bar
         SAProgressBar(
@@ -375,13 +379,15 @@ class _FinancialOversightPageState extends State<FinancialOversightPage> {
         // Subscription start date
         Text(
           DateFormat('yyyy/MM/dd').format(c.subscriptionStartDate),
-          style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textSecondary, fontSize: 11),
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.muted, fontSize: 11),
         ),
         // Subscription end date
         Text(
           DateFormat('yyyy/MM/dd').format(c.subscriptionEndDate),
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             color: statusColor,
             fontSize: 11,
             fontWeight: FontWeight.w600,

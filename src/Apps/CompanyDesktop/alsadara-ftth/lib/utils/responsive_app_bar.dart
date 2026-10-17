@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'responsive_text_sizes.dart';
 import 'smart_text_color.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class ResponsiveAppBar {
   /// إنشاء AppBar متجاوب موحد
@@ -28,9 +29,9 @@ class ResponsiveAppBar {
 
     // الألوان الافتراضية للتدرج
     final defaultGradient = [
-      Color(0xFF283593),
-      Color(0xFF1976D2),
-      Color(0xFF64B5F6)
+      SdColors.primaryMid,
+      SdColors.info,
+      SdColors.infoTintEdge
     ];
     final finalGradientColors = gradientColors ?? defaultGradient;
 
@@ -41,7 +42,7 @@ class ResponsiveAppBar {
 
     return AppBar(
       elevation: deviceType == DeviceType.desktop ? 4 : 8,
-      shadowColor: Colors.blue.withValues(alpha: 0.15),
+      shadowColor: SdColors.info.withValues(alpha: 0.15),
       backgroundColor: backgroundColor ?? Colors.transparent,
       flexibleSpace: Container(
         decoration: BoxDecoration(
@@ -141,7 +142,7 @@ class ResponsiveAppBar {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
+            color: SdColors.faint.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -153,12 +154,12 @@ class ResponsiveAppBar {
             Container(
               padding: EdgeInsets.all(spacing),
               decoration: BoxDecoration(
-                color: (color ?? Colors.blue).withValues(alpha: 0.1),
+                color: (color ?? SdColors.info).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 icon,
-                color: color ?? Colors.blue[600],
+                color: color ?? SdColors.info,
                 size: textSizes.iconSize,
               ),
             ),
@@ -170,7 +171,7 @@ class ResponsiveAppBar {
               style: TextStyle(
                 fontSize: textSizes.pageTitle,
                 fontWeight: FontWeight.bold,
-                color: const Color(0xFF2C3E50),
+                color: SdColors.ink,
               ),
             ),
           ),
@@ -198,7 +199,7 @@ class ResponsiveAppBar {
           if (icon != null) ...[
             Icon(
               icon,
-              color: color ?? Colors.grey[600],
+              color: color ?? SdColors.muted,
               size: textSizes.iconSize * 0.8,
             ),
             SizedBox(width: spacing),
@@ -209,7 +210,7 @@ class ResponsiveAppBar {
               style: TextStyle(
                 fontSize: textSizes.sectionTitle,
                 fontWeight: FontWeight.bold,
-                color: color ?? const Color(0xFF2C3E50),
+                color: color ?? SdColors.ink,
               ),
             ),
           ),
@@ -243,7 +244,7 @@ class ResponsiveAppBar {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
+            color: SdColors.faint.withValues(alpha: 0.1),
             blurRadius:
                 elevation ?? (deviceType == DeviceType.desktop ? 12 : 8),
             offset: const Offset(0, 4),
@@ -318,7 +319,7 @@ class ResponsiveAppBar {
         ),
       ),
       style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor ?? const Color(0xFF1976D2),
+        backgroundColor: backgroundColor ?? SdColors.info,
         padding: EdgeInsets.symmetric(
           horizontal: spacing * 2,
           vertical: spacing * 1.5,

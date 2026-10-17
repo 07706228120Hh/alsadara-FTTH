@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_windows/webview_windows.dart' as wvwin;
 import 'package:window_manager/window_manager.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// نافذة واتساب العائمة المستقلة
 class WhatsAppFloatingWindow extends StatefulWidget {
@@ -321,7 +322,7 @@ class _WhatsAppFloatingWindowState extends State<WhatsAppFloatingWindow>
     return Scaffold(
       appBar: AppBar(
         title: const Text('واتساب ويب', style: TextStyle(fontSize: 16)),
-        backgroundColor: const Color(0xFF25D366),
+        backgroundColor: SdColors.whatsapp,
         foregroundColor: Colors.white,
         elevation: 1,
         toolbarHeight: 40,
@@ -382,7 +383,7 @@ class _WhatsAppFloatingWindowState extends State<WhatsAppFloatingWindow>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: Color(0xFF25D366)),
+                  CircularProgressIndicator(color: SdColors.whatsapp),
                   SizedBox(height: 16),
                   Text('جاري تحميل واتساب ويب...'),
                 ],

@@ -2,18 +2,19 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// حالة طلب الخدمة
 enum ServiceRequestStatus {
-  pending(0, 'جديد', Colors.blue, Icons.hourglass_empty),
-  reviewing(1, 'قيد المراجعة', Colors.orange, Icons.visibility),
-  approved(2, 'موافق عليه', Colors.teal, Icons.check_circle_outline),
-  assigned(3, 'تم التعيين', Colors.purple, Icons.person_add),
-  inProgress(4, 'قيد التنفيذ', Colors.indigo, Icons.engineering),
-  completed(5, 'مكتمل', Colors.green, Icons.check_circle),
-  cancelled(6, 'ملغي', Colors.grey, Icons.cancel),
-  rejected(7, 'مرفوض', Colors.red, Icons.block),
-  onHold(8, 'معلق', Colors.amber, Icons.pause_circle);
+  pending(0, 'جديد', SdColors.info, Icons.hourglass_empty),
+  reviewing(1, 'قيد المراجعة', SdColors.warning, Icons.visibility),
+  approved(2, 'موافق عليه', SdColors.accent, Icons.check_circle_outline),
+  assigned(3, 'تم التعيين', SdColors.platformBase, Icons.person_add),
+  inProgress(4, 'قيد التنفيذ', SdColors.primary, Icons.engineering),
+  completed(5, 'مكتمل', SdColors.success, Icons.check_circle),
+  cancelled(6, 'ملغي', SdColors.faint, Icons.cancel),
+  rejected(7, 'مرفوض', SdColors.danger, Icons.block),
+  onHold(8, 'معلق', SdColors.warning, Icons.pause_circle);
 
   final int value;
   final String nameAr;
@@ -41,10 +42,10 @@ enum ServiceRequestStatus {
 
 /// أولوية الطلب
 enum RequestPriority {
-  low(0, 'منخفضة', Colors.grey),
-  normal(1, 'عادية', Colors.blue),
-  high(2, 'عالية', Colors.orange),
-  urgent(3, 'عاجلة', Colors.red);
+  low(0, 'منخفضة', SdColors.faint),
+  normal(1, 'عادية', SdColors.info),
+  high(2, 'عالية', SdColors.warning),
+  urgent(3, 'عاجلة', SdColors.danger);
 
   final int value;
   final String nameAr;

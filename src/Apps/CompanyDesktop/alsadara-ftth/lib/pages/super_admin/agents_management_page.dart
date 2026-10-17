@@ -6,7 +6,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/accounting_theme.dart';
 import '../../frontend/frontend.dart';
@@ -160,9 +159,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   padding: EdgeInsets.symmetric(
                       horizontal: isMob ? 12 : 20, vertical: isMob ? 10 : 14),
                   decoration: BoxDecoration(
-                    color: AccountingTheme.bgCard,
+                    color: SdColors.surface,
                     border: Border(
-                        bottom: BorderSide(color: AccountingTheme.borderColor)),
+                        bottom: BorderSide(color: SdColors.divider)),
                   ),
                   child: Row(
                     children: [
@@ -188,7 +187,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: AccountingTheme.textPrimary,
+                            color: SdColors.ink,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -242,9 +241,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           ),
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
-              color: AccountingTheme.bgCard,
+              color: SdColors.surface,
               border: const Border(
-                  top: BorderSide(color: AccountingTheme.borderColor)),
+                  top: BorderSide(color: SdColors.divider)),
             ),
             child: SafeArea(
               top: false,
@@ -253,11 +252,11 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 child: Row(
                   children: [
                     _buildMobileNavItem(0, Icons.support_agent_rounded,
-                        'الوكلاء', AccountingTheme.neonPurple),
+                        'الوكلاء', SdColors.platformBase),
                     _buildMobileNavItem(1, Icons.receipt_long, 'المعاملات',
-                        AccountingTheme.neonOrange),
+                        SdColors.warning),
                     _buildMobileNavItem(
-                        2, Icons.percent, 'العمولات', AccountingTheme.neonPink),
+                        2, Icons.percent, 'العمولات', SdColors.platformLight),
                   ],
                 ),
               ),
@@ -368,13 +367,14 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             children: [
               Icon(icon,
                   size: 20,
-                  color: isSelected ? color : AccountingTheme.textMuted),
+                  color: isSelected ? color : SdColors.faint),
               const SizedBox(height: 2),
               Text(label,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 10,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected ? color : AccountingTheme.textMuted,
+                    color: isSelected ? color : SdColors.faint,
                   )),
             ],
           ),
@@ -391,8 +391,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
       padding: EdgeInsets.symmetric(
           horizontal: isMob ? 12 : 20, vertical: isMob ? 10 : 14),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+        color: SdColors.surface,
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
       child:
           isMob ? _buildMobileToolbarContent() : _buildDesktopToolbarContent(),
@@ -406,19 +406,19 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         return (
           title: 'معاملات الوكلاء',
           icon: Icons.receipt_long,
-          color: AccountingTheme.neonOrange
+          color: SdColors.warning
         );
       case 2:
         return (
           title: 'العمولات',
           icon: Icons.percent,
-          color: AccountingTheme.neonPink
+          color: SdColors.platformLight
         );
       default:
         return (
           title: 'إدارة الوكلاء',
           icon: Icons.support_agent_rounded,
-          color: AccountingTheme.neonPurple
+          color: SdColors.platformBase
         );
     }
   }
@@ -435,7 +435,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 child: const Padding(
                   padding: EdgeInsets.only(left: 8),
                   child: Icon(Icons.arrow_back_rounded,
-                      size: 20, color: AccountingTheme.neonPink),
+                      size: 20, color: SdColors.platformLight),
                 ),
               )
             else
@@ -444,7 +444,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 child: const Padding(
                   padding: EdgeInsets.only(left: 8),
                   child: Icon(Icons.arrow_forward_rounded,
-                      size: 20, color: AccountingTheme.textSecondary),
+                      size: 20, color: SdColors.muted),
                 ),
               ),
             Container(
@@ -470,7 +470,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AccountingTheme.textPrimary,
+                  color: SdColors.ink,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -479,14 +479,14 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AccountingTheme.neonPink.withOpacity(0.2),
+                  color: SdColors.platformLight.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text('${_filteredAgents.length}',
                     style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: AccountingTheme.neonPink)),
+                        color: SdColors.platformLight)),
               ),
               const SizedBox(width: 4),
               IconButton(
@@ -496,13 +496,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 style: IconButton.styleFrom(
-                    foregroundColor: AccountingTheme.textSecondary),
+                    foregroundColor: SdColors.muted),
               ),
               const SizedBox(width: 4),
               IconButton(
                 onPressed: () => _showAddAgentDialog(),
                 icon: const Icon(Icons.add_circle,
-                    size: 22, color: AccountingTheme.neonPink),
+                    size: 22, color: SdColors.platformLight),
                 tooltip: 'وكيل جديد',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -523,20 +523,20 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     decoration: InputDecoration(
                       hintText: 'بحث عن وكيل...',
                       hintStyle: const TextStyle(
-                          fontSize: 12, color: AccountingTheme.textMuted),
+                          fontSize: 12, color: SdColors.faint),
                       prefixIcon: const Icon(Icons.search,
-                          size: 16, color: AccountingTheme.textMuted),
+                          size: 16, color: SdColors.faint),
                       filled: true,
-                      fillColor: AccountingTheme.bgPrimary,
+                      fillColor: SdColors.ground,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide:
-                            BorderSide(color: AccountingTheme.borderColor),
+                            BorderSide(color: SdColors.divider),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide:
-                            BorderSide(color: AccountingTheme.borderColor),
+                            BorderSide(color: SdColors.divider),
                       ),
                       contentPadding:
                           const EdgeInsets.symmetric(horizontal: 10),
@@ -563,14 +563,14 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                   decoration: BoxDecoration(
-                    border: Border.all(color: AccountingTheme.borderColor),
+                    border: Border.all(color: SdColors.divider),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(Icons.filter_list,
                       size: 16,
                       color: _statusFilter != null
-                          ? AccountingTheme.neonPink
-                          : AccountingTheme.textMuted),
+                          ? SdColors.platformLight
+                          : SdColors.faint),
                 ),
               ),
             ],
@@ -603,39 +603,39 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             child: Text('الوكلاء',
                 style: TextStyle(
                   fontSize: 16,
-                  color: AccountingTheme.neonPink,
+                  color: SdColors.platformLight,
                   decoration: TextDecoration.underline,
                 )),
           ),
           const Text(' / ',
               style: TextStyle(
-                  fontSize: 16, color: AccountingTheme.textSecondary)),
+                  fontSize: 16, color: SdColors.muted)),
           Text(_selectedAgent!.name,
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
+                color: SdColors.ink,
               )),
         ] else ...[
           Text(tabInfo.title,
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AccountingTheme.textPrimary,
+                color: SdColors.ink,
               )),
           if (_sidebarIndex == 0) ...[
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: AccountingTheme.neonPink.withOpacity(0.2),
+                color: SdColors.platformLight.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text('${_filteredAgents.length}',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: AccountingTheme.neonPink,
+                    color: SdColors.platformLight,
                   )),
             ),
           ],
@@ -651,18 +651,18 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               decoration: InputDecoration(
                 hintText: 'بحث عن وكيل...',
                 hintStyle: const TextStyle(
-                    fontSize: 13, color: AccountingTheme.textMuted),
+                    fontSize: 13, color: SdColors.faint),
                 prefixIcon: const Icon(Icons.search,
-                    size: 18, color: AccountingTheme.textMuted),
+                    size: 18, color: SdColors.faint),
                 filled: true,
-                fillColor: AccountingTheme.bgPrimary,
+                fillColor: SdColors.ground,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AccountingTheme.borderColor),
+                  borderSide: BorderSide(color: SdColors.divider),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AccountingTheme.borderColor),
+                  borderSide: BorderSide(color: SdColors.divider),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12),
               ),
@@ -687,7 +687,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                border: Border.all(color: AccountingTheme.borderColor),
+                border: Border.all(color: SdColors.divider),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -696,15 +696,15 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   Icon(Icons.filter_list,
                       size: 16,
                       color: _statusFilter != null
-                          ? AccountingTheme.neonPink
-                          : AccountingTheme.textMuted),
+                          ? SdColors.platformLight
+                          : SdColors.faint),
                   const SizedBox(width: 4),
                   Text(_statusFilter?.displayName ?? 'الحالة',
                       style: TextStyle(
                         fontSize: 12,
                         color: _statusFilter != null
-                            ? AccountingTheme.neonPink
-                            : AccountingTheme.textSecondary,
+                            ? SdColors.platformLight
+                            : SdColors.muted,
                       )),
                 ],
               ),
@@ -717,7 +717,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             icon: const Icon(Icons.refresh, size: 18),
             tooltip: 'تحديث',
             style: IconButton.styleFrom(
-              foregroundColor: AccountingTheme.textSecondary,
+              foregroundColor: SdColors.muted,
             ),
           ),
           const SizedBox(width: 4),
@@ -726,7 +726,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             icon: const Icon(Icons.add, size: 16),
             label: const Text('وكيل جديد', style: TextStyle(fontSize: 13)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AccountingTheme.neonPink,
+              backgroundColor: SdColors.platformLight,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               shape: RoundedRectangleBorder(
@@ -747,8 +747,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
       padding: EdgeInsets.symmetric(
           horizontal: isMob ? 10 : 20, vertical: isMob ? 8 : 10),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+        color: SdColors.surface,
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
       child: isMob
           ? Row(
@@ -757,7 +757,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   child: _buildStatChip(
                       'الوكلاء',
                       '${s?.totalAgents ?? _agents.length}',
-                      AccountingTheme.neonBlue,
+                      SdColors.primary,
                       Icons.people),
                 ),
                 const SizedBox(width: 4),
@@ -765,7 +765,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   child: _buildStatChip(
                       'نشط',
                       '${s?.activeAgents ?? _agents.where((a) => a.status == AgentStatus.active).length}',
-                      AccountingTheme.neonGreen,
+                      SdColors.success,
                       Icons.check_circle),
                 ),
                 const SizedBox(width: 4),
@@ -773,7 +773,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   child: _buildStatChip(
                       'الأجور',
                       _formatCurrency(s?.totalCharges ?? 0),
-                      AccountingTheme.neonOrange,
+                      SdColors.warning,
                       Icons.trending_up),
                 ),
                 const SizedBox(width: 4),
@@ -781,7 +781,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   child: _buildStatChip(
                       'التسديد',
                       _formatCurrency(s?.totalPayments ?? 0),
-                      AccountingTheme.neonGreen,
+                      SdColors.success,
                       Icons.trending_down),
                 ),
                 const SizedBox(width: 4),
@@ -789,7 +789,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   child: _buildStatChip(
                       'الصافي',
                       _formatCurrency(s?.totalNetBalance ?? 0),
-                      AccountingTheme.neonPink,
+                      SdColors.platformLight,
                       Icons.account_balance_wallet),
                 ),
               ],
@@ -800,7 +800,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   child: _buildStatChip(
                       'إجمالي الوكلاء',
                       '${s?.totalAgents ?? _agents.length}',
-                      AccountingTheme.neonBlue,
+                      SdColors.primary,
                       Icons.people),
                 ),
                 const SizedBox(width: 8),
@@ -808,7 +808,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   child: _buildStatChip(
                       'نشط',
                       '${s?.activeAgents ?? _agents.where((a) => a.status == AgentStatus.active).length}',
-                      AccountingTheme.neonGreen,
+                      SdColors.success,
                       Icons.check_circle),
                 ),
                 const SizedBox(width: 8),
@@ -816,7 +816,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   child: _buildStatChip(
                       'إجمالي الأجور',
                       _formatCurrency(s?.totalCharges ?? 0),
-                      AccountingTheme.neonOrange,
+                      SdColors.warning,
                       Icons.trending_up),
                 ),
                 const SizedBox(width: 8),
@@ -824,7 +824,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   child: _buildStatChip(
                       'إجمالي التسديد',
                       _formatCurrency(s?.totalPayments ?? 0),
-                      AccountingTheme.neonGreen,
+                      SdColors.success,
                       Icons.trending_down),
                 ),
                 const SizedBox(width: 8),
@@ -832,7 +832,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   child: _buildStatChip(
                       'صافي الرصيد',
                       _formatCurrency(s?.totalNetBalance ?? 0),
-                      AccountingTheme.neonPink,
+                      SdColors.platformLight,
                       Icons.account_balance_wallet),
                 ),
               ],
@@ -900,12 +900,12 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.support_agent_rounded,
-                size: 48, color: AccountingTheme.textMuted.withOpacity(0.5)),
+                size: 48, color: SdColors.faint.withOpacity(0.5)),
             const SizedBox(height: 12),
             Text(
               _searchQuery.isNotEmpty ? 'لا توجد نتائج' : 'لا يوجد وكلاء بعد',
               style: const TextStyle(
-                  fontSize: 16, color: AccountingTheme.textMuted),
+                  fontSize: 16, color: SdColors.faint),
             ),
             const SizedBox(height: 8),
             if (_searchQuery.isEmpty)
@@ -935,9 +935,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     return Container(
       margin: EdgeInsets.only(bottom: isMob ? 6 : 8),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AccountingTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withOpacity(0.2),
@@ -995,7 +995,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: AccountingTheme.textPrimary,
+                              color: SdColors.ink,
                             )),
                       ),
                       const SizedBox(width: 6),
@@ -1020,17 +1020,17 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       Text(agent.agentCode,
                           style: const TextStyle(
                             fontSize: 10,
-                            color: AccountingTheme.neonPink,
+                            color: SdColors.platformLight,
                             fontWeight: FontWeight.w500,
                           )),
                       const SizedBox(width: 6),
                       const Icon(Icons.phone,
-                          size: 10, color: AccountingTheme.textMuted),
+                          size: 10, color: SdColors.faint),
                       const SizedBox(width: 2),
                       Text(agent.phoneNumber,
                           style: const TextStyle(
                             fontSize: 10,
-                            color: AccountingTheme.textSecondary,
+                            color: SdColors.muted,
                           )),
                     ],
                   ),
@@ -1048,7 +1048,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AccountingTheme.neonOrange.withOpacity(0.15),
+                  color: SdColors.warning.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Column(
@@ -1057,12 +1057,12 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                         style: TextStyle(
                             fontSize: 9,
                             color:
-                                AccountingTheme.neonOrange.withOpacity(0.8))),
+                                SdColors.warning.withOpacity(0.8))),
                     Text(_formatCurrency(agent.totalCharges),
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: AccountingTheme.neonOrange,
+                          color: SdColors.warning,
                         )),
                   ],
                 ),
@@ -1073,7 +1073,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AccountingTheme.neonGreen.withOpacity(0.15),
+                  color: SdColors.success.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Column(
@@ -1081,12 +1081,12 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     Text('تسديد',
                         style: TextStyle(
                             fontSize: 9,
-                            color: AccountingTheme.neonGreen.withOpacity(0.8))),
+                            color: SdColors.success.withOpacity(0.8))),
                     Text(_formatCurrency(agent.totalPayments),
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: AccountingTheme.neonGreen,
+                          color: SdColors.success,
                         )),
                   ],
                 ),
@@ -1098,8 +1098,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 decoration: BoxDecoration(
                   color: agent.hasDebt
-                      ? AccountingTheme.danger.withOpacity(0.15)
-                      : AccountingTheme.neonGreen.withOpacity(0.15),
+                      ? SdColors.danger.withOpacity(0.15)
+                      : SdColors.success.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Column(
@@ -1108,16 +1108,16 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                         style: TextStyle(
                             fontSize: 9,
                             color: (agent.hasDebt
-                                    ? AccountingTheme.danger
-                                    : AccountingTheme.neonGreen)
+                                    ? SdColors.danger
+                                    : SdColors.success)
                                 .withOpacity(0.8))),
                     Text(_formatCurrency(agent.netBalance),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: agent.hasDebt
-                              ? AccountingTheme.danger
-                              : AccountingTheme.neonGreen,
+                              ? SdColors.danger
+                              : SdColors.success,
                         )),
                   ],
                 ),
@@ -1155,7 +1155,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: AccountingTheme.textPrimary,
+                        color: SdColors.ink,
                       )),
                   const SizedBox(width: 8),
                   Container(
@@ -1176,7 +1176,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   Text(agent.type.displayName,
                       style: TextStyle(
                         fontSize: 10,
-                        color: AccountingTheme.textMuted,
+                        color: SdColors.faint,
                       )),
                 ],
               ),
@@ -1186,7 +1186,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   Text(agent.agentCode,
                       style: const TextStyle(
                         fontSize: 11,
-                        color: AccountingTheme.neonPink,
+                        color: SdColors.platformLight,
                         fontWeight: FontWeight.w500,
                       )),
                   const SizedBox(width: 8),
@@ -1200,12 +1200,12 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.phone, size: 11, color: AccountingTheme.textMuted),
+                        const Icon(Icons.phone, size: 11, color: SdColors.faint),
                         const SizedBox(width: 3),
                         Text(agent.phoneNumber,
-                            style: const TextStyle(fontSize: 11, color: AccountingTheme.textSecondary)),
+                            style: const TextStyle(fontSize: 11, color: SdColors.muted)),
                         const SizedBox(width: 2),
-                        const Icon(Icons.copy, size: 10, color: AccountingTheme.textMuted),
+                        const Icon(Icons.copy, size: 10, color: SdColors.faint),
                       ],
                     ),
                   ),
@@ -1221,12 +1221,12 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.lock, size: 11, color: AccountingTheme.textMuted),
+                          const Icon(Icons.lock, size: 11, color: SdColors.faint),
                           const SizedBox(width: 3),
                           Text(agent.plainPassword!,
-                              style: const TextStyle(fontSize: 11, color: AccountingTheme.textSecondary)),
+                              style: const TextStyle(fontSize: 11, color: SdColors.muted)),
                           const SizedBox(width: 2),
-                          const Icon(Icons.copy, size: 10, color: AccountingTheme.textMuted),
+                          const Icon(Icons.copy, size: 10, color: SdColors.faint),
                         ],
                       ),
                     ),
@@ -1234,13 +1234,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   if (agent.city != null) ...[
                     const SizedBox(width: 8),
                     const Icon(Icons.location_on,
-                        size: 11, color: AccountingTheme.textMuted),
+                        size: 11, color: SdColors.faint),
                     const SizedBox(width: 3),
                     Text(
                         '${agent.city}${agent.area != null ? ' - ${agent.area}' : ''}',
                         style: const TextStyle(
                           fontSize: 11,
-                          color: AccountingTheme.textSecondary,
+                          color: SdColors.muted,
                         )),
                   ],
                   const SizedBox(width: 8),
@@ -1250,15 +1250,15 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF25D366).withValues(alpha: 0.15),
+                        color: SdColors.whatsapp.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.send, size: 10, color: Color(0xFF25D366)),
+                          Icon(Icons.send, size: 10, color: SdColors.whatsapp),
                           SizedBox(width: 3),
-                          Text('إرسال البيانات', style: TextStyle(fontSize: 10, color: Color(0xFF25D366), fontWeight: FontWeight.w600)),
+                          Text('إرسال البيانات', style: TextStyle(fontSize: 10, color: SdColors.whatsapp, fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ),
@@ -1276,11 +1276,11 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               children: [
                 Text('أجور: ',
                     style: TextStyle(
-                        fontSize: 10, color: AccountingTheme.textMuted)),
+                        fontSize: 10, color: SdColors.faint)),
                 Text(_formatCurrency(agent.totalCharges),
                     style: const TextStyle(
                       fontSize: 11,
-                      color: AccountingTheme.neonOrange,
+                      color: SdColors.warning,
                       fontWeight: FontWeight.w600,
                     )),
               ],
@@ -1290,11 +1290,11 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               children: [
                 Text('تسديد: ',
                     style: TextStyle(
-                        fontSize: 10, color: AccountingTheme.textMuted)),
+                        fontSize: 10, color: SdColors.faint)),
                 Text(_formatCurrency(agent.totalPayments),
                     style: const TextStyle(
                       fontSize: 11,
-                      color: AccountingTheme.neonGreen,
+                      color: SdColors.success,
                       fontWeight: FontWeight.w600,
                     )),
               ],
@@ -1304,8 +1304,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: agent.hasDebt
-                    ? AccountingTheme.danger.withOpacity(0.2)
-                    : AccountingTheme.neonGreen.withOpacity(0.2),
+                    ? SdColors.danger.withOpacity(0.2)
+                    : SdColors.success.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -1314,8 +1314,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
                   color: agent.hasDebt
-                      ? AccountingTheme.danger
-                      : AccountingTheme.neonGreen,
+                      ? SdColors.danger
+                      : SdColors.success,
                 ),
               ),
             ),
@@ -1344,7 +1344,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر فتح واتساب'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('تعذر فتح واتساب'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -1359,7 +1359,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             value: 'charge',
             child: Row(children: [
               Icon(Icons.add_circle_outline,
-                  size: 16, color: AccountingTheme.neonOrange),
+                  size: 16, color: SdColors.warning),
               SizedBox(width: 8),
               Text('إضافة أجور'),
             ])),
@@ -1367,7 +1367,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             value: 'payment',
             child: Row(children: [
               Icon(Icons.payments_outlined,
-                  size: 16, color: AccountingTheme.neonGreen),
+                  size: 16, color: SdColors.success),
               SizedBox(width: 8),
               Text('تسجيل تسديد'),
             ])),
@@ -1376,7 +1376,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             value: 'edit',
             child: Row(children: [
               Icon(Icons.edit_outlined,
-                  size: 16, color: AccountingTheme.neonBlue),
+                  size: 16, color: SdColors.primary),
               SizedBox(width: 8),
               Text('تعديل'),
             ])),
@@ -1385,7 +1385,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               value: 'suspend',
               child: Row(children: [
                 Icon(Icons.pause_circle_outline,
-                    size: 16, color: AccountingTheme.warning),
+                    size: 16, color: SdColors.warning),
                 SizedBox(width: 8),
                 Text('تعليق'),
               ]))
@@ -1394,7 +1394,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               value: 'activate',
               child: Row(children: [
                 Icon(Icons.play_circle_outline,
-                    size: 16, color: AccountingTheme.neonGreen),
+                    size: 16, color: SdColors.success),
                 SizedBox(width: 8),
                 Text('تفعيل'),
               ])),
@@ -1402,7 +1402,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             value: 'delete',
             child: Row(children: [
               Icon(Icons.delete_outline,
-                  size: 16, color: AccountingTheme.danger),
+                  size: 16, color: SdColors.danger),
               SizedBox(width: 8),
               Text('حذف'),
             ])),
@@ -1410,11 +1410,11 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
       child: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          border: Border.all(color: AccountingTheme.borderColor),
+          border: Border.all(color: SdColors.divider),
           borderRadius: BorderRadius.circular(6),
         ),
         child: const Icon(Icons.more_vert,
-            size: 16, color: AccountingTheme.textMuted),
+            size: 16, color: SdColors.faint),
       ),
     );
   }
@@ -1445,9 +1445,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     return Container(
       padding: EdgeInsets.all(isMob ? 12 : 16),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AccountingTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1479,7 +1479,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                               style: TextStyle(
                                   fontSize: isMob ? 15 : 18,
                                   fontWeight: FontWeight.bold,
-                                  color: AccountingTheme.textPrimary)),
+                                  color: SdColors.ink)),
                         ),
                         const SizedBox(width: 6),
                         Container(
@@ -1501,7 +1501,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     Text('${agent.agentCode}  •  ${agent.type.displayName}',
                         style: TextStyle(
                             fontSize: isMob ? 11 : 12,
-                            color: AccountingTheme.neonPink)),
+                            color: SdColors.platformLight)),
                   ],
                 ),
               ),
@@ -1515,7 +1515,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 IconButton(
                   onPressed: () => _showEditAgentDialog(agent),
                   icon: const Icon(Icons.edit_outlined,
-                      size: 16, color: AccountingTheme.neonBlue),
+                      size: 16, color: SdColors.primary),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                   tooltip: 'تعديل',
@@ -1523,7 +1523,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             ],
           ),
           const SizedBox(height: 14),
-          Divider(color: AccountingTheme.borderColor, height: 1),
+          Divider(color: SdColors.divider, height: 1),
           const SizedBox(height: 14),
           Wrap(
             spacing: isMob ? 12 : 24,
@@ -1554,19 +1554,19 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             children: [
               Expanded(
                   child: _buildBalanceBox('الأجور', agent.totalCharges,
-                      AccountingTheme.neonOrange)),
+                      SdColors.warning)),
               const SizedBox(width: 10),
               Expanded(
                   child: _buildBalanceBox('التسديد', agent.totalPayments,
-                      AccountingTheme.neonGreen)),
+                      SdColors.success)),
               const SizedBox(width: 10),
               Expanded(
                   child: _buildBalanceBox(
                       'الصافي',
                       agent.netBalance,
                       agent.hasDebt
-                          ? AccountingTheme.danger
-                          : AccountingTheme.neonGreen)),
+                          ? SdColors.danger
+                          : SdColors.success)),
             ],
           ),
         ],
@@ -1578,15 +1578,15 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: AccountingTheme.textMuted),
+        Icon(icon, size: 14, color: SdColors.faint),
         const SizedBox(width: 4),
         Text('$label: ',
             style: const TextStyle(
-                fontSize: 12, color: AccountingTheme.textMuted)),
+                fontSize: 12, color: SdColors.faint)),
         Text(value,
             style: const TextStyle(
                 fontSize: 12,
-                color: AccountingTheme.textPrimary,
+                color: SdColors.ink,
                 fontWeight: FontWeight.w500)),
       ],
     );
@@ -1600,10 +1600,10 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.lock_outline, size: 14, color: AccountingTheme.textMuted),
+            const Icon(Icons.lock_outline, size: 14, color: SdColors.faint),
             const SizedBox(width: 4),
             const Text('كلمة المرور: ',
-                style: TextStyle(fontSize: 12, color: AccountingTheme.textMuted)),
+                style: TextStyle(fontSize: 12, color: SdColors.faint)),
             StatefulBuilder(
               builder: (ctx, setState2) {
                 return Row(
@@ -1613,7 +1613,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       obscured ? '••••••••' : password,
                       style: TextStyle(
                         fontSize: 12,
-                        color: obscured ? AccountingTheme.textMuted : AccountingTheme.textPrimary,
+                        color: obscured ? SdColors.faint : SdColors.ink,
                         fontWeight: FontWeight.w500,
                         fontFamily: obscured ? null : 'monospace',
                       ),
@@ -1624,7 +1624,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       child: Icon(
                         obscured ? Icons.visibility_off : Icons.visibility,
                         size: 16,
-                        color: AccountingTheme.textMuted,
+                        color: SdColors.faint,
                       ),
                     ),
                   ],
@@ -1671,7 +1671,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             label:
                 Text('إضافة أجور', style: TextStyle(fontSize: isMob ? 12 : 14)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AccountingTheme.neonOrange,
+              backgroundColor: SdColors.warning,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 10),
               shape: RoundedRectangleBorder(
@@ -1687,7 +1687,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             label: Text('تسجيل تسديد',
                 style: TextStyle(fontSize: isMob ? 12 : 14)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AccountingTheme.neonGreen,
+              backgroundColor: SdColors.success,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 10),
               shape: RoundedRectangleBorder(
@@ -1704,9 +1704,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     return Container(
       padding: EdgeInsets.all(isMob ? 10 : 16),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AccountingTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1714,13 +1714,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           const Row(
             children: [
               Icon(Icons.receipt_long_rounded,
-                  size: 18, color: AccountingTheme.neonPink),
+                  size: 18, color: SdColors.platformLight),
               SizedBox(width: 8),
               Text('المعاملات المالية',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: AccountingTheme.textPrimary,
+                    color: SdColors.ink,
                   )),
             ],
           ),
@@ -1738,7 +1738,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               if (snapshot.hasError) {
                 return Center(
                     child: Text('خطأ في جلب المعاملات',
-                        style: TextStyle(color: AccountingTheme.danger)));
+                        style: TextStyle(color: SdColors.danger)));
               }
               final data = snapshot.data ?? {};
               final List<AgentTransactionModel> transactions =
@@ -1748,7 +1748,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     child: Padding(
                   padding: EdgeInsets.all(20),
                   child: Text('لا توجد معاملات',
-                      style: TextStyle(color: AccountingTheme.textMuted)),
+                      style: TextStyle(color: SdColors.faint)),
                 ));
               }
               return Column(
@@ -1765,7 +1765,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
   Widget _buildTransactionRow(AgentTransactionModel tx) {
     final isCharge = tx.isCharge;
     final color =
-        isCharge ? AccountingTheme.neonOrange : AccountingTheme.neonGreen;
+        isCharge ? SdColors.warning : SdColors.success;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(10),
@@ -1793,18 +1793,18 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     const SizedBox(width: 6),
                     Text(tx.category.displayName,
                         style: const TextStyle(
-                            fontSize: 10, color: AccountingTheme.textMuted)),
+                            fontSize: 10, color: SdColors.faint)),
                   ],
                 ),
                 if (tx.description.isNotEmpty)
                   Text(tx.description,
                       style: const TextStyle(
-                          fontSize: 11, color: AccountingTheme.textSecondary)),
+                          fontSize: 11, color: SdColors.muted)),
                 if (tx.referenceNumber != null &&
                     tx.referenceNumber!.isNotEmpty)
                   Text('مرجع: ${tx.referenceNumber}',
                       style: const TextStyle(
-                          fontSize: 10, color: AccountingTheme.textMuted)),
+                          fontSize: 10, color: SdColors.faint)),
               ],
             ),
           ),
@@ -1820,7 +1820,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               Text('الرصيد: ${_formatCurrency(tx.balanceAfter)}',
                   style: const TextStyle(
                     fontSize: 10,
-                    color: AccountingTheme.textMuted,
+                    color: SdColors.faint,
                   )),
             ],
           ),
@@ -1828,13 +1828,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           Text(DateFormat('MM/dd').format(tx.createdAt),
               style: const TextStyle(
                 fontSize: 10,
-                color: AccountingTheme.textMuted,
+                color: SdColors.faint,
               )),
           const SizedBox(width: 4),
           // أزرار التعديل والحذف (مدير النظام فقط)
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert,
-                size: 16, color: AccountingTheme.textMuted),
+                size: 16, color: SdColors.faint),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             itemBuilder: (_) => [
@@ -1842,7 +1842,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 value: 'edit',
                 child: Row(
                   children: [
-                    Icon(Icons.edit, size: 14, color: AccountingTheme.neonBlue),
+                    Icon(Icons.edit, size: 14, color: SdColors.primary),
                     SizedBox(width: 6),
                     Text('تعديل', style: TextStyle(fontSize: 12)),
                   ],
@@ -1852,10 +1852,10 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 value: 'delete',
                 child: Row(
                   children: [
-                    Icon(Icons.delete, size: 14, color: Colors.red),
+                    Icon(Icons.delete, size: 14, color: SdColors.danger),
                     SizedBox(width: 6),
                     Text('حذف',
-                        style: TextStyle(fontSize: 12, color: Colors.red)),
+                        style: TextStyle(fontSize: 12, color: SdColors.danger)),
                   ],
                 ),
               ),
@@ -1920,7 +1920,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             title: const Row(
               children: [
                 Icon(Icons.person_add,
-                    size: 20, color: AccountingTheme.neonPink),
+                    size: 20, color: SdColors.platformLight),
                 SizedBox(width: 8),
                 Text('إضافة وكيل جديد', style: TextStyle(fontSize: 16)),
               ],
@@ -1976,7 +1976,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                             return const Padding(
                               padding: EdgeInsets.symmetric(vertical: 8),
                               child: Text('لا توجد شركات',
-                                  style: TextStyle(color: Colors.orange)),
+                                  style: TextStyle(color: SdColors.warning)),
                             );
                           }
                           return DropdownButtonFormField<String>(
@@ -2072,7 +2072,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                             content: Text('تم إنشاء الوكيل بنجاح ✓'),
-                            backgroundColor: Colors.green),
+                            backgroundColor: SdColors.success),
                       );
                     }
                   } catch (e) {
@@ -2080,13 +2080,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content: Text(e.toString().replaceFirst('Exception: ', '')),
-                            backgroundColor: Colors.red),
+                            backgroundColor: SdColors.danger),
                       );
                     }
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.neonPink,
+                  backgroundColor: SdColors.platformLight,
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('إنشاء'),
@@ -2118,7 +2118,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             title: Row(
               children: [
                 const Icon(Icons.edit,
-                    size: 20, color: AccountingTheme.neonBlue),
+                    size: 20, color: SdColors.primary),
                 const SizedBox(width: 8),
                 Text('تعديل ${agent.name}',
                     style: const TextStyle(fontSize: 16)),
@@ -2211,7 +2211,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                             content: Text('تم تعديل الوكيل بنجاح ✓'),
-                            backgroundColor: Colors.green),
+                            backgroundColor: SdColors.success),
                       );
                     }
                   } catch (e) {
@@ -2219,13 +2219,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content: Text(e.toString().replaceFirst('Exception: ', '')),
-                            backgroundColor: Colors.red),
+                            backgroundColor: SdColors.danger),
                       );
                     }
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.neonBlue,
+                  backgroundColor: SdColors.primary,
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('حفظ'),
@@ -2258,8 +2258,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   isCharge ? Icons.add_circle_outline : Icons.payments_outlined,
                   size: 20,
                   color: isCharge
-                      ? AccountingTheme.neonOrange
-                      : AccountingTheme.neonGreen,
+                      ? SdColors.warning
+                      : SdColors.success,
                 ),
                 const SizedBox(width: 8),
                 Text(isCharge ? 'إضافة أجور' : 'تسجيل تسديد',
@@ -2267,7 +2267,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 const Spacer(),
                 Text(agent.name,
                     style: const TextStyle(
-                        fontSize: 12, color: AccountingTheme.textMuted)),
+                        fontSize: 12, color: SdColors.faint)),
               ],
             ),
             content: SizedBox(
@@ -2360,7 +2360,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                           content: Text(isCharge
                               ? 'تم إضافة الأجور ✓'
                               : 'تم تسجيل التسديد ✓'),
-                          backgroundColor: Colors.green,
+                          backgroundColor: SdColors.success,
                         ),
                       );
                     }
@@ -2369,15 +2369,15 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content: Text(e.toString().replaceFirst('Exception: ', '')),
-                            backgroundColor: Colors.red),
+                            backgroundColor: SdColors.danger),
                       );
                     }
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isCharge
-                      ? AccountingTheme.neonOrange
-                      : AccountingTheme.neonGreen,
+                      ? SdColors.warning
+                      : SdColors.success,
                   foregroundColor: Colors.white,
                 ),
                 child: Text(isCharge ? 'إضافة أجور' : 'تسجيل تسديد'),
@@ -2407,13 +2407,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             title: Row(
               children: [
                 const Icon(Icons.edit,
-                    size: 20, color: AccountingTheme.neonBlue),
+                    size: 20, color: SdColors.primary),
                 const SizedBox(width: 8),
                 const Text('تعديل المعاملة', style: TextStyle(fontSize: 16)),
                 const Spacer(),
                 Text('#${tx.id}',
                     style: const TextStyle(
-                        fontSize: 11, color: AccountingTheme.textMuted)),
+                        fontSize: 11, color: SdColors.faint)),
               ],
             ),
             content: SizedBox(
@@ -2426,8 +2426,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: (tx.isCharge
-                              ? AccountingTheme.neonOrange
-                              : AccountingTheme.neonGreen)
+                              ? SdColors.warning
+                              : SdColors.success)
                           .withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -2439,20 +2439,20 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                                 : Icons.arrow_downward,
                             size: 16,
                             color: tx.isCharge
-                                ? AccountingTheme.neonOrange
-                                : AccountingTheme.neonGreen),
+                                ? SdColors.warning
+                                : SdColors.success),
                         const SizedBox(width: 6),
                         Text(tx.type.displayName,
                             style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: tx.isCharge
-                                    ? AccountingTheme.neonOrange
-                                    : AccountingTheme.neonGreen)),
+                                    ? SdColors.warning
+                                    : SdColors.success)),
                         const Spacer(),
                         Text(DateFormat('yyyy/MM/dd').format(tx.createdAt),
                             style: const TextStyle(
                                 fontSize: 11,
-                                color: AccountingTheme.textMuted)),
+                                color: SdColors.faint)),
                       ],
                     ),
                   ),
@@ -2524,7 +2524,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                             content: Text('تم تعديل المعاملة بنجاح ✓'),
-                            backgroundColor: Colors.green),
+                            backgroundColor: SdColors.success),
                       );
                     }
                   } catch (e) {
@@ -2532,13 +2532,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content: Text(e.toString().replaceFirst('Exception: ', '')),
-                            backgroundColor: Colors.red),
+                            backgroundColor: SdColors.danger),
                       );
                     }
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.neonBlue,
+                  backgroundColor: SdColors.primary,
                   foregroundColor: Colors.white,
                 ),
                 child: const Text('حفظ التعديل'),
@@ -2558,7 +2558,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         child: AlertDialog(
           title: const Row(
             children: [
-              Icon(Icons.warning_amber_rounded, size: 22, color: Colors.red),
+              Icon(Icons.warning_amber_rounded, size: 22, color: SdColors.danger),
               SizedBox(width: 8),
               Text('حذف المعاملة', style: TextStyle(fontSize: 16)),
             ],
@@ -2575,9 +2575,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.15),
+                    color: SdColors.danger.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.withOpacity(0.2)),
+                    border: Border.all(color: SdColors.danger.withOpacity(0.2)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2588,13 +2588,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: tx.isCharge
-                                      ? AccountingTheme.neonOrange
-                                      : AccountingTheme.neonGreen)),
+                                      ? SdColors.warning
+                                      : SdColors.success)),
                           const SizedBox(width: 8),
                           Text(tx.category.displayName,
                               style: const TextStyle(
                                   fontSize: 11,
-                                  color: AccountingTheme.textMuted)),
+                                  color: SdColors.faint)),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -2605,11 +2605,11 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                         Text(tx.description,
                             style: const TextStyle(
                                 fontSize: 12,
-                                color: AccountingTheme.textSecondary)),
+                                color: SdColors.muted)),
                       Text(
                           DateFormat('yyyy/MM/dd - HH:mm').format(tx.createdAt),
                           style: const TextStyle(
-                              fontSize: 10, color: AccountingTheme.textMuted)),
+                              fontSize: 10, color: SdColors.faint)),
                     ],
                   ),
                 ),
@@ -2617,7 +2617,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 const Text('⚠️ سيتم إعادة حساب رصيد الوكيل تلقائياً',
                     style: TextStyle(
                         fontSize: 12,
-                        color: Colors.red,
+                        color: SdColors.danger,
                         fontWeight: FontWeight.w500)),
               ],
             ),
@@ -2643,7 +2643,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                           content: Text('تم حذف المعاملة بنجاح ✓'),
-                          backgroundColor: Colors.green),
+                          backgroundColor: SdColors.success),
                     );
                   }
                 } catch (e) {
@@ -2651,13 +2651,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                           content: Text('خطأ'),
-                          backgroundColor: Colors.red),
+                          backgroundColor: SdColors.danger),
                     );
                   }
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: SdColors.danger,
                 foregroundColor: Colors.white,
               ),
               child: const Text('حذف'),
@@ -2726,13 +2726,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('تم تغيير الحالة إلى ${status.displayName} ✓'),
-              backgroundColor: Colors.green),
+              backgroundColor: SdColors.success),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: Colors.red),
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -2764,7 +2764,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                           content: Text('تم حذف الوكيل ✓'),
-                          backgroundColor: Colors.green),
+                          backgroundColor: SdColors.success),
                     );
                   }
                 } catch (e) {
@@ -2772,13 +2772,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                           content: Text('خطأ'),
-                          backgroundColor: Colors.red),
+                          backgroundColor: SdColors.danger),
                     );
                   }
                 }
               },
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.danger,
+                  backgroundColor: SdColors.danger,
                   foregroundColor: Colors.white),
               child: const Text('حذف'),
             ),
@@ -2796,10 +2796,10 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.error_outline,
-              size: 48, color: AccountingTheme.danger),
+              size: 48, color: SdColors.danger),
           const SizedBox(height: 12),
           Text(_errorMessage ?? 'خطأ غير معروف',
-              style: const TextStyle(color: AccountingTheme.danger)),
+              style: const TextStyle(color: SdColors.danger)),
           const SizedBox(height: 8),
           TextButton.icon(
             onPressed: _loadData,
@@ -2814,13 +2814,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
   Color _getStatusColor(AgentStatus status) {
     switch (status) {
       case AgentStatus.active:
-        return AccountingTheme.neonGreen;
+        return SdColors.success;
       case AgentStatus.suspended:
-        return AccountingTheme.warning;
+        return SdColors.warning;
       case AgentStatus.banned:
-        return AccountingTheme.danger;
+        return SdColors.danger;
       case AgentStatus.inactive:
-        return AccountingTheme.textMuted;
+        return SdColors.faint;
     }
   }
 

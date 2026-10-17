@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class LogoutDialog extends StatefulWidget {
   final String title;
@@ -64,9 +65,9 @@ class _LogoutDialogState extends State<LogoutDialog> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.blue.shade50,
+              color: SdColors.infoTint,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.shade200),
+              border: Border.all(color: SdColors.infoTintEdge),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -76,7 +77,7 @@ class _LogoutDialogState extends State<LogoutDialog> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blue,
+                    color: SdColors.info,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -93,7 +94,7 @@ class _LogoutDialogState extends State<LogoutDialog> {
                   ),
                   subtitle: const Text(
                     'سيتم حذف اسم المستخدم وكلمة المرور المحفوظين محلياً',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: SdColors.faint),
                   ),
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,

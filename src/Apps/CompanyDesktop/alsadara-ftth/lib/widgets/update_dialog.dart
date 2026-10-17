@@ -4,8 +4,8 @@ library;
 
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../services/auto_update_service.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// نافذة التحديث التلقائي - تبدأ التحميل فوراً
 class UpdateDialog extends StatefulWidget {
@@ -171,7 +171,7 @@ class _UpdateDialogState extends State<UpdateDialog>
       case _UpdatePhase.installing:
         return const Color(0xFF00E676);
       case _UpdatePhase.error:
-        return const Color(0xFFFF5252);
+        return SdColors.danger;
     }
   }
 
@@ -233,7 +233,8 @@ class _UpdateDialogState extends State<UpdateDialog>
             // العنوان
             Text(
               _phaseTitle,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: mobile ? 17 : 20,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
@@ -253,8 +254,9 @@ class _UpdateDialogState extends State<UpdateDialog>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('v${widget.currentVersion}',
-                      style: GoogleFonts.cairo(
-                          color: Colors.grey[400], fontSize: 13)),
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: SdColors.faint, fontSize: 13)),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
                     child: Icon(Icons.arrow_forward_rounded,
@@ -262,7 +264,8 @@ class _UpdateDialogState extends State<UpdateDialog>
                   ),
                   Text(
                     'v${widget.updateInfo.version}',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: const Color(0xFF00E5FF),
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
@@ -291,7 +294,8 @@ class _UpdateDialogState extends State<UpdateDialog>
                 children: [
                   Text(
                     '${(_downloadProgress * 100).toStringAsFixed(0)}%',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         color: const Color(0xFF00E5FF),
                         fontSize: 13,
                         fontWeight: FontWeight.bold),
@@ -299,23 +303,25 @@ class _UpdateDialogState extends State<UpdateDialog>
                   if (widget.updateInfo.downloadSize > 0)
                     Text(
                       _formatSize(widget.updateInfo.downloadSize),
-                      style: GoogleFonts.cairo(
-                          color: Colors.grey[500], fontSize: 12),
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: SdColors.faint, fontSize: 12),
                     ),
                 ],
               ),
               const SizedBox(height: 6),
               Text(
                 'لا تغلق التطبيق أثناء التحميل',
-                style: GoogleFonts.cairo(color: Colors.grey[500], fontSize: 11),
+                style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 11),
               ),
               const SizedBox(height: 14),
               TextButton(
                 onPressed: () => UpdateDialog._skipUpdate(
                     context, widget.updateInfo.version),
                 child: Text('تخطي الآن (تذكيري لاحقاً)',
-                    style: GoogleFonts.cairo(
-                        color: Colors.grey[600], fontSize: 11)),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.muted, fontSize: 11)),
               ),
             ] else if (_phase == _UpdatePhase.preparing ||
                 _phase == _UpdatePhase.installing) ...[
@@ -334,7 +340,7 @@ class _UpdateDialogState extends State<UpdateDialog>
                         ? 'جاري فتح مثبّت التحديث...'
                         : 'سيتم إعادة تشغيل التطبيق تلقائياً...')
                     : 'جاري التحضير...',
-                style: GoogleFonts.cairo(color: Colors.grey[400], fontSize: 12),
+                style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 12),
               ),
               if (_phase == _UpdatePhase.preparing) ...[
                 const SizedBox(height: 14),
@@ -342,8 +348,9 @@ class _UpdateDialogState extends State<UpdateDialog>
                   onPressed: () => UpdateDialog._skipUpdate(
                       context, widget.updateInfo.version),
                   child: Text('تخطي الآن (تذكيري لاحقاً)',
-                      style: GoogleFonts.cairo(
-                          color: Colors.grey[600], fontSize: 11)),
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: SdColors.muted, fontSize: 11)),
                 ),
               ],
             ] else if (_phase == _UpdatePhase.error) ...[
@@ -351,15 +358,16 @@ class _UpdateDialogState extends State<UpdateDialog>
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF5252).withValues(alpha: 0.1),
+                  color: SdColors.danger.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                      color: const Color(0xFFFF5252).withValues(alpha: 0.3)),
+                      color: SdColors.danger.withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   _errorMessage,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: const Color(0xFFFF9E9E), fontSize: 13),
                 ),
               ),
@@ -378,8 +386,9 @@ class _UpdateDialogState extends State<UpdateDialog>
                         ),
                       ),
                       child: Text('تخطي',
-                          style: GoogleFonts.cairo(
-                              color: Colors.grey[400],
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.faint,
                               fontWeight: FontWeight.w600)),
                     ),
                   ),
@@ -397,7 +406,7 @@ class _UpdateDialogState extends State<UpdateDialog>
                       icon: const Icon(Icons.refresh_rounded, size: 18),
                       label: Text('إعادة المحاولة',
                           style:
-                              GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                              TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF00E5FF),
                         foregroundColor: const Color(0xFF0D1B2A),
@@ -419,9 +428,9 @@ class _UpdateDialogState extends State<UpdateDialog>
                     onPressed: _uninstallAndReinstall,
                     icon: const Icon(Icons.delete_sweep_rounded, size: 18),
                     label: Text('حذف النسخة القديمة وإعادة التثبيت',
-                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12)),
+                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 12)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange.shade700,
+                      backgroundColor: SdColors.warning,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(

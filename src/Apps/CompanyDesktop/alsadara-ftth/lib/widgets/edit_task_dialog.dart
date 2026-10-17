@@ -6,6 +6,7 @@ import '../services/departments_data_service.dart';
 import '../services/vps_auth_service.dart';
 import '../inventory/services/inventory_api_service.dart';
 import '../utils/responsive_helper.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// نافذة تعديل المهمة الشاملة - جميع الحقول قابلة للتعديل
 class EditTaskDialog extends StatefulWidget {
@@ -220,7 +221,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحميل البيانات'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -246,7 +247,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: hPad, vertical: isMobile ? 10 : 16),
               decoration: BoxDecoration(
-                color: Colors.blue.shade700,
+                color: SdColors.info,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
@@ -471,7 +472,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: hPad, vertical: isMobile ? 10 : 16),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: SdColors.surfaceAlt,
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(12),
                   bottomRight: Radius.circular(12),
@@ -492,7 +493,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _saveChanges,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade700,
+                        backgroundColor: SdColors.info,
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.symmetric(vertical: isMobile ? 10 : 14),
                       ),
@@ -523,16 +524,16 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
       width: double.infinity,
       padding: EdgeInsets.symmetric(vertical: r.isMobile ? 6 : 8, horizontal: r.isMobile ? 8 : 12),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: SdColors.infoTint,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.shade200),
+        border: Border.all(color: SdColors.infoTintEdge),
       ),
       child: Text(
         title,
         style: TextStyle(
           fontSize: r.sectionTitleSize,
           fontWeight: FontWeight.bold,
-          color: Colors.blue.shade800,
+          color: SdColors.info,
         ),
       ),
     );
@@ -628,13 +629,13 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
       await _loadDispensedMaterials();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم صرف المواد من عُهدة الفني'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('تم صرف المواد من عُهدة الفني'), backgroundColor: SdColors.success),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -654,18 +655,18 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.orange.shade50,
+              color: SdColors.warningTint,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.orange.shade200),
+              border: Border.all(color: SdColors.warningTintEdge),
             ),
             child: Column(
               children: [
                 Row(
                   children: [
-                    Icon(Icons.inventory_2, size: 16, color: Colors.orange.shade700),
+                    Icon(Icons.inventory_2, size: 16, color: SdColors.warning),
                     const SizedBox(width: 6),
                     Text('مواد مصروفة سابقاً (${_dispensedItems.length})',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.orange.shade800)),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: SdColors.warning)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -682,17 +683,17 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.orange.shade100,
+                              color: SdColors.warningTint,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text('${item['quantity']}',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange.shade900)),
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SdColors.warningEdge)),
                           ),
                           if ((item['returnedQuantity'] ?? 0) > 0)
                             Padding(
                               padding: const EdgeInsets.only(right: 6),
                               child: Text('مرجع: ${item['returnedQuantity']}',
-                                  style: TextStyle(fontSize: 10, color: Colors.green.shade600)),
+                                  style: TextStyle(fontSize: 10, color: SdColors.success)),
                             ),
                         ],
                       ),
@@ -707,19 +708,19 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.blue.shade50,
+            color: SdColors.infoTint,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.blue.shade200),
+            border: Border.all(color: SdColors.infoTintEdge),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.add_circle_outline, size: 16, color: Colors.blue.shade700),
+                  Icon(Icons.add_circle_outline, size: 16, color: SdColors.info),
                   const SizedBox(width: 6),
                   Text('إضافة مواد مصروفة',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.blue.shade800)),
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: SdColors.info)),
                   const Spacer(),
                   InkWell(
                     onTap: () {
@@ -730,7 +731,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.blue,
+                        color: SdColors.info,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: const Row(
@@ -819,7 +820,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                         // حذف
                         InkWell(
                           onTap: () => setState(() => _newMaterialRows.removeAt(idx)),
-                          child: const Icon(Icons.remove_circle, size: 22, color: Colors.red),
+                          child: const Icon(Icons.remove_circle, size: 22, color: SdColors.danger),
                         ),
                       ],
                     ),
@@ -834,7 +835,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                     icon: const Icon(Icons.save, size: 16),
                     label: const Text('حفظ المواد المصروفة', style: TextStyle(fontSize: 13)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
+                      backgroundColor: SdColors.warning,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -845,7 +846,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Text('اضغط "إضافة مادة" لتسجيل المواد المستخدمة',
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                      style: TextStyle(fontSize: 11, color: SdColors.faint)),
                 ),
             ],
           ),
@@ -888,7 +889,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
           borderRadius: BorderRadius.circular(8),
         ),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: SdColors.surfaceAlt,
       ),
       validator: validator ?? (required
           ? (value) {
@@ -938,7 +939,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
             : null,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: SdColors.surfaceAlt,
       ),
       style: TextStyle(fontSize: r.bodySize, color: Colors.black87),
       items: items.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
@@ -987,7 +988,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                 : null,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             filled: true,
-            fillColor: Colors.grey.shade50,
+            fillColor: SdColors.surfaceAlt,
             hintText: 'ابحث عن فني...',
           ),
           onChanged: (v) => setState(() => _selectedTechnician = v),
@@ -1054,7 +1055,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
           borderRadius: BorderRadius.circular(8),
         ),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: SdColors.surfaceAlt,
       ),
       style: TextStyle(fontSize: r.bodySize, color: Colors.black87),
       items: items.where((item) => item.isNotEmpty).map((item) {
@@ -1135,7 +1136,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم تحديث المهمة بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
         }
@@ -1144,7 +1145,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result['message']?.toString() ?? 'فشل تحديث المهمة'),
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
             ),
           );
         }
@@ -1154,7 +1155,7 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في تحديث المهمة: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }

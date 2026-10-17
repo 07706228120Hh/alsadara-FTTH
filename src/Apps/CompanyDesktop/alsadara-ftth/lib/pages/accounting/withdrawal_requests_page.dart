@@ -1,5 +1,4 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../services/attendance_api_service.dart';
 import '../../services/vps_auth_service.dart';
@@ -17,16 +16,16 @@ class WithdrawalRequestsPage extends StatefulWidget {
 
 class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
   // ── ألوان ──
-  static const _bgPage = Color(0xFFF5F6FA);
+  static const _bgPage = SdColors.surfaceAlt;
   static const _bgCard = Colors.white;
-  static const _textDark = Color(0xFF2C3E50);
-  static const _textGray = Color(0xFF95A5A6);
-  static const _accentGreen = Color(0xFF27AE60);
-  static const _accentRed = Color(0xFFE74C3C);
-  static const _accentOrange = Color(0xFFF39C12);
-  static const _accentBlue = Color(0xFF3498DB);
-  static const _accentTeal = Color(0xFF1ABC9C);
-  static const _accentPurple = Color(0xFF8E44AD);
+  static const _textDark = SdColors.ink;
+  static const _textGray = SdColors.faint;
+  static const _accentGreen = SdColors.success;
+  static const _accentRed = SdColors.danger;
+  static const _accentOrange = SdColors.warning;
+  static const _accentBlue = SdColors.info;
+  static const _accentTeal = SdColors.accent;
+  static const _accentPurple = SdColors.platformBase;
 
   final _api = AttendanceApiService.instance;
 
@@ -234,19 +233,22 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('$count',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: isMobile ? 16 : context.accR.financialLarge,
                         fontWeight: FontWeight.bold,
                         color: color)),
                 Text(label,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: isMobile ? 10 : context.accR.small,
                         color: _textGray)),
                 if (subtitle.isNotEmpty)
                   Text(subtitle,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: isMobile ? 9 : context.accR.caption,
                           color: _textGray,
                           fontWeight: FontWeight.w600)),
@@ -287,7 +289,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                 Padding(
                   padding: const EdgeInsets.only(right: 4),
                   child: Text('$_total',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: _textGray)),
@@ -297,14 +300,16 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
           : Row(
               children: [
                 Text('الحالة:',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.financialSmall,
                         color: _textDark)),
                 SizedBox(width: context.accR.spaceS),
                 ..._filterChips(),
                 Spacer(),
                 Text('الإجمالي: $_total',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.small, color: _textGray)),
               ],
             ),
@@ -324,7 +329,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
       final isSelected = _statusFilter == f['value'];
       return ChoiceChip(
         label: Text(f['label'] as String,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMobile ? 10 : context.accR.small,
                 height: 1.2,
                 color: isSelected ? Colors.white : _textDark)),
@@ -430,13 +436,15 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                   children: [
                     Text(userName,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: isMobile ? 13 : context.accR.body,
                             fontWeight: FontWeight.bold,
                             color: _textDark)),
                     Text('طلب #$id • $createdAt',
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: isMobile ? 10 : context.accR.caption,
                             color: _textGray)),
                   ],
@@ -457,14 +465,16 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(statusInfo['label'] as String,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: isMobile ? 11 : context.accR.small,
                         fontWeight: FontWeight.w600,
                         color: statusInfo['color'] as Color)),
               ),
               Spacer(),
               Text('${_formatAmount(amount)} د.ع',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: isMobile ? 15 : context.accR.headingSmall,
                       fontWeight: FontWeight.bold,
                       color: _accentRed)),
@@ -483,7 +493,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                 Flexible(
                   child: Text('السبب: $reason',
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: isMobile ? 11 : context.accR.small,
                           color: _textGray)),
                 ),
@@ -501,7 +512,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                 Flexible(
                   child: Text('ملاحظات: $notes',
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: isMobile ? 11 : context.accR.small,
                           color: _textGray)),
                 ),
@@ -528,7 +540,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                     child: Text(
                       '$reviewedBy • $reviewedAt${reviewNotes.isNotEmpty ? ' — $reviewNotes' : ''}',
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: isMobile ? 10 : context.accR.caption,
                           color: _accentPurple),
                     ),
@@ -599,7 +612,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                 color: isPrimary ? Colors.white : color),
             SizedBox(width: context.accR.spaceXS),
             Text(label,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMobile ? 11 : context.accR.small,
                     fontWeight: FontWeight.w600,
                     color: isPrimary ? Colors.white : color)),
@@ -621,7 +635,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
           onPressed: _page > 1 ? () => _loadRequests(page: _page - 1) : null,
         ),
         Text('$_page / $_totalPages',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: context.accR.financialSmall, color: _textDark)),
         IconButton(
           icon: const Icon(Icons.chevron_left),
@@ -659,7 +674,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                 ),
                 SizedBox(width: context.accR.spaceM),
                 Text('تأكيد الصرف',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.headingSmall,
                         fontWeight: FontWeight.bold)),
               ],
@@ -679,12 +695,14 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                   child: Column(
                     children: [
                       Text('صرف سلفة لـ $userName',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: context.accR.financialSmall,
                               color: _textDark)),
                       SizedBox(height: context.accR.spaceXS),
                       Text('${_formatAmount(amount)} د.ع',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: context.accR.financialLarge,
                               fontWeight: FontWeight.bold,
                               color: _accentGreen)),
@@ -701,14 +719,15 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                   child: Row(
                     children: [
                       Icon(Icons.info_outline,
-                          size: context.accR.iconS, color: Color(0xFF1565C0)),
+                          size: context.accR.iconS, color: SdColors.info),
                       SizedBox(width: context.accR.spaceXS),
                       Expanded(
                         child: Text(
                           'سيتم خصم المبلغ كسلفة من راتب الموظف',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: context.accR.small,
-                              color: Color(0xFF1565C0)),
+                              color: SdColors.info),
                         ),
                       ),
                     ],
@@ -719,14 +738,14 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                   controller: notesCtrl,
                   decoration: InputDecoration(
                     labelText: 'ملاحظات (اختياري)',
-                    labelStyle: GoogleFonts.cairo(fontSize: context.accR.small),
+                    labelStyle: TextStyle(fontFamily: 'Cairo', fontSize: context.accR.small),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8)),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
                   ),
                   style:
-                      GoogleFonts.cairo(fontSize: context.accR.financialSmall),
+                      TextStyle(fontFamily: 'Cairo', fontSize: context.accR.financialSmall),
                   maxLines: 2,
                 ),
                 SizedBox(height: context.accR.spaceS),
@@ -735,10 +754,11 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                   onChanged: (v) =>
                       setDialogState(() => overrideLimit = v ?? false),
                   title: Text('تجاوز حد السحب',
-                      style: GoogleFonts.cairo(fontSize: context.accR.small)),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: context.accR.small)),
                   subtitle: Text(
                     'السماح بصرف المبلغ حتى لو تجاوز الراتب المستحق',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.caption, color: _textGray),
                   ),
                   dense: true,
@@ -752,7 +772,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child:
-                    Text('إلغاء', style: GoogleFonts.cairo(color: _textGray)),
+                    Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: _textGray)),
               ),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
@@ -763,7 +783,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                 icon: Icon(Icons.payments_rounded,
                     size: context.accR.iconM, color: Colors.white),
                 label: Text('تأكيد الصرف',
-                    style: GoogleFonts.cairo(color: Colors.white)),
+                    style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
                 onPressed: () async {
                   Navigator.pop(ctx);
                   await _payRequest(id, notesCtrl.text, overrideLimit);
@@ -793,7 +813,8 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
               Icon(Icons.cancel_outlined, color: _accentRed),
               SizedBox(width: context.accR.spaceS),
               Text('رفض الطلب',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: context.accR.headingSmall,
                       fontWeight: FontWeight.bold)),
             ],
@@ -805,14 +826,14 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
                 controller: notesCtrl,
                 decoration: InputDecoration(
                   labelText: 'سبب الرفض',
-                  labelStyle: GoogleFonts.cairo(fontSize: context.accR.small),
+                  labelStyle: TextStyle(fontFamily: 'Cairo', fontSize: context.accR.small),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8)),
                   contentPadding: EdgeInsets.symmetric(
                       horizontal: context.accR.spaceM,
                       vertical: context.accR.spaceM),
                 ),
-                style: GoogleFonts.cairo(fontSize: context.accR.financialSmall),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: context.accR.financialSmall),
                 maxLines: 2,
               ),
             ],
@@ -820,7 +841,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('إلغاء', style: GoogleFonts.cairo(color: _textGray)),
+              child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: _textGray)),
             ),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
@@ -831,7 +852,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
               icon: Icon(Icons.close,
                   size: context.accR.iconM, color: Colors.white),
               label: Text('تأكيد الرفض',
-                  style: GoogleFonts.cairo(color: Colors.white)),
+                  style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
               onPressed: () async {
                 Navigator.pop(ctx);
                 await _rejectRequest(id, notesCtrl.text);
@@ -853,7 +874,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم صرف السلفة بنجاح', style: GoogleFonts.cairo()),
+          content: Text('تم صرف السلفة بنجاح', style: TextStyle(fontFamily: 'Cairo')),
           backgroundColor: _accentGreen,
         ),
       );
@@ -862,7 +883,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ في الصرف', style: GoogleFonts.cairo()),
+          content: Text('خطأ في الصرف', style: TextStyle(fontFamily: 'Cairo')),
           backgroundColor: _accentRed,
         ),
       );
@@ -876,7 +897,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم رفض الطلب', style: GoogleFonts.cairo()),
+          content: Text('تم رفض الطلب', style: TextStyle(fontFamily: 'Cairo')),
           backgroundColor: _accentOrange,
         ),
       );
@@ -885,7 +906,7 @@ class _WithdrawalRequestsPageState extends State<WithdrawalRequestsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ في الرفض', style: GoogleFonts.cairo()),
+          content: Text('خطأ في الرفض', style: TextStyle(fontFamily: 'Cairo')),
           backgroundColor: _accentRed,
         ),
       );

@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import '../../permissions/permissions.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class PermissionsPage extends StatefulWidget {
   final Map<String, bool> userPermissions;
@@ -90,7 +91,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
             fontSize: 16,
           ),
         ),
-        backgroundColor: const Color(0xFF1A237E),
+        backgroundColor: SdColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
@@ -153,7 +154,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                   child: ElevatedButton.icon(
                     onPressed: _savingPassword ? null : _saveDefaultPassword,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1A237E),
+                      backgroundColor: SdColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 14),
                       shape: RoundedRectangleBorder(
@@ -186,8 +187,8 @@ class _PermissionsPageState extends State<PermissionsPage> {
                 style: TextStyle(
                   fontSize: 11,
                   color: (_loadedPassword == null || _loadedPassword!.isEmpty)
-                      ? Colors.red[700]
-                      : Colors.green[700],
+                      ? SdColors.danger
+                      : SdColors.success,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -219,8 +220,8 @@ class _PermissionsPageState extends State<PermissionsPage> {
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: tempPermissions[key]!
-                            ? [Colors.green[100]!, Colors.green[200]!]
-                            : [Colors.red[100]!, Colors.red[200]!],
+                            ? [SdColors.successTint, SdColors.successTintEdge]
+                            : [SdColors.dangerTint, SdColors.dangerTintEdge],
                       ),
                     ),
                     child: InkWell(
@@ -244,15 +245,15 @@ class _PermissionsPageState extends State<PermissionsPage> {
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
                                   color: tempPermissions[key]!
-                                      ? Colors.green[300]
-                                      : Colors.red[300],
+                                      ? SdColors.successTintEdge
+                                      : SdColors.dangerTintEdge,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Icon(
                                   _permissionIcon(key),
                                   color: tempPermissions[key]!
-                                      ? Colors.green[900]
-                                      : Colors.red[900],
+                                      ? SdColors.successEdge
+                                      : SdColors.dangerEdge,
                                   size: screenWidth < 600 ? 16 : 18,
                                 ),
                               ),
@@ -267,8 +268,8 @@ class _PermissionsPageState extends State<PermissionsPage> {
                                         ? 12
                                         : (screenWidth < 600 ? 14 : 16),
                                     color: tempPermissions[key]!
-                                        ? Colors.green[900]
-                                        : Colors.red[900],
+                                        ? SdColors.successEdge
+                                        : SdColors.dangerEdge,
                                   ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -287,10 +288,10 @@ class _PermissionsPageState extends State<PermissionsPage> {
                                       tempPermissions[key] = value;
                                     });
                                   },
-                                  activeColor: Colors.green[700],
-                                  activeTrackColor: Colors.green[300],
-                                  inactiveThumbColor: Colors.red[700],
-                                  inactiveTrackColor: Colors.red[300],
+                                  activeColor: SdColors.success,
+                                  activeTrackColor: SdColors.successTintEdge,
+                                  inactiveThumbColor: SdColors.danger,
+                                  inactiveTrackColor: SdColors.dangerTintEdge,
                                 ),
                               ),
                             ],
@@ -313,7 +314,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.2),
+              color: SdColors.faint.withValues(alpha: 0.2),
               blurRadius: 4,
               offset: const Offset(0, -1),
             ),
@@ -394,7 +395,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                   : 'تم حفظ كلمة المرور الافتراضية',
             ),
             backgroundColor:
-                _loadedPassword == null ? Colors.orange : Colors.green,
+                _loadedPassword == null ? SdColors.warning : SdColors.success,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -404,7 +405,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في حفظ كلمة المرور'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
           ),
         );
       }
@@ -436,7 +437,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
                 ),
               ],
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
             duration: const Duration(seconds: 3),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -453,7 +454,7 @@ class _PermissionsPageState extends State<PermissionsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('خطأ في حفظ الصلاحيات'),
-            backgroundColor: Colors.red,
+            backgroundColor: SdColors.danger,
             duration: const Duration(seconds: 3),
           ),
         );

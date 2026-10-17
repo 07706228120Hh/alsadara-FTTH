@@ -3,9 +3,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../models/tenant_user.dart';
 import '../../whatsapp/services/whatsapp_permissions_service.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 class UserWhatsAppPermissionsPage extends StatefulWidget {
   final String tenantId;
@@ -70,9 +70,9 @@ class _UserWhatsAppPermissionsPageState
         SnackBar(
           content: Text(
             success ? '✅ تم حفظ الصلاحيات بنجاح' : '❌ فشل في حفظ الصلاحيات',
-            style: GoogleFonts.cairo(),
+            style: TextStyle(fontFamily: 'Cairo'),
           ),
-          backgroundColor: success ? Colors.green : Colors.red,
+          backgroundColor: success ? SdColors.success : SdColors.danger,
         ),
       );
 
@@ -118,7 +118,8 @@ class _UserWhatsAppPermissionsPageState
           children: [
             Text(
               'صلاحيات الواتساب',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -127,14 +128,15 @@ class _UserWhatsAppPermissionsPageState
               widget.user.fullName.isNotEmpty
                   ? widget.user.fullName
                   : widget.user.username,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 12,
                 fontWeight: FontWeight.normal,
               ),
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF25D366),
+        backgroundColor: SdColors.whatsapp,
         foregroundColor: Colors.white,
         actions: [
           if (_hasChanges && !_isSaving && !isAdmin)
@@ -143,7 +145,7 @@ class _UserWhatsAppPermissionsPageState
               icon: const Icon(Icons.save, color: Colors.white),
               label: Text(
                 'حفظ',
-                style: GoogleFonts.cairo(color: Colors.white),
+                style: TextStyle(fontFamily: 'Cairo', color: Colors.white),
               ),
             ),
           if (_isSaving)
@@ -180,23 +182,25 @@ class _UserWhatsAppPermissionsPageState
             Icon(
               Icons.block,
               size: 64,
-              color: Colors.grey.shade400,
+              color: SdColors.faint,
             ),
             const SizedBox(height: 16),
             Text(
               'لا توجد أنظمة واتساب متاحة',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey.shade600,
+                color: SdColors.muted,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'الشركة غير مرخصة لاستخدام أي نظام واتساب.\nتواصل مع مدير النظام لتفعيل الأنظمة.',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 14,
-                color: Colors.grey.shade500,
+                color: SdColors.faint,
               ),
               textAlign: TextAlign.center,
             ),
@@ -216,31 +220,33 @@ class _UserWhatsAppPermissionsPageState
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.amber.shade100,
+                color: SdColors.warningTint,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.admin_panel_settings,
                 size: 48,
-                color: Colors.amber.shade700,
+                color: SdColors.warning,
               ),
             ),
             const SizedBox(height: 16),
             Text(
               'هذا المستخدم مدير',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.amber.shade800,
+                color: SdColors.warning,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'المدراء لديهم جميع صلاحيات الواتساب تلقائياً\n'
               'لا يمكن تعديل صلاحياتهم',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: 14,
-                color: Colors.grey.shade600,
+                color: SdColors.muted,
               ),
               textAlign: TextAlign.center,
             ),
@@ -249,17 +255,18 @@ class _UserWhatsAppPermissionsPageState
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.green.shade50,
+                color: SdColors.successTint,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green.shade200),
+                border: Border.all(color: SdColors.successTintEdge),
               ),
               child: Column(
                 children: [
                   Text(
                     'الأنظمة المتاحة للشركة:',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontWeight: FontWeight.bold,
-                      color: Colors.green.shade800,
+                      color: SdColors.success,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -283,11 +290,11 @@ class _UserWhatsAppPermissionsPageState
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.check_circle, color: Colors.green, size: 16),
+              const Icon(Icons.check_circle, color: SdColors.success, size: 16),
               const SizedBox(width: 4),
               Text(
                 names[key] ?? key,
-                style: GoogleFonts.cairo(fontSize: 12),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
               ),
             ],
           ),
@@ -298,8 +305,9 @@ class _UserWhatsAppPermissionsPageState
     if (systems.isEmpty) {
       systems.add(Text(
         'لا توجد أنظمة مفعلة',
-        style: GoogleFonts.cairo(
-          color: Colors.grey,
+        style: TextStyle(
+          fontFamily: 'Cairo',
+          color: SdColors.faint,
           fontSize: 12,
         ),
       ));
@@ -320,21 +328,22 @@ class _UserWhatsAppPermissionsPageState
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Colors.blue.shade50,
-                  Colors.indigo.shade50,
+                  SdColors.infoTint,
+                  SdColors.primaryTint,
                 ],
               ),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue.shade200),
+              border: Border.all(color: SdColors.infoTintEdge),
             ),
             child: Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: Colors.blue.shade400,
+                  backgroundColor: SdColors.info,
                   radius: 24,
                   child: Text(
                     widget.user.username[0].toUpperCase(),
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -350,16 +359,18 @@ class _UserWhatsAppPermissionsPageState
                         widget.user.fullName.isNotEmpty
                             ? widget.user.fullName
                             : widget.user.username,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
                       ),
                       Text(
                         '${widget.user.role.arabicName} • @${widget.user.username}',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 12,
-                          color: Colors.grey.shade600,
+                          color: SdColors.muted,
                         ),
                       ),
                     ],
@@ -374,20 +385,21 @@ class _UserWhatsAppPermissionsPageState
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFF25D366).withOpacity(0.1),
+              color: SdColors.whatsapp.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               children: [
                 const Icon(Icons.info_outline,
-                    size: 20, color: Color(0xFF128C7E)),
+                    size: 20, color: SdColors.whatsappEdge),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'الأنظمة المتاحة للشركة: ${_getEnabledSystemsText()}',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: 12,
-                      color: const Color(0xFF128C7E),
+                      color: SdColors.whatsappEdge,
                     ),
                   ),
                 ),
@@ -403,9 +415,9 @@ class _UserWhatsAppPermissionsPageState
               ElevatedButton.icon(
                 onPressed: _enableAll,
                 icon: const Icon(Icons.check_circle, size: 18),
-                label: Text('تفعيل الكل', style: GoogleFonts.cairo()),
+                label: Text('تفعيل الكل', style: TextStyle(fontFamily: 'Cairo')),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
+                  backgroundColor: SdColors.success,
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -413,9 +425,9 @@ class _UserWhatsAppPermissionsPageState
               OutlinedButton.icon(
                 onPressed: _disableAll,
                 icon: const Icon(Icons.cancel, size: 18),
-                label: Text('تعطيل الكل', style: GoogleFonts.cairo()),
+                label: Text('تعطيل الكل', style: TextStyle(fontFamily: 'Cairo')),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
+                  foregroundColor: SdColors.danger,
                 ),
               ),
             ],
@@ -425,7 +437,8 @@ class _UserWhatsAppPermissionsPageState
           // صلاحيات الإرسال
           Text(
             '📤 صلاحيات الإرسال',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -437,28 +450,28 @@ class _UserWhatsAppPermissionsPageState
             title: 'إرسال رسائل التجديد',
             description: 'إرسال رسائل بعد تجديد الاشتراك',
             icon: Icons.check_circle_outline,
-            color: Colors.green,
+            color: SdColors.success,
           ),
           _buildPermissionCard(
             key: 'send_expiring',
             title: 'إرسال تذكيرات قرب الانتهاء',
             description: 'إرسال تنبيهات للمشتركين قبل انتهاء اشتراكهم',
             icon: Icons.warning_amber,
-            color: Colors.orange,
+            color: SdColors.warning,
           ),
           _buildPermissionCard(
             key: 'send_expired',
             title: 'إرسال رسائل المنتهي + عروض',
             description: 'إرسال رسائل للمشتركين المنتهية اشتراكاتهم',
             icon: Icons.event_busy,
-            color: Colors.red,
+            color: SdColors.danger,
           ),
           _buildPermissionCard(
             key: 'send_notification',
             title: 'إرسال تبليغات عامة',
             description: 'إرسال إشعارات وتبليغات لمجموعة مشتركين',
             icon: Icons.campaign,
-            color: Colors.blue,
+            color: SdColors.info,
           ),
 
           const SizedBox(height: 24),
@@ -466,7 +479,8 @@ class _UserWhatsAppPermissionsPageState
           // صلاحيات متقدمة
           Text(
             '⚙️ صلاحيات متقدمة',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -478,21 +492,21 @@ class _UserWhatsAppPermissionsPageState
             title: 'تعديل قوالب الرسائل',
             description: 'تعديل قوالب رسائل التجديد والإشعارات',
             icon: Icons.edit_note,
-            color: Colors.purple,
+            color: SdColors.platformBase,
           ),
           _buildPermissionCard(
             key: 'bulk_send',
             title: 'الإرسال الجماعي',
             description: 'إرسال رسائل لعدة مشتركين دفعة واحدة',
             icon: Icons.send,
-            color: Colors.teal,
+            color: SdColors.accent,
           ),
           _buildPermissionCard(
             key: 'view_conversations',
             title: 'عرض المحادثات',
             description: 'الوصول لسجل المحادثات والرسائل المرسلة',
             icon: Icons.forum,
-            color: Colors.indigo,
+            color: SdColors.primary,
           ),
         ],
       ),
@@ -524,10 +538,10 @@ class _UserWhatsAppPermissionsPageState
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isEnabled ? color.withOpacity(0.05) : Colors.grey.shade50,
+        color: isEnabled ? color.withOpacity(0.05) : SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isEnabled ? color.withOpacity(0.4) : Colors.grey.shade300,
+          color: isEnabled ? color.withOpacity(0.4) : SdColors.edge,
           width: isEnabled ? 1.5 : 1,
         ),
       ),
@@ -535,24 +549,26 @@ class _UserWhatsAppPermissionsPageState
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isEnabled ? color : Colors.grey.shade400,
+            color: isEnabled ? color : SdColors.faint,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: Colors.white, size: 20),
         ),
         title: Text(
           title,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontWeight: FontWeight.w600,
             fontSize: 14,
-            color: isEnabled ? color : Colors.grey.shade600,
+            color: isEnabled ? color : SdColors.muted,
           ),
         ),
         subtitle: Text(
           description,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: 11,
-            color: Colors.grey.shade600,
+            color: SdColors.muted,
           ),
         ),
         trailing: Switch(

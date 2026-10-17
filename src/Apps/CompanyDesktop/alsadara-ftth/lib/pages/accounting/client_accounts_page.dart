@@ -1,8 +1,6 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../frontend/frontend.dart';
 
@@ -413,9 +411,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         child: Theme(
           data: ThemeData.light().copyWith(
             colorScheme: ColorScheme.light(
-              primary: AccountingTheme.neonBlue,
+              primary: SdColors.primary,
               onPrimary: Colors.white,
-              surface: AccountingTheme.bgCard,
+              surface: SdColors.surface,
             ),
           ),
           child: child!,
@@ -485,7 +483,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               borderRadius: BorderRadius.circular(isMob ? 16 : 20),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF3498DB).withAlpha(12),
+                  color: SdColors.info.withAlpha(12),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
@@ -550,18 +548,18 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              const Color(0xFF3498DB).withAlpha(8),
-              const Color(0xFF8E44AD).withAlpha(5),
+              SdColors.info.withAlpha(8),
+              SdColors.platformBase.withAlpha(5),
               Colors.white,
             ],
             begin: Alignment.centerRight,
             end: Alignment.centerLeft,
           ),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF3498DB).withAlpha(30)),
+          border: Border.all(color: SdColors.info.withAlpha(30)),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF3498DB).withAlpha(8),
+              color: SdColors.info.withAlpha(8),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -573,12 +571,12 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               padding: EdgeInsets.all(isMob ? 8 : 10),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF3498DB), Color(0xFF2980B9)],
+                  colors: [SdColors.info, SdColors.info],
                 ),
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF3498DB).withAlpha(40),
+                    color: SdColors.info.withAlpha(40),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -593,10 +591,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(name,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: isMob ? 14 : 17,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1A1A2E)),
+                          color: SdColors.ink),
                       overflow: TextOverflow.ellipsis),
                   SizedBox(height: 2),
                   Row(
@@ -604,14 +603,15 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF3498DB).withAlpha(15),
+                          color: SdColors.info.withAlpha(15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text('كود: $code',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: isMob ? 10 : 11,
                                 fontWeight: FontWeight.w600,
-                                color: const Color(0xFF3498DB))),
+                                color: SdColors.info)),
                       ),
                       SizedBox(width: 6),
                       Container(
@@ -621,7 +621,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(_translateType(type),
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: isMob ? 10 : 11,
                                 fontWeight: FontWeight.w600,
                                 color: _typeColor(type))),
@@ -631,14 +632,15 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                         padding: EdgeInsets.symmetric(
                             horizontal: isMob ? 6 : 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2ECC71).withAlpha(15),
+                          color: SdColors.success.withAlpha(15),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text('${_statementLines.length} حركة',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: isMob ? 10 : 11,
                                 fontWeight: FontWeight.bold,
-                                color: const Color(0xFF2ECC71))),
+                                color: SdColors.success)),
                       ),
                     ],
                   ),
@@ -659,9 +661,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           // ─── زر التبديل ───
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F7FA),
+              color: SdColors.surfaceAlt,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
+              border: Border.all(color: SdColors.ink, width: 1.2),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -681,25 +683,27 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F7FA),
+                color: SdColors.surfaceAlt,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE0E6ED), width: 1.5),
+                border: Border.all(color: SdColors.divider, width: 1.5),
               ),
               child: TextField(
                 controller: _searchController,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 14 : 15,
-                    color: AccountingTheme.textPrimary),
+                    color: SdColors.ink),
                 onChanged: (v) => setState(() => _searchQuery = v),
                 decoration: InputDecoration(
                   hintText: isJournalMode ? 'ابحث في القيود...' : 'ابحث عن حساب بالاسم أو الكود...',
-                  hintStyle: GoogleFonts.cairo(
+                  hintStyle: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: isMob ? 13 : 14,
                       color: const Color(0xFFADB5BD)),
                   prefixIcon: Padding(
                     padding: const EdgeInsets.only(right: 12, left: 8),
                     child: Icon(Icons.search_rounded,
-                        size: isMob ? 22 : 24, color: const Color(0xFF3498DB)),
+                        size: isMob ? 22 : 24, color: SdColors.info),
                   ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? GestureDetector(
@@ -710,12 +714,12 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                           child: Container(
                             margin: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE74C3C).withAlpha(15),
+                              color: SdColors.danger.withAlpha(15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(Icons.close_rounded,
                                 size: isMob ? 18 : 20,
-                                color: const Color(0xFFE74C3C)),
+                                color: SdColors.danger),
                           ),
                         )
                       : null,
@@ -743,9 +747,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       margin: EdgeInsets.fromLTRB(hPad, 0, hPad, 8),
       padding: EdgeInsets.all(isMob ? 12 : 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFE),
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE0E6ED)),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -756,13 +760,13 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               Container(
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3498DB).withAlpha(12),
+                  color: SdColors.info.withAlpha(12),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Icon(Icons.category_rounded, size: isMob ? 14 : 16, color: const Color(0xFF3498DB)),
+                child: Icon(Icons.category_rounded, size: isMob ? 14 : 16, color: SdColors.info),
               ),
               SizedBox(width: isMob ? 6 : 10),
-              Text('التصنيف:', style: GoogleFonts.cairo(fontSize: isMob ? 11 : 12, fontWeight: FontWeight.bold, color: const Color(0xFF2C3E50))),
+              Text('التصنيف:', style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 11 : 12, fontWeight: FontWeight.bold, color: SdColors.ink)),
               SizedBox(width: isMob ? 8 : 12),
               Expanded(
                 child: SingleChildScrollView(
@@ -771,21 +775,21 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     children: [
                       _filterChip('الكل', _selectedAccountType == null && _balanceFilter == 'all', () => setState(() { _selectedAccountType = null; _balanceFilter = 'all'; })),
                       SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('مدين', _balanceFilter == 'debit', () => setState(() => _balanceFilter = _balanceFilter == 'debit' ? 'all' : 'debit'), color: const Color(0xFFE74C3C)),
+                      _filterChip('مدين', _balanceFilter == 'debit', () => setState(() => _balanceFilter = _balanceFilter == 'debit' ? 'all' : 'debit'), color: SdColors.danger),
                       SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('دائن', _balanceFilter == 'credit', () => setState(() => _balanceFilter = _balanceFilter == 'credit' ? 'all' : 'credit'), color: const Color(0xFF2ECC71)),
+                      _filterChip('دائن', _balanceFilter == 'credit', () => setState(() => _balanceFilter = _balanceFilter == 'credit' ? 'all' : 'credit'), color: SdColors.success),
                       SizedBox(width: isMob ? 6 : 10),
-                      Container(width: 1.5, height: 22, decoration: BoxDecoration(color: const Color(0xFFE0E6ED), borderRadius: BorderRadius.circular(1))),
+                      Container(width: 1.5, height: 22, decoration: BoxDecoration(color: SdColors.divider, borderRadius: BorderRadius.circular(1))),
                       SizedBox(width: isMob ? 6 : 10),
-                      _filterChip('أصول', _selectedAccountType == 'Assets', () => setState(() => _selectedAccountType = _selectedAccountType == 'Assets' ? null : 'Assets'), color: Colors.blue, icon: Icons.business_center_outlined),
+                      _filterChip('أصول', _selectedAccountType == 'Assets', () => setState(() => _selectedAccountType = _selectedAccountType == 'Assets' ? null : 'Assets'), color: SdColors.info, icon: Icons.business_center_outlined),
                       SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('التزامات', _selectedAccountType == 'Liabilities', () => setState(() => _selectedAccountType = _selectedAccountType == 'Liabilities' ? null : 'Liabilities'), color: Colors.orange, icon: Icons.account_balance_outlined),
+                      _filterChip('التزامات', _selectedAccountType == 'Liabilities', () => setState(() => _selectedAccountType = _selectedAccountType == 'Liabilities' ? null : 'Liabilities'), color: SdColors.warning, icon: Icons.account_balance_outlined),
                       SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('حقوق ملكية', _selectedAccountType == 'Equity', () => setState(() => _selectedAccountType = _selectedAccountType == 'Equity' ? null : 'Equity'), color: Colors.purple, icon: Icons.shield_outlined),
+                      _filterChip('حقوق ملكية', _selectedAccountType == 'Equity', () => setState(() => _selectedAccountType = _selectedAccountType == 'Equity' ? null : 'Equity'), color: SdColors.platformBase, icon: Icons.shield_outlined),
                       SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('إيرادات', _selectedAccountType == 'Revenue', () => setState(() => _selectedAccountType = _selectedAccountType == 'Revenue' ? null : 'Revenue'), color: Colors.green, icon: Icons.trending_up_rounded),
+                      _filterChip('إيرادات', _selectedAccountType == 'Revenue', () => setState(() => _selectedAccountType = _selectedAccountType == 'Revenue' ? null : 'Revenue'), color: SdColors.success, icon: Icons.trending_up_rounded),
                       SizedBox(width: isMob ? 4 : 6),
-                      _filterChip('مصروفات', _selectedAccountType == 'Expenses', () => setState(() => _selectedAccountType = _selectedAccountType == 'Expenses' ? null : 'Expenses'), color: Colors.red, icon: Icons.trending_down_rounded),
+                      _filterChip('مصروفات', _selectedAccountType == 'Expenses', () => setState(() => _selectedAccountType = _selectedAccountType == 'Expenses' ? null : 'Expenses'), color: SdColors.danger, icon: Icons.trending_down_rounded),
                     ],
                   ),
                 ),
@@ -803,7 +807,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               _buildDateRangeFilter(isMob),
               if (_hasActiveFilter)
                 Material(
-                  color: const Color(0xFFE74C3C).withAlpha(10),
+                  color: SdColors.danger.withAlpha(10),
                   borderRadius: BorderRadius.circular(10),
                   child: InkWell(
                     onTap: () => setState(() {
@@ -821,9 +825,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.clear_all_rounded, size: isMob ? 14 : 16, color: const Color(0xFFE74C3C)),
+                          Icon(Icons.clear_all_rounded, size: isMob ? 14 : 16, color: SdColors.danger),
                           SizedBox(width: 4),
-                          Text('مسح الكل', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, fontWeight: FontWeight.w600, color: const Color(0xFFE74C3C))),
+                          Text('مسح الكل', style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, fontWeight: FontWeight.w600, color: SdColors.danger)),
                         ],
                       ),
                     ),
@@ -839,7 +843,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   /// chip فلتر
   Widget _filterChip(String label, bool selected, VoidCallback onTap, {Color? color, IconData? icon}) {
     final isMob = context.accR.isMobile;
-    final chipColor = color ?? const Color(0xFF3498DB);
+    final chipColor = color ?? SdColors.info;
     return Material(
       color: selected ? chipColor.withAlpha(18) : Colors.transparent,
       borderRadius: BorderRadius.circular(10),
@@ -859,10 +863,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: isMob ? 12 : 14, color: selected ? chipColor : const Color(0xFF95A5A6)),
+                Icon(icon, size: isMob ? 12 : 14, color: selected ? chipColor : SdColors.faint),
                 SizedBox(width: 4),
               ],
-              Text(label, style: GoogleFonts.cairo(
+              Text(label, style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : 11,
                 fontWeight: selected ? FontWeight.bold : FontWeight.w500,
                 color: selected ? chipColor : const Color(0xFF5D6D7E),
@@ -884,7 +889,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
+          border: Border.all(color: SdColors.ink, width: 1.2),
         ),
         child: Row(
           children: [
@@ -892,13 +897,13 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               child: TextField(
                 controller: _parentSearchController,
                 focusNode: _parentFocusNode,
-                style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.textPrimary),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, color: SdColors.ink),
                 onChanged: (_) => _showParentOverlay(),
                 onTap: () => _showParentOverlay(),
                 decoration: InputDecoration(
                   hintText: 'المجموعة...',
-                  hintStyle: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.textMuted),
-                  prefixIcon: Icon(Icons.folder_outlined, size: isMob ? 14 : 16, color: const Color(0xFF2C3E50)),
+                  hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, color: SdColors.faint),
+                  prefixIcon: Icon(Icons.folder_outlined, size: isMob ? 14 : 16, color: SdColors.ink),
                   prefixIconConstraints: BoxConstraints(minWidth: isMob ? 28 : 32),
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: isMob ? 6 : 7),
@@ -915,7 +920,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 },
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 4),
-                  child: Icon(Icons.close, size: isMob ? 13 : 15, color: AccountingTheme.danger),
+                  child: Icon(Icons.close, size: isMob ? 13 : 15, color: SdColors.danger),
                 ),
               ),
           ],
@@ -976,7 +981,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFE0E6ED)),
+                    border: Border.all(color: SdColors.divider),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
@@ -995,11 +1000,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                           child: Container(
                             padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: _selectedParentId == null ? AccountingTheme.neonBlue.withAlpha(15) : null,
-                              border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+                              color: _selectedParentId == null ? SdColors.primary.withAlpha(15) : null,
+                              border: Border(bottom: BorderSide(color: SdColors.divider)),
                             ),
-                            child: Text('كل المجموعات', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600,
-                                color: _selectedParentId == null ? AccountingTheme.neonBlue : AccountingTheme.textPrimary)),
+                            child: Text('كل المجموعات', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.w600,
+                                color: _selectedParentId == null ? SdColors.primary : SdColors.ink)),
                           ),
                         ),
                         ...parents.map((p) {
@@ -1015,22 +1020,22 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                             child: Container(
                               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                               decoration: BoxDecoration(
-                                color: isSel ? AccountingTheme.neonBlue.withAlpha(15) : null,
-                                border: Border(bottom: BorderSide(color: AccountingTheme.borderColor.withAlpha(50))),
+                                color: isSel ? SdColors.primary.withAlpha(15) : null,
+                                border: Border(bottom: BorderSide(color: SdColors.divider.withAlpha(50))),
                               ),
                               child: Row(
                                 children: [
                                   Container(
                                     padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                     decoration: BoxDecoration(
-                                      color: isSel ? AccountingTheme.neonBlue.withAlpha(25) : AccountingTheme.bgPrimary,
+                                      color: isSel ? SdColors.primary.withAlpha(25) : SdColors.ground,
                                       borderRadius: BorderRadius.circular(4),
                                     ),
-                                    child: Text(p['Code']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.bold, color: isSel ? AccountingTheme.neonBlue : AccountingTheme.textSecondary)),
+                                    child: Text(p['Code']?.toString() ?? '', style: TextStyle(fontFamily: 'Cairo', fontSize: 10, fontWeight: FontWeight.bold, color: isSel ? SdColors.primary : SdColors.muted)),
                                   ),
                                   SizedBox(width: 8),
-                                  Expanded(child: Text(p['Name']?.toString() ?? '', style: GoogleFonts.cairo(fontSize: 11, color: isSel ? AccountingTheme.neonBlue : AccountingTheme.textPrimary), overflow: TextOverflow.ellipsis)),
-                                  if (isSel) Icon(Icons.check_circle, size: 14, color: AccountingTheme.neonBlue),
+                                  Expanded(child: Text(p['Name']?.toString() ?? '', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: isSel ? SdColors.primary : SdColors.ink), overflow: TextOverflow.ellipsis)),
+                                  if (isSel) Icon(Icons.check_circle, size: 14, color: SdColors.primary),
                                 ],
                               ),
                             ),
@@ -1039,7 +1044,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                         if (parents.isEmpty)
                           Padding(
                             padding: EdgeInsets.all(16),
-                            child: Text('لا توجد نتائج', textAlign: TextAlign.center, style: GoogleFonts.cairo(fontSize: 11, color: AccountingTheme.textMuted)),
+                            child: Text('لا توجد نتائج', textAlign: TextAlign.center, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.faint)),
                           ),
                       ],
                     ),
@@ -1061,7 +1066,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       constraints: BoxConstraints(maxWidth: isMob ? 130 : 150),
       padding: EdgeInsets.symmetric(horizontal: isMob ? 8 : 10),
       decoration: BoxDecoration(
-        color: AccountingTheme.bgPrimary,
+        color: SdColors.ground,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.black87, width: 1.2),
       ),
@@ -1070,28 +1075,28 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           value: _balanceFilter,
           isExpanded: true,
           isDense: true,
-          style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.textPrimary),
-          icon: Icon(Icons.keyboard_arrow_down, size: isMob ? 16 : 18, color: AccountingTheme.textMuted),
+          style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, color: SdColors.ink),
+          icon: Icon(Icons.keyboard_arrow_down, size: isMob ? 16 : 18, color: SdColors.faint),
           items: [
             DropdownMenuItem(value: 'all', child: Row(children: [
-              Icon(Icons.account_balance_wallet_outlined, size: isMob ? 13 : 15, color: AccountingTheme.textMuted),
+              Icon(Icons.account_balance_wallet_outlined, size: isMob ? 13 : 15, color: SdColors.faint),
               SizedBox(width: 4),
-              Text('كل الأرصدة', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11)),
+              Text('كل الأرصدة', style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11)),
             ])),
             DropdownMenuItem(value: 'debit', child: Row(children: [
-              Icon(Icons.arrow_upward, size: isMob ? 13 : 15, color: AccountingTheme.danger),
+              Icon(Icons.arrow_upward, size: isMob ? 13 : 15, color: SdColors.danger),
               SizedBox(width: 4),
-              Text('مدين فقط', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.danger)),
+              Text('مدين فقط', style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, color: SdColors.danger)),
             ])),
             DropdownMenuItem(value: 'credit', child: Row(children: [
-              Icon(Icons.arrow_downward, size: isMob ? 13 : 15, color: AccountingTheme.success),
+              Icon(Icons.arrow_downward, size: isMob ? 13 : 15, color: SdColors.success),
               SizedBox(width: 4),
-              Text('دائن فقط', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.success)),
+              Text('دائن فقط', style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, color: SdColors.success)),
             ])),
             DropdownMenuItem(value: 'zero', child: Row(children: [
-              Icon(Icons.horizontal_rule, size: isMob ? 13 : 15, color: AccountingTheme.textMuted),
+              Icon(Icons.horizontal_rule, size: isMob ? 13 : 15, color: SdColors.faint),
               SizedBox(width: 4),
-              Text('رصيد صفر', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11)),
+              Text('رصيد صفر', style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11)),
             ])),
           ],
           onChanged: (v) => setState(() => _balanceFilter = v ?? 'all'),
@@ -1116,18 +1121,19 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
+              border: Border.all(color: SdColors.ink, width: 1.2),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.calendar_today_rounded, size: 14, color: const Color(0xFF2C3E50)),
+                Icon(Icons.calendar_today_rounded, size: 14, color: SdColors.ink),
                 SizedBox(width: 6),
                 Text(
                   _fromDate != null ? dateFmtShort.format(_fromDate!) : 'من',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 10 : 11,
-                    color: _fromDate != null ? const Color(0xFF2C3E50) : AccountingTheme.textMuted,
+                    color: _fromDate != null ? SdColors.ink : SdColors.faint,
                     fontWeight: _fromDate != null ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
@@ -1135,7 +1141,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   SizedBox(width: 4),
                   GestureDetector(
                     onTap: () => setState(() { _fromDate = null; }),
-                    child: Icon(Icons.close, size: 13, color: AccountingTheme.danger),
+                    child: Icon(Icons.close, size: 13, color: SdColors.danger),
                   ),
                 ],
               ],
@@ -1153,18 +1159,19 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
+              border: Border.all(color: SdColors.ink, width: 1.2),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.calendar_today_rounded, size: 14, color: const Color(0xFF2C3E50)),
+                Icon(Icons.calendar_today_rounded, size: 14, color: SdColors.ink),
                 SizedBox(width: 6),
                 Text(
                   _toDate != null ? dateFmtShort.format(_toDate!) : 'إلى',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 10 : 11,
-                    color: _toDate != null ? const Color(0xFF2C3E50) : AccountingTheme.textMuted,
+                    color: _toDate != null ? SdColors.ink : SdColors.faint,
                     fontWeight: _toDate != null ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
@@ -1172,7 +1179,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   SizedBox(width: 4),
                   GestureDetector(
                     onTap: () => setState(() { _toDate = null; }),
-                    child: Icon(Icons.close, size: 13, color: AccountingTheme.danger),
+                    child: Icon(Icons.close, size: 13, color: SdColors.danger),
                   ),
                 ],
               ],
@@ -1194,9 +1201,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         child: Theme(
           data: ThemeData.light().copyWith(
             colorScheme: ColorScheme.light(
-              primary: AccountingTheme.neonBlue,
+              primary: SdColors.primary,
               onPrimary: Colors.white,
-              surface: AccountingTheme.bgCard,
+              surface: SdColors.surface,
             ),
           ),
           child: child!,
@@ -1225,23 +1232,23 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       margin: EdgeInsets.fromLTRB(hPad, 2, hPad, 6),
       padding: EdgeInsets.symmetric(horizontal: isMob ? 10 : 14, vertical: isMob ? 6 : 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF3498DB).withAlpha(8),
+        color: SdColors.info.withAlpha(8),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF3498DB).withAlpha(30)),
+        border: Border.all(color: SdColors.info.withAlpha(30)),
       ),
       child: Row(
         children: [
-          Icon(Icons.filter_list_rounded, size: isMob ? 14 : 16, color: AccountingTheme.neonBlue),
+          Icon(Icons.filter_list_rounded, size: isMob ? 14 : 16, color: SdColors.primary),
           SizedBox(width: 6),
-          Text('نتائج البحث:', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.textSecondary)),
+          Text('نتائج البحث:', style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, color: SdColors.muted)),
           SizedBox(width: 4),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 8, vertical: 1),
             decoration: BoxDecoration(
-              color: AccountingTheme.neonBlue.withAlpha(30),
+              color: SdColors.primary.withAlpha(30),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text('$count حساب', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, fontWeight: FontWeight.bold, color: AccountingTheme.neonBlue)),
+            child: Text('$count حساب', style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, fontWeight: FontWeight.bold, color: SdColors.primary)),
           ),
           Spacer(),
           // إجمالي الأرصدة
@@ -1261,11 +1268,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     }
     return [
       if (totalDebit > 0) ...[
-        Text('مدين: ${_fmt(totalDebit)}', style: GoogleFonts.cairo(fontSize: isMob ? 9 : 10, fontWeight: FontWeight.bold, color: AccountingTheme.danger)),
+        Text('مدين: ${_fmt(totalDebit)}', style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 9 : 10, fontWeight: FontWeight.bold, color: SdColors.danger)),
         SizedBox(width: 8),
       ],
       if (totalCredit > 0)
-        Text('دائن: ${_fmt(totalCredit)}', style: GoogleFonts.cairo(fontSize: isMob ? 9 : 10, fontWeight: FontWeight.bold, color: AccountingTheme.success)),
+        Text('دائن: ${_fmt(totalCredit)}', style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 9 : 10, fontWeight: FontWeight.bold, color: SdColors.success)),
     ];
   }
 
@@ -1284,37 +1291,37 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _quickFilterButton('الكل', Icons.apps_rounded, const Color(0xFF3498DB), () {
+                  _quickFilterButton('الكل', Icons.apps_rounded, SdColors.info, () {
                     setState(() { _selectedAccountType = null; _balanceFilter = 'all'; _selectedParentId = null; _fromDate = null; _toDate = null; _parentSearchController.clear(); });
                   }, selected: noFilter),
                   SizedBox(width: 6),
-                  _quickFilterButton('مدين', Icons.arrow_upward_rounded, const Color(0xFFE74C3C), () {
+                  _quickFilterButton('مدين', Icons.arrow_upward_rounded, SdColors.danger, () {
                     setState(() { _balanceFilter = _balanceFilter == 'debit' ? 'all' : 'debit'; });
                   }, selected: _balanceFilter == 'debit'),
                   SizedBox(width: 6),
-                  _quickFilterButton('دائن', Icons.arrow_downward_rounded, const Color(0xFF2ECC71), () {
+                  _quickFilterButton('دائن', Icons.arrow_downward_rounded, SdColors.success, () {
                     setState(() { _balanceFilter = _balanceFilter == 'credit' ? 'all' : 'credit'; });
                   }, selected: _balanceFilter == 'credit'),
                   SizedBox(width: 10),
-                  Container(width: 1.5, height: 28, decoration: BoxDecoration(color: const Color(0xFFE0E6ED), borderRadius: BorderRadius.circular(1))),
+                  Container(width: 1.5, height: 28, decoration: BoxDecoration(color: SdColors.divider, borderRadius: BorderRadius.circular(1))),
                   SizedBox(width: 10),
-                  _quickFilterButton('أصول', Icons.business_center_outlined, Colors.blue, () {
+                  _quickFilterButton('أصول', Icons.business_center_outlined, SdColors.info, () {
                     setState(() { _selectedAccountType = _selectedAccountType == 'Assets' ? null : 'Assets'; });
                   }, selected: _selectedAccountType == 'Assets'),
                   SizedBox(width: 6),
-                  _quickFilterButton('إيرادات', Icons.trending_up_rounded, Colors.green, () {
+                  _quickFilterButton('إيرادات', Icons.trending_up_rounded, SdColors.success, () {
                     setState(() { _selectedAccountType = _selectedAccountType == 'Revenue' ? null : 'Revenue'; });
                   }, selected: _selectedAccountType == 'Revenue'),
                   SizedBox(width: 6),
-                  _quickFilterButton('مصروفات', Icons.trending_down_rounded, Colors.red, () {
+                  _quickFilterButton('مصروفات', Icons.trending_down_rounded, SdColors.danger, () {
                     setState(() { _selectedAccountType = _selectedAccountType == 'Expenses' ? null : 'Expenses'; });
                   }, selected: _selectedAccountType == 'Expenses'),
                   SizedBox(width: 6),
-                  _quickFilterButton('التزامات', Icons.account_balance_outlined, Colors.orange, () {
+                  _quickFilterButton('التزامات', Icons.account_balance_outlined, SdColors.warning, () {
                     setState(() { _selectedAccountType = _selectedAccountType == 'Liabilities' ? null : 'Liabilities'; });
                   }, selected: _selectedAccountType == 'Liabilities'),
                   SizedBox(width: 6),
-                  _quickFilterButton('حقوق ملكية', Icons.shield_outlined, Colors.purple, () {
+                  _quickFilterButton('حقوق ملكية', Icons.shield_outlined, SdColors.platformBase, () {
                     setState(() { _selectedAccountType = _selectedAccountType == 'Equity' ? null : 'Equity'; });
                   }, selected: _selectedAccountType == 'Equity'),
                 ],
@@ -1346,8 +1353,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF3498DB).withAlpha(12),
-                    const Color(0xFF8E44AD).withAlpha(8),
+                    SdColors.info.withAlpha(12),
+                    SdColors.platformBase.withAlpha(8),
                   ],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
@@ -1359,28 +1366,30 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFF3498DB).withAlpha(20),
-                      const Color(0xFF2980B9).withAlpha(15),
+                      SdColors.info.withAlpha(20),
+                      SdColors.info.withAlpha(15),
                     ],
                   ),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.account_balance_wallet_outlined,
                     size: isMob ? 36 : 48,
-                    color: const Color(0xFF3498DB).withAlpha(120)),
+                    color: SdColors.info.withAlpha(120)),
               ),
             ),
             SizedBox(height: isMob ? 20 : 28),
             Text('ابحث عن حساب',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 18 : 22,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF2C3E50))),
+                    color: SdColors.ink)),
             SizedBox(height: isMob ? 6 : 10),
             Text('اكتب اسم أو كود الحساب، أو استخدم الفلاتر أعلاه',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 12 : 14,
-                    color: const Color(0xFF95A5A6))),
+                    color: SdColors.faint)),
           ],
         ),
       ),
@@ -1395,7 +1404,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF2C3E50) : Colors.transparent,
+          color: active ? SdColors.ink : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -1403,7 +1412,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           children: [
             Icon(icon, size: 15, color: active ? Colors.white : const Color(0xFF5D6D7E)),
             const SizedBox(width: 5),
-            Text(label, style: GoogleFonts.cairo(
+            Text(label, style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: 12, fontWeight: FontWeight.bold,
               color: active ? Colors.white : const Color(0xFF5D6D7E),
             )),
@@ -1423,25 +1433,25 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       margin: EdgeInsets.fromLTRB(hPad, 2, hPad, 6),
       padding: EdgeInsets.symmetric(horizontal: isMob ? 10 : 14, vertical: isMob ? 6 : 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF8E44AD).withAlpha(8),
+        color: SdColors.platformBase.withAlpha(8),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF8E44AD).withAlpha(30)),
+        border: Border.all(color: SdColors.platformBase.withAlpha(30)),
       ),
       child: Row(
         children: [
-          Icon(Icons.receipt_long_rounded, size: isMob ? 14 : 16, color: const Color(0xFF8E44AD)),
+          Icon(Icons.receipt_long_rounded, size: isMob ? 14 : 16, color: SdColors.platformBase),
           const SizedBox(width: 6),
-          Text('نتائج القيود:', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: AccountingTheme.textSecondary)),
+          Text('نتائج القيود:', style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, color: SdColors.muted)),
           const SizedBox(width: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
             decoration: BoxDecoration(
-              color: const Color(0xFF8E44AD).withAlpha(25),
+              color: SdColors.platformBase.withAlpha(25),
               borderRadius: BorderRadius.circular(10),
             ),
             child: _isSearchingJournals
-                ? SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFF8E44AD)))
-                : Text('$count قيد', style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, fontWeight: FontWeight.bold, color: const Color(0xFF8E44AD))),
+                ? SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: SdColors.platformBase))
+                : Text('$count قيد', style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, fontWeight: FontWeight.bold, color: SdColors.platformBase)),
           ),
         ],
       ),
@@ -1454,7 +1464,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     final hPad = isMob ? 8.0 : 24.0;
 
     if (_isSearchingJournals) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF8E44AD)));
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2, color: SdColors.platformBase));
     }
 
     if (_journalSearchResults.isEmpty && _searchQuery.isNotEmpty) {
@@ -1462,9 +1472,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.search_off, size: 40, color: AccountingTheme.textMuted.withAlpha(60)),
+            Icon(Icons.search_off, size: 40, color: SdColors.faint.withAlpha(60)),
             const SizedBox(height: 8),
-            Text('لا توجد قيود مطابقة', style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+            Text('لا توجد قيود مطابقة', style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
           ],
         ),
       );
@@ -1490,7 +1500,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: selected ? color : const Color(0xFF2C3E50),
+              color: selected ? color : SdColors.ink,
               width: selected ? 1.5 : 1.2,
             ),
           ),
@@ -1499,7 +1509,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
             children: [
               Icon(icon, size: isMob ? 14 : 16, color: selected ? color : color.withAlpha(160)),
               SizedBox(width: 6),
-              Text(label, style: GoogleFonts.cairo(
+              Text(label, style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: isMob ? 11 : 12,
                   fontWeight: selected ? FontWeight.bold : FontWeight.w600,
                   color: selected ? color : color.withAlpha(160))),
@@ -1529,16 +1540,16 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           Padding(
             padding: const EdgeInsets.only(bottom: 8, top: 4),
             child: Row(children: [
-              Icon(Icons.account_balance_wallet_outlined, size: 16, color: const Color(0xFF3498DB)),
+              Icon(Icons.account_balance_wallet_outlined, size: 16, color: SdColors.info),
               const SizedBox(width: 6),
-              Text('حسابات (${_filteredAccounts.length})', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF2C3E50))),
+              Text('حسابات (${_filteredAccounts.length})', style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold, color: SdColors.ink)),
             ]),
           ),
           ..._filteredAccounts.take(10).toList().asMap().entries.map((e) => _buildAccountCard(e.value, e.key)),
           if (_filteredAccounts.length > 10)
             Center(child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text('و ${_filteredAccounts.length - 10} حساب آخر...', style: GoogleFonts.cairo(fontSize: 11, color: AccountingTheme.textMuted)),
+              child: Text('و ${_filteredAccounts.length - 10} حساب آخر...', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.faint)),
             )),
           const SizedBox(height: 12),
         ],
@@ -1546,27 +1557,27 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Row(children: [
-            Icon(Icons.receipt_long_rounded, size: 16, color: const Color(0xFF8E44AD)),
+            Icon(Icons.receipt_long_rounded, size: 16, color: SdColors.platformBase),
             const SizedBox(width: 6),
-            Text('قيود محاسبية', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF2C3E50))),
+            Text('قيود محاسبية', style: TextStyle(fontFamily: 'Cairo', fontSize: 13, fontWeight: FontWeight.bold, color: SdColors.ink)),
             if (_isSearchingJournals) ...[
               const SizedBox(width: 8),
-              SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: const Color(0xFF8E44AD))),
+              SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: SdColors.platformBase)),
             ] else ...[
               const SizedBox(width: 6),
-              Text('(${_journalSearchResults.length})', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.textMuted)),
+              Text('(${_journalSearchResults.length})', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.faint)),
             ],
           ]),
         ),
         if (_isSearchingJournals)
           const Padding(
             padding: EdgeInsets.all(20),
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF8E44AD))),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: SdColors.platformBase)),
           )
         else if (_journalSearchResults.isEmpty)
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Center(child: Text('لا توجد قيود مطابقة', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.textMuted))),
+            child: Center(child: Text('لا توجد قيود مطابقة', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.faint))),
           )
         else
           ..._journalSearchResults.map((entry) => _buildJournalResultCard(entry)),
@@ -1604,7 +1615,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF8E44AD).withAlpha(40)),
+          border: Border.all(color: SdColors.platformBase.withAlpha(40)),
           boxShadow: [BoxShadow(color: Colors.black.withAlpha(4), blurRadius: 4, offset: const Offset(0, 1))],
         ),
         child: Column(
@@ -1614,32 +1625,32 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
             Row(children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: const Color(0xFF8E44AD).withAlpha(15), borderRadius: BorderRadius.circular(6)),
-                child: Text(entryNum, style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF8E44AD))),
+                decoration: BoxDecoration(color: SdColors.platformBase.withAlpha(15), borderRadius: BorderRadius.circular(6)),
+                child: Text(entryNum, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: SdColors.platformBase)),
               ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
-                  color: (status == 'Posted' ? AccountingTheme.success : status == 'Voided' ? AccountingTheme.danger : AccountingTheme.warning).withAlpha(15),
+                  color: (status == 'Posted' ? SdColors.success : status == 'Voided' ? SdColors.danger : SdColors.warning).withAlpha(15),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   status == 'Posted' ? 'مرحّل' : status == 'Voided' ? 'ملغي' : 'مسودة',
-                  style: GoogleFonts.cairo(fontSize: 9, fontWeight: FontWeight.w600,
-                      color: status == 'Posted' ? AccountingTheme.success : status == 'Voided' ? AccountingTheme.danger : AccountingTheme.warning),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 9, fontWeight: FontWeight.w600,
+                      color: status == 'Posted' ? SdColors.success : status == 'Voided' ? SdColors.danger : SdColors.warning),
                 ),
               ),
               const Spacer(),
-              Icon(Icons.calendar_today, size: 10, color: AccountingTheme.textMuted),
+              Icon(Icons.calendar_today, size: 10, color: SdColors.faint),
               const SizedBox(width: 3),
-              Text(formattedDate, style: GoogleFonts.cairo(fontSize: 10, color: AccountingTheme.textMuted)),
+              Text(formattedDate, style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: SdColors.faint)),
             ]),
             // البيان
             if (desc.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
-                child: Text(desc, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF2C3E50)), maxLines: 2, overflow: TextOverflow.ellipsis),
+                child: Text(desc, style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.w600, color: SdColors.ink), maxLines: 2, overflow: TextOverflow.ellipsis),
               ),
             // الحسابات المتأثرة
             if (lines.isNotEmpty)
@@ -1653,7 +1664,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(color: const Color(0xFFF0F2F8), borderRadius: BorderRadius.circular(4)),
-                      child: Text(accName, style: GoogleFonts.cairo(fontSize: 9, color: const Color(0xFF5D6D7E)), overflow: TextOverflow.ellipsis),
+                      child: Text(accName, style: TextStyle(fontFamily: 'Cairo', fontSize: 9, color: const Color(0xFF5D6D7E)), overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
                 ),
@@ -1661,9 +1672,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
             const SizedBox(height: 8),
             // مدين + دائن
             Row(children: [
-              Text('مدين: ${_fmt(totalDebit)}', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AccountingTheme.danger)),
+              Text('مدين: ${_fmt(totalDebit)}', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: SdColors.danger)),
               const SizedBox(width: 16),
-              Text('دائن: ${_fmt(totalCredit)}', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AccountingTheme.success)),
+              Text('دائن: ${_fmt(totalCredit)}', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: SdColors.success)),
             ]),
           ],
         ),
@@ -1675,7 +1686,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     if (_isLoading) {
       return const Center(
           child: CircularProgressIndicator(
-              color: AccountingTheme.neonBlue, strokeWidth: 2));
+              color: SdColors.primary, strokeWidth: 2));
     }
     if (_errorMessage != null) {
       return Center(
@@ -1683,8 +1694,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         padding: EdgeInsets.all(context.accR.spaceXL),
         child: Text(_errorMessage!,
             textAlign: TextAlign.center,
-            style: GoogleFonts.cairo(
-                color: AccountingTheme.danger,
+            style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.danger,
                 fontSize: context.accR.financialSmall)),
       ));
     }
@@ -1694,9 +1706,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.search_off, size: 40, color: AccountingTheme.textMuted.withAlpha(60)),
+            Icon(Icons.search_off, size: 40, color: SdColors.faint.withAlpha(60)),
             const SizedBox(height: 8),
-            Text('لا توجد نتائج', style: GoogleFonts.cairo(color: AccountingTheme.textMuted, fontSize: context.accR.financialSmall)),
+            Text('لا توجد نتائج', style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: context.accR.financialSmall)),
           ],
         ),
       );
@@ -1722,7 +1734,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFE0E6ED)),
+          border: Border.all(color: SdColors.divider),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withAlpha(6),
@@ -1754,18 +1766,18 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   /// رأس الجدول
   /// فاصل عمودي للجدول
   Widget _vDivider({double height = 28, Color? color}) {
-    return Container(width: 1, height: height, color: color ?? AccountingTheme.borderColor.withAlpha(120));
+    return Container(width: 1, height: height, color: color ?? SdColors.divider.withAlpha(120));
   }
 
   Widget _buildAccountTableHeader() {
     final ar = context.accR;
-    final s = GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: Colors.white);
+    final s = TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.bold, color: Colors.white);
     final div = Container(width: 1, height: 28, color: Colors.white.withAlpha(40));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF2C3E50), Color(0xFF34495E)],
+          colors: [SdColors.ink, Color(0xFF34495E)],
           begin: Alignment.centerRight,
           end: Alignment.centerLeft,
         ),
@@ -1804,7 +1816,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     final debitTotal = ((a['TotalDebit'] ?? (balance > 0 ? balance : 0)) as num).toDouble();
     final creditTotal = ((a['TotalCredit'] ?? (balance < 0 ? balance.abs() : 0)) as num).toDouble();
     final isActive = a['IsActive'] ?? true;
-    final bgColor = index.isEven ? Colors.white : const Color(0xFFF8FAFE);
+    final bgColor = index.isEven ? Colors.white : SdColors.surfaceAlt;
     const divColor = Color(0xFFE8ECF0);
 
     return Material(
@@ -1812,7 +1824,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       child: InkWell(
         onTap: () => _loadStatement(a),
         hoverColor: const Color(0xFFEBF5FF),
-        splashColor: const Color(0xFF3498DB).withAlpha(20),
+        splashColor: SdColors.info.withAlpha(20),
         child: Container(
           decoration: const BoxDecoration(
             border: Border(bottom: BorderSide(color: Color(0xFFEEF0F4))),
@@ -1823,14 +1835,14 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 // #
                 SizedBox(
                   width: 40,
-                  child: Center(child: Text('${index + 1}', style: GoogleFonts.cairo(fontSize: ar.small, color: AccountingTheme.textMuted))),
+                  child: Center(child: Text('${index + 1}', style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, color: SdColors.faint))),
                 ),
                 _vDivider(height: double.infinity, color: divColor),
                 // اسم الحساب
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-                    child: Text(name, overflow: TextOverflow.ellipsis, style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.w600, color: AccountingTheme.textPrimary)),
+                    child: Text(name, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.w600, color: SdColors.ink)),
                   ),
                 ),
                 _vDivider(height: double.infinity, color: divColor),
@@ -1844,7 +1856,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                         color: _typeColor(type).withAlpha(15),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: Text(_translateType(type), style: GoogleFonts.cairo(fontSize: ar.small - 1, fontWeight: FontWeight.w600, color: _typeColor(type))),
+                      child: Text(_translateType(type), style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small - 1, fontWeight: FontWeight.w600, color: _typeColor(type))),
                     ),
                   ),
                 ),
@@ -1854,7 +1866,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   width: 110,
                   child: Center(
                     child: Text(debitTotal > 0 ? _fmt(debitTotal) : '-',
-                        style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: debitTotal > 0 ? AccountingTheme.danger : AccountingTheme.textMuted)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.bold, color: debitTotal > 0 ? SdColors.danger : SdColors.faint)),
                   ),
                 ),
                 _vDivider(height: double.infinity, color: divColor),
@@ -1863,7 +1875,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   width: 110,
                   child: Center(
                     child: Text(creditTotal > 0 ? _fmt(creditTotal) : '-',
-                        style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: creditTotal > 0 ? AccountingTheme.success : AccountingTheme.textMuted)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.bold, color: creditTotal > 0 ? SdColors.success : SdColors.faint)),
                   ),
                 ),
                 _vDivider(height: double.infinity, color: divColor),
@@ -1874,13 +1886,13 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: (balance == 0 ? AccountingTheme.textMuted : (balance > 0 ? AccountingTheme.danger : AccountingTheme.success)).withAlpha(12),
+                        color: (balance == 0 ? SdColors.faint : (balance > 0 ? SdColors.danger : SdColors.success)).withAlpha(12),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         balance == 0 ? '0' : '${_fmt(balance.abs())} ${balance > 0 ? 'مدين' : 'دائن'}',
-                        style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold,
-                            color: balance == 0 ? AccountingTheme.textMuted : (balance > 0 ? AccountingTheme.danger : AccountingTheme.success)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.bold,
+                            color: balance == 0 ? SdColors.faint : (balance > 0 ? SdColors.danger : SdColors.success)),
                       ),
                     ),
                   ),
@@ -1894,8 +1906,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                       width: 8, height: 8,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isActive == true ? AccountingTheme.success : AccountingTheme.danger,
-                        boxShadow: [BoxShadow(color: (isActive == true ? AccountingTheme.success : AccountingTheme.danger).withAlpha(80), blurRadius: 4)],
+                        color: isActive == true ? SdColors.success : SdColors.danger,
+                        boxShadow: [BoxShadow(color: (isActive == true ? SdColors.success : SdColors.danger).withAlpha(80), blurRadius: 4)],
                       ),
                     ),
                   ),
@@ -1926,7 +1938,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E6ED)),
+          border: Border.all(color: SdColors.divider),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withAlpha(5),
@@ -1943,48 +1955,48 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: AccountingTheme.neonBlue.withAlpha(20), borderRadius: BorderRadius.circular(6)),
-                  child: Text(code, style: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.bold, color: AccountingTheme.neonBlue)),
+                  decoration: BoxDecoration(color: SdColors.primary.withAlpha(20), borderRadius: BorderRadius.circular(6)),
+                  child: Text(code, style: TextStyle(fontFamily: 'Cairo', fontSize: 10, fontWeight: FontWeight.bold, color: SdColors.primary)),
                 ),
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                   decoration: BoxDecoration(color: _typeColor(type).withAlpha(15), borderRadius: BorderRadius.circular(4)),
-                  child: Text(_translateType(type), style: GoogleFonts.cairo(fontSize: 9, fontWeight: FontWeight.w600, color: _typeColor(type))),
+                  child: Text(_translateType(type), style: TextStyle(fontFamily: 'Cairo', fontSize: 9, fontWeight: FontWeight.w600, color: _typeColor(type))),
                 ),
                 const Spacer(),
-                Text('#${index + 1}', style: GoogleFonts.cairo(fontSize: 9, color: AccountingTheme.textMuted)),
+                Text('#${index + 1}', style: TextStyle(fontFamily: 'Cairo', fontSize: 9, color: SdColors.faint)),
               ],
             ),
             const SizedBox(height: 6),
             // اسم الحساب
-            Text(name, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600, color: AccountingTheme.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(name, style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.w600, color: SdColors.ink), maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 8),
             // صف ثاني: مدين + دائن + صافي
             Row(
               children: [
-                Expanded(child: _mobileAccountCell('المدين', debitTotal, AccountingTheme.danger)),
+                Expanded(child: _mobileAccountCell('المدين', debitTotal, SdColors.danger)),
                 const SizedBox(width: 4),
-                Expanded(child: _mobileAccountCell('الدائن', creditTotal, AccountingTheme.success)),
+                Expanded(child: _mobileAccountCell('الدائن', creditTotal, SdColors.success)),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                     decoration: BoxDecoration(
-                      color: (balance == 0 ? AccountingTheme.textMuted : (balance > 0 ? AccountingTheme.danger : AccountingTheme.success)).withAlpha(12),
+                      color: (balance == 0 ? SdColors.faint : (balance > 0 ? SdColors.danger : SdColors.success)).withAlpha(12),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE0E6ED)),
+                      border: Border.all(color: SdColors.divider),
                     ),
                     child: Column(
                       children: [
-                        Text('الصافي', style: GoogleFonts.cairo(fontSize: 8, color: AccountingTheme.textMuted)),
+                        Text('الصافي', style: TextStyle(fontFamily: 'Cairo', fontSize: 8, color: SdColors.faint)),
                         Text(balance == 0 ? '0' : _fmt(balance.abs()),
-                            style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold,
-                                color: balance == 0 ? AccountingTheme.textMuted : (balance > 0 ? AccountingTheme.danger : AccountingTheme.success))),
+                            style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold,
+                                color: balance == 0 ? SdColors.faint : (balance > 0 ? SdColors.danger : SdColors.success))),
                         if (balance != 0)
                           Text(balance > 0 ? 'مدين' : 'دائن',
-                              style: GoogleFonts.cairo(fontSize: 8, fontWeight: FontWeight.w600,
-                                  color: balance > 0 ? AccountingTheme.danger : AccountingTheme.success)),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 8, fontWeight: FontWeight.w600,
+                                  color: balance > 0 ? SdColors.danger : SdColors.success)),
                       ],
                     ),
                   ),
@@ -2001,15 +2013,15 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       decoration: BoxDecoration(
-        color: value > 0 ? color.withAlpha(10) : const Color(0xFFF8FAFE),
+        color: value > 0 ? color.withAlpha(10) : SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE0E6ED)),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         children: [
-          Text(label, style: GoogleFonts.cairo(fontSize: 8, color: color.withAlpha(150))),
+          Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 8, color: color.withAlpha(150))),
           Text(value > 0 ? _fmt(value) : '-',
-              style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: value > 0 ? color : AccountingTheme.textMuted)),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: value > 0 ? color : SdColors.faint)),
         ],
       ),
     );
@@ -2018,12 +2030,12 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   /// لون التصنيف
   Color _typeColor(String type) {
     switch (type) {
-      case 'Assets': return Colors.blue;
-      case 'Liabilities': return Colors.orange;
-      case 'Equity': return Colors.purple;
-      case 'Revenue': return Colors.green;
-      case 'Expenses': return Colors.red;
-      default: return AccountingTheme.textMuted;
+      case 'Assets': return SdColors.info;
+      case 'Liabilities': return SdColors.warning;
+      case 'Equity': return SdColors.platformBase;
+      case 'Revenue': return SdColors.success;
+      case 'Expenses': return SdColors.danger;
+      default: return SdColors.faint;
     }
   }
 
@@ -2034,15 +2046,16 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceS),
-      color: AccountingTheme.bgPrimary,
+      color: SdColors.ground,
       child: isMob
           ? Row(
               children: [
                 Text('الفترة:',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: AccountingTheme.textSecondary)),
+                        color: SdColors.muted)),
                 const SizedBox(width: 6),
                 Expanded(
                   child: _dateBtn(
@@ -2056,7 +2069,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 4),
                   child: Icon(Icons.arrow_back,
-                      size: 12, color: AccountingTheme.textMuted),
+                      size: 12, color: SdColors.faint),
                 ),
                 Expanded(
                   child: _dateBtn(
@@ -2094,11 +2107,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     child: Container(
                       padding: EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: AccountingTheme.danger.withAlpha(20),
+                        color: SdColors.danger.withAlpha(20),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Icon(Icons.close,
-                          size: 14, color: AccountingTheme.danger),
+                          size: 14, color: SdColors.danger),
                     ),
                   ),
                 ],
@@ -2107,10 +2120,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           : Row(
               children: [
                 Text('الفترة:',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: ar.financialSmall,
                         fontWeight: FontWeight.w600,
-                        color: AccountingTheme.textSecondary)),
+                        color: SdColors.muted)),
                 SizedBox(width: ar.spaceM),
                 _dateBtn(
                   label: _fromDate != null
@@ -2121,8 +2135,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 ),
                 SizedBox(width: ar.spaceS),
                 Text('←',
-                    style: GoogleFonts.cairo(
-                        color: AccountingTheme.textMuted, fontSize: ar.body)),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.faint, fontSize: ar.body)),
                 SizedBox(width: ar.spaceS),
                 _dateBtn(
                   label: _toDate != null
@@ -2165,19 +2180,20 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                       padding: EdgeInsets.symmetric(
                           horizontal: ar.spaceS, vertical: ar.spaceXS),
                       decoration: BoxDecoration(
-                        color: AccountingTheme.danger.withAlpha(20),
+                        color: SdColors.danger.withAlpha(20),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.close,
-                              size: ar.iconS, color: AccountingTheme.danger),
+                              size: ar.iconS, color: SdColors.danger),
                           SizedBox(width: ar.spaceXS),
                           Text('مسح',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: ar.small,
-                                  color: AccountingTheme.danger)),
+                                  color: SdColors.danger)),
                         ],
                       ),
                     ),
@@ -2191,7 +2207,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
   Widget _quickDateChip(String label, VoidCallback onTap) {
     return Material(
-      color: const Color(0xFF3498DB).withAlpha(10),
+      color: SdColors.info.withAlpha(10),
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
@@ -2200,9 +2216,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
+            border: Border.all(color: SdColors.ink, width: 1.2),
           ),
-          child: Text(label, style: GoogleFonts.cairo(fontSize: 11, color: const Color(0xFF3498DB), fontWeight: FontWeight.w600)),
+          child: Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.info, fontWeight: FontWeight.w600)),
         ),
       ),
     );
@@ -2220,11 +2236,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
             horizontal: context.accR.spaceM, vertical: context.accR.spaceXS),
         decoration: BoxDecoration(
           color: hasValue
-              ? AccountingTheme.neonBlue.withAlpha(15)
+              ? SdColors.primary.withAlpha(15)
               : Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-              color: const Color(0xFF2C3E50),
+              color: SdColors.ink,
               width: 1.2),
         ),
         child: Row(
@@ -2233,15 +2249,16 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
             Icon(Icons.calendar_today,
                 size: context.accR.iconS,
                 color: hasValue
-                    ? AccountingTheme.neonBlue
-                    : AccountingTheme.textMuted),
+                    ? SdColors.primary
+                    : SdColors.faint),
             SizedBox(width: context.accR.spaceXS),
             Text(label,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: context.accR.small,
                   color: hasValue
-                      ? AccountingTheme.neonBlue
-                      : AccountingTheme.textMuted,
+                      ? SdColors.primary
+                      : SdColors.faint,
                 )),
           ],
         ),
@@ -2263,9 +2280,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       padding: EdgeInsets.symmetric(
           horizontal: isMob ? 10 : 24, vertical: isMob ? 8 : 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFE),
+        color: SdColors.surfaceAlt,
         border: Border(
-          bottom: BorderSide(color: const Color(0xFFE0E6ED)),
+          bottom: BorderSide(color: SdColors.divider),
         ),
       ),
       child: isMob
@@ -2273,21 +2290,21 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               children: [
                 Expanded(
                     child: _mobileSummaryChip(
-                        'المدين', totalDebit, AccountingTheme.danger)),
+                        'المدين', totalDebit, SdColors.danger)),
                 const SizedBox(width: 4),
                 Expanded(
                     child: _mobileSummaryChip(
-                        'الدائن', totalCredit, AccountingTheme.success)),
+                        'الدائن', totalCredit, SdColors.success)),
                 const SizedBox(width: 4),
                 Expanded(
                   child: _mobileSummaryChip(
                     'الرصيد',
                     balance.abs(),
                     balance == 0
-                        ? AccountingTheme.textMuted
+                        ? SdColors.faint
                         : (balance > 0
-                            ? AccountingTheme.danger
-                            : AccountingTheme.success),
+                            ? SdColors.danger
+                            : SdColors.success),
                     suffix:
                         balance == 0 ? '' : (balance > 0 ? '(مدين)' : '(دائن)'),
                   ),
@@ -2298,12 +2315,12 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               children: [
                 Expanded(
                   child: _summaryChip(
-                      'مجموع المدين', totalDebit, AccountingTheme.danger),
+                      'مجموع المدين', totalDebit, SdColors.danger),
                 ),
                 SizedBox(width: ar.spaceS),
                 Expanded(
                   child: _summaryChip(
-                      'مجموع الدائن', totalCredit, AccountingTheme.success),
+                      'مجموع الدائن', totalCredit, SdColors.success),
                 ),
                 SizedBox(width: ar.spaceS),
                 Expanded(
@@ -2311,10 +2328,10 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     'الرصيد',
                     balance.abs(),
                     balance == 0
-                        ? AccountingTheme.textMuted
+                        ? SdColors.faint
                         : (balance > 0
-                            ? AccountingTheme.danger
-                            : AccountingTheme.success),
+                            ? SdColors.danger
+                            : SdColors.success),
                     suffix:
                         balance == 0 ? 'مسدد' : (balance > 0 ? 'مدين' : 'دائن'),
                   ),
@@ -2331,20 +2348,22 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       decoration: BoxDecoration(
         color: color.withAlpha(10),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
+        border: Border.all(color: SdColors.ink, width: 1.2),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 8, fontWeight: FontWeight.w600, color: color)),
           Text('${_fmt(value)} د.ع',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: 10, fontWeight: FontWeight.bold, color: color),
               overflow: TextOverflow.ellipsis),
           Text(suffix ?? '',
-              style: GoogleFonts.cairo(fontSize: 8, color: color)),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 8, color: color)),
         ],
       ),
     );
@@ -2357,24 +2376,27 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       decoration: BoxDecoration(
         color: color.withAlpha(10),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
+        border: Border.all(color: SdColors.ink, width: 1.2),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: context.accR.small,
                   fontWeight: FontWeight.w600,
                   color: color)),
           const SizedBox(height: 2),
           Text('${_fmt(value)} د.ع',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: context.accR.financialSmall,
                   fontWeight: FontWeight.bold,
                   color: color)),
           Text(suffix != null ? '($suffix)' : '',
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: context.accR.small, color: color)),
         ],
       ),
@@ -2388,7 +2410,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     if (_isLoadingStatement) {
       return const Center(
           child: CircularProgressIndicator(
-              color: AccountingTheme.neonBlue, strokeWidth: 2));
+              color: SdColors.primary, strokeWidth: 2));
     }
 
     if (_statementLines.isEmpty) {
@@ -2398,18 +2420,20 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           children: [
             Icon(Icons.inbox_outlined,
                 size: isMob ? 36 : ar.iconXL,
-                color: AccountingTheme.textMuted.withAlpha(60)),
+                color: SdColors.faint.withAlpha(60)),
             SizedBox(height: ar.spaceM),
             Text('لا توجد حركات لهذا الحساب',
-                style: GoogleFonts.cairo(
-                    color: AccountingTheme.textMuted,
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.faint,
                     fontSize: isMob ? 12 : ar.financialSmall)),
             if (_fromDate != null || _toDate != null)
               Padding(
                 padding: EdgeInsets.only(top: 6),
                 child: Text('جرّب تغيير فلتر التاريخ',
-                    style: GoogleFonts.cairo(
-                        color: AccountingTheme.textMuted.withAlpha(100),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.faint.withAlpha(100),
                         fontSize: isMob ? 10 : ar.small)),
               ),
           ],
@@ -2426,7 +2450,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           _buildStmtFilterBar(true),
           Expanded(
             child: lines.isEmpty
-                ? Center(child: Text('لا توجد نتائج', style: GoogleFonts.cairo(color: AccountingTheme.textMuted)))
+                ? Center(child: Text('لا توجد نتائج', style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)))
                 : ListView.builder(
                     padding: EdgeInsets.all(8),
                     itemCount: lines.length,
@@ -2451,7 +2475,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE0E6ED)),
+                    border: Border.all(color: SdColors.divider),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withAlpha(6),
@@ -2467,7 +2491,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                         _buildStmtTableHeader(),
                         Expanded(
                           child: lines.isEmpty
-                              ? Center(child: Text('لا توجد نتائج', style: GoogleFonts.cairo(color: AccountingTheme.textMuted)))
+                              ? Center(child: Text('لا توجد نتائج', style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)))
                               : ScrollbarTheme(
                                   data: ScrollbarThemeData(
                                     thumbColor: WidgetStateProperty.all(Colors.black38),
@@ -2534,7 +2558,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         color: Colors.white,
         elevation: 3,
         shadowColor: Colors.black.withAlpha(20),
-        shape: CircleBorder(side: BorderSide(color: const Color(0xFFE0E6ED))),
+        shape: CircleBorder(side: BorderSide(color: SdColors.divider)),
         child: InkWell(
           onTap: onTap,
           customBorder: const CircleBorder(),
@@ -2556,31 +2580,31 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       padding: EdgeInsets.fromLTRB(hPad, 6, hPad, 6),
       child: Row(
         children: [
-          Icon(Icons.filter_alt_outlined, size: isMob ? 14 : 16, color: AccountingTheme.textSecondary),
+          Icon(Icons.filter_alt_outlined, size: isMob ? 14 : 16, color: SdColors.muted),
           SizedBox(width: 6),
           _stmtFilterChip('الكل', _stmtTypeFilter == 'all', () => setState(() => _stmtTypeFilter = 'all')),
           SizedBox(width: isMob ? 4 : 6),
-          _stmtFilterChip('قبض', _stmtTypeFilter == 'receipt', () => setState(() => _stmtTypeFilter = _stmtTypeFilter == 'receipt' ? 'all' : 'receipt'), color: AccountingTheme.success),
+          _stmtFilterChip('قبض', _stmtTypeFilter == 'receipt', () => setState(() => _stmtTypeFilter = _stmtTypeFilter == 'receipt' ? 'all' : 'receipt'), color: SdColors.success),
           SizedBox(width: isMob ? 4 : 6),
-          _stmtFilterChip('صرف', _stmtTypeFilter == 'payment', () => setState(() => _stmtTypeFilter = _stmtTypeFilter == 'payment' ? 'all' : 'payment'), color: AccountingTheme.danger),
+          _stmtFilterChip('صرف', _stmtTypeFilter == 'payment', () => setState(() => _stmtTypeFilter = _stmtTypeFilter == 'payment' ? 'all' : 'payment'), color: SdColors.danger),
           SizedBox(width: isMob ? 8 : 14),
           // ─── مربع بحث القيود ───
           Container(
             width: isMob ? 160 : 250,
             height: isMob ? 30 : 32,
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F7FA),
+              color: SdColors.surfaceAlt,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF2C3E50), width: 1.2),
+              border: Border.all(color: SdColors.ink, width: 1.2),
             ),
             child: TextField(
               controller: _stmtSearchController,
-              style: GoogleFonts.cairo(fontSize: isMob ? 11 : 12, color: AccountingTheme.textPrimary),
+              style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 11 : 12, color: SdColors.ink),
               onChanged: (v) => setState(() => _stmtSearchQuery = v),
               decoration: InputDecoration(
                 hintText: 'ابحث في القيود...',
-                hintStyle: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, color: const Color(0xFFADB5BD)),
-                prefixIcon: Icon(Icons.search_rounded, size: isMob ? 16 : 18, color: const Color(0xFF3498DB)),
+                hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, color: const Color(0xFFADB5BD)),
+                prefixIcon: Icon(Icons.search_rounded, size: isMob ? 16 : 18, color: SdColors.info),
                 prefixIconConstraints: BoxConstraints(minWidth: isMob ? 30 : 36),
                 suffixIcon: _stmtSearchQuery.isNotEmpty
                     ? GestureDetector(
@@ -2588,7 +2612,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                           _stmtSearchController.clear();
                           setState(() => _stmtSearchQuery = '');
                         },
-                        child: Icon(Icons.close_rounded, size: isMob ? 14 : 16, color: AccountingTheme.danger),
+                        child: Icon(Icons.close_rounded, size: isMob ? 14 : 16, color: SdColors.danger),
                       )
                     : null,
                 suffixIconConstraints: BoxConstraints(minWidth: isMob ? 28 : 32),
@@ -2603,7 +2627,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           Spacer(),
           if (hasFilter)
             Text('${_processedStatementLines.length} من ${_statementLines.length}',
-                style: GoogleFonts.cairo(fontSize: isMob ? 9 : 10, color: AccountingTheme.textMuted)),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 9 : 10, color: SdColors.faint)),
         ],
       ),
     );
@@ -2611,7 +2635,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
   Widget _stmtFilterChip(String label, bool selected, VoidCallback onTap, {Color? color}) {
     final isMob = context.accR.isMobile;
-    final c = color ?? AccountingTheme.neonBlue;
+    final c = color ?? SdColors.primary;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -2621,11 +2645,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           color: selected ? c.withAlpha(25) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected ? c : const Color(0xFF2C3E50),
+            color: selected ? c : SdColors.ink,
             width: selected ? 1.5 : 1.2,
           ),
         ),
-        child: Text(label, style: GoogleFonts.cairo(fontSize: isMob ? 10 : 11, fontWeight: selected ? FontWeight.bold : FontWeight.w500, color: selected ? c : AccountingTheme.textSecondary)),
+        child: Text(label, style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 10 : 11, fontWeight: selected ? FontWeight.bold : FontWeight.w500, color: selected ? c : SdColors.muted)),
       ),
     );
   }
@@ -2633,7 +2657,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   /// رأس جدول الحركات — مع أزرار ترتيب
   Widget _buildStmtTableHeader() {
     final ar = context.accR;
-    final s = GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: Colors.white);
+    final s = TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.bold, color: Colors.white);
     const divColor = Color(0x55FFFFFF);
     const div = SizedBox(width: 1);
 
@@ -2673,7 +2697,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF2C3E50), Color(0xFF34495E)],
+          colors: [SdColors.ink, Color(0xFF34495E)],
           begin: Alignment.centerRight,
           end: Alignment.centerLeft,
         ),
@@ -2704,14 +2728,14 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
   /// ألوان الأيام — كل يوم يأخذ لون مختلف
   static const _dayColors = [
-    Color(0xFF3498DB), // أزرق
-    Color(0xFF2ECC71), // أخضر
-    Color(0xFF9B59B6), // بنفسجي
-    Color(0xFFE67E22), // برتقالي
-    Color(0xFF1ABC9C), // فيروزي
+    SdColors.info, // أزرق
+    SdColors.success, // أخضر
+    SdColors.platformBase, // بنفسجي
+    SdColors.warning, // برتقالي
+    SdColors.accent, // فيروزي
     Color(0xFFE91E63), // وردي
     Color(0xFF795548), // بني
-    Color(0xFF607D8B), // رمادي أزرق
+    SdColors.muted, // رمادي أزرق
     Color(0xFFFF5722), // أحمر برتقالي
     Color(0xFF00BCD4), // سماوي
   ];
@@ -2751,7 +2775,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       formattedDate = dateStr.length > 10 ? dateStr.substring(0, 10) : dateStr;
     }
 
-    final bgColor = index.isEven ? Colors.white : const Color(0xFFF8FAFE);
+    final bgColor = index.isEven ? Colors.white : SdColors.surfaceAlt;
     const divColor = Color(0xFFE8ECF0);
 
     // خط أسود فاصل بين الأيام المختلفة
@@ -2763,11 +2787,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       child: InkWell(
         onTap: () => _showTransactionDetail(line, index),
         hoverColor: const Color(0xFFEBF5FF),
-        splashColor: const Color(0xFF3498DB).withAlpha(20),
+        splashColor: SdColors.info.withAlpha(20),
         child: Container(
           decoration: BoxDecoration(
             border: Border(
-              top: isDayChange ? const BorderSide(color: Color(0xFF2C3E50), width: 2) : BorderSide.none,
+              top: isDayChange ? const BorderSide(color: SdColors.ink, width: 2) : BorderSide.none,
               bottom: const BorderSide(color: Color(0xFFEEF0F4)),
             ),
           ),
@@ -2775,12 +2799,12 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
             child: Row(
               children: [
                 // #
-                SizedBox(width: 42, child: Center(child: Text('${index + 1}', style: GoogleFonts.cairo(fontSize: ar.small, color: AccountingTheme.textMuted)))),
+                SizedBox(width: 42, child: Center(child: Text('${index + 1}', style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, color: SdColors.faint)))),
                 _vDivider(height: double.infinity, color: divColor),
                 // رقم القيد
                 SizedBox(width: 120, child: Center(child: Text(
                   line['EntryNumber']?.toString() ?? '-',
-                  style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.w600, color: const Color(0xFF3498DB)),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.w600, color: SdColors.info),
                 ))),
                 _vDivider(height: double.infinity, color: divColor),
                 // النوع
@@ -2795,7 +2819,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                         border: Border.all(color: _txColor(debit, credit).withAlpha(120)),
                       ),
                       child: Text(_txLabel(debit, credit),
-                          style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w700, color: _txColor(debit, credit))),
+                          style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.w700, color: _txColor(debit, credit))),
                     ),
                   ),
                 ),
@@ -2807,21 +2831,21 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   child: Center(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text(formattedDate, style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.w600, color: _dayColor(dateStr).withAlpha(220))),
+                      child: Text(formattedDate, style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.w600, color: _dayColor(dateStr).withAlpha(220))),
                     ),
                   ),
                 ),
                 _vDivider(height: double.infinity, color: divColor),
                 // البيان
-                Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Text(desc, style: GoogleFonts.cairo(fontSize: ar.small, color: AccountingTheme.textPrimary), overflow: TextOverflow.ellipsis))),
+                Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), child: Text(desc, style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, color: SdColors.ink), overflow: TextOverflow.ellipsis))),
                 _vDivider(height: double.infinity, color: divColor),
                 // مدين
                 SizedBox(width: 110, child: Center(child: Text(debit > 0 ? _fmt(debit) : '-',
-                    style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: debit > 0 ? AccountingTheme.danger : AccountingTheme.textMuted)))),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.bold, color: debit > 0 ? SdColors.danger : SdColors.faint)))),
                 _vDivider(height: double.infinity, color: divColor),
                 // دائن
                 SizedBox(width: 110, child: Center(child: Text(credit > 0 ? _fmt(credit) : '-',
-                    style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold, color: credit > 0 ? AccountingTheme.success : AccountingTheme.textMuted)))),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.bold, color: credit > 0 ? SdColors.success : SdColors.faint)))),
                 _vDivider(height: double.infinity, color: divColor),
                 // الرصيد
                 SizedBox(
@@ -2829,8 +2853,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   child: Center(
                     child: Text(
                       '${_fmt(running.abs())} ${running > 0 ? 'مدين' : (running < 0 ? 'دائن' : '')}',
-                      style: GoogleFonts.cairo(fontSize: ar.small, fontWeight: FontWeight.bold,
-                          color: running == 0 ? AccountingTheme.textMuted : (running > 0 ? AccountingTheme.danger : AccountingTheme.success)),
+                      style: TextStyle(fontFamily: 'Cairo', fontSize: ar.small, fontWeight: FontWeight.bold,
+                          color: running == 0 ? SdColors.faint : (running > 0 ? SdColors.danger : SdColors.success)),
                     ),
                   ),
                 ),
@@ -2875,7 +2899,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E6ED)),
+          border: Border.all(color: SdColors.divider),
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withAlpha(5),
@@ -2892,14 +2916,15 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AccountingTheme.neonBlue.withAlpha(20),
+                    color: SdColors.primary.withAlpha(20),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text('#${index + 1}',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: AccountingTheme.neonBlue)),
+                          color: SdColors.primary)),
                 ),
                 const SizedBox(width: 6),
                 Container(
@@ -2916,7 +2941,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                   ),
                   child: Text(
                     _txLabel(debit, credit),
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
                         color: _txColor(debit, credit)),
@@ -2924,11 +2950,12 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 ),
                 const Spacer(),
                 Icon(Icons.calendar_today,
-                    size: 10, color: AccountingTheme.textMuted),
+                    size: 10, color: SdColors.faint),
                 const SizedBox(width: 3),
                 Text(formattedDate,
-                    style: GoogleFonts.cairo(
-                        fontSize: 10, color: AccountingTheme.textMuted)),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 10, color: SdColors.faint)),
               ],
             ),
             // البيان
@@ -2936,8 +2963,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
               Padding(
                 padding: EdgeInsets.only(top: 6),
                 child: Text(desc,
-                    style: GoogleFonts.cairo(
-                        fontSize: 11, color: AccountingTheme.textPrimary),
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 11, color: SdColors.ink),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis),
               ),
@@ -2951,24 +2979,26 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     decoration: BoxDecoration(
                       color: debit > 0
-                          ? AccountingTheme.danger.withAlpha(10)
-                          : const Color(0xFFF8FAFE),
+                          ? SdColors.danger.withAlpha(10)
+                          : SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE0E6ED)),
+                      border: Border.all(color: SdColors.divider),
                     ),
                     child: Column(
                       children: [
                         Text('مدين',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 8,
-                                color: AccountingTheme.danger.withAlpha(150))),
+                                color: SdColors.danger.withAlpha(150))),
                         Text(debit > 0 ? _fmt(debit) : '-',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 color: debit > 0
-                                    ? AccountingTheme.danger
-                                    : AccountingTheme.textMuted)),
+                                    ? SdColors.danger
+                                    : SdColors.faint)),
                       ],
                     ),
                   ),
@@ -2980,24 +3010,26 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     decoration: BoxDecoration(
                       color: credit > 0
-                          ? AccountingTheme.success.withAlpha(10)
-                          : const Color(0xFFF8FAFE),
+                          ? SdColors.success.withAlpha(10)
+                          : SdColors.surfaceAlt,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE0E6ED)),
+                      border: Border.all(color: SdColors.divider),
                     ),
                     child: Column(
                       children: [
                         Text('دائن',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 8,
-                                color: AccountingTheme.success.withAlpha(150))),
+                                color: SdColors.success.withAlpha(150))),
                         Text(credit > 0 ? _fmt(credit) : '-',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 color: credit > 0
-                                    ? AccountingTheme.success
-                                    : AccountingTheme.textMuted)),
+                                    ? SdColors.success
+                                    : SdColors.faint)),
                       ],
                     ),
                   ),
@@ -3009,28 +3041,30 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     decoration: BoxDecoration(
                       color: (running == 0
-                              ? AccountingTheme.textMuted
+                              ? SdColors.faint
                               : (running > 0
-                                  ? AccountingTheme.danger
-                                  : AccountingTheme.success))
+                                  ? SdColors.danger
+                                  : SdColors.success))
                           .withAlpha(10),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE0E6ED)),
+                      border: Border.all(color: SdColors.divider),
                     ),
                     child: Column(
                       children: [
                         Text('الرصيد',
-                            style: GoogleFonts.cairo(
-                                fontSize: 8, color: AccountingTheme.textMuted)),
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 8, color: SdColors.faint)),
                         Text(_fmt(running.abs()),
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 color: running == 0
-                                    ? AccountingTheme.textMuted
+                                    ? SdColors.faint
                                     : (running > 0
-                                        ? AccountingTheme.danger
-                                        : AccountingTheme.success))),
+                                        ? SdColors.danger
+                                        : SdColors.success))),
                       ],
                     ),
                   ),
@@ -3049,7 +3083,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         line['JournalEntryId']?.toString() ?? line['EntryId']?.toString() ?? '';
     if (entryId.isEmpty || entryId == '00000000-0000-0000-0000-000000000000') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('لا يوجد قيد مرتبط بهذه الحركة'), backgroundColor: AccountingTheme.warning),
+        const SnackBar(content: Text('لا يوجد قيد مرتبط بهذه الحركة'), backgroundColor: SdColors.warning),
       );
       return;
     }
@@ -3062,7 +3096,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator(color: AccountingTheme.accent)),
+      builder: (_) => const Center(child: CircularProgressIndicator(color: SdColors.success)),
     );
 
     try {
@@ -3072,7 +3106,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
       if (result['success'] != true) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'خطأ'), backgroundColor: AccountingTheme.danger),
+          SnackBar(content: Text(result['message'] ?? 'خطأ'), backgroundColor: SdColors.danger),
         );
         return;
       }
@@ -3083,7 +3117,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       if (mounted) Navigator.pop(context);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: AccountingTheme.danger),
+          SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger),
         );
       }
     }
@@ -3096,19 +3130,19 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
-          title: Text('تأكيد الحذف', style: GoogleFonts.cairo(color: AccountingTheme.danger, fontWeight: FontWeight.bold)),
+          backgroundColor: SdColors.surface,
+          title: Text('تأكيد الحذف', style: TextStyle(fontFamily: 'Cairo', color: SdColors.danger, fontWeight: FontWeight.bold)),
           content: Text(
             'هل تريد حذف القيد "${entry['Description'] ?? 'قيد #${entry['EntryNumber']}'}"؟\nسيتم عكس أرصدة الحسابات المتأثرة.',
-            style: GoogleFonts.cairo(color: AccountingTheme.textPrimary, fontSize: 13),
+            style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink, fontSize: 13),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('إلغاء', style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+              child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AccountingTheme.danger, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger, foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx); // إغلاق التأكيد
                 final result = await AccountingService.instance.deleteJournalEntry(entry['Id'].toString());
@@ -3116,16 +3150,16 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 if (result['success'] == true) {
                   Navigator.pop(dialogCtx); // إغلاق dialog التعديل
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم حذف القيد بنجاح'), backgroundColor: AccountingTheme.success),
+                    const SnackBar(content: Text('تم حذف القيد بنجاح'), backgroundColor: SdColors.success),
                   );
                   if (_selectedAccount != null) _loadStatement(_selectedAccount!, resetDates: false);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(result['message'] ?? 'خطأ في الحذف'), backgroundColor: AccountingTheme.danger),
+                    SnackBar(content: Text(result['message'] ?? 'خطأ في الحذف'), backgroundColor: SdColors.danger),
                   );
                 }
               },
-              child: Text('حذف', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              child: Text('حذف', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -3195,7 +3229,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
           return Directionality(
             textDirection: TextDirection.rtl,
             child: Dialog(
-              backgroundColor: AccountingTheme.bgCard,
+              backgroundColor: SdColors.surface,
               insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: ConstrainedBox(
@@ -3207,26 +3241,26 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                       decoration: const BoxDecoration(
-                        color: AccountingTheme.bgCardHover,
+                        color: SdColors.surfaceAlt,
                         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-                        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+                        border: Border(bottom: BorderSide(color: SdColors.divider)),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.edit_note, color: AccountingTheme.info, size: 22),
+                          Icon(Icons.edit_note, color: SdColors.info, size: 22),
                           const SizedBox(width: 10),
                           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(effectiveReadOnly ? 'تفاصيل القيد' : 'تعديل القيد', style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold)),
-                            Text('#${entry['EntryNumber'] ?? ''}', style: GoogleFonts.cairo(color: AccountingTheme.neonBlue, fontSize: 12)),
+                            Text(effectiveReadOnly ? 'تفاصيل القيد' : 'تعديل القيد', style: TextStyle(fontFamily: 'Cairo', fontSize: 16, fontWeight: FontWeight.bold)),
+                            Text('#${entry['EntryNumber'] ?? ''}', style: TextStyle(fontFamily: 'Cairo', color: SdColors.primary, fontSize: 12)),
                           ])),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                             decoration: BoxDecoration(
-                              color: (status == 'Posted' ? AccountingTheme.success : AccountingTheme.warning).withOpacity(0.2),
+                              color: (status == 'Posted' ? SdColors.success : SdColors.warning).withOpacity(0.2),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(status == 'Posted' ? 'مرحّل' : status == 'Voided' ? 'ملغي' : 'مسودة',
-                                style: GoogleFonts.cairo(color: status == 'Posted' ? AccountingTheme.success : AccountingTheme.warning, fontSize: 12, fontWeight: FontWeight.bold)),
+                                style: TextStyle(fontFamily: 'Cairo', color: status == 'Posted' ? SdColors.success : SdColors.warning, fontSize: 12, fontWeight: FontWeight.bold)),
                           ),
                           const SizedBox(width: 8),
                           // زر حذف القيد
@@ -3235,7 +3269,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                               onPressed: () => _confirmDeleteEntryFromDialog(ctx, entry),
                               icon: const Icon(Icons.delete_outline, size: 20),
                               tooltip: 'حذف القيد',
-                              style: IconButton.styleFrom(foregroundColor: AccountingTheme.danger),
+                              style: IconButton.styleFrom(foregroundColor: SdColors.danger),
                             ),
                           IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close, size: 20)),
                         ],
@@ -3249,8 +3283,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                           Row(children: [
                             Expanded(flex: 2, child: TextField(
                               controller: descCtrl, readOnly: effectiveReadOnly,
-                              style: const TextStyle(color: AccountingTheme.textPrimary, fontSize: 13),
-                              decoration: InputDecoration(labelText: 'الوصف', filled: true, fillColor: AccountingTheme.bgCardHover, isDense: true,
+                              style: const TextStyle(color: SdColors.ink, fontSize: 13),
+                              decoration: InputDecoration(labelText: 'الوصف', filled: true, fillColor: SdColors.surfaceAlt, isDense: true,
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
                             )),
@@ -3261,7 +3295,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                 if (picked != null) setDState(() => entryDate = DateTime(picked.year, picked.month, picked.day, entryTime.hour, entryTime.minute));
                               },
                               child: InputDecorator(
-                                decoration: InputDecoration(labelText: 'التاريخ', filled: true, fillColor: AccountingTheme.bgCardHover, isDense: true,
+                                decoration: InputDecoration(labelText: 'التاريخ', filled: true, fillColor: SdColors.surfaceAlt, isDense: true,
                                     suffixIcon: const Icon(Icons.calendar_today, size: 16),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
                                 child: Text('${entryDate.year}/${entryDate.month.toString().padLeft(2, '0')}/${entryDate.day.toString().padLeft(2, '0')}',
@@ -3278,7 +3312,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                 });
                               },
                               child: InputDecorator(
-                                decoration: InputDecoration(labelText: 'الوقت', filled: true, fillColor: AccountingTheme.bgCardHover, isDense: true,
+                                decoration: InputDecoration(labelText: 'الوقت', filled: true, fillColor: SdColors.surfaceAlt, isDense: true,
                                     suffixIcon: const Icon(Icons.access_time, size: 16),
                                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
                                 child: Text('${entryTime.hour.toString().padLeft(2, '0')}:${entryTime.minute.toString().padLeft(2, '0')}',
@@ -3289,20 +3323,20 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                           const SizedBox(height: 12),
                           TextField(controller: notesCtrl, readOnly: effectiveReadOnly, maxLines: 2,
                               style: const TextStyle(fontSize: 13),
-                              decoration: InputDecoration(labelText: 'ملاحظات', filled: true, fillColor: AccountingTheme.bgCardHover, isDense: true,
+                              decoration: InputDecoration(labelText: 'ملاحظات', filled: true, fillColor: SdColors.surfaceAlt, isDense: true,
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none))),
                           if (entry['ReferenceType'] != null || entry['ReferenceId'] != null) ...[
                             const SizedBox(height: 8),
                             Wrap(spacing: 16, children: [
-                              if (entry['ReferenceType'] != null) Text('النوع: ${_refTypeLabel(entry['ReferenceType'])}', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.textMuted)),
-                              if (entry['ReferenceId'] != null) Text('مرجع: ${entry['ReferenceId']}', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.neonBlue)),
+                              if (entry['ReferenceType'] != null) Text('النوع: ${_refTypeLabel(entry['ReferenceType'])}', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.faint)),
+                              if (entry['ReferenceId'] != null) Text('مرجع: ${entry['ReferenceId']}', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.primary)),
                             ]),
                           ],
                           const SizedBox(height: 18),
-                          const Divider(color: AccountingTheme.borderColor),
+                          const Divider(color: SdColors.divider),
                           const SizedBox(height: 10),
                           Row(children: [
-                            Text('أسطر القيد', style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold)),
+                            Text('أسطر القيد', style: TextStyle(fontFamily: 'Cairo', fontSize: 14, fontWeight: FontWeight.bold)),
                             const Spacer(),
                             if (!effectiveReadOnly) TextButton.icon(
                               onPressed: () => setDState(() => lines.add({
@@ -3310,21 +3344,21 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                 'debitCtrl': TextEditingController(), 'creditCtrl': TextEditingController(), 'descCtrl': TextEditingController(),
                               })),
                               icon: const Icon(Icons.add_circle_outline, size: 16),
-                              label: Text('إضافة سطر', style: GoogleFonts.cairo(fontSize: 12)),
-                              style: TextButton.styleFrom(foregroundColor: AccountingTheme.neonGreen),
+                              label: Text('إضافة سطر', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                              style: TextButton.styleFrom(foregroundColor: SdColors.success),
                             ),
                           ]),
                           const SizedBox(height: 8),
                           // رأس الجدول
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                            decoration: BoxDecoration(color: AccountingTheme.bgCardHover, borderRadius: BorderRadius.circular(6)),
+                            decoration: BoxDecoration(color: SdColors.surfaceAlt, borderRadius: BorderRadius.circular(6)),
                             child: Row(children: [
                               const SizedBox(width: 30),
-                              Expanded(flex: 3, child: Text('الحساب', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold))),
-                              SizedBox(width: 100, child: Center(child: Text('مدين', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AccountingTheme.success)))),
-                              SizedBox(width: 100, child: Center(child: Text('دائن', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AccountingTheme.danger)))),
-                              Expanded(flex: 2, child: Text('البيان', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold))),
+                              Expanded(flex: 3, child: Text('الحساب', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold))),
+                              SizedBox(width: 100, child: Center(child: Text('مدين', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: SdColors.success)))),
+                              SizedBox(width: 100, child: Center(child: Text('دائن', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold, color: SdColors.danger)))),
+                              Expanded(flex: 2, child: Text('البيان', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, fontWeight: FontWeight.bold))),
                               if (!effectiveReadOnly) const SizedBox(width: 32),
                             ]),
                           ),
@@ -3337,14 +3371,14 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                               margin: const EdgeInsets.only(bottom: 4),
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                               decoration: BoxDecoration(
-                                color: i % 2 == 0 ? Colors.white : AccountingTheme.bgCardHover,
+                                color: i % 2 == 0 ? Colors.white : SdColors.surfaceAlt,
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: AccountingTheme.borderColor.withOpacity(0.5)),
+                                border: Border.all(color: SdColors.divider.withOpacity(0.5)),
                               ),
                               child: Row(children: [
-                                SizedBox(width: 30, child: Text('${i + 1}', style: GoogleFonts.cairo(fontSize: 11, color: AccountingTheme.neonBlue, fontWeight: FontWeight.bold))),
+                                SizedBox(width: 30, child: Text('${i + 1}', style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: SdColors.primary, fontWeight: FontWeight.bold))),
                                 Expanded(flex: 3, child: effectiveReadOnly
-                                    ? Text(accName, style: GoogleFonts.cairo(fontSize: 12))
+                                    ? Text(accName, style: TextStyle(fontFamily: 'Cairo', fontSize: 12))
                                     : Autocomplete<Map<String, dynamic>>(
                                         initialValue: TextEditingValue(text: accName),
                                         optionsBuilder: (textEditingValue) {
@@ -3371,7 +3405,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                                 decoration: BoxDecoration(
                                                   color: Colors.white,
                                                   borderRadius: BorderRadius.circular(8),
-                                                  border: Border.all(color: const Color(0xFF2C3E50)),
+                                                  border: Border.all(color: SdColors.ink),
                                                 ),
                                                 child: ListView.builder(
                                                   padding: EdgeInsets.zero,
@@ -3384,16 +3418,16 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                                       child: Container(
                                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                                                         decoration: BoxDecoration(
-                                                          border: Border(bottom: BorderSide(color: AccountingTheme.borderColor.withAlpha(60))),
+                                                          border: Border(bottom: BorderSide(color: SdColors.divider.withAlpha(60))),
                                                         ),
                                                         child: Row(children: [
                                                           Container(
                                                             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                                            decoration: BoxDecoration(color: const Color(0xFF3498DB).withAlpha(15), borderRadius: BorderRadius.circular(4)),
-                                                            child: Text(opt['code'] as String, style: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF3498DB))),
+                                                            decoration: BoxDecoration(color: SdColors.info.withAlpha(15), borderRadius: BorderRadius.circular(4)),
+                                                            child: Text(opt['code'] as String, style: TextStyle(fontFamily: 'Cairo', fontSize: 10, fontWeight: FontWeight.bold, color: SdColors.info)),
                                                           ),
                                                           const SizedBox(width: 8),
-                                                          Expanded(child: Text(opt['name'] as String, style: GoogleFonts.cairo(fontSize: 11), overflow: TextOverflow.ellipsis)),
+                                                          Expanded(child: Text(opt['name'] as String, style: TextStyle(fontFamily: 'Cairo', fontSize: 11), overflow: TextOverflow.ellipsis)),
                                                         ]),
                                                       ),
                                                     );
@@ -3407,15 +3441,15 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                           return TextField(
                                             controller: textCtrl,
                                             focusNode: focusNode,
-                                            style: GoogleFonts.cairo(fontSize: 11, color: Colors.black),
+                                            style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.black),
                                             decoration: InputDecoration(
                                               hintText: 'اكتب للبحث...',
-                                              hintStyle: GoogleFonts.cairo(fontSize: 10, color: AccountingTheme.textMuted),
+                                              hintStyle: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: SdColors.faint),
                                               isDense: true,
                                               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AccountingTheme.borderColor)),
-                                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AccountingTheme.borderColor)),
-                                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFF3498DB), width: 1.5)),
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: SdColors.divider)),
+                                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: SdColors.divider)),
+                                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: SdColors.info, width: 1.5)),
                                             ),
                                           );
                                         },
@@ -3424,8 +3458,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                 SizedBox(width: 100, child: TextField(
                                     controller: l['debitCtrl'], readOnly: effectiveReadOnly,
                                     keyboardType: TextInputType.number, textAlign: TextAlign.center,
-                                    style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AccountingTheme.success),
-                                    decoration: InputDecoration(isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6), filled: true, fillColor: AccountingTheme.success.withOpacity(0.05),
+                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: SdColors.success),
+                                    decoration: InputDecoration(isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6), filled: true, fillColor: SdColors.success.withOpacity(0.05),
                                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none)),
                                     onChanged: (v) {
                                       final raw = v.replaceAll(',', '');
@@ -3442,8 +3476,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                 SizedBox(width: 100, child: TextField(
                                     controller: l['creditCtrl'], readOnly: effectiveReadOnly,
                                     keyboardType: TextInputType.number, textAlign: TextAlign.center,
-                                    style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AccountingTheme.danger),
-                                    decoration: InputDecoration(isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6), filled: true, fillColor: AccountingTheme.danger.withOpacity(0.05),
+                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.bold, color: SdColors.danger),
+                                    decoration: InputDecoration(isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6), filled: true, fillColor: SdColors.danger.withOpacity(0.05),
                                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none)),
                                     onChanged: (v) {
                                       final raw = v.replaceAll(',', '');
@@ -3459,9 +3493,9 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                 const SizedBox(width: 4),
                                 Expanded(flex: 2, child: TextField(
                                     controller: l['descCtrl'], readOnly: effectiveReadOnly,
-                                    style: GoogleFonts.cairo(fontSize: 11),
+                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
                                     decoration: InputDecoration(hintText: 'بيان السطر', isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: AccountingTheme.borderColor))))),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: SdColors.divider))))),
                                 if (!effectiveReadOnly)
                                   InkWell(
                                     onTap: lines.length > 1 ? () => setDState(() => lines.removeAt(i)) : null,
@@ -3469,7 +3503,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                                     child: Padding(
                                       padding: const EdgeInsets.all(4),
                                       child: Icon(Icons.close_rounded, size: 16,
-                                          color: lines.length > 1 ? AccountingTheme.danger : AccountingTheme.textMuted.withAlpha(80)),
+                                          color: lines.length > 1 ? SdColors.danger : SdColors.faint.withAlpha(80)),
                                     ),
                                   ),
                               ]),
@@ -3479,14 +3513,14 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
-                              color: isBalanced ? AccountingTheme.success.withOpacity(0.08) : AccountingTheme.warning.withOpacity(0.1),
+                              color: isBalanced ? SdColors.success.withOpacity(0.08) : SdColors.warning.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: isBalanced ? AccountingTheme.success.withOpacity(0.3) : AccountingTheme.warning.withOpacity(0.3)),
+                              border: Border.all(color: isBalanced ? SdColors.success.withOpacity(0.3) : SdColors.warning.withOpacity(0.3)),
                             ),
                             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                              Text(isBalanced ? '✓ القيد متوازن' : '⚠ غير متوازن', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: isBalanced ? AccountingTheme.success : AccountingTheme.warning)),
-                              Text('مدين: ${_fmt(totalDebit)}', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.success, fontWeight: FontWeight.bold)),
-                              Text('دائن: ${_fmt(totalCredit)}', style: GoogleFonts.cairo(fontSize: 12, color: AccountingTheme.danger, fontWeight: FontWeight.bold)),
+                              Text(isBalanced ? '✓ القيد متوازن' : '⚠ غير متوازن', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, color: isBalanced ? SdColors.success : SdColors.warning)),
+                              Text('مدين: ${_fmt(totalDebit)}', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.success, fontWeight: FontWeight.bold)),
+                              Text('دائن: ${_fmt(totalCredit)}', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.danger, fontWeight: FontWeight.bold)),
                             ]),
                           ),
                         ]),
@@ -3495,13 +3529,13 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                     // زر الحفظ
                     if (!effectiveReadOnly) Container(
                       padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-                      decoration: const BoxDecoration(border: Border(top: BorderSide(color: AccountingTheme.borderColor))),
+                      decoration: const BoxDecoration(border: Border(top: BorderSide(color: SdColors.divider))),
                       child: Row(children: [
-                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: GoogleFonts.cairo(color: AccountingTheme.textMuted))),
+                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint))),
                         const SizedBox(width: 8),
                         ElevatedButton.icon(
                           onPressed: isSaving || !isBalanced ? null : () async {
-                            for (final l in lines) { if ((l['accountId'] as String).isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يجب اختيار حساب لكل سطر'), backgroundColor: AccountingTheme.warning)); return; } }
+                            for (final l in lines) { if ((l['accountId'] as String).isEmpty) { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('يجب اختيار حساب لكل سطر'), backgroundColor: SdColors.warning)); return; } }
                             setDState(() => isSaving = true);
                             final linesDtos = <Map<String, dynamic>>[];
                             for (final l in lines) {
@@ -3529,14 +3563,14 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                             if (result['success'] == true) {
                               Navigator.pop(ctx);
                               if (_selectedAccount != null) _loadStatement(_selectedAccount!, resetDates: false);
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث القيد بنجاح'), backgroundColor: AccountingTheme.success));
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث القيد بنجاح'), backgroundColor: SdColors.success));
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'خطأ'), backgroundColor: AccountingTheme.danger));
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'خطأ'), backgroundColor: SdColors.danger));
                             }
                           },
                           icon: isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.save, size: 18),
-                          label: Text(isSaving ? 'جاري الحفظ...' : 'حفظ التعديلات', style: GoogleFonts.cairo(fontSize: 13)),
-                          style: ElevatedButton.styleFrom(backgroundColor: AccountingTheme.info, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          label: Text(isSaving ? 'جاري الحفظ...' : 'حفظ التعديلات', style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
+                          style: ElevatedButton.styleFrom(backgroundColor: SdColors.info, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                         ),
                       ]),
@@ -3602,7 +3636,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     }
 
     final bgColor =
-        index.isEven ? Colors.transparent : AccountingTheme.bgPrimary;
+        index.isEven ? Colors.transparent : SdColors.ground;
 
     return TableRow(
       decoration: BoxDecoration(color: bgColor),
@@ -3626,7 +3660,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                 ),
                 child: Text(
                   _txLabel(debit, credit),
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: _txColor(debit, credit),
@@ -3640,22 +3675,22 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         _tdTap(desc, line, index),
         _tdTap(debit > 0 ? _fmt(debit) : '-', line, index,
             color:
-                debit > 0 ? AccountingTheme.danger : AccountingTheme.textMuted,
+                debit > 0 ? SdColors.danger : SdColors.faint,
             align: TextAlign.center),
         _tdTap(credit > 0 ? _fmt(credit) : '-', line, index,
             color: credit > 0
-                ? AccountingTheme.success
-                : AccountingTheme.textMuted,
+                ? SdColors.success
+                : SdColors.faint,
             align: TextAlign.center),
         _tdTap(
             '${_fmt(running.abs())} ${running > 0 ? 'مدين' : (running < 0 ? 'دائن' : '')}',
             line,
             index,
             color: running == 0
-                ? AccountingTheme.textMuted
+                ? SdColors.faint
                 : (running > 0
-                    ? AccountingTheme.danger
-                    : AccountingTheme.success),
+                    ? SdColors.danger
+                    : SdColors.success),
             align: TextAlign.center,
             bold: true),
       ],
@@ -3668,7 +3703,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Text(text,
           textAlign: TextAlign.center,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: context.accR.small,
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -3682,10 +3718,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Text(text,
           textAlign: align,
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             fontSize: context.accR.small,
             fontWeight: bold ? FontWeight.bold : FontWeight.w500,
-            color: color ?? AccountingTheme.textPrimary,
+            color: color ?? SdColors.ink,
           )),
     );
   }
@@ -3700,10 +3737,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Text(text,
             textAlign: align,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: context.accR.small,
               fontWeight: bold ? FontWeight.bold : FontWeight.w500,
-              color: color ?? AccountingTheme.textPrimary,
+              color: color ?? SdColors.ink,
             )),
       ),
     );
@@ -3737,8 +3775,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   /// لون العملية حسب نوع الحساب
   Color _txColor(double debit, double credit) {
     return _txLabel(debit, credit) == 'قبض'
-        ? AccountingTheme.success
-        : AccountingTheme.danger;
+        ? SdColors.success
+        : SdColors.danger;
   }
 
   String _fmt(dynamic value) {

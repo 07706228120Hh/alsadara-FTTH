@@ -4,6 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'models/citizen_portal_models.dart';
 import 'services/citizen_portal_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class CitizenSubscriptionsPage extends StatefulWidget {
   const CitizenSubscriptionsPage({super.key});
@@ -64,7 +65,7 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.shade200,
+                  color: SdColors.divider,
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -98,19 +99,19 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
                   _subscriptions
                       .where((s) => s.isActive && !s.isExpired)
                       .length,
-                  Colors.green,
+                  SdColors.success,
                 ),
                 const SizedBox(width: 8),
                 _buildQuickStat(
                   'ينتهي قريباً',
                   _subscriptions.where((s) => s.isExpiringSoon).length,
-                  Colors.orange,
+                  SdColors.warning,
                 ),
                 const SizedBox(width: 8),
                 _buildQuickStat(
                   'منتهي',
                   _subscriptions.where((s) => s.isExpired).length,
-                  Colors.red,
+                  SdColors.danger,
                 ),
 
                 const SizedBox(width: 16),
@@ -167,7 +168,7 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
   Widget _buildContent() {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.teal),
+        child: CircularProgressIndicator(color: SdColors.accent),
       );
     }
 
@@ -176,7 +177,7 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+            Icon(Icons.error_outline, size: 48, color: SdColors.dangerTintEdge),
             const SizedBox(height: 16),
             Text(_error!),
             const SizedBox(height: 16),
@@ -196,11 +197,11 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.card_membership_outlined,
-                size: 64, color: Colors.grey.shade300),
+                size: 64, color: SdColors.edge),
             const SizedBox(height: 16),
             const Text(
               'لا توجد اشتراكات',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
+              style: TextStyle(fontSize: 18, color: SdColors.faint),
             ),
           ],
         ),
@@ -209,7 +210,7 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
 
     return RefreshIndicator(
       onRefresh: _loadSubscriptions,
-      color: Colors.teal,
+      color: SdColors.accent,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: _subscriptions.length,
@@ -223,10 +224,10 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
 
   Widget _buildSubscriptionCard(CitizenSubscriptionModel sub) {
     final color = sub.isExpired
-        ? Colors.red
+        ? SdColors.danger
         : sub.isExpiringSoon
-            ? Colors.orange
-            : Colors.green;
+            ? SdColors.warning
+            : SdColors.success;
 
     final statusText = sub.isExpired
         ? 'منتهي'
@@ -308,12 +309,12 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
                       Row(
                         children: [
                           const Icon(Icons.person,
-                              size: 14, color: Colors.grey),
+                              size: 14, color: SdColors.faint),
                           const SizedBox(width: 4),
                           Text(
                             sub.citizenName ?? 'غير محدد',
                             style: TextStyle(
-                              color: Colors.grey.shade700,
+                              color: SdColors.muted,
                             ),
                           ),
                         ],
@@ -366,7 +367,7 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
                       onPressed: () => _cancelSubscription(sub),
                       icon: const Icon(Icons.cancel, size: 18),
                       label: const Text('إلغاء'),
-                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      style: TextButton.styleFrom(foregroundColor: SdColors.danger),
                     ),
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
@@ -374,7 +375,7 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
                     icon: const Icon(Icons.autorenew, size: 18),
                     label: const Text('تجديد'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
+                      backgroundColor: SdColors.accent,
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -390,7 +391,7 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
   Widget _buildDetailItem(IconData icon, String label, String value) {
     return Column(
       children: [
-        Icon(icon, size: 20, color: Colors.grey),
+        Icon(icon, size: 20, color: SdColors.faint),
         const SizedBox(height: 4),
         Text(
           value,
@@ -402,7 +403,7 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: Colors.grey.shade600,
+            color: SdColors.muted,
           ),
         ),
       ],
@@ -425,7 +426,7 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.accent),
               child: const Text('تجديد'),
             ),
           ],
@@ -441,7 +442,7 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم تجديد الاشتراك بنجاح'),
-              backgroundColor: Colors.green,
+              backgroundColor: SdColors.success,
             ),
           );
         }
@@ -464,7 +465,7 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
               child: const Text('نعم، إلغاء'),
             ),
           ],
@@ -480,7 +481,7 @@ class _CitizenSubscriptionsPageState extends State<CitizenSubscriptionsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('تم إلغاء الاشتراك'),
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
             ),
           );
         }

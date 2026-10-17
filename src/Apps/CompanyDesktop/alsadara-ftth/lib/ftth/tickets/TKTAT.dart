@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 class TKTAT extends StatefulWidget {
   final String authToken;
@@ -58,7 +59,7 @@ class _TKTATState extends State<TKTAT> {
         toolbarHeight: _isPhone ? 44 : 50,
         iconTheme: IconThemeData(size: _ic(20)),
         title: Text('TKTATs', style: TextStyle(fontSize: _fs(16), fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.blue[600],
+        backgroundColor: SdColors.info,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -85,7 +86,7 @@ class _TKTATState extends State<TKTAT> {
           message,
           style: TextStyle(
             fontSize: _fs(16),
-            color: Colors.red[600],
+            color: SdColors.danger,
           ),
           textAlign: TextAlign.center,
         ),

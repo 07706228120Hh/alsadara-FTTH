@@ -88,6 +88,15 @@ class SdAppBar extends StatelessWidget implements PreferredSizeWidget {
     ];
     return AppBar(
       backgroundColor: SdColors.primary,
+      flexibleSpace: const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: AlignmentDirectional.centerStart,
+            end: AlignmentDirectional.centerEnd,
+            colors: [SdColors.primaryEdge, SdColors.primary, SdColors.primaryEdge],
+          ),
+        ),
+      ),
       foregroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 0,
@@ -108,7 +117,7 @@ class SdAppBar extends StatelessWidget implements PreferredSizeWidget {
                   fontFamily: SdText.family,
                   fontSize: context.sd.appBarTitle,
                   fontWeight: FontWeight.w900,
-                  color: Colors.white)),
+                  color: Color(0xFFF3DFA6))),
           if (subtitle != null)
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -153,7 +162,15 @@ class SdAppBar extends StatelessWidget implements PreferredSizeWidget {
             const SizedBox(
               height: _edge,
               width: double.infinity,
-              child: ColoredBox(color: SdColors.primaryEdge),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [SdColors.gold, Color(0x00C9A44C)],
+                  ),
+                ),
+              ),
             ),
           ],
         ),

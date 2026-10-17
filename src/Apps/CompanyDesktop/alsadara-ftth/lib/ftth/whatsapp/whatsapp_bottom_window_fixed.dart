@@ -8,6 +8,7 @@ import 'package:webview_windows/webview_windows.dart' as wvwin;
 import 'package:url_launcher/url_launcher.dart';
 import '../../pages/whatsapp_conversations_page.dart' as conv_page;
 import '../../services/whatsapp_conversation_service.dart';
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 /// نافذة واتساب كاملة الحجم
 class WhatsAppBottomWindow {
@@ -256,7 +257,7 @@ class WhatsAppBottomWindow {
                 debugPrint('❌ خطأ في التعامل مع زر الواتساب العائم');
               }
             },
-            backgroundColor: const Color(0xFF25D366),
+            backgroundColor: SdColors.whatsapp,
             heroTag: "whatsapp_fab",
             tooltip: 'فتح واتساب ويب',
             child: Container(
@@ -268,7 +269,7 @@ class WhatsAppBottomWindow {
               ),
               child: const Icon(
                 Icons.chat,
-                color: Color(0xFF25D366),
+                color: SdColors.whatsapp,
                 size: 24,
               ),
             ),
@@ -341,7 +342,7 @@ class WhatsAppBottomWindow {
                         debugPrint('❌ خطأ في فتح صفحة المحادثات');
                       }
                     },
-                    backgroundColor: const Color(0xFF128C7E),
+                    backgroundColor: SdColors.whatsappEdge,
                     heroTag: "whatsapp_conversations_fab",
                     tooltip: 'محادثات الواتساب',
                     child: Container(
@@ -353,7 +354,7 @@ class WhatsAppBottomWindow {
                       ),
                       child: const Icon(
                         Icons.chat_bubble,
-                        color: Color(0xFF128C7E),
+                        color: SdColors.whatsappEdge,
                         size: 24,
                       ),
                     ),
@@ -366,7 +367,7 @@ class WhatsAppBottomWindow {
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: const BoxDecoration(
-                          color: Colors.red,
+                          color: SdColors.danger,
                           shape: BoxShape.circle,
                         ),
                         constraints: const BoxConstraints(
@@ -977,7 +978,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
             const SnackBar(
               content: Text(
                   'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.'),
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               duration: Duration(seconds: 5),
             ),
           );
@@ -990,7 +991,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
           const SnackBar(
             content: Text(
                 'تعذر فتح رابط التحميل. يرجى البحث عن "Microsoft Edge WebView2 Runtime" وتحميله من موقع مايكروسوفت الرسمي.'),
-            backgroundColor: Colors.orange,
+            backgroundColor: SdColors.warning,
             duration: Duration(seconds: 5),
           ),
         );
@@ -1031,7 +1032,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
         Container(
           height: 60,
           decoration: const BoxDecoration(
-            color: Color(0xFF25D366),
+            color: SdColors.whatsapp,
           ),
           child: Row(
             children: [
@@ -1073,7 +1074,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
               // زر إغلاق
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.8),
+                  color: SdColors.danger.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: IconButton(
@@ -1100,7 +1101,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const Icon(Icons.error_outline, size: 48, color: SdColors.danger),
               const SizedBox(height: 16),
               Text(_error!,
                   textAlign: TextAlign.center,
@@ -1124,7 +1125,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
                       icon: const Icon(Icons.download),
                       label: const Text('تحميل WebView2'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: SdColors.info,
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -1153,7 +1154,7 @@ class _WhatsAppBottomWindowState extends State<WhatsAppBottomWindowContent> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: Color(0xFF25D366)),
+                  CircularProgressIndicator(color: SdColors.whatsapp),
                   SizedBox(height: 16),
                   Text('جاري تحميل واتساب ويب...'),
                 ],

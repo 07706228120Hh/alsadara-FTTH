@@ -5,7 +5,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import 'package:google_fonts/google_fonts.dart';
 import '../../utils/responsive_helper.dart';
 import '../../multi_tenant.dart';
 import '../../config/data_source_config.dart'; // ✅ إعدادات مصدر البيانات
@@ -106,30 +105,31 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: EnergyDashboardTheme.bgCard,
+        backgroundColor: SdColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: EnergyDashboardTheme.danger.withOpacity(0.15),
+                color: SdColors.danger.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: EnergyDashboardTheme.glowCustom(
-                  EnergyDashboardTheme.danger,
+                  SdColors.danger,
                   intensity: 0.2,
                 ),
               ),
               child: const Icon(
                 Icons.logout_rounded,
-                color: EnergyDashboardTheme.danger,
+                color: SdColors.danger,
               ),
             ),
             const SizedBox(width: 14),
             Text(
               'تسجيل الخروج',
-              style: GoogleFonts.cairo(
-                color: EnergyDashboardTheme.textPrimary,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.ink,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -138,8 +138,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         ),
         content: Text(
           'هل تريد تسجيل الخروج من لوحة التحكم؟',
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.textSecondary,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.muted,
           ),
         ),
         actions: [
@@ -147,15 +148,16 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             onPressed: () => Navigator.pop(context, false),
             child: Text(
               'إلغاء',
-              style: GoogleFonts.cairo(
-                color: EnergyDashboardTheme.textMuted,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.faint,
               ),
             ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: EnergyDashboardTheme.danger,
+              backgroundColor: SdColors.danger,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -164,7 +166,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             ),
             child: Text(
               'تسجيل الخروج',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.w600),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -241,9 +243,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         vertical: r.isMobile ? 10 : 16,
       ),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         border: const Border(
-          bottom: BorderSide(color: EnergyDashboardTheme.borderColor, width: 1),
+          bottom: BorderSide(color: SdColors.divider, width: 1),
         ),
         boxShadow: EnergyDashboardTheme.softShadow,
       ),
@@ -255,7 +257,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               builder: (ctx) => IconButton(
                 tooltip: 'القائمة',
                 icon: Icon(Icons.menu_rounded,
-                    color: EnergyDashboardTheme.textSecondary),
+                    color: SdColors.muted),
                 onPressed: () => Scaffold.of(ctx).openDrawer(),
               ),
             ),
@@ -271,7 +273,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   gradient: EnergyDashboardTheme.neonGreenGradient,
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: EnergyDashboardTheme.glowCustom(
-                    EnergyDashboardTheme.neonGreen,
+                    SdColors.success,
                     intensity: 0.3,
                   ),
                 ),
@@ -288,16 +290,18 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 children: [
                   Text(
                     'منصة الصدارة',
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textPrimary,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.ink,
                       fontSize: r.titleSize,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     'لوحة تحكم مدير النظام',
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.neonGreen,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.success,
                       fontSize: r.captionSize,
                       fontWeight: FontWeight.w500,
                     ),
@@ -311,7 +315,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           if (!r.isMobile) ...[
             _buildTopBarAction(
               icon: Icons.notifications_outlined,
-              color: EnergyDashboardTheme.neonBlue,
+              color: SdColors.info,
               badge: '3',
             ),
           ],
@@ -343,10 +347,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: EnergyDashboardTheme.danger,
+                color: SdColors.danger,
                 shape: BoxShape.circle,
                 boxShadow: EnergyDashboardTheme.glowCustom(
-                  EnergyDashboardTheme.danger,
+                  SdColors.danger,
                   intensity: 0.4,
                 ),
               ),
@@ -372,9 +376,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         border: const Border(
-          top: BorderSide(color: EnergyDashboardTheme.borderColor, width: 1),
+          top: BorderSide(color: SdColors.divider, width: 1),
         ),
       ),
       child: Row(
@@ -386,10 +390,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: EnergyDashboardTheme.neonGreen,
+                  color: SdColors.success,
                   shape: BoxShape.circle,
                   boxShadow: EnergyDashboardTheme.glowCustom(
-                    EnergyDashboardTheme.neonGreen,
+                    SdColors.success,
                     intensity: 0.5,
                   ),
                 ),
@@ -397,8 +401,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               const SizedBox(width: 8),
               Text(
                 'متصل بالخادم',
-                style: GoogleFonts.cairo(
-                  color: EnergyDashboardTheme.neonGreen,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.success,
                   fontSize: 12,
                 ),
               ),
@@ -406,8 +411,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           ),
           Text(
             '© 2026 منصة الصدارة. جميع الحقوق محفوظة.',
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textMuted,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.faint,
               fontSize: 12,
             ),
           ),
@@ -427,9 +433,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         SnackBar(
           content: Text(
             'بوابة المواطن متاحة فقط مع VPS API',
-            style: GoogleFonts.cairo(),
+            style: TextStyle(fontFamily: 'Cairo'),
           ),
-          backgroundColor: EnergyDashboardTheme.danger,
+          backgroundColor: SdColors.danger,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10)),
@@ -592,14 +598,14 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [
-                EnergyDashboardTheme.primaryColor,
-                EnergyDashboardTheme.accentColor
+                SdColors.info,
+                SdColors.success
               ],
             ),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: EnergyDashboardTheme.primaryColor.withOpacity(0.3),
+                color: SdColors.info.withOpacity(0.3),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
@@ -655,7 +661,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   icon: const Icon(Icons.refresh, size: 18),
                   label: const Text('تحديث'),
                   style: TextButton.styleFrom(
-                    foregroundColor: EnergyDashboardTheme.primaryColor,
+                    foregroundColor: SdColors.info,
                   ),
                 ),
               ],
@@ -687,12 +693,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         const Row(
           children: [
             Icon(Icons.analytics_outlined,
-                color: EnergyDashboardTheme.primaryColor, size: 22),
+                color: SdColors.info, size: 22),
             SizedBox(width: 8),
             Text(
               'الإحصائيات',
               style: TextStyle(
-                color: EnergyDashboardTheme.textPrimary,
+                color: SdColors.ink,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -716,7 +722,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               title: 'الشركات النشطة',
               value: activeTenants.toString(),
               icon: Icons.check_circle_rounded,
-              gradient: const [Color(0xFF10B981), Color(0xFF34D399)],
+              gradient: const [SdColors.success, Color(0xFF34D399)],
               onTap: () => _showFilteredCompanies(context, tenants,
                   'الشركات النشطة', (t) => t.isActive && !t.isExpired),
             ),
@@ -733,8 +739,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               value: expiredTenants.toString(),
               icon: Icons.cancel_rounded,
               gradient: const [
-                EnergyDashboardTheme.danger,
-                EnergyDashboardTheme.neonPink
+                SdColors.danger,
+                SdColors.platformLight
               ],
               onTap: () => _showFilteredCompanies(
                   context, tenants, 'اشتراكات منتهية', (t) => t.isExpired),
@@ -744,8 +750,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               value: expiringSoonTenants.toString(),
               icon: Icons.warning_rounded,
               gradient: const [
-                EnergyDashboardTheme.neonOrange,
-                EnergyDashboardTheme.neonYellow
+                SdColors.warning,
+                SdColors.warning
               ],
               onTap: () => _showFilteredCompanies(context, tenants,
                   'تنتهي خلال 7 أيام', (t) => t.isExpiringSoon),
@@ -780,9 +786,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           width: 180,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: EnergyDashboardTheme.surfaceColor,
+            color: SdColors.surface,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: EnergyDashboardTheme.borderColor),
+            border: Border.all(color: SdColors.divider),
             boxShadow: [
               BoxShadow(
                 color: gradient[0].withOpacity(0.1),
@@ -812,7 +818,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   ),
                   Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: EnergyDashboardTheme.textMuted,
+                    color: SdColors.faint,
                     size: 14,
                   ),
                 ],
@@ -830,7 +836,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               Text(
                 title,
                 style: const TextStyle(
-                  color: EnergyDashboardTheme.textSecondary,
+                  color: SdColors.muted,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -861,7 +867,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         minChildSize: 0.5,
         builder: (context, scrollController) => Container(
           decoration: const BoxDecoration(
-            color: EnergyDashboardTheme.surfaceColor,
+            color: SdColors.surface,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
@@ -872,7 +878,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: EnergyDashboardTheme.borderColor,
+                  color: SdColors.divider,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -884,7 +890,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                     Text(
                       title,
                       style: const TextStyle(
-                        color: EnergyDashboardTheme.textPrimary,
+                        color: SdColors.ink,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -895,13 +901,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color:
-                            EnergyDashboardTheme.primaryColor.withOpacity(0.1),
+                            SdColors.info.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         '${filteredTenants.length}',
                         style: const TextStyle(
-                          color: EnergyDashboardTheme.primaryColor,
+                          color: SdColors.info,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -910,12 +916,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                     IconButton(
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.close,
-                          color: EnergyDashboardTheme.textMuted),
+                          color: SdColors.faint),
                     ),
                   ],
                 ),
               ),
-              const Divider(color: EnergyDashboardTheme.borderColor, height: 1),
+              const Divider(color: SdColors.divider, height: 1),
               // قائمة الشركات
               Expanded(
                 child: filteredTenants.isEmpty
@@ -926,14 +932,14 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                             Icon(
                               Icons.inbox_rounded,
                               size: 64,
-                              color: EnergyDashboardTheme.textMuted
+                              color: SdColors.faint
                                   .withOpacity(0.5),
                             ),
                             const SizedBox(height: 16),
                             const Text(
                               'لا توجد شركات',
                               style: TextStyle(
-                                color: EnergyDashboardTheme.textMuted,
+                                color: SdColors.faint,
                                 fontSize: 16,
                               ),
                             ),
@@ -966,12 +972,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             const Row(
               children: [
                 Icon(Icons.business_rounded,
-                    color: EnergyDashboardTheme.primaryColor, size: 22),
+                    color: SdColors.info, size: 22),
                 SizedBox(width: 8),
                 Text(
                   'آخر الشركات',
                   style: TextStyle(
-                    color: EnergyDashboardTheme.textPrimary,
+                    color: SdColors.ink,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -984,7 +990,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               icon: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
               label: const Text('عرض الكل'),
               style: TextButton.styleFrom(
-                foregroundColor: EnergyDashboardTheme.primaryColor,
+                foregroundColor: SdColors.info,
               ),
             ),
           ],
@@ -1002,22 +1008,22 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.surfaceColor,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         children: [
           Icon(
             Icons.business_rounded,
             size: 64,
-            color: EnergyDashboardTheme.textMuted.withOpacity(0.5),
+            color: SdColors.faint.withOpacity(0.5),
           ),
           const SizedBox(height: 16),
           const Text(
             'لا توجد شركات بعد',
             style: TextStyle(
-              color: EnergyDashboardTheme.textMuted,
+              color: SdColors.faint,
               fontSize: 18,
             ),
           ),
@@ -1025,7 +1031,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           Text(
             'اضغط على زر "شركة جديدة" للبدء',
             style: TextStyle(
-              color: EnergyDashboardTheme.textMuted.withOpacity(0.7),
+              color: SdColors.faint.withOpacity(0.7),
               fontSize: 14,
             ),
           ),
@@ -1045,9 +1051,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: EnergyDashboardTheme.surfaceColor,
+              color: SdColors.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: EnergyDashboardTheme.borderColor),
+              border: Border.all(color: SdColors.divider),
               boxShadow: [
                 BoxShadow(
                   color: _getStatusColor(tenant.status).withOpacity(0.08),
@@ -1089,7 +1095,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                       Text(
                         tenant.name,
                         style: const TextStyle(
-                          color: EnergyDashboardTheme.textPrimary,
+                          color: SdColors.ink,
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1098,7 +1104,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                       Text(
                         'كود: ${tenant.code}',
                         style: const TextStyle(
-                          color: EnergyDashboardTheme.textMuted,
+                          color: SdColors.faint,
                           fontSize: 13,
                         ),
                       ),
@@ -1126,7 +1132,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 const SizedBox(width: 8),
                 const Icon(
                   Icons.arrow_forward_ios_rounded,
-                  color: EnergyDashboardTheme.textMuted,
+                  color: SdColors.faint,
                   size: 14,
                 ),
               ],
@@ -1363,19 +1369,19 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: SdColors.danger.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                           border:
-                              Border.all(color: Colors.red.withOpacity(0.3)),
+                              Border.all(color: SdColors.danger.withOpacity(0.3)),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.info_outline, color: Colors.red),
+                            const Icon(Icons.info_outline, color: SdColors.danger),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
                                 'سبب التعليق: ${tenant.suspensionReason}',
-                                style: const TextStyle(color: Colors.red),
+                                style: const TextStyle(color: SdColors.danger),
                               ),
                             ),
                           ],
@@ -1465,8 +1471,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           icon: Icons.login_rounded,
           label: 'الدخول للشركة',
           gradient: const [
-            EnergyDashboardTheme.neonBlue,
-            EnergyDashboardTheme.neonPurple
+            SdColors.info,
+            SdColors.platformBase
           ],
           onTap: () {
             Navigator.pop(context);
@@ -1479,8 +1485,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           icon: Icons.tune_rounded,
           label: 'إدارة ميزات الشركة',
           gradient: const [
-            EnergyDashboardTheme.success,
-            EnergyDashboardTheme.neonGreen
+            SdColors.success,
+            SdColors.success
           ],
           onTap: () {
             Navigator.pop(context);
@@ -1521,8 +1527,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 gradient: tenant.isActive
                     ? const [Color(0xFFf093fb), Color(0xFFf5576c)]
                     : const [
-                        EnergyDashboardTheme.success,
-                        EnergyDashboardTheme.neonGreen
+                        SdColors.success,
+                        SdColors.success
                       ],
                 onTap: () {
                   Navigator.pop(context);
@@ -1541,8 +1547,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           icon: Icons.delete_rounded,
           label: 'حذف الشركة',
           gradient: const [
-            EnergyDashboardTheme.danger,
-            EnergyDashboardTheme.neonPink
+            SdColors.danger,
+            SdColors.platformLight
           ],
           onTap: () {
             Navigator.pop(context);
@@ -1648,7 +1654,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.pause_circle, color: Colors.orange),
+            Icon(Icons.pause_circle, color: SdColors.warning),
             SizedBox(width: 8),
             Text('تعليق الشركة'),
           ],
@@ -1678,7 +1684,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               foregroundColor: Colors.white,
             ),
             child: const Text('تعليق'),
@@ -1721,11 +1727,11 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.2),
+                color: SdColors.danger.withOpacity(0.2),
                 shape: BoxShape.circle,
               ),
               child:
-                  const Icon(Icons.delete_forever, color: Colors.red, size: 28),
+                  const Icon(Icons.delete_forever, color: SdColors.danger, size: 28),
             ),
             const SizedBox(width: 12),
             const Text(
@@ -1744,12 +1750,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Colors.red.withOpacity(0.1),
-                    Colors.orange.withOpacity(0.1),
+                    SdColors.danger.withOpacity(0.1),
+                    SdColors.warning.withOpacity(0.1),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.red.withOpacity(0.3)),
+                border: Border.all(color: SdColors.danger.withOpacity(0.3)),
               ),
               child: Column(
                 children: [
@@ -1787,12 +1793,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   const Row(
                     children: [
                       Icon(Icons.warning_amber_rounded,
-                          color: Colors.orange, size: 20),
+                          color: SdColors.warning, size: 20),
                       SizedBox(width: 8),
                       Text(
                         'البيانات التي سيتم حذفها:',
                         style: TextStyle(
-                          color: Colors.orange,
+                          color: SdColors.warning,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1814,19 +1820,19 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.shade900.withOpacity(0.3),
+                color: SdColors.dangerEdge.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withOpacity(0.5)),
+                border: Border.all(color: SdColors.danger.withOpacity(0.5)),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red),
+                  Icon(Icons.error_outline, color: SdColors.danger),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'تحذير: هذا الإجراء لا يمكن التراجع عنه!',
                       style: TextStyle(
-                          color: Colors.red, fontWeight: FontWeight.bold),
+                          color: SdColors.danger, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -1847,7 +1853,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             icon: const Icon(Icons.delete_forever),
             label: const Text('حذف نهائي'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: SdColors.danger,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             ),
@@ -1906,13 +1912,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: result.success
-                    ? Colors.green.withOpacity(0.2)
-                    : Colors.red.withOpacity(0.2),
+                    ? SdColors.success.withOpacity(0.2)
+                    : SdColors.danger.withOpacity(0.2),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 result.success ? Icons.check_circle : Icons.error,
-                color: result.success ? Colors.green : Colors.red,
+                color: result.success ? SdColors.success : SdColors.danger,
                 size: 48,
               ),
             ),
@@ -1939,7 +1945,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             ] else
               Text(
                 result.errorMessage ?? 'حدث خطأ غير متوقع',
-                style: const TextStyle(color: Colors.red),
+                style: const TextStyle(color: SdColors.danger),
               ),
           ],
         ),
@@ -2002,23 +2008,23 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     switch (status) {
       case SubscriptionStatus.active:
         label = 'نشط';
-        color = EnergyDashboardTheme.success;
+        color = SdColors.success;
         break;
       case SubscriptionStatus.warning:
         label = 'تحذير';
-        color = EnergyDashboardTheme.neonOrange;
+        color = SdColors.warning;
         break;
       case SubscriptionStatus.critical:
         label = 'حرج';
-        color = EnergyDashboardTheme.danger;
+        color = SdColors.danger;
         break;
       case SubscriptionStatus.expired:
         label = 'منتهي';
-        color = EnergyDashboardTheme.danger;
+        color = SdColors.danger;
         break;
       case SubscriptionStatus.suspended:
         label = 'معلق';
-        color = Colors.grey;
+        color = SdColors.faint;
         break;
     }
 
@@ -2043,15 +2049,15 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   Color _getStatusColor(SubscriptionStatus status) {
     switch (status) {
       case SubscriptionStatus.active:
-        return EnergyDashboardTheme.success;
+        return SdColors.success;
       case SubscriptionStatus.warning:
-        return EnergyDashboardTheme.neonOrange;
+        return SdColors.warning;
       case SubscriptionStatus.critical:
-        return EnergyDashboardTheme.danger;
+        return SdColors.danger;
       case SubscriptionStatus.expired:
-        return EnergyDashboardTheme.danger;
+        return SdColors.danger;
       case SubscriptionStatus.suspended:
-        return Colors.grey;
+        return SdColors.faint;
     }
   }
 
@@ -2115,7 +2121,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: EnergyDashboardTheme.neonPurple.withOpacity(0.2),
+            color: SdColors.platformBase.withOpacity(0.2),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -2171,7 +2177,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: EnergyDashboardTheme.neonBlue,
+              foregroundColor: SdColors.info,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -2195,28 +2201,28 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         'title': 'إجمالي المواطنين',
         'value': '1,247',
         'icon': Icons.people_outline,
-        'color': EnergyDashboardTheme.success,
+        'color': SdColors.success,
         'trend': '+12%',
       },
       {
         'title': 'الاشتراكات النشطة',
         'value': '893',
         'icon': Icons.wifi,
-        'color': EnergyDashboardTheme.neonBlue,
+        'color': SdColors.info,
         'trend': '+8%',
       },
       {
         'title': 'المدفوعات الشهرية',
         'value': '45.2M',
         'icon': Icons.payments_outlined,
-        'color': EnergyDashboardTheme.neonOrange,
+        'color': SdColors.warning,
         'trend': '+15%',
       },
       {
         'title': 'تذاكر الدعم المفتوحة',
         'value': '23',
         'icon': Icons.support_agent,
-        'color': EnergyDashboardTheme.danger,
+        'color': SdColors.danger,
         'trend': '-5%',
       },
     ];
@@ -2244,9 +2250,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: EnergyDashboardTheme.bgCard,
+                  color: SdColors.surface,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: EnergyDashboardTheme.borderColor),
+                  border: Border.all(color: SdColors.divider),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2269,16 +2275,16 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                               horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: (stat['trend'] as String).startsWith('+')
-                                ? EnergyDashboardTheme.success.withOpacity(0.15)
-                                : EnergyDashboardTheme.danger.withOpacity(0.15),
+                                ? SdColors.success.withOpacity(0.15)
+                                : SdColors.danger.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             stat['trend'] as String,
                             style: TextStyle(
                               color: (stat['trend'] as String).startsWith('+')
-                                  ? EnergyDashboardTheme.success
-                                  : EnergyDashboardTheme.danger,
+                                  ? SdColors.success
+                                  : SdColors.danger,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
@@ -2290,7 +2296,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                     Text(
                       stat['value'] as String,
                       style: const TextStyle(
-                        color: EnergyDashboardTheme.textPrimary,
+                        color: SdColors.ink,
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
                       ),
@@ -2299,7 +2305,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                     Text(
                       stat['title'] as String,
                       style: const TextStyle(
-                        color: EnergyDashboardTheme.textMuted,
+                        color: SdColors.faint,
                         fontSize: 13,
                       ),
                     ),
@@ -2319,42 +2325,42 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         'title': 'إدارة المواطنين',
         'subtitle': 'عرض وإضافة وتعديل بيانات المواطنين',
         'icon': Icons.people_alt_rounded,
-        'color': EnergyDashboardTheme.success,
+        'color': SdColors.success,
         'route': 'citizens',
       },
       {
         'title': 'إدارة الاشتراكات',
         'subtitle': 'متابعة وتفعيل وإلغاء الاشتراكات',
         'icon': Icons.card_membership_rounded,
-        'color': EnergyDashboardTheme.neonBlue,
+        'color': SdColors.info,
         'route': 'subscriptions',
       },
       {
         'title': 'المدفوعات',
         'subtitle': 'تسجيل ومتابعة المدفوعات',
         'icon': Icons.payments_rounded,
-        'color': EnergyDashboardTheme.neonOrange,
+        'color': SdColors.warning,
         'route': 'payments',
       },
       {
         'title': 'باقات الإنترنت',
         'subtitle': 'إدارة باقات الاشتراك والأسعار',
         'icon': Icons.wifi_rounded,
-        'color': EnergyDashboardTheme.neonPurple,
+        'color': SdColors.platformBase,
         'route': 'plans',
       },
       {
         'title': 'تذاكر الدعم',
         'subtitle': 'الرد على استفسارات المواطنين',
         'icon': Icons.support_agent_rounded,
-        'color': EnergyDashboardTheme.danger,
+        'color': SdColors.danger,
         'route': 'tickets',
       },
       {
         'title': 'التقارير',
         'subtitle': 'تقارير شاملة عن النظام',
         'icon': Icons.analytics_rounded,
-        'color': EnergyDashboardTheme.info,
+        'color': SdColors.info,
         'route': 'reports',
       },
     ];
@@ -2362,9 +2368,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2372,12 +2378,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           Row(
             children: [
               Icon(Icons.flash_on_rounded,
-                  color: EnergyDashboardTheme.neonBlue),
+                  color: SdColors.info),
               const SizedBox(width: 8),
               const Text(
                 'الإجراءات السريعة',
                 style: TextStyle(
-                  color: EnergyDashboardTheme.textPrimary,
+                  color: SdColors.ink,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -2456,7 +2462,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                               Text(
                                 action['subtitle'] as String,
                                 style: const TextStyle(
-                                  color: EnergyDashboardTheme.textMuted,
+                                  color: SdColors.faint,
                                   fontSize: 11,
                                 ),
                                 maxLines: 1,
@@ -2481,9 +2487,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: EnergyDashboardTheme.borderColor),
+        border: Border.all(color: SdColors.divider),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2491,12 +2497,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           const Row(
             children: [
               Icon(Icons.business_rounded,
-                  color: EnergyDashboardTheme.primaryColor),
+                  color: SdColors.info),
               SizedBox(width: 8),
               Text(
                 'الشركة المرتبطة',
                 style: TextStyle(
-                  color: EnergyDashboardTheme.textPrimary,
+                  color: SdColors.ink,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -2510,31 +2516,31 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  EnergyDashboardTheme.neonBlue.withOpacity(0.15),
-                  EnergyDashboardTheme.neonPurple.withOpacity(0.15),
+                  SdColors.info.withOpacity(0.15),
+                  SdColors.platformBase.withOpacity(0.15),
                 ],
               ),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                  color: EnergyDashboardTheme.neonBlue.withOpacity(0.4)),
+                  color: SdColors.info.withOpacity(0.4)),
             ),
             child: Column(
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: EnergyDashboardTheme.bgCard,
+                    color: SdColors.surface,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: EnergyDashboardTheme.neonBlue.withOpacity(0.3),
+                        color: SdColors.info.withOpacity(0.3),
                         blurRadius: 10,
                       ),
                     ],
                   ),
                   child: const Icon(
                     Icons.wifi_rounded,
-                    color: EnergyDashboardTheme.neonBlue,
+                    color: SdColors.info,
                     size: 32,
                   ),
                 ),
@@ -2542,7 +2548,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 const Text(
                   'شركة الصدارة للإنترنت',
                   style: TextStyle(
-                    color: EnergyDashboardTheme.textPrimary,
+                    color: SdColors.ink,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -2552,19 +2558,19 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: EnergyDashboardTheme.success.withOpacity(0.15),
+                    color: SdColors.success.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.verified,
-                          color: EnergyDashboardTheme.success, size: 14),
+                          color: SdColors.success, size: 14),
                       SizedBox(width: 6),
                       Text(
                         'مرتبطة بنظام المواطن',
                         style: TextStyle(
-                          color: EnergyDashboardTheme.success,
+                          color: SdColors.success,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -2592,18 +2598,18 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgSecondary,
+        color: SdColors.groundAlt,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
-          Icon(icon, color: EnergyDashboardTheme.textMuted, size: 20),
+          Icon(icon, color: SdColors.faint, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,
               style: const TextStyle(
-                color: EnergyDashboardTheme.textSecondary,
+                color: SdColors.muted,
                 fontSize: 13,
               ),
             ),
@@ -2611,7 +2617,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           Text(
             value,
             style: const TextStyle(
-              color: EnergyDashboardTheme.textPrimary,
+              color: SdColors.ink,
               fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
@@ -2648,7 +2654,7 @@ class _CitizenPortalMainPageState extends State<_CitizenPortalMainPage> {
           : null,
       appBar: AppBar(
         title: Text(_getTabTitle(_currentTab)),
-        backgroundColor: EnergyDashboardTheme.neonBlue,
+        backgroundColor: SdColors.info,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -2669,7 +2675,7 @@ class _CitizenPortalMainPageState extends State<_CitizenPortalMainPage> {
             child: _currentTab == 'plans'
                 ? const PlansManagementPage()
                 : Container(
-                    color: EnergyDashboardTheme.bgPrimary,
+                    color: SdColors.ground,
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -2678,13 +2684,13 @@ class _CitizenPortalMainPageState extends State<_CitizenPortalMainPage> {
                             _getTabIcon(_currentTab),
                             size: 80,
                             color:
-                                EnergyDashboardTheme.neonBlue.withOpacity(0.5),
+                                SdColors.info.withOpacity(0.5),
                           ),
                           const SizedBox(height: 20),
                           Text(
                             _getTabTitle(_currentTab),
                             style: const TextStyle(
-                              color: EnergyDashboardTheme.textPrimary,
+                              color: SdColors.ink,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
@@ -2693,7 +2699,7 @@ class _CitizenPortalMainPageState extends State<_CitizenPortalMainPage> {
                           Text(
                             'قيد التطوير - سيتم إضافة المحتوى قريباً',
                             style: TextStyle(
-                              color: EnergyDashboardTheme.textMuted,
+                              color: SdColors.faint,
                               fontSize: 14,
                             ),
                           ),

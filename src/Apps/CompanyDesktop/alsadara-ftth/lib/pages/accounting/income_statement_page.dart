@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
 import '../../services/accounting_cache_service.dart';
@@ -197,8 +196,8 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
       padding: EdgeInsets.symmetric(
           horizontal: isMob ? 8 : ar.spaceXL, vertical: isMob ? 6 : ar.spaceS),
       decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+        color: SdColors.surface,
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
       child: Row(
         children: [
@@ -210,22 +209,23 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
               padding: EdgeInsets.symmetric(
                   horizontal: isMob ? 6 : 10, vertical: isMob ? 3 : 5),
               decoration: BoxDecoration(
-                color: AccountingTheme.bgSecondary,
+                color: SdColors.groundAlt,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AccountingTheme.borderColor),
+                border: Border.all(color: SdColors.divider),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.calendar_month,
                       size: isMob ? 12 : 16,
-                      color: AccountingTheme.neonBlue),
+                      color: SdColors.primary),
                   const SizedBox(width: 4),
                   Text(
                     '${DateFormat('yyyy/MM/dd').format(_dateFrom)} - ${DateFormat('yyyy/MM/dd').format(_dateTo)}',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: isMob ? 9 : ar.small,
-                        color: AccountingTheme.textSecondary),
+                        color: SdColors.muted),
                   ),
                 ],
               ),
@@ -268,7 +268,7 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
           _buildSection(
             title: 'الإيرادات',
             icon: Icons.arrow_downward_rounded,
-            iconColor: AccountingTheme.neonGreen,
+            iconColor: SdColors.success,
             gradient: AccountingTheme.neonGreenGradient,
             accounts: _revenueAccounts,
             total: _totalRevenue,
@@ -281,7 +281,7 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
           _buildSection(
             title: 'المصروفات',
             icon: Icons.arrow_upward_rounded,
-            iconColor: AccountingTheme.danger,
+            iconColor: SdColors.danger,
             gradient: AccountingTheme.neonPinkGradient,
             accounts: _expenseAccounts,
             total: _totalExpenses,
@@ -300,13 +300,13 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: _isProfit
-              ? [const Color(0xFF1ABC9C), const Color(0xFF16A085)]
-              : [const Color(0xFFE74C3C), const Color(0xFFC0392B)],
+              ? [SdColors.accent, SdColors.accent]
+              : [SdColors.danger, const Color(0xFFC0392B)],
         ),
         borderRadius: BorderRadius.circular(ar.cardRadius + 4),
         boxShadow: [
           BoxShadow(
-            color: (_isProfit ? const Color(0xFF1ABC9C) : const Color(0xFFE74C3C))
+            color: (_isProfit ? SdColors.accent : SdColors.danger)
                 .withOpacity(0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
@@ -336,14 +336,16 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
               children: [
                 Text(
                   _isProfit ? 'صافي الربح' : 'صافي الخسارة',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 12 : ar.headingSmall,
                     color: Colors.white.withOpacity(0.9),
                   ),
                 ),
                 Text(
                   _fmt.format(_netIncome.abs()),
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: isMob ? 20 : ar.financialLarge,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
@@ -379,12 +381,14 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(label,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 9 : ar.caption,
                 color: Colors.white.withOpacity(0.7))),
         SizedBox(width: 6),
         Text(value,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 fontSize: isMob ? 10 : ar.small,
                 fontWeight: FontWeight.bold,
                 color: Colors.white)),
@@ -430,16 +434,18 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
                 ),
                 SizedBox(width: isMob ? 6 : 10),
                 Text(title,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: isMob ? 13 : ar.headingSmall,
                       fontWeight: FontWeight.bold,
-                      color: AccountingTheme.textPrimary,
+                      color: SdColors.ink,
                     )),
                 const Spacer(),
                 Text('${accounts.length} حساب',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: isMob ? 10 : ar.small,
-                        color: AccountingTheme.textMuted)),
+                        color: SdColors.faint)),
               ],
             ),
           ),
@@ -448,7 +454,7 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
             Padding(
               padding: EdgeInsets.all(isMob ? 16 : 24),
               child: Text('لا توجد حسابات',
-                  style: GoogleFonts.cairo(color: AccountingTheme.textMuted)),
+                  style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
             )
           else
             ...List.generate(accounts.length, (i) {
@@ -460,7 +466,7 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
               return Container(
                 color: i.isEven
                     ? Colors.transparent
-                    : AccountingTheme.tableRowAlt,
+                    : SdColors.surfaceAlt,
                 padding: EdgeInsets.symmetric(
                     horizontal: isMob ? 10 : ar.spaceL,
                     vertical: isMob ? 6 : ar.spaceS),
@@ -469,24 +475,27 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
                     SizedBox(
                         width: isMob ? 40 : 60,
                         child: Text(acc['Code']?.toString() ?? '',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: ar.tableCellFont,
                                 fontWeight: FontWeight.w600,
-                                color: AccountingTheme.textMuted))),
+                                color: SdColors.faint))),
                     Expanded(
                         child: Text(acc['Name']?.toString() ?? '',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 fontSize: ar.tableCellFont,
-                                color: AccountingTheme.textSecondary))),
+                                color: SdColors.muted))),
                     // نسبة مئوية
                     SizedBox(
                       width: isMob ? 35 : 50,
                       child: Text(
                         '${percentage.toStringAsFixed(1)}%',
                         textAlign: TextAlign.left,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: isMob ? 9 : ar.caption,
-                            color: AccountingTheme.textMuted),
+                            color: SdColors.faint),
                       ),
                     ),
                     // المبلغ
@@ -495,7 +504,8 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
                       child: Text(
                         _fmt.format(balance),
                         textAlign: TextAlign.left,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontSize: ar.tableCellFont,
                             fontWeight: FontWeight.w600,
                             color: iconColor),
@@ -518,13 +528,15 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
             child: Row(
               children: [
                 Text(totalLabel,
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: isMob ? 12 : ar.body,
                         fontWeight: FontWeight.bold,
-                        color: AccountingTheme.textPrimary)),
+                        color: SdColors.ink)),
                 const Spacer(),
                 Text(_fmt.format(total),
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: isMob ? 14 : ar.financialMedium,
                         fontWeight: FontWeight.w900,
                         color: iconColor)),

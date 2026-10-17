@@ -813,14 +813,14 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     final serialTile = Stack(
       children: [
         _metricTile(Icons.memory, 'السيريال', serial,
-            accent: Colors.teal, valueMaxLines: valueLines),
+            accent: SdColors.accent, valueMaxLines: valueLines),
         Positioned(
           left: 6 * sc,
           top: 0,
           bottom: 0,
           child: Center(
             child: Material(
-              color: Colors.teal.shade700,
+              color: SdColors.accent,
               shape: const CircleBorder(),
               elevation: 2,
               child: InkWell(
@@ -839,11 +839,11 @@ class UserDetailsPageState extends State<UserDetailsPage> {
 
     final tiles = <Widget>[
       _metricTile(Icons.person, 'اليوزر نيم', username,
-          accent: Colors.indigo, valueMaxLines: valueLines),
+          accent: SdColors.primary, valueMaxLines: valueLines),
       serialTile,
       if (mac != null && mac.isNotEmpty)
         _metricTile(Icons.lan, 'MAC Address', mac,
-            accent: Colors.deepPurple, valueMaxLines: valueLines),
+            accent: SdColors.platformBase, valueMaxLines: valueLines),
     ];
 
     return _twoPerRowGrid(tiles);
@@ -1155,7 +1155,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            Icon(Icons.warning_amber_rounded, color: SdColors.warning, size: 28),
             SizedBox(width: 8),
             Text('تأكيد التعليق',
                 style: TextStyle(fontWeight: FontWeight.w800)),
@@ -1169,7 +1169,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
               onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange.shade700,
+                backgroundColor: SdColors.warning,
                 foregroundColor: Colors.white),
             onPressed: () {
               Navigator.pop(ctx);
@@ -1192,7 +1192,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.green, size: 28),
+            Icon(Icons.check_circle, color: SdColors.success, size: 28),
             SizedBox(width: 8),
             Text('تأكيد إعادة التفعيل',
                 style: TextStyle(fontWeight: FontWeight.w800)),
@@ -1206,7 +1206,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
               onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green.shade700,
+                backgroundColor: SdColors.success,
                 foregroundColor: Colors.white),
             onPressed: () {
               Navigator.pop(ctx);
@@ -1229,19 +1229,19 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       if (r.statusCode == 200 || r.statusCode == 204) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('تم تعليق الاشتراك بنجاح'),
-            backgroundColor: Colors.orange));
+            backgroundColor: SdColors.warning));
         fetchUserDetailsAndSubscription();
       } else if (r.statusCode == 401) {
         AuthErrorHandler.handle401Error(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('فشل التعليق: ${r.statusCode} - ${r.body}'),
-            backgroundColor: Colors.red));
+            backgroundColor: SdColors.danger));
       }
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+            SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
     } finally {
       if (mounted) setState(() => _isSuspending = false);
     }
@@ -1256,19 +1256,19 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       if (r.statusCode == 200 || r.statusCode == 204) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('تم إعادة تفعيل الاشتراك بنجاح'),
-            backgroundColor: Colors.green));
+            backgroundColor: SdColors.success));
         fetchUserDetailsAndSubscription();
       } else if (r.statusCode == 401) {
         AuthErrorHandler.handle401Error(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('فشل التفعيل: ${r.statusCode} - ${r.body}'),
-            backgroundColor: Colors.red));
+            backgroundColor: SdColors.danger));
       }
     } catch (e) {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red));
+            SnackBar(content: Text('خطأ: $e'), backgroundColor: SdColors.danger));
     } finally {
       if (mounted) setState(() => _isUnsuspending = false);
     }
@@ -1383,7 +1383,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.router, color: Colors.deepOrange),
+            const Icon(Icons.router, color: SdColors.warning),
             const SizedBox(width: 8),
             Expanded(
               child: Text('الدخول لجهاز الراوتر',
@@ -1403,21 +1403,21 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade50,
+                    color: SdColors.dangerTint,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.shade300),
+                    border: Border.all(color: SdColors.dangerTintEdge),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(Icons.warning_amber_rounded,
-                          size: 20, color: Colors.red.shade700),
+                          size: 20, color: SdColors.danger),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(ipWarning,
                             style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.red.shade800,
+                                color: SdColors.danger,
                                 fontWeight: FontWeight.w600)),
                       ),
                     ],
@@ -1434,9 +1434,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: SdColors.groundAlt,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: SdColors.edge),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1446,12 +1446,12 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                             padding: const EdgeInsets.only(bottom: 4),
                             child: Text(cred['note']!,
                                 style: TextStyle(
-                                    fontSize: 11, color: Colors.grey.shade600)),
+                                    fontSize: 11, color: SdColors.muted)),
                           ),
                         Row(
                           children: [
                             const Icon(Icons.person,
-                                size: 16, color: Colors.blueGrey),
+                                size: 16, color: SdColors.faint),
                             const SizedBox(width: 4),
                             const Text('User: ',
                                 style: TextStyle(
@@ -1480,7 +1480,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                         Row(
                           children: [
                             const Icon(Icons.lock,
-                                size: 16, color: Colors.blueGrey),
+                                size: 16, color: SdColors.faint),
                             const SizedBox(width: 4),
                             const Text('Pass: ',
                                 style: TextStyle(
@@ -1517,7 +1517,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   'ملاحظة: كلمة مرور PPPoE تختلف عن كلمة مرور لوحة تحكم الراوتر',
                   style: TextStyle(
                       fontSize: 11,
-                      color: Colors.orange.shade800,
+                      color: SdColors.warning,
                       fontStyle: FontStyle.italic)),
             ],
           ),
@@ -1533,7 +1533,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                 Text(ipWarning != null ? 'فتح (يحتاج VPN)' : 'فتح في المتصفح'),
             style: ElevatedButton.styleFrom(
               backgroundColor:
-                  ipWarning != null ? Colors.grey : Colors.deepOrange,
+                  ipWarning != null ? SdColors.faint : SdColors.warning,
               foregroundColor: Colors.white,
             ),
             onPressed: () {
@@ -1551,7 +1551,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: Colors.blueGrey),
+          Icon(icon, size: 18, color: SdColors.faint),
           const SizedBox(width: 6),
           Text('$label: ',
               style:
@@ -1729,7 +1729,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             title: const Row(
               children: [
-                Icon(Icons.memory, color: Colors.teal),
+                Icon(Icons.memory, color: SdColors.accent),
                 SizedBox(width: 8),
                 Text('تعديل السيريال',
                     style: TextStyle(fontWeight: FontWeight.w800)),
@@ -1755,8 +1755,8 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   Text(error!,
                       style: TextStyle(
                           color: error!.contains('نجاح')
-                              ? Colors.green
-                              : Colors.red,
+                              ? SdColors.success
+                              : SdColors.danger,
                           fontWeight: FontWeight.w800)),
                 ],
               ],
@@ -1810,7 +1810,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                         }
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
+                  backgroundColor: SdColors.accent,
                   foregroundColor: Colors.white,
                 ),
                 child: saving
@@ -1849,7 +1849,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             if (id == null || id.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                   content: Text('لا يمكن العثور على معرف الاشتراك'),
-                  backgroundColor: Colors.red));
+                  backgroundColor: SdColors.danger));
               return;
             }
             Navigator.push(
@@ -1867,7 +1867,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           icon: const Icon(Icons.edit, size: 18),
           label: const Text('تعديل الجهاز'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
+            backgroundColor: SdColors.info,
             foregroundColor: Colors.white,
             textStyle:
                 const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
@@ -1909,43 +1909,43 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
     }
     if (ontErrorMessage.isNotEmpty) {
-      return _msgBox(ontErrorMessage, Colors.red, Icons.error_outline);
+      return _msgBox(ontErrorMessage, SdColors.danger, Icons.error_outline);
     }
     if (deviceOntInfo == null) {
-      return _msgBox('لا توجد معلومات تقنية متاحة للجهاز', Colors.grey,
+      return _msgBox('لا توجد معلومات تقنية متاحة للجهاز', SdColors.faint,
           Icons.info_outline);
     }
     final model = _safeGetMap(deviceOntInfo!['model']);
     final status = _safeGetMap(model?['status']);
     final rxPower = model?['rxPower'];
-    Color statusColor = Colors.grey;
+    Color statusColor = SdColors.faint;
     IconData statusIcon = Icons.device_unknown;
     final rawStatusDisp = _safeGetString(status?['displayValue']);
     final statusVal = rawStatusDisp?.toLowerCase() ?? '';
     if (statusVal == 'up') {
-      statusColor = Colors.green;
+      statusColor = SdColors.success;
       statusIcon = Icons.signal_wifi_4_bar;
     } else if (statusVal == 'down') {
-      statusColor = Colors.red;
+      statusColor = SdColors.danger;
       statusIcon = Icons.signal_wifi_off;
     }
     final localizedStatus = _localizedDeviceStatus(rawStatusDisp);
-    Color powerColor = Colors.grey;
+    Color powerColor = SdColors.faint;
     String powerStatus = '';
     if (rxPower != null) {
       try {
         final p = double.parse(rxPower.toString());
         if (p >= -20) {
-          powerColor = Colors.green;
+          powerColor = SdColors.success;
           powerStatus = 'ممتازة';
         } else if (p >= -25) {
-          powerColor = Colors.orange;
+          powerColor = SdColors.warning;
           powerStatus = 'جيدة';
         } else if (p >= -30) {
-          powerColor = Colors.amber;
+          powerColor = SdColors.warning;
           powerStatus = 'متوسطة';
         } else {
-          powerColor = Colors.red;
+          powerColor = SdColors.danger;
           powerStatus = 'ضعيفة';
         }
       } catch (_) {}
@@ -2028,15 +2028,15 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   Widget _hint() => Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-          color: Colors.blue.shade50, borderRadius: BorderRadius.circular(6)),
+          color: SdColors.infoTint, borderRadius: BorderRadius.circular(6)),
       child: const Row(children: [
-        Icon(Icons.info_outline, color: Colors.blue, size: 15),
+        Icon(Icons.info_outline, color: SdColors.info, size: 15),
         SizedBox(width: 6),
         Expanded(
             child: Text('قوة الإشارة الأفضل أعلى من -25 dBm',
                 style: TextStyle(
                     fontSize: 11,
-                    color: Colors.blue,
+                    color: SdColors.info,
                     fontStyle: FontStyle.italic)))
       ]));
   Widget _msgBox(String msg, Color color, IconData icon) => Container(
@@ -2157,7 +2157,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                        colors: [Colors.blue.shade600, Colors.blue.shade800]),
+                        colors: [SdColors.info, SdColors.info]),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Row(children: [
@@ -2182,7 +2182,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                     icon: const Icon(Icons.close),
                     label: const Text('إغلاق'),
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade600,
+                        backgroundColor: SdColors.muted,
                         foregroundColor: Colors.white),
                   ),
                 ),
@@ -2298,11 +2298,11 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [Colors.white, Colors.grey.shade50]),
+        gradient: LinearGradient(colors: [Colors.white, SdColors.surfaceAlt]),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.15),
+              color: SdColors.faint.withValues(alpha: 0.15),
               blurRadius: 8,
               offset: const Offset(0, 3))
         ],
@@ -2313,7 +2313,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-                colors: [Colors.blue.shade400, Colors.blue.shade600]),
+                colors: [SdColors.info, SdColors.info]),
             borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(14), topRight: Radius.circular(14)),
           ),
@@ -2360,23 +2360,23 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey.shade200)),
+          border: Border.all(color: SdColors.divider)),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-                color: Colors.blue.shade100,
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(6)),
-            child: Icon(icon, size: 16, color: Colors.blue.shade700)),
+            child: Icon(icon, size: 16, color: SdColors.info)),
         const SizedBox(width: 10),
         Expanded(
             flex: 2,
             child: Text(label,
                 style: TextStyle(
                     fontWeight: FontWeight.w800,
-                    color: Colors.grey.shade700,
+                    color: SdColors.muted,
                     fontSize: 14))),
         const SizedBox(width: 8),
         Expanded(
@@ -2400,9 +2400,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-          color: Colors.green.shade50,
+          color: SdColors.successTint,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.green.shade200)),
+          border: Border.all(color: SdColors.successTintEdge)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
           width: double.infinity,
@@ -2410,7 +2410,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.green.shade300)),
+              border: Border.all(color: SdColors.successTintEdge)),
           child: Row(children: [
             const SizedBox(width: 4),
             Expanded(
@@ -2421,7 +2421,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                         fontFamily: 'monospace'))),
             IconButton(
                 onPressed: () => _copyToClipboard(coordinates),
-                icon: const Icon(Icons.copy, color: Colors.green)),
+                icon: const Icon(Icons.copy, color: SdColors.success)),
           ]),
         )
       ]),
@@ -2433,7 +2433,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('تم نسخ الإحداثيات إلى الحافظة'),
-        backgroundColor: Colors.green,
+        backgroundColor: SdColors.success,
         duration: Duration(seconds: 2)));
   }
 
@@ -2517,9 +2517,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 8 * sc, vertical: 6 * sc),
         decoration: BoxDecoration(
-          color: tileBg ?? Colors.grey.shade50,
+          color: tileBg ?? SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: tileBorder ?? Colors.grey.shade200),
+          border: Border.all(color: tileBorder ?? SdColors.divider),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -2527,10 +2527,10 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             Container(
               padding: EdgeInsets.all(4 * sc),
               decoration: BoxDecoration(
-                  color: iconBg ?? Colors.green.shade100,
+                  color: iconBg ?? SdColors.successTint,
                   borderRadius: BorderRadius.circular(6)),
               child: Icon(Icons.phone,
-                  size: 14 * sc, color: Colors.green.shade700),
+                  size: 14 * sc, color: SdColors.success),
             ),
             SizedBox(width: 8 * sc),
             Expanded(
@@ -2540,7 +2540,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   Text('رقم الهاتف',
                       style: TextStyle(
                           fontSize: 11 * sc,
-                          color: Colors.grey.shade700,
+                          color: SdColors.muted,
                           fontWeight: FontWeight.w800)),
                   if (_resolvedPhone.isNotEmpty)
                     Directionality(
@@ -2556,7 +2556,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   else
                     Text('غير متوفر',
                         style: TextStyle(
-                            fontSize: 12 * sc, color: Colors.grey.shade500)),
+                            fontSize: 12 * sc, color: SdColors.faint)),
                 ],
               ),
             ),
@@ -2565,13 +2565,13 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                 message: 'نسخ رقم الهاتف',
                 child: IconButton(
                   icon: Icon(Icons.copy_rounded,
-                      size: 18 * sc, color: Colors.green.shade700),
+                      size: 18 * sc, color: SdColors.success),
                   onPressed: () {
                     Clipboard.setData(
                         ClipboardData(text: _fmtPhoneLocal(_resolvedPhone)));
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('تم نسخ رقم الهاتف'),
-                      backgroundColor: Colors.green,
+                      backgroundColor: SdColors.success,
                       duration: Duration(seconds: 2),
                     ));
                   },
@@ -2588,14 +2588,14 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                 child: TextButton.icon(
                   onPressed: _fetchPhoneManually,
                   icon:
-                      Icon(Icons.search, size: 16, color: Colors.blue.shade700),
+                      Icon(Icons.search, size: 16, color: SdColors.info),
                   label: Text('إظهار الرقم',
                       style:
-                          TextStyle(fontSize: 12, color: Colors.blue.shade700)),
+                          TextStyle(fontSize: 12, color: SdColors.info)),
                   style: TextButton.styleFrom(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    backgroundColor: Colors.blue.shade50,
+                    backgroundColor: SdColors.infoTint,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6)),
                   ),
@@ -2621,9 +2621,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 8 * sc, vertical: 6 * sc),
         decoration: BoxDecoration(
-          color: backgroundColor ?? Colors.grey.shade50,
+          color: backgroundColor ?? SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: borderColor ?? Colors.grey.shade200),
+          border: Border.all(color: borderColor ?? SdColors.divider),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -2631,9 +2631,9 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             Container(
               padding: EdgeInsets.all(4 * sc),
               decoration: BoxDecoration(
-                  color: iconBgColor ?? Colors.blue.shade100,
+                  color: iconBgColor ?? SdColors.infoTint,
                   borderRadius: BorderRadius.circular(6)),
-              child: Icon(icon, size: 14 * sc, color: Colors.blue.shade700),
+              child: Icon(icon, size: 14 * sc, color: SdColors.info),
             ),
             SizedBox(width: 8 * sc),
             Expanded(
@@ -2643,7 +2643,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                   Text(label,
                       style: TextStyle(
                           fontSize: 11 * sc,
-                          color: Colors.grey.shade700,
+                          color: SdColors.muted,
                           fontWeight: FontWeight.w800)),
                   Builder(
                     builder: (_) {
@@ -2677,7 +2677,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
                 message: 'نسخ المعرف',
                 child: IconButton(
                   icon: Icon(Icons.copy_rounded, size: 22 * sc),
-                  color: Colors.blue.shade700,
+                  color: SdColors.info,
                   onPressed: () => _copyUserId(value),
                 ),
               ),
@@ -2693,7 +2693,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('تم نسخ معرف المستخدم'),
-        backgroundColor: Colors.blue,
+        backgroundColor: SdColors.info,
         duration: Duration(seconds: 2),
       ),
     );
@@ -2748,7 +2748,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
       content: Text('تم نسخ كل المعلومات'),
-      backgroundColor: Colors.teal,
+      backgroundColor: SdColors.accent,
       duration: Duration(seconds: 2),
     ));
   }
@@ -2901,19 +2901,19 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8 * sc, vertical: 6 * sc),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: SdColors.infoTint,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.shade100),
+        border: Border.all(color: SdColors.infoTint),
       ),
       child: Row(
         children: [
           Container(
             padding: EdgeInsets.all(4 * sc),
             decoration: BoxDecoration(
-                color: Colors.blue.shade100,
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(6)),
             child:
-                Icon(Icons.person, size: 14 * sc, color: Colors.blue.shade700),
+                Icon(Icons.person, size: 14 * sc, color: SdColors.info),
           ),
           SizedBox(width: 8 * sc),
           Expanded(
@@ -2929,12 +2929,12 @@ class UserDetailsPageState extends State<UserDetailsPage> {
             message: 'نسخ الاسم',
             child: IconButton(
               icon: Icon(Icons.copy_rounded,
-                  size: 16 * sc, color: Colors.blue.shade700),
+                  size: 16 * sc, color: SdColors.info),
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: widget.userName));
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                   content: Text('تم نسخ الاسم'),
-                  backgroundColor: Colors.blue,
+                  backgroundColor: SdColors.info,
                   duration: Duration(seconds: 2),
                 ));
               },
@@ -2946,14 +2946,14 @@ class UserDetailsPageState extends State<UserDetailsPage> {
               message: 'نسخ الاسم والرقم معاً',
               child: IconButton(
                 icon: Icon(Icons.contact_page_rounded,
-                    size: 16 * sc, color: Colors.teal.shade700),
+                    size: 16 * sc, color: SdColors.accent),
                 onPressed: () {
                   final text =
                       '${widget.userName}\n${_fmtPhoneLocal(_resolvedPhone)}';
                   Clipboard.setData(ClipboardData(text: text));
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                     content: Text('تم نسخ الاسم والرقم'),
-                    backgroundColor: Colors.teal,
+                    backgroundColor: SdColors.accent,
                     duration: Duration(seconds: 2),
                   ));
                 },
@@ -2967,7 +2967,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
   void _onRenewPressed() {
     if (subscriptionDetails == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('لا توجد بيانات اشتراك'), backgroundColor: Colors.red));
+          content: Text('لا توجد بيانات اشتراك'), backgroundColor: SdColors.danger));
       return;
     }
     _prepareRenewAndNavigate();
@@ -2980,7 +2980,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
     if (id.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('معرف الاشتراك غير صالح'),
-          backgroundColor: Colors.red));
+          backgroundColor: SdColors.danger));
       return;
     }
 
@@ -3390,7 +3390,7 @@ class UserDetailsPageState extends State<UserDetailsPage> {
           : errorMessage.isNotEmpty
               ? Center(
                   child: Text('خطأ: $errorMessage',
-                      style: const TextStyle(color: Colors.red)))
+                      style: const TextStyle(color: SdColors.danger)))
               : SingleChildScrollView(
                   padding: EdgeInsets.all(pad),
                   child: Column(
@@ -3745,7 +3745,7 @@ extension _AddTaskExtension on UserDetailsPageState {
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                   content: Text('تمت إضافة المهمة'),
-                  backgroundColor: Colors.green));
+                  backgroundColor: SdColors.success));
             },
           );
         });
@@ -4118,7 +4118,7 @@ class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.indigo.shade600,
+                color: SdColors.primary,
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(16)),
               ),
@@ -4145,13 +4145,13 @@ class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
-              color: Colors.indigo.shade50,
+              color: SdColors.primaryTint,
               child: _loadingUsage
                   ? const Center(
                       child: CircularProgressIndicator(strokeWidth: 2))
                   : _usageError != null
                       ? Text(_usageError!,
-                          style: const TextStyle(color: Colors.red))
+                          style: const TextStyle(color: SdColors.danger))
                       : _buildUsageSection(),
             ),
 
@@ -4160,7 +4160,7 @@ class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  const Icon(Icons.history, size: 18, color: Colors.grey),
+                  const Icon(Icons.history, size: 18, color: SdColors.faint),
                   const SizedBox(width: 6),
                   Text('سجل الجلسات ($_totalSessions جلسة)',
                       style: const TextStyle(
@@ -4176,7 +4176,7 @@ class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
                   : _sessionsError != null
                       ? Center(
                           child: Text(_sessionsError!,
-                              style: const TextStyle(color: Colors.red)))
+                              style: const TextStyle(color: SdColors.danger)))
                       : _sessions.isEmpty
                           ? const Center(child: Text('لا توجد جلسات'))
                           : ListView.separated(
@@ -4198,7 +4198,7 @@ class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo.shade600,
+                    backgroundColor: SdColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
@@ -4236,7 +4236,7 @@ class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
   Widget _buildUsageSection() {
     if (_totalUsage == null || _totalUsage!.isEmpty) {
       return const Text('لا توجد بيانات استهلاك',
-          style: TextStyle(color: Colors.grey));
+          style: TextStyle(color: SdColors.faint));
     }
     // محاولة عرض بحسب أسماء الحقول المعروفة
     final u = _totalUsage!;
@@ -4258,11 +4258,11 @@ class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _usageStat(
-              Icons.cloud_download, 'تحميل', _formatBytes(dlNum), Colors.blue),
+              Icons.cloud_download, 'تحميل', _formatBytes(dlNum), SdColors.info),
           _usageStat(
-              Icons.cloud_upload, 'رفع', _formatBytes(ulNum), Colors.orange),
+              Icons.cloud_upload, 'رفع', _formatBytes(ulNum), SdColors.warning),
           _usageStat(Icons.storage, 'الإجمالي', _formatBytes(dlNum + ulNum),
-              Colors.indigo),
+              SdColors.primary),
         ],
       );
     }
@@ -4334,9 +4334,9 @@ class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
         margin: const EdgeInsets.symmetric(vertical: 4),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          color: SdColors.surfaceAlt,
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: SdColors.edge),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -4367,21 +4367,21 @@ class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
           Row(
             children: [
               Icon(Icons.circle,
-                  size: 8, color: endTime == null ? Colors.green : Colors.grey),
+                  size: 8, color: endTime == null ? SdColors.success : SdColors.faint),
               const SizedBox(width: 6),
               Text(_formatDate(startTime),
                   style: const TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w600)),
               if (endTime != null) ...[
                 const Text(' → ',
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    style: TextStyle(fontSize: 12, color: SdColors.faint)),
                 Text(_formatDate(endTime),
                     style: const TextStyle(fontSize: 12)),
               ] else
                 const Text('  (نشط الآن)',
                     style: TextStyle(
                         fontSize: 11,
-                        color: Colors.green,
+                        color: SdColors.success,
                         fontWeight: FontWeight.bold)),
             ],
           ),
@@ -4394,11 +4394,11 @@ class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.timer, size: 14, color: Colors.blueGrey),
+                    const Icon(Icons.timer, size: 14, color: SdColors.faint),
                     const SizedBox(width: 3),
                     Text(_formatDuration(duration),
                         style: const TextStyle(
-                            fontSize: 11, color: Colors.blueGrey)),
+                            fontSize: 11, color: SdColors.faint)),
                   ],
                 ),
               if (download != null)
@@ -4406,11 +4406,11 @@ class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.arrow_downward,
-                        size: 14, color: Colors.blue.shade600),
+                        size: 14, color: SdColors.info),
                     const SizedBox(width: 2),
                     Text(_formatBytes(download),
                         style: TextStyle(
-                            fontSize: 11, color: Colors.blue.shade700)),
+                            fontSize: 11, color: SdColors.info)),
                   ],
                 ),
               if (upload != null)
@@ -4418,22 +4418,22 @@ class _SessionsUsageDialogState extends State<_SessionsUsageDialog> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.arrow_upward,
-                        size: 14, color: Colors.orange.shade600),
+                        size: 14, color: SdColors.warning),
                     const SizedBox(width: 2),
                     Text(_formatBytes(upload),
                         style: TextStyle(
-                            fontSize: 11, color: Colors.orange.shade700)),
+                            fontSize: 11, color: SdColors.warning)),
                   ],
                 ),
               if (sessionIp != null)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.language, size: 14, color: Colors.grey),
+                    const Icon(Icons.language, size: 14, color: SdColors.faint),
                     const SizedBox(width: 2),
                     Text(sessionIp.toString(),
                         style:
-                            const TextStyle(fontSize: 11, color: Colors.grey)),
+                            const TextStyle(fontSize: 11, color: SdColors.faint)),
                   ],
                 ),
             ],
@@ -4520,7 +4520,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Row(
           children: [
-            Icon(Icons.wifi, color: Colors.teal),
+            Icon(Icons.wifi, color: SdColors.accent),
             SizedBox(width: 8),
             Text('تغيير إعدادات WiFi', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           ],
@@ -4550,7 +4550,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.accent, foregroundColor: Colors.white),
             onPressed: () {
               Navigator.pop(ctx);
               final id = _device!.id;
@@ -4584,7 +4584,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.teal.shade700,
+                color: SdColors.accent,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Row(
@@ -4630,10 +4630,10 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
-                    Icon(Icons.router, size: 48, color: Colors.grey.shade400),
+                    Icon(Icons.router, size: 48, color: SdColors.faint),
                     const SizedBox(height: 12),
                     Text(_error!, textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.red.shade700, fontSize: 14)),
+                        style: TextStyle(color: SdColors.danger, fontSize: 14)),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       icon: const Icon(Icons.refresh),
@@ -4648,12 +4648,12 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
               if (_devices.length > 1)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  color: Colors.teal.shade50,
+                  color: SdColors.accentTint,
                   child: Row(
                     children: [
-                      Icon(Icons.device_hub, size: 16, color: Colors.teal.shade700),
+                      Icon(Icons.device_hub, size: 16, color: SdColors.accent),
                       const SizedBox(width: 8),
-                      Text('${_devices.length} أجهزة مُدارة:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.teal.shade800)),
+                      Text('${_devices.length} أجهزة مُدارة:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SdColors.accent)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: SingleChildScrollView(
@@ -4668,14 +4668,14 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
                                   label: Text(
                                     d.productClass.isNotEmpty ? d.productClass : (d.manufacturer.isNotEmpty ? d.manufacturer : 'جهاز ${i + 1}'),
                                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-                                        color: selected ? Colors.white : Colors.teal.shade800),
+                                        color: selected ? Colors.white : SdColors.accent),
                                   ),
                                   avatar: Icon(
                                     d.productClass.toLowerCase().contains('hg8') ? Icons.cell_tower : Icons.router,
-                                    size: 14, color: selected ? Colors.white : Colors.teal.shade700,
+                                    size: 14, color: selected ? Colors.white : SdColors.accent,
                                   ),
                                   selected: selected,
-                                  selectedColor: Colors.teal.shade700,
+                                  selectedColor: SdColors.accent,
                                   backgroundColor: Colors.white,
                                   onSelected: (_) => setState(() { _selectedDeviceIndex = i; _actionMessage = ''; }),
                                 ),
@@ -4698,29 +4698,29 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
-                          color: _device!.isOnline ? Colors.green.shade50 : Colors.red.shade50,
+                          color: _device!.isOnline ? SdColors.successTint : SdColors.dangerTint,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: _device!.isOnline ? Colors.green.shade300 : Colors.red.shade300),
+                            color: _device!.isOnline ? SdColors.successTintEdge : SdColors.dangerTintEdge),
                         ),
                         child: Row(
                           children: [
                             Icon(
                               _device!.isOnline ? Icons.circle : Icons.circle_outlined,
                               size: 14,
-                              color: _device!.isOnline ? Colors.green : Colors.red,
+                              color: _device!.isOnline ? SdColors.success : SdColors.danger,
                             ),
                             const SizedBox(width: 8),
                             Text(
                               _device!.isOnline ? 'متصل' : 'غير متصل',
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
-                                color: _device!.isOnline ? Colors.green.shade800 : Colors.red.shade800,
+                                color: _device!.isOnline ? SdColors.success : SdColors.danger,
                               ),
                             ),
                             const Spacer(),
                             Text('آخر اتصال: ${_device!.lastInformFormatted}',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                                style: TextStyle(fontSize: 12, color: SdColors.muted)),
                           ],
                         ),
                       ),
@@ -4754,19 +4754,19 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
+                            color: SdColors.infoTint,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue.shade200),
+                            border: Border.all(color: SdColors.infoTintEdge),
                           ),
                           child: Column(
                             children: [
-                              _dhcpRow('DHCP', _device!.dhcpEnabled ? 'مفعّل' : 'معطّل', _device!.dhcpEnabled ? Colors.green : Colors.red),
+                              _dhcpRow('DHCP', _device!.dhcpEnabled ? 'مفعّل' : 'معطّل', _device!.dhcpEnabled ? SdColors.success : SdColors.danger),
                               if (_device!.dhcpMinAddress.isNotEmpty)
-                                _dhcpRow('النطاق', '${_device!.dhcpMinAddress} — ${_device!.dhcpMaxAddress}', Colors.blue.shade800),
+                                _dhcpRow('النطاق', '${_device!.dhcpMinAddress} — ${_device!.dhcpMaxAddress}', SdColors.info),
                               if (_device!.dhcpSubnetMask.isNotEmpty)
-                                _dhcpRow('Subnet', _device!.dhcpSubnetMask, Colors.grey.shade700),
+                                _dhcpRow('Subnet', _device!.dhcpSubnetMask, SdColors.muted),
                               if (_device!.dnsServers.isNotEmpty)
-                                _dhcpRow('DNS', _device!.dnsServers, Colors.grey.shade700),
+                                _dhcpRow('DNS', _device!.dnsServers, SdColors.muted),
                             ],
                           ),
                         ),
@@ -4781,13 +4781,13 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
                           margin: const EdgeInsets.only(bottom: 4),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
+                            color: SdColors.surfaceAlt,
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.grey.shade300),
+                            border: Border.all(color: SdColors.edge),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.devices, size: 16, color: Colors.blueGrey),
+                              const Icon(Icons.devices, size: 16, color: SdColors.faint),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(h.hostname.isNotEmpty ? h.hostname : 'جهاز غير معروف',
@@ -4795,7 +4795,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
                               ),
                               Text(h.ip, style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
                               const SizedBox(width: 8),
-                              Text(h.mac, style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontFamily: 'monospace')),
+                              Text(h.mac, style: TextStyle(fontSize: 10, color: SdColors.muted, fontFamily: 'monospace')),
                             ],
                           ),
                         ))),
@@ -4807,7 +4807,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
                           padding: const EdgeInsets.only(top: 12),
                           child: Text(_actionMessage,
                               style: TextStyle(
-                                color: _actionMessage.contains('بنجاح') ? Colors.green.shade700 : Colors.red.shade700,
+                                color: _actionMessage.contains('بنجاح') ? SdColors.success : SdColors.danger,
                                 fontWeight: FontWeight.w700,
                               )),
                         ),
@@ -4823,19 +4823,19 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
                           runSpacing: 8,
                           alignment: WrapAlignment.center,
                           children: [
-                            _actionBtn(Icons.restart_alt, 'إعادة تشغيل', Colors.orange, () {
+                            _actionBtn(Icons.restart_alt, 'إعادة تشغيل', SdColors.warning, () {
                               _confirmAction('إعادة تشغيل الراوتر', 'هل أنت متأكد؟ سيفقد المشترك الاتصال مؤقتاً.', () {
                                 _doAction('إعادة تشغيل', () => GenieAcsService.instance.rebootDevice(_device!.id));
                               });
                             }),
-                            _actionBtn(Icons.wifi, 'تغيير WiFi', Colors.teal, _showSetWifiDialog),
-                            _actionBtn(Icons.speed, 'تحديد السرعة', Colors.deepPurple, _showBandwidthDialog),
-                            _actionBtn(Icons.network_ping, 'تشخيص', Colors.indigo, _showDiagnosticsDialog),
-                            _actionBtn(Icons.dns, 'تغيير DHCP', Colors.blue.shade700, _showDhcpDialog),
-                            _actionBtn(Icons.refresh, 'تحديث البيانات', Colors.blue, () {
+                            _actionBtn(Icons.wifi, 'تغيير WiFi', SdColors.accent, _showSetWifiDialog),
+                            _actionBtn(Icons.speed, 'تحديد السرعة', SdColors.platformBase, _showBandwidthDialog),
+                            _actionBtn(Icons.network_ping, 'تشخيص', SdColors.primary, _showDiagnosticsDialog),
+                            _actionBtn(Icons.dns, 'تغيير DHCP', SdColors.info, _showDhcpDialog),
+                            _actionBtn(Icons.refresh, 'تحديث البيانات', SdColors.info, () {
                               _doAction('تحديث', () => GenieAcsService.instance.refreshDevice(_device!.id));
                             }),
-                            _actionBtn(Icons.restore, 'إعادة ضبط المصنع', Colors.red, () {
+                            _actionBtn(Icons.restore, 'إعادة ضبط المصنع', SdColors.danger, () {
                               _confirmAction('إعادة ضبط المصنع', 'تحذير! سيتم مسح كل إعدادات الراوتر.\nهل أنت متأكد تماماً؟', () {
                                 _doAction('ضبط المصنع', () => GenieAcsService.instance.factoryReset(_device!.id));
                               });
@@ -4862,9 +4862,9 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: Colors.teal.shade700),
+          Icon(icon, size: 16, color: SdColors.accent),
           const SizedBox(width: 6),
-          Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.teal.shade800)),
+          Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: SdColors.accent)),
         ],
       ),
     );
@@ -4875,7 +4875,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          SizedBox(width: 70, child: Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w600))),
+          SizedBox(width: 70, child: Text(label, style: TextStyle(fontSize: 11, color: SdColors.muted, fontWeight: FontWeight.w600))),
           Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
         ],
       ),
@@ -4887,19 +4887,19 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: w.is5Ghz ? Colors.purple.shade50 : Colors.teal.shade50,
+        color: w.is5Ghz ? SdColors.platformTint : SdColors.accentTint,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: w.is5Ghz ? Colors.purple.shade200 : Colors.teal.shade200),
+        border: Border.all(color: w.is5Ghz ? SdColors.platformTintEdge : SdColors.accentTintEdge),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.wifi, size: 16, color: w.is5Ghz ? Colors.purple.shade700 : Colors.teal.shade700),
+              Icon(Icons.wifi, size: 16, color: w.is5Ghz ? SdColors.platformBase : SdColors.accent),
               const SizedBox(width: 6),
               Text(w.bandLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800,
-                  color: w.is5Ghz ? Colors.purple.shade700 : Colors.teal.shade700)),
+                  color: w.is5Ghz ? SdColors.platformBase : SdColors.accent)),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(w.ssid.isNotEmpty ? w.ssid : '(بدون اسم)',
@@ -4908,18 +4908,18 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
               if (!w.enabled)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.red.shade700, borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(color: SdColors.danger, borderRadius: BorderRadius.circular(8)),
                   child: const Text('معطّل', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
                 ),
               if (w.hidden)
                 Padding(
                   padding: const EdgeInsets.only(right: 4),
-                  child: Icon(Icons.visibility_off, size: 14, color: Colors.grey.shade600),
+                  child: Icon(Icons.visibility_off, size: 14, color: SdColors.muted),
                 ),
               // زر تعديل
               InkWell(
                 onTap: () => _showEditWifiDialog(w),
-                child: Icon(Icons.edit, size: 16, color: w.is5Ghz ? Colors.purple.shade600 : Colors.teal.shade600),
+                child: Icon(Icons.edit, size: 16, color: w.is5Ghz ? SdColors.platformBase : SdColors.accent),
               ),
             ],
           ),
@@ -4928,10 +4928,10 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
             spacing: 12,
             children: [
               if (w.password.isNotEmpty)
-                Text('كلمة المرور: ${w.password}', style: TextStyle(fontSize: 10, color: Colors.grey.shade700)),
-              Text('القناة: ${w.autoChannel ? "تلقائي" : w.channel}', style: TextStyle(fontSize: 10, color: Colors.grey.shade700)),
+                Text('كلمة المرور: ${w.password}', style: TextStyle(fontSize: 10, color: SdColors.muted)),
+              Text('القناة: ${w.autoChannel ? "تلقائي" : w.channel}', style: TextStyle(fontSize: 10, color: SdColors.muted)),
               if (w.macFilterEnabled)
-                Text('MAC Filter: مفعّل', style: TextStyle(fontSize: 10, color: Colors.orange.shade700, fontWeight: FontWeight.w600)),
+                Text('MAC Filter: مفعّل', style: TextStyle(fontSize: 10, color: SdColors.warning, fontWeight: FontWeight.w600)),
             ],
           ),
         ],
@@ -4950,7 +4950,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
         builder: (ctx, setLocal) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title: Row(children: [
-            Icon(Icons.wifi, color: w.is5Ghz ? Colors.purple : Colors.teal),
+            Icon(Icons.wifi, color: w.is5Ghz ? SdColors.platformBase : SdColors.accent),
             const SizedBox(width: 8),
             Expanded(child: Text('تعديل WiFi ${w.bandLabel}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16), overflow: TextOverflow.ellipsis)),
           ]),
@@ -4970,7 +4970,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.accent, foregroundColor: Colors.white),
               onPressed: () {
                 Navigator.pop(ctx);
                 final id = _device!.id;
@@ -5010,7 +5010,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Row(children: [
-          Icon(Icons.speed, color: Colors.deepPurple),
+          Icon(Icons.speed, color: SdColors.platformBase),
           SizedBox(width: 8),
           Expanded(child: Text('تحديد سرعة المشترك', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16), overflow: TextOverflow.ellipsis)),
         ]),
@@ -5022,7 +5022,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
               spacing: 6, runSpacing: 6,
               children: presets.map((p) => ActionChip(
                 label: Text(p['label'], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-                backgroundColor: Colors.deepPurple.shade50,
+                backgroundColor: SdColors.platformTint,
                 onPressed: () {
                   downloadCtrl.text = p['down'].toString();
                   uploadCtrl.text = p['up'].toString();
@@ -5040,7 +5040,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.platformBase, foregroundColor: Colors.white),
             onPressed: () {
               Navigator.pop(ctx);
               final down = int.tryParse(downloadCtrl.text.trim()) ?? 0;
@@ -5078,7 +5078,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Row(children: [
-          Icon(Icons.dns, color: Colors.blue),
+          Icon(Icons.dns, color: SdColors.info),
           SizedBox(width: 8),
           Expanded(child: Text('إعدادات DHCP', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16), overflow: TextOverflow.ellipsis)),
         ]),
@@ -5095,7 +5095,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.info, foregroundColor: Colors.white),
             onPressed: () {
               Navigator.pop(ctx);
               final id = _device!.id;
@@ -5129,7 +5129,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Row(children: [
-          const Icon(Icons.warning_amber_rounded, color: Colors.orange),
+          const Icon(Icons.warning_amber_rounded, color: SdColors.warning),
           const SizedBox(width: 8),
           Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
         ]),
@@ -5137,7 +5137,7 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger, foregroundColor: Colors.white),
             onPressed: () { Navigator.pop(ctx); onConfirm(); },
             child: const Text('تأكيد', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
@@ -5174,19 +5174,19 @@ class _RouterManagementDialogState extends State<_RouterManagementDialog> {
       width: 200,
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: SdColors.edge),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.teal.shade700),
+          Icon(icon, size: 16, color: SdColors.accent),
           const SizedBox(width: 6),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                Text(label, style: TextStyle(fontSize: 10, color: SdColors.muted)),
                 Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                     maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
@@ -5259,7 +5259,7 @@ class _DiagnosticsDialogState extends State<_DiagnosticsDialog> {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.indigo.shade700,
+                  color: SdColors.primary,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
                 child: Row(
@@ -5293,7 +5293,7 @@ class _DiagnosticsDialogState extends State<_DiagnosticsDialog> {
                                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                                 : const Icon(Icons.network_ping, size: 18),
                             label: const Text('Ping', style: TextStyle(fontWeight: FontWeight.w800)),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12)),
+                            style: ElevatedButton.styleFrom(backgroundColor: SdColors.primary, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12)),
                             onPressed: _running ? null : _runPing,
                           ),
                         ),
@@ -5304,7 +5304,7 @@ class _DiagnosticsDialogState extends State<_DiagnosticsDialog> {
                                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                                 : const Icon(Icons.route, size: 18),
                             label: const Text('Traceroute', style: TextStyle(fontWeight: FontWeight.w800)),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12)),
+                            style: ElevatedButton.styleFrom(backgroundColor: SdColors.platformBase, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12)),
                             onPressed: _running ? null : _runTraceroute,
                           ),
                         ),
@@ -5316,9 +5316,9 @@ class _DiagnosticsDialogState extends State<_DiagnosticsDialog> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: SdColors.groundAlt,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(color: SdColors.edge),
                         ),
                         child: SelectableText(_result,
                             style: const TextStyle(fontSize: 12, fontFamily: 'monospace', height: 1.5)),
@@ -5380,7 +5380,7 @@ class _Tr069SetupDialogState extends State<_Tr069SetupDialog> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.indigo.shade700,
+                color: SdColors.primary,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Row(
@@ -5415,18 +5415,18 @@ class _Tr069SetupDialogState extends State<_Tr069SetupDialog> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.indigo.shade50,
+                      color: SdColors.primaryTint,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.indigo.shade200),
+                      border: Border.all(color: SdColors.primaryTintEdge),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.vpn_key, size: 16, color: Colors.indigo.shade700),
+                            Icon(Icons.vpn_key, size: 16, color: SdColors.primary),
                             const SizedBox(width: 6),
-                            Text('إعدادات TR-069 المطلوبة', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.indigo.shade800)),
+                            Text('إعدادات TR-069 المطلوبة', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: SdColors.primary)),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -5449,7 +5449,7 @@ class _Tr069SetupDialogState extends State<_Tr069SetupDialog> {
                     label: Text(_scanning ? 'جاري الفحص...' : 'فحص الشبكة — كشف الراوتر',
                         style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo.shade600,
+                      backgroundColor: SdColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -5461,28 +5461,28 @@ class _Tr069SetupDialogState extends State<_Tr069SetupDialog> {
                     Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: Text(_scanError!, textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.red.shade700, fontSize: 12)),
+                          style: TextStyle(color: SdColors.danger, fontSize: 12)),
                     ),
 
                   // نتائج الفحص
                   if (_results.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    Text('الراوترات المكتشفة:', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.indigo.shade800)),
+                    Text('الراوترات المكتشفة:', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: SdColors.primary)),
                     const SizedBox(height: 8),
                     ..._results.map((r) => Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: r.supportsTr069 ? Colors.green.shade50 : Colors.orange.shade50,
+                        color: r.supportsTr069 ? SdColors.successTint : SdColors.warningTint,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: r.supportsTr069 ? Colors.green.shade300 : Colors.orange.shade300),
+                        border: Border.all(color: r.supportsTr069 ? SdColors.successTintEdge : SdColors.warningTintEdge),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.router, size: 20, color: r.supportsTr069 ? Colors.green.shade700 : Colors.orange.shade700),
+                              Icon(Icons.router, size: 20, color: r.supportsTr069 ? SdColors.success : SdColors.warning),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Column(
@@ -5490,7 +5490,7 @@ class _Tr069SetupDialogState extends State<_Tr069SetupDialog> {
                                   children: [
                                     Text('${r.brand}${r.pageTitle.isNotEmpty ? ' — ${r.pageTitle}' : ''}',
                                         style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13,
-                                            color: r.supportsTr069 ? Colors.green.shade800 : Colors.orange.shade800)),
+                                            color: r.supportsTr069 ? SdColors.success : SdColors.warning)),
                                     Text(r.ip, style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
                                   ],
                                 ),
@@ -5498,7 +5498,7 @@ class _Tr069SetupDialogState extends State<_Tr069SetupDialog> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: r.supportsTr069 ? Colors.green.shade700 : Colors.orange.shade700,
+                                  color: r.supportsTr069 ? SdColors.success : SdColors.warning,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -5519,11 +5519,11 @@ class _Tr069SetupDialogState extends State<_Tr069SetupDialog> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('مسار الإعداد:', style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+                                Text('مسار الإعداد:', style: TextStyle(fontSize: 10, color: SdColors.muted, fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 2),
                                 Text(r.tr069Path.isNotEmpty ? r.tr069Path : 'غير محدد — ابحث في Advanced Settings',
                                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                                        color: r.supportsTr069 ? Colors.indigo.shade800 : Colors.red.shade700)),
+                                        color: r.supportsTr069 ? SdColors.primary : SdColors.danger)),
                               ],
                             ),
                           ),
@@ -5531,7 +5531,7 @@ class _Tr069SetupDialogState extends State<_Tr069SetupDialog> {
                             const SizedBox(height: 8),
                             Text(
                               '1. افتح http://${r.ip}\n2. ادخل ${r.tr069Path}\n3. الصق ACS URL أعلاه\n4. فعّل Periodic Inform (300 ثانية)',
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade700, height: 1.5),
+                              style: TextStyle(fontSize: 11, color: SdColors.muted, height: 1.5),
                             ),
                           ],
                         ],
@@ -5552,7 +5552,7 @@ class _Tr069SetupDialogState extends State<_Tr069SetupDialog> {
       children: [
         SizedBox(
           width: 120,
-          child: Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+          child: Text(label, style: TextStyle(fontSize: 11, color: SdColors.muted, fontWeight: FontWeight.w600)),
         ),
         Expanded(
           child: Container(
@@ -5560,7 +5560,7 @@ class _Tr069SetupDialogState extends State<_Tr069SetupDialog> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.indigo.shade200),
+              border: Border.all(color: SdColors.primaryTintEdge),
             ),
             child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'monospace')),
           ),
@@ -5573,7 +5573,7 @@ class _Tr069SetupDialogState extends State<_Tr069SetupDialog> {
               SnackBar(content: Text('تم نسخ $label'), duration: const Duration(seconds: 1)),
             );
           },
-          child: Icon(Icons.copy, size: 16, color: Colors.indigo.shade400),
+          child: Icon(Icons.copy, size: 16, color: SdColors.primaryLight),
         ),
       ],
     );

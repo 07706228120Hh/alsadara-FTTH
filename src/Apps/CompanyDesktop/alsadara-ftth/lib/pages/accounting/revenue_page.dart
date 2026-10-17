@@ -2,7 +2,6 @@
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
-import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 
 /// صفحة الإيرادات - Revenue Page
@@ -451,7 +450,7 @@ class _RevenuePageState extends State<RevenuePage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
-              primary: AccountingTheme.neonGreen,
+              primary: SdColors.success,
               onPrimary: Colors.white,
               surface: Colors.white,
               onSurface: Colors.black87,
@@ -699,10 +698,10 @@ class _RevenuePageState extends State<RevenuePage> {
         builder: (ctx, ss) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            backgroundColor: AccountingTheme.bgCard,
+            backgroundColor: SdColors.surface,
             title: Text('تعديل الإيراد',
                 style: TextStyle(
-                    color: AccountingTheme.info, fontWeight: FontWeight.bold)),
+                    color: SdColors.info, fontWeight: FontWeight.bold)),
             content: SizedBox(
               width: context.accR.isMobile
                   ? MediaQuery.of(context).size.width * 0.90
@@ -717,9 +716,9 @@ class _RevenuePageState extends State<RevenuePage> {
                     SizedBox(height: context.accR.spaceM),
                     DropdownButtonFormField<String>(
                       value: selectedRevenueAccId,
-                      dropdownColor: AccountingTheme.bgCard,
+                      dropdownColor: SdColors.surface,
                       style:
-                          const TextStyle(color: AccountingTheme.textPrimary),
+                          const TextStyle(color: SdColors.ink),
                       isExpanded: true,
                       items: revenueAccounts.map<DropdownMenuItem<String>>((a) {
                         return DropdownMenuItem(
@@ -734,9 +733,9 @@ class _RevenuePageState extends State<RevenuePage> {
                     SizedBox(height: context.accR.spaceM),
                     DropdownButtonFormField<String>(
                       value: selectedAssetAccId,
-                      dropdownColor: AccountingTheme.bgCard,
+                      dropdownColor: SdColors.surface,
                       style:
-                          const TextStyle(color: AccountingTheme.textPrimary),
+                          const TextStyle(color: SdColors.ink),
                       isExpanded: true,
                       items: assetAccounts.map<DropdownMenuItem<String>>((a) {
                         return DropdownMenuItem(
@@ -758,15 +757,15 @@ class _RevenuePageState extends State<RevenuePage> {
               TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: Text('إلغاء',
-                      style: TextStyle(color: AccountingTheme.textMuted))),
+                      style: TextStyle(color: SdColors.faint))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AccountingTheme.info,
+                    backgroundColor: SdColors.info,
                     foregroundColor: Colors.white),
                 onPressed: () async {
                   final newAmount = double.tryParse(amountCtrl.text) ?? 0;
                   if (descCtrl.text.isEmpty || newAmount <= 0) {
-                    _snack('الرجاء ملء الوصف والمبلغ', AccountingTheme.warning);
+                    _snack('الرجاء ملء الوصف والمبلغ', SdColors.warning);
                     return;
                   }
                   Navigator.pop(ctx);
@@ -792,10 +791,10 @@ class _RevenuePageState extends State<RevenuePage> {
                   });
 
                   if (result['success'] == true) {
-                    _snack('تم تعديل الإيراد', AccountingTheme.success);
+                    _snack('تم تعديل الإيراد', SdColors.success);
                     _loadData();
                   } else {
-                    _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                    _snack(result['message'] ?? 'خطأ', SdColors.danger);
                   }
                 },
                 child: const Text('حفظ التعديل'),
@@ -816,32 +815,32 @@ class _RevenuePageState extends State<RevenuePage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: Text('حذف الإيراد',
               style: TextStyle(
-                  color: AccountingTheme.danger, fontWeight: FontWeight.bold)),
+                  color: SdColors.danger, fontWeight: FontWeight.bold)),
           content: Text(
             'هل أنت متأكد من حذف الإيراد "${entry['Description'] ?? ''}"؟\nسيتم حذف القيد المحاسبي المرتبط.',
-            style: const TextStyle(color: AccountingTheme.textPrimary),
+            style: const TextStyle(color: SdColors.ink),
           ),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('إلغاء',
-                    style: TextStyle(color: AccountingTheme.textMuted))),
+                    style: TextStyle(color: SdColors.faint))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.danger,
+                  backgroundColor: SdColors.danger,
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
                 final result = await AccountingService.instance
                     .deleteJournalEntry(entryId);
                 if (result['success'] == true) {
-                  _snack('تم حذف الإيراد', AccountingTheme.success);
+                  _snack('تم حذف الإيراد', SdColors.success);
                   _loadData();
                 } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                  _snack(result['message'] ?? 'خطأ', SdColors.danger);
                 }
               },
               child: const Text('حذف'),
@@ -879,11 +878,11 @@ class _RevenuePageState extends State<RevenuePage> {
 
     if (revenueAccounts.isEmpty) {
       _snack('لا توجد حسابات إيرادات. قم ببذر دليل الحسابات أولاً',
-          AccountingTheme.warning);
+          SdColors.warning);
       return;
     }
     if (assetAccounts.isEmpty) {
-      _snack('لا توجد حسابات أصول', AccountingTheme.warning);
+      _snack('لا توجد حسابات أصول', SdColors.warning);
       return;
     }
 
@@ -901,10 +900,10 @@ class _RevenuePageState extends State<RevenuePage> {
         builder: (ctx, ss) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            backgroundColor: AccountingTheme.bgCard,
+            backgroundColor: SdColors.surface,
             title: Text('إضافة إيراد',
                 style: TextStyle(
-                    color: AccountingTheme.success,
+                    color: SdColors.success,
                     fontWeight: FontWeight.bold)),
             content: SizedBox(
               width: context.accR.isMobile
@@ -923,9 +922,9 @@ class _RevenuePageState extends State<RevenuePage> {
                     // حساب الإيراد (دائن)
                     DropdownButtonFormField<String>(
                       value: selectedRevenueAccId,
-                      dropdownColor: AccountingTheme.bgCard,
+                      dropdownColor: SdColors.surface,
                       style:
-                          const TextStyle(color: AccountingTheme.textPrimary),
+                          const TextStyle(color: SdColors.ink),
                       isExpanded: true,
                       items: revenueAccounts.map<DropdownMenuItem<String>>((a) {
                         return DropdownMenuItem(
@@ -941,9 +940,9 @@ class _RevenuePageState extends State<RevenuePage> {
                     // حساب الأصل (مدين - أين يذهب المال)
                     DropdownButtonFormField<String>(
                       value: selectedAssetAccId,
-                      dropdownColor: AccountingTheme.bgCard,
+                      dropdownColor: SdColors.surface,
                       style:
-                          const TextStyle(color: AccountingTheme.textPrimary),
+                          const TextStyle(color: SdColors.ink),
                       isExpanded: true,
                       items: assetAccounts.map<DropdownMenuItem<String>>((a) {
                         return DropdownMenuItem(
@@ -963,31 +962,31 @@ class _RevenuePageState extends State<RevenuePage> {
                     Container(
                       padding: EdgeInsets.all(context.accR.spaceM),
                       decoration: BoxDecoration(
-                        color: AccountingTheme.success.withValues(alpha: 0.18),
+                        color: SdColors.success.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                             color:
-                                AccountingTheme.success.withValues(alpha: 0.2)),
+                                SdColors.success.withValues(alpha: 0.2)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('القيد الناتج:',
                               style: TextStyle(
-                                  color: AccountingTheme.success,
+                                  color: SdColors.success,
                                   fontSize: context.accR.small,
                                   fontWeight: FontWeight.bold)),
                           SizedBox(height: context.accR.spaceXS),
                           Row(
                             children: [
                               Icon(Icons.arrow_forward,
-                                  color: AccountingTheme.accent,
+                                  color: SdColors.success,
                                   size: context.accR.iconXS),
                               SizedBox(width: context.accR.spaceXS),
                               Expanded(
                                 child: Text('حساب القبض ← مدين',
                                     style: TextStyle(
-                                        color: AccountingTheme.accent,
+                                        color: SdColors.success,
                                         fontSize: context.accR.small)),
                               ),
                               Text(
@@ -995,20 +994,20 @@ class _RevenuePageState extends State<RevenuePage> {
                                       ? amountCtrl.text
                                       : '0',
                                   style: TextStyle(
-                                      color: AccountingTheme.accent,
+                                      color: SdColors.success,
                                       fontSize: context.accR.small)),
                             ],
                           ),
                           Row(
                             children: [
                               Icon(Icons.arrow_back,
-                                  color: AccountingTheme.success,
+                                  color: SdColors.success,
                                   size: context.accR.iconXS),
                               SizedBox(width: context.accR.spaceXS),
                               Expanded(
                                 child: Text('حساب الإيراد ← دائن',
                                     style: TextStyle(
-                                        color: AccountingTheme.success,
+                                        color: SdColors.success,
                                         fontSize: context.accR.small)),
                               ),
                               Text(
@@ -1016,7 +1015,7 @@ class _RevenuePageState extends State<RevenuePage> {
                                       ? amountCtrl.text
                                       : '0',
                                   style: TextStyle(
-                                      color: AccountingTheme.success,
+                                      color: SdColors.success,
                                       fontSize: context.accR.small)),
                             ],
                           ),
@@ -1031,20 +1030,20 @@ class _RevenuePageState extends State<RevenuePage> {
               TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: Text('إلغاء',
-                      style: TextStyle(color: AccountingTheme.textMuted))),
+                      style: TextStyle(color: SdColors.faint))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AccountingTheme.neonGreen,
+                    backgroundColor: SdColors.success,
                     foregroundColor: Colors.white),
                 onPressed: () async {
                   final amount = double.tryParse(amountCtrl.text) ?? 0;
                   if (descCtrl.text.isEmpty || amount <= 0) {
-                    _snack('الرجاء ملء الوصف والمبلغ', AccountingTheme.warning);
+                    _snack('الرجاء ملء الوصف والمبلغ', SdColors.warning);
                     return;
                   }
                   if (selectedRevenueAccId == null ||
                       selectedAssetAccId == null) {
-                    _snack('الرجاء اختيار الحسابات', AccountingTheme.warning);
+                    _snack('الرجاء اختيار الحسابات', SdColors.warning);
                     return;
                   }
                   Navigator.pop(ctx);
@@ -1080,10 +1079,10 @@ class _RevenuePageState extends State<RevenuePage> {
                       await AccountingService.instance
                           .postJournalEntry(entryId, approvedById: userId);
                     }
-                    _snack('تم تسجيل الإيراد', AccountingTheme.success);
+                    _snack('تم تسجيل الإيراد', SdColors.success);
                     _loadData();
                   } else {
-                    _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                    _snack(result['message'] ?? 'خطأ', SdColors.danger);
                   }
                 },
                 child: const Text('تسجيل الإيراد'),
@@ -1099,7 +1098,7 @@ class _RevenuePageState extends State<RevenuePage> {
       {bool isNumber = false}) {
     return TextField(
       controller: ctrl,
-      style: const TextStyle(color: AccountingTheme.textPrimary),
+      style: const TextStyle(color: SdColors.ink),
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       decoration: _inputDeco(label),
     );
@@ -1108,9 +1107,9 @@ class _RevenuePageState extends State<RevenuePage> {
   InputDecoration _inputDeco(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+      labelStyle: const TextStyle(color: SdColors.faint),
       filled: true,
-      fillColor: AccountingTheme.bgCardHover,
+      fillColor: SdColors.surfaceAlt,
       border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
     );

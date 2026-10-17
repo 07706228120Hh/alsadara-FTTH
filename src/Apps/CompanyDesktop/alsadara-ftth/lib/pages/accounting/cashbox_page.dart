@@ -1,12 +1,12 @@
 ﻿import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import '../../services/accounting_service.dart';
 import '../../theme/accounting_theme.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 /// صفحة إدارة الصناديق النقدية
 class CashBoxPage extends StatefulWidget {
   final String? companyId;
@@ -79,7 +79,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AccountingTheme.bgPrimary,
+        backgroundColor: SdColors.ground,
         body: Column(
           children: [
             _buildToolbar(),
@@ -87,7 +87,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
               child: _isLoading
                   ? Center(
                       child: CircularProgressIndicator(
-                          color: AccountingTheme.neonGreen))
+                          color: SdColors.success))
                   : _errorMessage != null
                       ? Center(
                           child: Column(
@@ -95,12 +95,13 @@ class _CashBoxPageState extends State<CashBoxPage> {
                           children: [
                             Icon(Icons.error_outline,
                                 color:
-                                    AccountingTheme.textMuted.withOpacity(0.3),
+                                    SdColors.faint.withOpacity(0.3),
                                 size: context.accR.iconXL),
                             SizedBox(height: context.accR.spaceM),
                             Text(_errorMessage!,
-                                style: GoogleFonts.cairo(
-                                    color: AccountingTheme.textSecondary,
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    color: SdColors.muted,
                                     fontSize: context.accR.body)),
                           ],
                         ))
@@ -115,7 +116,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
                                   child: _buildBoxesList(),
                                 ),
                                 VerticalDivider(
-                                    width: 1, color: AccountingTheme.borderColor),
+                                    width: 1, color: SdColors.divider),
                                 Expanded(
                                     child: _selectedBox != null
                                         ? _buildBoxDetail()
@@ -137,8 +138,8 @@ class _CashBoxPageState extends State<CashBoxPage> {
           horizontal: isMobile ? 8 : ar.spaceXL,
           vertical: isMobile ? 6 : ar.spaceL),
       decoration: const BoxDecoration(
-        color: AccountingTheme.bgCard,
-        border: Border(bottom: BorderSide(color: AccountingTheme.borderColor)),
+        color: SdColors.surface,
+        border: Border(bottom: BorderSide(color: SdColors.divider)),
       ),
       child: Row(
         children: [
@@ -156,7 +157,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
             constraints: isMobile ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
             padding: isMobile ? EdgeInsets.zero : null,
             style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
+                foregroundColor: SdColors.muted),
           ),
           SizedBox(width: isMobile ? 4 : ar.spaceS),
           Container(
@@ -172,23 +173,25 @@ class _CashBoxPageState extends State<CashBoxPage> {
           Expanded(
             child: Text('الصناديق النقدية',
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: isMobile ? 14 : ar.headingMedium,
                   fontWeight: FontWeight.bold,
-                  color: AccountingTheme.textPrimary,
+                  color: SdColors.ink,
                 )),
           ),
           Container(
             padding: EdgeInsets.symmetric(horizontal: ar.spaceS, vertical: 2),
             decoration: BoxDecoration(
-              color: AccountingTheme.neonPink.withOpacity(0.2),
+              color: SdColors.platformLight.withOpacity(0.2),
               borderRadius: BorderRadius.circular(ar.cardRadius),
             ),
             child: Text('${_cashBoxes.length}',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                  fontFamily: 'Cairo',
                   fontSize: ar.small,
                   fontWeight: FontWeight.bold,
-                  color: AccountingTheme.neonPink,
+                  color: SdColors.platformLight,
                 )),
           ),
           IconButton(
@@ -198,16 +201,16 @@ class _CashBoxPageState extends State<CashBoxPage> {
             constraints: isMobile ? const BoxConstraints(minWidth: 32, minHeight: 32) : null,
             padding: isMobile ? EdgeInsets.zero : null,
             style: IconButton.styleFrom(
-                foregroundColor: AccountingTheme.textSecondary),
+                foregroundColor: SdColors.muted),
           ),
           SizedBox(width: isMobile ? 4 : ar.spaceXS),
           ElevatedButton.icon(
             onPressed: _showAddDialog,
             icon: Icon(Icons.add, size: isMobile ? 16 : ar.iconS),
             label: Text(isMobile ? 'إضافة' : 'إضافة صندوق',
-                style: GoogleFonts.cairo(fontSize: isMobile ? 11 : ar.buttonText)),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: isMobile ? 11 : ar.buttonText)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AccountingTheme.neonGreen,
+              backgroundColor: SdColors.success,
               foregroundColor: Colors.white,
               padding: isMobile
                   ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
@@ -226,7 +229,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
     if (_cashBoxes.isEmpty) {
       return const Center(
         child: Text('لا توجد صناديق',
-            style: TextStyle(color: AccountingTheme.textMuted)),
+            style: TextStyle(color: SdColors.faint)),
       );
     }
     return ListView.builder(
@@ -242,11 +245,11 @@ class _CashBoxPageState extends State<CashBoxPage> {
           margin: EdgeInsets.only(bottom: 6),
           decoration: BoxDecoration(
             color: isSelected
-                ? AccountingTheme.accent.withValues(alpha: 0.2)
-                : AccountingTheme.bgCard,
+                ? SdColors.success.withValues(alpha: 0.2)
+                : SdColors.surface,
             borderRadius: BorderRadius.circular(context.accR.cardRadius),
             border: isSelected
-                ? Border.all(color: AccountingTheme.accent, width: 1.5)
+                ? Border.all(color: SdColors.success, width: 1.5)
                 : null,
           ),
           child: ListTile(
@@ -255,22 +258,22 @@ class _CashBoxPageState extends State<CashBoxPage> {
                   ? Icons.account_balance
                   : Icons.account_balance_wallet,
               color: isSelected
-                  ? AccountingTheme.accent
-                  : AccountingTheme.textMuted,
+                  ? SdColors.success
+                  : SdColors.faint,
             ),
             title: Text(
               box['Name'] ?? '',
               style: TextStyle(
                 color: isSelected
-                    ? AccountingTheme.accent
-                    : AccountingTheme.textPrimary,
+                    ? SdColors.success
+                    : SdColors.ink,
                 fontWeight: FontWeight.bold,
               ),
             ),
             subtitle: Text(
               _boxTypes[type] ?? type,
               style: TextStyle(
-                  color: AccountingTheme.textMuted.withValues(alpha: 0.5),
+                  color: SdColors.faint.withValues(alpha: 0.5),
                   fontSize: context.accR.small),
             ),
             trailing: Row(
@@ -280,10 +283,10 @@ class _CashBoxPageState extends State<CashBoxPage> {
                   _formatNumber(balance),
                   style: TextStyle(
                     color: (balance is num && balance < 0)
-                        ? Colors.red
+                        ? SdColors.danger
                         : (balance is num && balance > 0)
-                            ? AccountingTheme.success
-                            : AccountingTheme.textMuted,
+                            ? SdColors.success
+                            : SdColors.faint,
                     fontWeight: FontWeight.bold,
                     fontSize: context.accR.body,
                   ),
@@ -295,11 +298,11 @@ class _CashBoxPageState extends State<CashBoxPage> {
                   child: Container(
                     padding: EdgeInsets.all(context.accR.spaceXS),
                     decoration: BoxDecoration(
-                      color: AccountingTheme.info.withValues(alpha: 0.1),
+                      color: SdColors.info.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Icon(Icons.edit,
-                        color: AccountingTheme.info, size: context.accR.iconXS),
+                        color: SdColors.info, size: context.accR.iconXS),
                   ),
                 ),
                 SizedBox(width: context.accR.spaceXS),
@@ -309,11 +312,11 @@ class _CashBoxPageState extends State<CashBoxPage> {
                   child: Container(
                     padding: EdgeInsets.all(context.accR.spaceXS),
                     decoration: BoxDecoration(
-                      color: AccountingTheme.danger.withValues(alpha: 0.1),
+                      color: SdColors.danger.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Icon(Icons.delete_outline,
-                        color: AccountingTheme.danger,
+                        color: SdColors.danger,
                         size: context.accR.iconXS),
                   ),
                 ),
@@ -337,11 +340,11 @@ class _CashBoxPageState extends State<CashBoxPage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.account_balance_wallet_outlined,
-              color: AccountingTheme.textMuted, size: context.accR.iconEmpty),
+              color: SdColors.faint, size: context.accR.iconEmpty),
           SizedBox(height: context.accR.spaceXL),
           Text('اختر صندوقاً لعرض تفاصيله',
               style: TextStyle(
-                  color: AccountingTheme.textMuted,
+                  color: SdColors.faint,
                   fontSize: context.accR.headingSmall)),
         ],
       ),
@@ -360,13 +363,13 @@ class _CashBoxPageState extends State<CashBoxPage> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AccountingTheme.accent.withValues(alpha: 0.12),
-                AccountingTheme.accent.withValues(alpha: 0.03)
+                SdColors.success.withValues(alpha: 0.12),
+                SdColors.success.withValues(alpha: 0.03)
               ],
             ),
             borderRadius: BorderRadius.circular(context.accR.cardRadius),
             border: Border.all(
-                color: AccountingTheme.accent.withValues(alpha: 0.5)),
+                color: SdColors.success.withValues(alpha: 0.5)),
           ),
           child: isMobile
               ? Column(
@@ -375,13 +378,13 @@ class _CashBoxPageState extends State<CashBoxPage> {
                     Row(
                       children: [
                         Icon(Icons.account_balance_wallet,
-                            color: AccountingTheme.accent, size: 24),
+                            color: SdColors.success, size: 24),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             box['Name'] ?? '',
                             style: TextStyle(
-                                color: AccountingTheme.textPrimary,
+                                color: SdColors.ink,
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold),
                             overflow: TextOverflow.ellipsis,
@@ -390,7 +393,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
                         Text(
                           _boxTypes[box['CashBoxType']] ?? '',
                           style: TextStyle(
-                              color: AccountingTheme.textSecondary
+                              color: SdColors.muted
                                   .withValues(alpha: 0.5),
                               fontSize: 11),
                         ),
@@ -401,7 +404,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
                       child: Text(
                         '${_formatNumber(box['CurrentBalance'])} د.ع',
                         style: TextStyle(
-                            color: AccountingTheme.accent,
+                            color: SdColors.success,
                             fontSize: 18,
                             fontWeight: FontWeight.bold),
                       ),
@@ -410,12 +413,12 @@ class _CashBoxPageState extends State<CashBoxPage> {
                     Row(
                       children: [
                         Expanded(
-                          child: _actionButton('إيداع', Icons.add, AccountingTheme.success,
+                          child: _actionButton('إيداع', Icons.add, SdColors.success,
                               () => _showTransactionDialog(true)),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: _actionButton('سحب', Icons.remove, AccountingTheme.danger,
+                          child: _actionButton('سحب', Icons.remove, SdColors.danger,
                               () => _showTransactionDialog(false)),
                         ),
                       ],
@@ -425,7 +428,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
               : Row(
             children: [
               Icon(Icons.account_balance_wallet,
-                  color: AccountingTheme.accent, size: context.accR.iconXL),
+                  color: SdColors.success, size: context.accR.iconXL),
               SizedBox(width: context.accR.spaceXL),
               Expanded(
                 child: Column(
@@ -434,14 +437,14 @@ class _CashBoxPageState extends State<CashBoxPage> {
                     Text(
                       box['Name'] ?? '',
                       style: TextStyle(
-                          color: AccountingTheme.textPrimary,
+                          color: SdColors.ink,
                           fontSize: context.accR.headingMedium,
                           fontWeight: FontWeight.bold),
                     ),
                     Text(
                       _boxTypes[box['CashBoxType']] ?? '',
                       style: TextStyle(
-                          color: AccountingTheme.textSecondary
+                          color: SdColors.muted
                               .withValues(alpha: 0.5)),
                     ),
                   ],
@@ -452,12 +455,12 @@ class _CashBoxPageState extends State<CashBoxPage> {
                 children: [
                   Text('الرصيد الحالي',
                       style: TextStyle(
-                          color: AccountingTheme.textMuted,
+                          color: SdColors.faint,
                           fontSize: context.accR.small)),
                   Text(
                     '${_formatNumber(box['CurrentBalance'])} د.ع',
                     style: TextStyle(
-                        color: AccountingTheme.accent,
+                        color: SdColors.success,
                         fontSize: context.accR.financialLarge,
                         fontWeight: FontWeight.bold),
                   ),
@@ -467,10 +470,10 @@ class _CashBoxPageState extends State<CashBoxPage> {
               // أزرار إيداع/سحب
               Column(
                 children: [
-                  _actionButton('إيداع', Icons.add, AccountingTheme.success,
+                  _actionButton('إيداع', Icons.add, SdColors.success,
                       () => _showTransactionDialog(true)),
                   SizedBox(height: context.accR.spaceS),
-                  _actionButton('سحب', Icons.remove, AccountingTheme.danger,
+                  _actionButton('سحب', Icons.remove, SdColors.danger,
                       () => _showTransactionDialog(false)),
                 ],
               ),
@@ -484,13 +487,13 @@ class _CashBoxPageState extends State<CashBoxPage> {
             children: [
               Text('المعاملات',
                   style: TextStyle(
-                      color: AccountingTheme.textPrimary,
+                      color: SdColors.ink,
                       fontSize: context.accR.headingSmall,
                       fontWeight: FontWeight.bold)),
               Spacer(),
               Text('${_transactions.length} معاملة',
                   style: TextStyle(
-                      color: AccountingTheme.textMuted,
+                      color: SdColors.faint,
                       fontSize: context.accR.small)),
             ],
           ),
@@ -500,11 +503,11 @@ class _CashBoxPageState extends State<CashBoxPage> {
           child: _loadingTransactions
               ? const Center(
                   child:
-                      CircularProgressIndicator(color: AccountingTheme.accent))
+                      CircularProgressIndicator(color: SdColors.success))
               : _transactions.isEmpty
                   ? const Center(
                       child: Text('لا توجد معاملات',
-                          style: TextStyle(color: AccountingTheme.textMuted)))
+                          style: TextStyle(color: SdColors.faint)))
                   : ListView.builder(
                       padding: EdgeInsets.symmetric(
                           horizontal: context.accR.paddingH),
@@ -518,7 +521,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
                           margin: EdgeInsets.only(bottom: 4),
                           padding: EdgeInsets.all(context.accR.spaceM),
                           decoration: BoxDecoration(
-                            color: AccountingTheme.bgCard,
+                            color: SdColors.surface,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
@@ -528,8 +531,8 @@ class _CashBoxPageState extends State<CashBoxPage> {
                                     ? Icons.arrow_downward
                                     : Icons.arrow_upward,
                                 color: isDeposit
-                                    ? AccountingTheme.success
-                                    : AccountingTheme.danger,
+                                    ? SdColors.success
+                                    : SdColors.danger,
                                 size: context.accR.iconM,
                               ),
                               SizedBox(width: context.accR.spaceM),
@@ -540,14 +543,14 @@ class _CashBoxPageState extends State<CashBoxPage> {
                                     Text(
                                       t['Description'] ?? '',
                                       style: TextStyle(
-                                          color: AccountingTheme.textPrimary,
+                                          color: SdColors.ink,
                                           fontSize:
                                               context.accR.financialSmall),
                                     ),
                                     Text(
                                       _formatDate(t['CreatedAt']),
                                       style: TextStyle(
-                                          color: AccountingTheme.textMuted,
+                                          color: SdColors.faint,
                                           fontSize: context.accR.small),
                                     ),
                                   ],
@@ -557,8 +560,8 @@ class _CashBoxPageState extends State<CashBoxPage> {
                                 '${isDeposit ? '+' : '-'} ${_formatNumber(t['Amount'])}',
                                 style: TextStyle(
                                   color: isDeposit
-                                      ? AccountingTheme.accent
-                                      : AccountingTheme.danger,
+                                      ? SdColors.success
+                                      : SdColors.danger,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -566,7 +569,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
                               Text(
                                 'رصيد: ${_formatNumber(t['BalanceAfter'])}',
                                 style: TextStyle(
-                                    color: AccountingTheme.textMuted,
+                                    color: SdColors.faint,
                                     fontSize: context.accR.small),
                               ),
                             ],
@@ -609,9 +612,9 @@ class _CashBoxPageState extends State<CashBoxPage> {
         builder: (ctx, ss) => Directionality(
           textDirection: TextDirection.rtl,
           child: AlertDialog(
-            backgroundColor: AccountingTheme.bgCard,
+            backgroundColor: SdColors.surface,
             title: Text('إضافة صندوق',
-                style: TextStyle(color: AccountingTheme.textPrimary)),
+                style: TextStyle(color: SdColors.ink)),
             content: SizedBox(
               width: context.accR.isMobile
                   ? MediaQuery.of(context).size.width * 0.85
@@ -623,8 +626,8 @@ class _CashBoxPageState extends State<CashBoxPage> {
                   SizedBox(height: context.accR.spaceM),
                   DropdownButtonFormField<String>(
                     value: boxType,
-                    dropdownColor: AccountingTheme.bgCard,
-                    style: const TextStyle(color: AccountingTheme.textPrimary),
+                    dropdownColor: SdColors.surface,
+                    style: const TextStyle(color: SdColors.ink),
                     items: _boxTypes.entries
                         .map((e) => DropdownMenuItem(
                             value: e.key, child: Text(e.value)))
@@ -643,11 +646,11 @@ class _CashBoxPageState extends State<CashBoxPage> {
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('إلغاء',
-                    style: TextStyle(color: AccountingTheme.textMuted)),
+                    style: TextStyle(color: SdColors.faint)),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AccountingTheme.neonGreen,
+                    backgroundColor: SdColors.success,
                     foregroundColor: Colors.white),
                 onPressed: () async {
                   if (nameCtrl.text.isEmpty) return;
@@ -660,10 +663,10 @@ class _CashBoxPageState extends State<CashBoxPage> {
                     companyId: widget.companyId ?? '',
                   );
                   if (result['success'] == true) {
-                    _snack('تم إنشاء الصندوق', AccountingTheme.success);
+                    _snack('تم إنشاء الصندوق', SdColors.success);
                     _loadData();
                   } else {
-                    _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                    _snack(result['message'] ?? 'خطأ', SdColors.danger);
                   }
                 },
                 child: const Text('إنشاء'),
@@ -684,13 +687,13 @@ class _CashBoxPageState extends State<CashBoxPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: Text(
             isDeposit ? 'إيداع' : 'سحب',
             style: TextStyle(
                 color: isDeposit
-                    ? AccountingTheme.success
-                    : AccountingTheme.danger),
+                    ? SdColors.success
+                    : SdColors.danger),
           ),
           content: SizedBox(
             width: min(350, MediaQuery.of(context).size.width * 0.85),
@@ -707,18 +710,18 @@ class _CashBoxPageState extends State<CashBoxPage> {
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('إلغاء',
-                  style: TextStyle(color: AccountingTheme.textMuted)),
+                  style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: isDeposit
-                    ? AccountingTheme.success
-                    : AccountingTheme.danger,
+                    ? SdColors.success
+                    : SdColors.danger,
               ),
               onPressed: () async {
                 final amount = double.tryParse(amountCtrl.text) ?? 0;
                 if (amount <= 0 || descCtrl.text.isEmpty) {
-                  _snack('الرجاء ملء جميع الحقول', AccountingTheme.warning);
+                  _snack('الرجاء ملء جميع الحقول', SdColors.warning);
                   return;
                 }
                 Navigator.pop(ctx);
@@ -732,11 +735,11 @@ class _CashBoxPageState extends State<CashBoxPage> {
                 );
                 if (result['success'] == true) {
                   _snack(isDeposit ? 'تم الإيداع' : 'تم السحب',
-                      AccountingTheme.success);
+                      SdColors.success);
                   _loadData();
                   _loadTransactions(_selectedBox!['Id']);
                 } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                  _snack(result['message'] ?? 'خطأ', SdColors.danger);
                 }
               },
               child: Text(isDeposit ? 'إيداع' : 'سحب'),
@@ -751,7 +754,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
       {bool isNumber = false}) {
     return TextField(
       controller: ctrl,
-      style: const TextStyle(color: AccountingTheme.textPrimary),
+      style: const TextStyle(color: SdColors.ink),
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       decoration: _inputDeco(label),
     );
@@ -760,9 +763,9 @@ class _CashBoxPageState extends State<CashBoxPage> {
   InputDecoration _inputDeco(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: AccountingTheme.textMuted),
+      labelStyle: const TextStyle(color: SdColors.faint),
       filled: true,
-      fillColor: AccountingTheme.bgCardHover,
+      fillColor: SdColors.surfaceAlt,
       border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
     );
@@ -777,9 +780,9 @@ class _CashBoxPageState extends State<CashBoxPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: Text('تعديل الصندوق',
-              style: TextStyle(color: AccountingTheme.textPrimary)),
+              style: TextStyle(color: SdColors.ink)),
           content: SizedBox(
             width: context.accR.dialogSmallW,
             child: Column(
@@ -787,12 +790,12 @@ class _CashBoxPageState extends State<CashBoxPage> {
               children: [
                 TextField(
                     controller: nameCtrl,
-                    style: TextStyle(color: AccountingTheme.textPrimary),
+                    style: TextStyle(color: SdColors.ink),
                     decoration: _inputDeco('اسم الصندوق')),
                 SizedBox(height: context.accR.spaceM),
                 TextField(
                     controller: notesCtrl,
-                    style: const TextStyle(color: AccountingTheme.textPrimary),
+                    style: const TextStyle(color: SdColors.ink),
                     decoration: _inputDeco('ملاحظات')),
               ],
             ),
@@ -801,11 +804,11 @@ class _CashBoxPageState extends State<CashBoxPage> {
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('إلغاء',
-                  style: TextStyle(color: AccountingTheme.textMuted)),
+                  style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.info,
+                  backgroundColor: SdColors.info,
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
@@ -817,10 +820,10 @@ class _CashBoxPageState extends State<CashBoxPage> {
                   },
                 );
                 if (result['success'] == true) {
-                  _snack('تم تحديث الصندوق', AccountingTheme.success);
+                  _snack('تم تحديث الصندوق', SdColors.success);
                   _loadData();
                 } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                  _snack(result['message'] ?? 'خطأ', SdColors.danger);
                 }
               },
               child: const Text('حفظ'),
@@ -837,33 +840,33 @@ class _CashBoxPageState extends State<CashBoxPage> {
       builder: (ctx) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
-          backgroundColor: AccountingTheme.bgCard,
+          backgroundColor: SdColors.surface,
           title: Text('تأكيد الحذف',
-              style: TextStyle(color: AccountingTheme.danger)),
+              style: TextStyle(color: SdColors.danger)),
           content: Text(
             'هل تريد حذف الصندوق "${box['Name']}"?\nيجب أن يكون الرصيد صفراً.',
-            style: const TextStyle(color: AccountingTheme.textPrimary),
+            style: const TextStyle(color: SdColors.ink),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('إلغاء',
-                  style: TextStyle(color: AccountingTheme.textMuted)),
+                  style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AccountingTheme.danger,
+                  backgroundColor: SdColors.danger,
                   foregroundColor: Colors.white),
               onPressed: () async {
                 Navigator.pop(ctx);
                 final result = await AccountingService.instance
                     .deleteCashBox(box['Id'].toString());
                 if (result['success'] == true) {
-                  _snack('تم حذف الصندوق', AccountingTheme.success);
+                  _snack('تم حذف الصندوق', SdColors.success);
                   setState(() => _selectedBox = null);
                   _loadData();
                 } else {
-                  _snack(result['message'] ?? 'خطأ', AccountingTheme.danger);
+                  _snack(result['message'] ?? 'خطأ', SdColors.danger);
                 }
               },
               child: const Text('حذف'),

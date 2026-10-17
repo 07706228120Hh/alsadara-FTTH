@@ -7,7 +7,6 @@ library;
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/sadara_api_service.dart';
@@ -220,9 +219,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFF283593),
-                    Color(0xFF1976D2),
-                    Color(0xFF64B5F6)
+                    SdColors.primaryMid,
+                    SdColors.info,
+                    SdColors.infoTintEdge
                   ],
                 ),
               ),
@@ -233,7 +232,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const Icon(Icons.error_outline, size: 64, color: SdColors.danger),
                 const SizedBox(height: 16),
                 Text('حدث خطأ غير متوقع: $e',
                     textAlign: TextAlign.center),
@@ -267,7 +266,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
           const SizedBox(width: 12),
           Text(
             'إعدادات الشركة',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -291,11 +291,11 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Color(0xFFE74C3C)),
+          const Icon(Icons.error_outline, size: 64, color: SdColors.danger),
           const SizedBox(height: 16),
           Text(
             _errorMessage!,
-            style: GoogleFonts.cairo(color: _textGray, fontSize: 16),
+            style: TextStyle(fontFamily: 'Cairo', color: _textGray, fontSize: 16),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -303,7 +303,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             onPressed: _loadCompanyData,
             icon: const Icon(Icons.refresh, color: Colors.white),
             label: Text('إعادة المحاولة',
-                style: GoogleFonts.cairo(color: Colors.white)),
+                style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
             style: ElevatedButton.styleFrom(
               backgroundColor: _accent,
               shape: RoundedRectangleBorder(
@@ -328,11 +328,13 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             unselectedLabelColor: _textGray,
             indicatorColor: _accent,
             indicatorWeight: 3,
-            labelStyle: GoogleFonts.cairo(
+            labelStyle: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: 15,
               fontWeight: FontWeight.bold,
             ),
-            unselectedLabelStyle: GoogleFonts.cairo(
+            unselectedLabelStyle: TextStyle(
+              fontFamily: 'Cairo',
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -471,7 +473,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     children: [
                       Text(
                         name.toString(),
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: _textDark,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -492,7 +495,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                             ),
                             child: Text(
                               'كود: $code',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
                                 color: _accent,
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
@@ -505,21 +509,22 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                                 horizontal: 10, vertical: 3),
                             decoration: BoxDecoration(
                               color: isActive == true
-                                  ? Colors.green.withOpacity(0.1)
-                                  : Colors.red.withOpacity(0.1),
+                                  ? SdColors.success.withOpacity(0.1)
+                                  : SdColors.danger.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: isActive == true
-                                    ? Colors.green.withOpacity(0.3)
-                                    : Colors.red.withOpacity(0.3),
+                                    ? SdColors.success.withOpacity(0.3)
+                                    : SdColors.danger.withOpacity(0.3),
                               ),
                             ),
                             child: Text(
                               isActive == true ? 'نشط' : 'معطّل',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
                                 color: isActive == true
-                                    ? Colors.green[300]
-                                    : Colors.red[300],
+                                    ? SdColors.successTintEdge
+                                    : SdColors.dangerTintEdge,
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -621,7 +626,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: _dividerColor,
@@ -638,14 +643,16 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: _textGray,
                     fontSize: 11,
                   ),
                 ),
                 Text(
                   value,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: _textDark,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -681,15 +688,15 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     IconData statusIcon;
     String statusText;
     if (isExpired == true) {
-      statusColor = Colors.red;
+      statusColor = SdColors.danger;
       statusIcon = Icons.cancel;
       statusText = 'منتهي';
     } else if (isExpiringSoon == true) {
-      statusColor = Colors.orange;
+      statusColor = SdColors.warning;
       statusIcon = Icons.warning;
       statusText = 'ينتهي قريباً';
     } else {
-      statusColor = Colors.green;
+      statusColor = SdColors.success;
       statusIcon = Icons.check_circle;
       statusText = 'نشط';
     }
@@ -738,7 +745,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 Expanded(
                   child: Text(
                     'حالة الاشتراك',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: _textDark,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -763,7 +771,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                       const SizedBox(width: 6),
                       Text(
                         statusText,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: statusColor,
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
@@ -798,7 +807,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     children: [
                       Text(
                         '$daysRemaining',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: statusColor,
                           fontSize: 48,
                           fontWeight: FontWeight.bold,
@@ -807,7 +817,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                       ),
                       Text(
                         'يوم متبقي',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: _textSubtle,
                           fontSize: 14,
                         ),
@@ -916,17 +927,17 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
           backgroundColor: _bgCard,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: Text('حذف القسم', style: GoogleFonts.cairo(color: _textDark)),
+          title: Text('حذف القسم', style: TextStyle(fontFamily: 'Cairo', color: _textDark)),
           content: Text('هل تريد حذف قسم "$name" وجميع مهامه؟',
-              style: GoogleFonts.cairo(color: _textSubtle)),
+              style: TextStyle(fontFamily: 'Cairo', color: _textSubtle)),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
                 child:
-                    Text('إلغاء', style: GoogleFonts.cairo(color: _textGray))),
+                    Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: _textGray))),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: Text('حذف', style: GoogleFonts.cairo(color: Colors.red)),
+              child: Text('حذف', style: TextStyle(fontFamily: 'Cairo', color: SdColors.danger)),
             ),
           ],
         ),
@@ -998,17 +1009,17 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
           backgroundColor: _bgCard,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: Text('حذف المهمة', style: GoogleFonts.cairo(color: _textDark)),
+          title: Text('حذف المهمة', style: TextStyle(fontFamily: 'Cairo', color: _textDark)),
           content: Text('هل تريد حذف مهمة "$name"؟',
-              style: GoogleFonts.cairo(color: _textSubtle)),
+              style: TextStyle(fontFamily: 'Cairo', color: _textSubtle)),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
                 child:
-                    Text('إلغاء', style: GoogleFonts.cairo(color: _textGray))),
+                    Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: _textGray))),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: Text('حذف', style: GoogleFonts.cairo(color: Colors.red)),
+              child: Text('حذف', style: TextStyle(fontFamily: 'Cairo', color: SdColors.danger)),
             ),
           ],
         ),
@@ -1050,19 +1061,19 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title: Text('تهيئة الأقسام الافتراضية',
-              style: GoogleFonts.cairo(color: _textDark)),
+              style: TextStyle(fontFamily: 'Cairo', color: _textDark)),
           content: Text(
             'سيتم إضافة 6 أقسام افتراضية مع مهامها:\nالصيانة، الحسابات، الفنيين، الوكلاء، الاتصالات، اللحام',
-            style: GoogleFonts.cairo(color: _textSubtle),
+            style: TextStyle(fontFamily: 'Cairo', color: _textSubtle),
           ),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
                 child:
-                    Text('إلغاء', style: GoogleFonts.cairo(color: _textGray))),
+                    Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: _textGray))),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: Text('تهيئة', style: GoogleFonts.cairo(color: _accent)),
+              child: Text('تهيئة', style: TextStyle(fontFamily: 'Cairo', color: _accent)),
             ),
           ],
         ),
@@ -1089,8 +1100,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: GoogleFonts.cairo()),
-        backgroundColor: isError ? Colors.red[700] : Colors.green[700],
+        content: Text(msg, style: TextStyle(fontFamily: 'Cairo')),
+        backgroundColor: isError ? SdColors.danger : SdColors.success,
         duration: Duration(seconds: isError ? 4 : 2),
       ),
     );
@@ -1112,16 +1123,16 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             Icon(icon, color: _accent, size: 24),
             const SizedBox(width: 10),
             Text(title,
-                style: GoogleFonts.cairo(color: _textDark, fontSize: 18)),
+                style: TextStyle(fontFamily: 'Cairo', color: _textDark, fontSize: 18)),
           ],
         ),
         content: TextField(
           controller: controller,
           autofocus: true,
-          style: GoogleFonts.cairo(color: _textDark),
+          style: TextStyle(fontFamily: 'Cairo', color: _textDark),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.cairo(color: _textGray),
+            hintStyle: TextStyle(fontFamily: 'Cairo', color: _textGray),
             enabledBorder: OutlineInputBorder(
               borderSide: BorderSide(color: _accent.withOpacity(0.3)),
               borderRadius: BorderRadius.circular(10),
@@ -1131,14 +1142,14 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               borderRadius: BorderRadius.circular(10),
             ),
             filled: true,
-            fillColor: const Color(0xFFF8F9FA),
+            fillColor: SdColors.surfaceAlt,
           ),
           onSubmitted: (v) => Navigator.pop(context, v),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('إلغاء', style: GoogleFonts.cairo(color: _textGray)),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: _textGray)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, controller.text),
@@ -1149,7 +1160,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                   borderRadius: BorderRadius.circular(8)),
             ),
             child: Text('إضافة',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1397,15 +1408,16 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.deepPurple.withOpacity(0.1),
+                      color: SdColors.platformBase.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(Icons.add_alarm,
-                        color: Colors.deepPurple, size: 22),
+                        color: SdColors.platformBase, size: 22),
                   ),
                   const SizedBox(width: 12),
                   Text('إضافة وجبة إرسال',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.bold, color: _textDark)),
                 ],
               ),
@@ -1417,7 +1429,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                   children: [
                     // وقت الإرسال
                     Text('وقت الإرسال',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.w600, color: _textDark)),
                     const SizedBox(height: 8),
                     InkWell(
@@ -1444,18 +1457,20 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                         child: Row(
                           children: [
                             const Icon(Icons.access_time,
-                                color: Colors.deepPurple),
+                                color: SdColors.platformBase),
                             const SizedBox(width: 12),
                             Text(
                               '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: _textDark),
                             ),
                             const Spacer(),
                             Text('اضغط لتغيير',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: 12, color: _textGray)),
                           ],
                         ),
@@ -1464,7 +1479,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     const SizedBox(height: 20),
                     // فترة الاشتراك
                     Text('المشتركين المستهدفين',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.w600, color: _textDark)),
                     const SizedBox(height: 8),
                     ...List.generate(4, (i) {
@@ -1475,12 +1491,12 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                         'المنتهي خلال 3 أيام'
                       ];
                       return RadioListTile<int>(
-                        title: Text(labels[i], style: GoogleFonts.cairo()),
+                        title: Text(labels[i], style: TextStyle(fontFamily: 'Cairo')),
                         value: i,
                         groupValue: selectedDays,
                         onChanged: (v) =>
                             setDialogState(() => selectedDays = v!),
-                        activeColor: Colors.deepPurple,
+                        activeColor: SdColors.platformBase,
                         dense: true,
                         contentPadding: EdgeInsets.zero,
                       );
@@ -1492,7 +1508,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: Text('إلغاء',
-                      style: GoogleFonts.cairo(color: _textGray)),
+                      style: TextStyle(fontFamily: 'Cairo', color: _textGray)),
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
@@ -1508,9 +1524,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     Navigator.pop(ctx);
                   },
                   icon: const Icon(Icons.add, size: 18),
-                  label: Text('إضافة', style: GoogleFonts.cairo()),
+                  label: Text('إضافة', style: TextStyle(fontFamily: 'Cairo')),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
+                    backgroundColor: SdColors.platformBase,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
@@ -1545,15 +1561,16 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.deepPurple.withOpacity(0.1),
+                      color: SdColors.platformBase.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(Icons.edit,
-                        color: Colors.deepPurple, size: 22),
+                        color: SdColors.platformBase, size: 22),
                   ),
                   const SizedBox(width: 12),
                   Text('تعديل وجبة الإرسال',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.bold, color: _textDark)),
                 ],
               ),
@@ -1564,7 +1581,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('وقت الإرسال',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.w600, color: _textDark)),
                     const SizedBox(height: 8),
                     InkWell(
@@ -1591,18 +1609,20 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                         child: Row(
                           children: [
                             const Icon(Icons.access_time,
-                                color: Colors.deepPurple),
+                                color: SdColors.platformBase),
                             const SizedBox(width: 12),
                             Text(
                               '${selectedHour.toString().padLeft(2, '0')}:${selectedMinute.toString().padLeft(2, '0')}',
-                              style: GoogleFonts.cairo(
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: _textDark),
                             ),
                             const Spacer(),
                             Text('اضغط لتغيير',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: 12, color: _textGray)),
                           ],
                         ),
@@ -1610,7 +1630,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     ),
                     const SizedBox(height: 20),
                     Text('المشتركين المستهدفين',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
                             fontWeight: FontWeight.w600, color: _textDark)),
                     const SizedBox(height: 8),
                     ...List.generate(4, (i) {
@@ -1621,12 +1642,12 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                         'المنتهي خلال 3 أيام'
                       ];
                       return RadioListTile<int>(
-                        title: Text(labels[i], style: GoogleFonts.cairo()),
+                        title: Text(labels[i], style: TextStyle(fontFamily: 'Cairo')),
                         value: i,
                         groupValue: selectedDays,
                         onChanged: (v) =>
                             setDialogState(() => selectedDays = v!),
-                        activeColor: Colors.deepPurple,
+                        activeColor: SdColors.platformBase,
                         dense: true,
                         contentPadding: EdgeInsets.zero,
                       );
@@ -1638,7 +1659,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: Text('إلغاء',
-                      style: GoogleFonts.cairo(color: _textGray)),
+                      style: TextStyle(fontFamily: 'Cairo', color: _textGray)),
                 ),
                 ElevatedButton.icon(
                   onPressed: () {
@@ -1652,9 +1673,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     Navigator.pop(ctx);
                   },
                   icon: const Icon(Icons.save, size: 18),
-                  label: Text('حفظ التعديل', style: GoogleFonts.cairo()),
+                  label: Text('حفظ التعديل', style: TextStyle(fontFamily: 'Cairo')),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
+                    backgroundColor: SdColors.platformBase,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
@@ -1686,7 +1707,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(40),
-          child: CircularProgressIndicator(color: Colors.deepPurple),
+          child: CircularProgressIndicator(color: SdColors.platformBase),
         ),
       );
     }
@@ -1706,7 +1727,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.deepPurple.withOpacity(0.05),
+              color: SdColors.platformBase.withOpacity(0.05),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
             ),
@@ -1715,11 +1736,11 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.deepPurple.withOpacity(0.1),
+                    color: SdColors.platformBase.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.notifications_active,
-                      color: Colors.deepPurple, size: 20),
+                      color: SdColors.platformBase, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1727,14 +1748,16 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('التذكير التلقائي قبل انتهاء الاشتراك',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               color: _textDark)),
                       Text(
                           'يُرسل تلقائياً عبر n8n + WhatsApp API حتى لو التطبيق مغلق',
-                          style: GoogleFonts.cairo(
-                              fontSize: 11, color: Colors.grey[600])),
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11, color: SdColors.muted)),
                     ],
                   ),
                 ),
@@ -1746,18 +1769,18 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _localReminderEnabled ? Colors.green.shade50 : Colors.red.shade50,
+              color: _localReminderEnabled ? SdColors.successTint : SdColors.dangerTint,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _localReminderEnabled ? Colors.green.shade300 : Colors.red.shade300),
+              border: Border.all(color: _localReminderEnabled ? SdColors.successTintEdge : SdColors.dangerTintEdge),
             ),
             child: SwitchListTile(
               title: Text('تفعيل التذكير على هذا الجهاز',
-                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14)),
+                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold, fontSize: 14)),
               subtitle: Text(
                   _localReminderEnabled
                       ? 'مفعّل — هذا الجهاز سيتحكم بإعدادات التذكير'
                       : 'معطّل — إعدادات التذكير لا تُحمّل ولا تُعدّل من هذا الجهاز',
-                  style: GoogleFonts.cairo(fontSize: 11, color: _localReminderEnabled ? Colors.green.shade700 : Colors.red.shade700)),
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 11, color: _localReminderEnabled ? SdColors.success : SdColors.danger)),
               value: _localReminderEnabled,
               onChanged: (v) async {
                 final prefs = await SharedPreferences.getInstance();
@@ -1765,7 +1788,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 setState(() => _localReminderEnabled = v);
                 if (v) _loadReminderSettings(); // تحميل الإعدادات عند التفعيل
               },
-              activeColor: Colors.green,
+              activeColor: SdColors.success,
               contentPadding: EdgeInsets.zero,
             ),
           ),
@@ -1774,22 +1797,22 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               padding: const EdgeInsets.all(20),
               child: Center(
                 child: Text('قم بتفعيل التذكير على هذا الجهاز للتحكم بالإعدادات',
-                    style: GoogleFonts.cairo(color: Colors.grey, fontSize: 13)),
+                    style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 13)),
               ),
             ),
           if (_localReminderEnabled) ...[
           // تفعيل/تعطيل
           SwitchListTile(
             title: Text('تفعيل التذكير التلقائي',
-                style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+                style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
             subtitle: Text(
                 _autoReminderEnabled
                     ? 'مفعّل — n8n سيرسل حسب الجدول أدناه'
                     : 'معطّل — لن يتم إرسال تذكيرات تلقائية',
-                style: GoogleFonts.cairo(fontSize: 12)),
+                style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
             value: _autoReminderEnabled,
             onChanged: (v) => setState(() => _autoReminderEnabled = v),
-            activeColor: Colors.deepPurple,
+            activeColor: SdColors.platformBase,
           ),
           if (_autoReminderEnabled) ...[
             const Divider(height: 1, color: _dividerColor),
@@ -1799,7 +1822,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               child: Row(
                 children: [
                   Text('وجبات الإرسال',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                           color: _textDark)),
@@ -1808,9 +1832,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     onPressed: _addReminderBatch,
                     icon: const Icon(Icons.add, size: 18),
                     label:
-                        Text('إضافة وجبة', style: GoogleFonts.cairo(fontSize: 13)),
+                        Text('إضافة وجبة', style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
                     style: TextButton.styleFrom(
-                      foregroundColor: Colors.deepPurple,
+                      foregroundColor: SdColors.platformBase,
                     ),
                   ),
                 ],
@@ -1821,13 +1845,13 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   children: [
-                    Icon(Icons.schedule, size: 40, color: Colors.grey[400]),
+                    Icon(Icons.schedule, size: 40, color: SdColors.faint),
                     const SizedBox(height: 8),
                     Text('لا توجد وجبات إرسال',
-                        style: GoogleFonts.cairo(color: _textGray)),
+                        style: TextStyle(fontFamily: 'Cairo', color: _textGray)),
                     Text('اضغط "إضافة وجبة" لإنشاء جدول إرسال',
                         style:
-                            GoogleFonts.cairo(fontSize: 12, color: _textGray)),
+                            TextStyle(fontFamily: 'Cairo', fontSize: 12, color: _textGray)),
                   ],
                 ),
               )
@@ -1852,13 +1876,13 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: enabled
-                        ? Colors.deepPurple.withOpacity(0.03)
-                        : Colors.grey.withOpacity(0.05),
+                        ? SdColors.platformBase.withOpacity(0.03)
+                        : SdColors.faint.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: enabled
-                          ? Colors.deepPurple.withOpacity(0.15)
-                          : Colors.grey.withOpacity(0.2),
+                          ? SdColors.platformBase.withOpacity(0.15)
+                          : SdColors.faint.withOpacity(0.2),
                     ),
                   ),
                   child: Column(
@@ -1868,7 +1892,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                           // حذف
                           IconButton(
                             icon: const Icon(Icons.delete_outline,
-                                size: 20, color: Colors.red),
+                                size: 20, color: SdColors.danger),
                             onPressed: () {
                               setState(() {
                                 _reminderBatches.removeAt(i);
@@ -1888,7 +1912,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                                       ..['enabled'] = v;
                               });
                             },
-                            activeColor: Colors.deepPurple,
+                            activeColor: SdColors.platformBase,
                           ),
                           const Spacer(),
                           // الفترة - قابلة للتعديل
@@ -1899,13 +1923,14 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.blue.withOpacity(0.08),
+                                color: SdColors.info.withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(_batchDaysLabel(days),
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontSize: 12,
-                                      color: Colors.blue[700],
+                                      color: SdColors.info,
                                       fontWeight: FontWeight.w500)),
                             ),
                           ),
@@ -1919,8 +1944,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                                   horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
                                 color: enabled
-                                    ? Colors.deepPurple.withOpacity(0.1)
-                                    : Colors.grey.withOpacity(0.1),
+                                    ? SdColors.platformBase.withOpacity(0.1)
+                                    : SdColors.faint.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -1929,16 +1954,17 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                                   Icon(Icons.access_time,
                                       size: 16,
                                       color: enabled
-                                          ? Colors.deepPurple
-                                          : Colors.grey),
+                                          ? SdColors.platformBase
+                                          : SdColors.faint),
                                   const SizedBox(width: 4),
                                   Text(timeStr,
-                                      style: GoogleFonts.cairo(
+                                      style: TextStyle(
+                                          fontFamily: 'Cairo',
                                           fontSize: 15,
                                           fontWeight: FontWeight.bold,
                                           color: enabled
-                                              ? Colors.deepPurple
-                                              : Colors.grey)),
+                                              ? SdColors.platformBase
+                                              : SdColors.faint)),
                                 ],
                               ),
                             ),
@@ -1952,34 +1978,37 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.05),
+                            color: SdColors.success.withOpacity(0.05),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Row(
                             children: [
                               Icon(Icons.check_circle,
-                                  size: 14, color: Colors.green[600]),
+                                  size: 14, color: SdColors.success),
                               const SizedBox(width: 6),
                               Text(
                                 'آخر تنفيذ: ${result['date'] ?? ''} ${result['time'] ?? ''}',
-                                style: GoogleFonts.cairo(
-                                    fontSize: 11, color: Colors.green[700]),
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11, color: SdColors.success),
                               ),
                               const SizedBox(width: 10),
                               Text(
                                 '✅ ${result['sent'] ?? 0}',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.green[700]),
+                                    color: SdColors.success),
                               ),
                               const SizedBox(width: 8),
                               Text(
                                 '❌ ${result['failed'] ?? 0}',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.red[600]),
+                                    color: SdColors.danger),
                               ),
                             ],
                           ),
@@ -2014,10 +2043,10 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                               ? 'جاري الحفظ...'
                               : 'حفظ إعدادات التذكير',
                           style:
-                              GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                              TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
+                          backgroundColor: SdColors.platformBase,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
@@ -2034,10 +2063,10 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                       icon: const Icon(Icons.science_rounded, size: 18),
                       label: Text('إرسال تجريبي',
                           style:
-                              GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                              TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.deepPurple,
-                        side: const BorderSide(color: Colors.deepPurple),
+                        foregroundColor: SdColors.platformBase,
+                        side: const BorderSide(color: SdColors.platformBase),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
                       ),
@@ -2052,9 +2081,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                       icon: const Icon(Icons.send_rounded, size: 18),
                       label: Text('إرسال الآن',
                           style:
-                              GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                              TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                        backgroundColor: SdColors.success,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
@@ -2070,10 +2099,10 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                         MaterialPageRoute(builder: (_) => const ReminderReportsPage())),
                       icon: const Icon(Icons.analytics_outlined, size: 18),
                       label: Text('التقارير',
-                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                          style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.indigo,
-                        side: const BorderSide(color: Colors.indigo),
+                        foregroundColor: SdColors.primary,
+                        side: const BorderSide(color: SdColors.primary),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
                       ),
@@ -2113,7 +2142,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             textDirection: TextDirection.rtl,
             child: AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text('اختر الوجبات للإرسال', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              title: Text('اختر الوجبات للإرسال', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -2129,22 +2158,22 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                         if (v == true) selectedBatches.add(i);
                         else selectedBatches.remove(i);
                       }),
-                      title: Text(label, style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-                      subtitle: Text('الساعة $time', style: GoogleFonts.cairo(color: Colors.grey)),
-                      activeColor: Colors.green,
+                      title: Text(label, style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
+                      subtitle: Text('الساعة $time', style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
+                      activeColor: SdColors.success,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     );
                   }),
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, null), child: Text('إلغاء', style: GoogleFonts.cairo())),
+                TextButton(onPressed: () => Navigator.pop(ctx, null), child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo'))),
                 ElevatedButton(
                   onPressed: selectedBatches.isEmpty ? null : () {
                     Navigator.pop(ctx, selectedBatches.map((i) => activeBatches[i]).toList());
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                  child: Text('إرسال', style: GoogleFonts.cairo(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(backgroundColor: SdColors.success),
+                  child: Text('إرسال', style: TextStyle(fontFamily: 'Cairo', color: Colors.white)),
                 ),
               ],
             ),
@@ -2202,11 +2231,11 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.deepPurple.withOpacity(0.1),
+                    color: SdColors.platformBase.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.science_rounded,
-                      color: Colors.deepPurple, size: 22),
+                      color: SdColors.platformBase, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -2214,11 +2243,13 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('إرسال تجريبي',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontSize: 17, fontWeight: FontWeight.bold)),
                       Text('اختبار قالب sadara_reminder',
-                          style: GoogleFonts.cairo(
-                              fontSize: 11, color: Colors.grey[600])),
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 11, color: SdColors.muted)),
                     ],
                   ),
                 ),
@@ -2240,7 +2271,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                         labelText: 'رقم الهاتف (المستلم) *',
                         hintText: '07xxxxxxxxx',
                         prefixIcon:
-                            const Icon(Icons.phone, color: Colors.deepPurple),
+                            const Icon(Icons.phone, color: SdColors.platformBase),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10)),
                         helperText: 'يجب أن يكون مسجلاً في WhatsApp',
@@ -2255,7 +2286,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                       decoration: InputDecoration(
                         labelText: 'اسم المشترك',
                         prefixIcon: const Icon(Icons.person_outline,
-                            color: Colors.deepPurple),
+                            color: SdColors.platformBase),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10)),
                         floatingLabelBehavior: FloatingLabelBehavior.always,
@@ -2271,7 +2302,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                       decoration: InputDecoration(
                         labelText: 'رقم التواصل (يظهر في الرسالة)',
                         prefixIcon: const Icon(Icons.contact_phone,
-                            color: Colors.deepPurple, size: 20),
+                            color: SdColors.platformBase, size: 20),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10)),
                         floatingLabelBehavior: FloatingLabelBehavior.always,
@@ -2282,7 +2313,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     Align(
                       alignment: Alignment.centerRight,
                       child: Text('تاريخ الانتهاء:',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               fontWeight: FontWeight.w600, fontSize: 13)),
                     ),
                     const SizedBox(height: 6),
@@ -2299,11 +2331,11 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                               onSelected: (_) =>
                                   setDialogState(() => testDays = i),
                               selectedColor:
-                                  Colors.deepPurple.withOpacity(0.15),
+                                  SdColors.platformBase.withOpacity(0.15),
                               labelStyle: TextStyle(
                                   color: testDays == i
-                                      ? Colors.deepPurple
-                                      : Colors.grey[700]),
+                                      ? SdColors.platformBase
+                                      : SdColors.muted),
                               visualDensity: VisualDensity.compact,
                             ),
                           ),
@@ -2316,10 +2348,10 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.05),
+                        color: SdColors.success.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(10),
                         border:
-                            Border.all(color: Colors.green.withOpacity(0.2)),
+                            Border.all(color: SdColors.success.withOpacity(0.2)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2327,13 +2359,14 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                           Row(
                             children: [
                               const Icon(Icons.visibility,
-                                  size: 14, color: Colors.green),
+                                  size: 14, color: SdColors.success),
                               const SizedBox(width: 6),
                               Text('معاينة الرسالة',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.green[700])),
+                                      color: SdColors.success)),
                             ],
                           ),
                           const SizedBox(height: 6),
@@ -2345,8 +2378,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                             'جدد الآن لتجنب انقطاع الخدمة!\n\n'
                             'الاتصال على\n'
                             '${contactController.text}',
-                            style: GoogleFonts.cairo(
-                                fontSize: 12, color: Colors.grey[800]),
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 12, color: SdColors.ink),
                           ),
                         ],
                       ),
@@ -2358,7 +2392,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('إلغاء', style: GoogleFonts.cairo()),
+                child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo')),
               ),
               const SizedBox(width: 4),
               FilledButton.icon(
@@ -2369,8 +2403,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                           ScaffoldMessenger.of(ctx).showSnackBar(
                             SnackBar(
                               content: Text('يرجى إدخال رقم الهاتف',
-                                  style: GoogleFonts.cairo()),
-                              backgroundColor: Colors.orange,
+                                  style: TextStyle(fontFamily: 'Cairo')),
+                              backgroundColor: SdColors.warning,
                             ),
                           );
                           return;
@@ -2426,10 +2460,10 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                                 success
                                     ? '✅ تم إرسال الرسالة التجريبية بنجاح!'
                                     : '❌ فشل الإرسال — ${result?['_errorMessage'] ?? 'تأكد من إعدادات WhatsApp API'}',
-                                style: GoogleFonts.cairo(),
+                                style: TextStyle(fontFamily: 'Cairo'),
                               ),
                               backgroundColor:
-                                  success ? Colors.green : Colors.red,
+                                  success ? SdColors.success : SdColors.danger,
                               duration: const Duration(seconds: 5),
                             ),
                           );
@@ -2443,9 +2477,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                             strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.send, size: 16),
                 label: Text(isSending ? 'جاري الإرسال...' : 'إرسال تجريبي',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                    style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                 style: FilledButton.styleFrom(
-                    backgroundColor: Colors.deepPurple),
+                    backgroundColor: SdColors.platformBase),
               ),
             ],
           ),
@@ -2504,7 +2538,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.05),
+                  color: SdColors.success.withOpacity(0.05),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 ),
                 child: Row(
@@ -2512,14 +2546,14 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
+                        color: SdColors.success.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.person, color: Colors.green, size: 20),
+                      child: const Icon(Icons.person, color: SdColors.success, size: 20),
                     ),
                     const SizedBox(width: 12),
                     Text('معلومات المدير',
-                        style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
                   ],
                 ),
               ),
@@ -2531,7 +2565,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                       controller: _managerNameCtrl,
                       decoration: InputDecoration(
                         labelText: 'اسم المدير',
-                        labelStyle: GoogleFonts.cairo(),
+                        labelStyle: TextStyle(fontFamily: 'Cairo'),
                         prefixIcon: const Icon(Icons.badge_outlined),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
@@ -2542,9 +2576,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                       keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
                         labelText: 'رقم واتساب المدير',
-                        labelStyle: GoogleFonts.cairo(),
+                        labelStyle: TextStyle(fontFamily: 'Cairo'),
                         hintText: '07xxxxxxxxx',
-                        prefixIcon: const Icon(Icons.phone, color: Colors.green),
+                        prefixIcon: const Icon(Icons.phone, color: SdColors.success),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
@@ -2568,7 +2602,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.05),
+                  color: SdColors.info.withOpacity(0.05),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 ),
                 child: Row(
@@ -2576,10 +2610,10 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
+                        color: SdColors.info.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.engineering, color: Colors.blue, size: 20),
+                      child: const Icon(Icons.engineering, color: SdColors.info, size: 20),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -2587,9 +2621,9 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('المستخدم الميداني',
-                              style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
                           Text('يُستخدم لتسجيل الدخول التلقائي لنظام التذاكر',
-                              style: GoogleFonts.cairo(fontSize: 12, color: Colors.grey[600])),
+                              style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.muted)),
                         ],
                       ),
                     ),
@@ -2605,8 +2639,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                       textDirection: TextDirection.ltr,
                       decoration: InputDecoration(
                         labelText: 'اسم المستخدم',
-                        labelStyle: GoogleFonts.cairo(),
-                        prefixIcon: const Icon(Icons.person_outline, color: Colors.blue),
+                        labelStyle: TextStyle(fontFamily: 'Cairo'),
+                        prefixIcon: const Icon(Icons.person_outline, color: SdColors.info),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
@@ -2617,12 +2651,12 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                       obscureText: !_showFieldPassword,
                       decoration: InputDecoration(
                         labelText: 'كلمة المرور',
-                        labelStyle: GoogleFonts.cairo(),
-                        prefixIcon: const Icon(Icons.lock_outline, color: Colors.blue),
+                        labelStyle: TextStyle(fontFamily: 'Cairo'),
+                        prefixIcon: const Icon(Icons.lock_outline, color: SdColors.info),
                         suffixIcon: IconButton(
                           icon: Icon(
                             _showFieldPassword ? Icons.visibility_off : Icons.visibility,
-                            color: Colors.blue,
+                            color: SdColors.info,
                           ),
                           onPressed: () => setState(() => _showFieldPassword = !_showFieldPassword),
                         ),
@@ -2649,7 +2683,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.05),
+                  color: SdColors.warning.withOpacity(0.05),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                 ),
                 child: Row(
@@ -2657,43 +2691,43 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
+                        color: SdColors.warning.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.assessment, color: Colors.orange, size: 20),
+                      child: const Icon(Icons.assessment, color: SdColors.warning, size: 20),
                     ),
                     const SizedBox(width: 12),
                     Text('إعدادات التقارير',
-                        style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
+                        style: TextStyle(fontFamily: 'Cairo', fontSize: 16, fontWeight: FontWeight.bold, color: _textDark)),
                   ],
                 ),
               ),
               SwitchListTile(
-                title: Text('استلام التقارير', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
-                subtitle: Text('تفعيل أو تعطيل إرسال التقارير للمدير', style: GoogleFonts.cairo(fontSize: 12)),
+                title: Text('استلام التقارير', style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
+                subtitle: Text('تفعيل أو تعطيل إرسال التقارير للمدير', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                 value: _receiveReports,
                 onChanged: (v) => setState(() => _receiveReports = v),
-                activeColor: Colors.green,
+                activeColor: SdColors.success,
               ),
               if (_receiveReports) ...[
                 const Divider(height: 1, color: _dividerColor),
                 SwitchListTile(
-                  title: Text('تقرير الإرسال الجماعي', style: GoogleFonts.cairo()),
-                  subtitle: Text('إرسال تقرير بعد كل عملية إرسال جماعي', style: GoogleFonts.cairo(fontSize: 12)),
+                  title: Text('تقرير الإرسال الجماعي', style: TextStyle(fontFamily: 'Cairo')),
+                  subtitle: Text('إرسال تقرير بعد كل عملية إرسال جماعي', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                   value: _bulkSendReport,
                   onChanged: (v) => setState(() => _bulkSendReport = v),
                   activeColor: _accent,
                 ),
                 SwitchListTile(
-                  title: Text('تقرير يومي', style: GoogleFonts.cairo()),
-                  subtitle: Text('ملخص يومي للعمليات', style: GoogleFonts.cairo(fontSize: 12)),
+                  title: Text('تقرير يومي', style: TextStyle(fontFamily: 'Cairo')),
+                  subtitle: Text('ملخص يومي للعمليات', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                   value: _dailyReport,
                   onChanged: (v) => setState(() => _dailyReport = v),
                   activeColor: _accent,
                 ),
                 SwitchListTile(
-                  title: Text('تقرير أسبوعي', style: GoogleFonts.cairo()),
-                  subtitle: Text('ملخص أسبوعي للعمليات', style: GoogleFonts.cairo(fontSize: 12)),
+                  title: Text('تقرير أسبوعي', style: TextStyle(fontFamily: 'Cairo')),
+                  subtitle: Text('ملخص أسبوعي للعمليات', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                   value: _weeklyReport,
                   onChanged: (v) => setState(() => _weeklyReport = v),
                   activeColor: _accent,
@@ -2720,7 +2754,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 : const Icon(Icons.save),
             label: Text(
               _isReportSettingsSaving ? 'جاري الحفظ...' : 'حفظ الإعدادات',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: _accent,
@@ -2801,17 +2835,17 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
           backgroundColor: _bgCard,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: Text('حذف المركز', style: GoogleFonts.cairo(color: _textDark)),
+          title: Text('حذف المركز', style: TextStyle(fontFamily: 'Cairo', color: _textDark)),
           content: Text('هل تريد حذف مركز "$name"؟',
-              style: GoogleFonts.cairo(color: _textSubtle)),
+              style: TextStyle(fontFamily: 'Cairo', color: _textSubtle)),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
                 child:
-                    Text('إلغاء', style: GoogleFonts.cairo(color: _textGray))),
+                    Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: _textGray))),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: Text('حذف', style: GoogleFonts.cairo(color: Colors.red)),
+              child: Text('حذف', style: TextStyle(fontFamily: 'Cairo', color: SdColors.danger)),
             ),
           ],
         ),
@@ -2868,7 +2902,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 Expanded(
                   child: Text(
                     'مراكز الشركة ومواقعها',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: _textDark,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -2902,7 +2937,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                   const SizedBox(height: 12),
                   Text(
                     'لا توجد مراكز بعد، أضف مركز جديد لتعيين الموظفين فيه',
-                    style: GoogleFonts.cairo(color: _textGray, fontSize: 14),
+                    style: TextStyle(fontFamily: 'Cairo', color: _textGray, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -2939,10 +2974,10 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isActive ? const Color(0xFFF8F9FA) : const Color(0xFFFFF3F3),
+        color: isActive ? SdColors.surfaceAlt : const Color(0xFFFFF3F3),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isActive ? _dividerColor : Colors.red.withOpacity(0.3),
+          color: isActive ? _dividerColor : SdColors.danger.withOpacity(0.3),
         ),
       ),
       child: Row(
@@ -2954,12 +2989,12 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
             decoration: BoxDecoration(
               color: isActive
                   ? _accent.withOpacity(0.1)
-                  : Colors.red.withOpacity(0.1),
+                  : SdColors.danger.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               Icons.location_on,
-              color: isActive ? _accent : Colors.red,
+              color: isActive ? _accent : SdColors.danger,
               size: 24,
             ),
           ),
@@ -2974,7 +3009,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     Flexible(
                       child: Text(
                         name,
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: _textDark,
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -2988,13 +3024,14 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: SdColors.danger.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
                           'معطل',
-                          style: GoogleFonts.cairo(
-                              color: Colors.red, fontSize: 11),
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.danger, fontSize: 11),
                         ),
                       ),
                     ],
@@ -3006,7 +3043,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     child: Text(
                       description,
                       style:
-                          GoogleFonts.cairo(color: _textSubtle, fontSize: 12),
+                          TextStyle(fontFamily: 'Cairo', color: _textSubtle, fontSize: 12),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -3019,7 +3056,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     const SizedBox(width: 4),
                     Text(
                       '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}',
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         color: _textGray,
                         fontSize: 11,
                       ),
@@ -3030,7 +3068,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     const SizedBox(width: 4),
                     Text(
                       'نطاق: $radiusم',
-                      style: GoogleFonts.cairo(color: _textGray, fontSize: 11),
+                      style: TextStyle(fontFamily: 'Cairo', color: _textGray, fontSize: 11),
                     ),
                   ],
                 ),
@@ -3050,7 +3088,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               IconButton(
                 onPressed: () => _deleteCenter(centerId, name),
                 icon: const Icon(Icons.delete_outline,
-                    color: Colors.red, size: 20),
+                    color: SdColors.danger, size: 20),
                 tooltip: 'حذف',
                 splashRadius: 18,
               ),
@@ -3097,7 +3135,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 Expanded(
                   child: Text(
                     'أقسام الشركة ومهامها',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: _textDark,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -3108,7 +3147,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                   _buildActionChip(
                     label: 'تهيئة افتراضية',
                     icon: Icons.auto_fix_high,
-                    color: Colors.purple,
+                    color: SdColors.platformBase,
                     onTap: _seedDefaultDepartments,
                   ),
                 const SizedBox(width: 8),
@@ -3140,7 +3179,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                   const SizedBox(height: 12),
                   Text(
                     'لا توجد أقسام بعد، أضف قسم جديد أو استخدم التهيئة الافتراضية',
-                    style: GoogleFonts.cairo(color: _textGray, fontSize: 14),
+                    style: TextStyle(fontFamily: 'Cairo', color: _textGray, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -3184,7 +3223,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               Icon(icon, color: color, size: 16),
               const SizedBox(width: 6),
               Text(label,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       color: color, fontSize: 12, fontWeight: FontWeight.bold)),
             ],
           ),
@@ -3206,7 +3246,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
+        color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: isExpanded ? _accent.withOpacity(0.4) : _dividerColor,
@@ -3244,7 +3284,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                         children: [
                           Text(
                             nameAr,
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               color: isActive == true ? _textDark : _textGray,
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
@@ -3255,7 +3296,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                           ),
                           Text(
                             '${tasks.length} مهمة',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
                                 color: _textGray, fontSize: 11),
                           ),
                         ],
@@ -3274,7 +3316,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     // Delete department button
                     IconButton(
                       icon: Icon(Icons.delete_outline,
-                          color: Colors.red[300], size: 20),
+                          color: SdColors.dangerTintEdge, size: 20),
                       tooltip: 'حذف القسم',
                       onPressed: () => _deleteDepartment(deptId, nameAr),
                       padding: EdgeInsets.zero,
@@ -3310,7 +3352,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                         child: Text(
                           'لا توجد مهام بعد',
                           style:
-                              GoogleFonts.cairo(color: _textGray, fontSize: 13),
+                              TextStyle(fontFamily: 'Cairo', color: _textGray, fontSize: 13),
                           textAlign: TextAlign.center,
                         ),
                       )
@@ -3327,7 +3369,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF5F6FA),
+                                color: SdColors.surfaceAlt,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(color: _dividerColor),
                               ),
@@ -3339,7 +3381,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                                   const SizedBox(width: 6),
                                   Text(
                                     taskName,
-                                    style: GoogleFonts.cairo(
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
                                         color: _textDark, fontSize: 12),
                                   ),
                                   const SizedBox(width: 4),
@@ -3348,7 +3391,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                                         _deleteTask(deptId, taskId, taskName),
                                     borderRadius: BorderRadius.circular(10),
                                     child: Icon(Icons.close,
-                                        color: Colors.red[300], size: 14),
+                                        color: SdColors.dangerTintEdge, size: 14),
                                   ),
                                 ],
                               ),
@@ -3369,7 +3412,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
       children: [
         Text(
           'إعدادات سريعة',
-          style: GoogleFonts.cairo(
+          style: TextStyle(
+            fontFamily: 'Cairo',
             color: _textDark,
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -3385,7 +3429,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               icon: Icons.print,
               title: 'إعدادات الطابعة',
               subtitle: 'ضبط إعدادات الطباعة',
-              color: Colors.blue,
+              color: SdColors.info,
               onTap: () {
                 Navigator.push(
                   context,
@@ -3399,7 +3443,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               icon: Icons.text_fields,
               title: 'حجم النص',
               subtitle: 'ضبط حجم النصوص في التطبيق',
-              color: Colors.purple,
+              color: SdColors.platformBase,
               onTap: () {
                 Navigator.push(
                   context,
@@ -3413,7 +3457,7 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
               icon: Icons.notifications,
               title: 'إعدادات الإشعارات',
               subtitle: 'إدارة إشعارات واتساب',
-              color: Colors.green,
+              color: SdColors.success,
               onTap: () {
                 Navigator.push(
                   context,
@@ -3477,7 +3521,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 const SizedBox(height: 12),
                 Text(
                   title,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: _textDark,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -3486,7 +3531,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: _textGray,
                     fontSize: 11,
                   ),
@@ -3537,17 +3583,18 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.cyan.withOpacity(0.05),
+              color: SdColors.accent.withOpacity(0.05),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, color: Colors.cyan, size: 24),
+                const Icon(Icons.info_outline, color: SdColors.accent, size: 24),
                 const SizedBox(width: 10),
                 Text(
                   'معلومات النظام',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: _textDark,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -3587,11 +3634,12 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, color: Colors.cyan.withOpacity(0.7), size: 18),
+          Icon(icon, color: SdColors.accent.withOpacity(0.7), size: 18),
           const SizedBox(width: 10),
           Text(
             '$label:',
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: _textGray,
               fontSize: 13,
             ),
@@ -3600,7 +3648,8 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
           Expanded(
             child: Text(
               value,
-              style: GoogleFonts.cairo(
+              style: TextStyle(
+                fontFamily: 'Cairo',
                 color: _textDark,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -3632,7 +3681,7 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
   final _radiusCtrl = TextEditingController();
   bool _isActive = true;
 
-  static const _accent = Color(0xFF3498DB);
+  static const _accent = SdColors.info;
   static const _textDark = Color(0xFF333333);
   static const _textGray = Color(0xFF999999);
   static const _bgCard = Colors.white;
@@ -3670,8 +3719,8 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
     if (_nameCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('اسم المركز مطلوب', style: GoogleFonts.cairo()),
-          backgroundColor: Colors.red[700],
+          content: Text('اسم المركز مطلوب', style: TextStyle(fontFamily: 'Cairo')),
+          backgroundColor: SdColors.danger,
         ),
       );
       return;
@@ -3683,8 +3732,8 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('الإحداثيات يجب أن تكون أرقاماً صحيحة',
-              style: GoogleFonts.cairo()),
-          backgroundColor: Colors.red[700],
+              style: TextStyle(fontFamily: 'Cairo')),
+          backgroundColor: SdColors.danger,
         ),
       );
       return;
@@ -3720,7 +3769,7 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
             const SizedBox(width: 10),
             Text(
               _isEditing ? 'تعديل المركز' : 'إضافة مركز جديد',
-              style: GoogleFonts.cairo(color: _textDark, fontSize: 18),
+              style: TextStyle(fontFamily: 'Cairo', color: _textDark, fontSize: 18),
             ),
           ],
         ),
@@ -3761,7 +3810,8 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
                           const SizedBox(width: 8),
                           Text(
                             'موقع المركز',
-                            style: GoogleFonts.cairo(
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
                               color: _accent,
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
@@ -3793,7 +3843,7 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
                                 _latCtrl.text.isNotEmpty
                                     ? 'تغيير الموقع'
                                     : 'تحديد على الخريطة',
-                                style: GoogleFonts.cairo(fontSize: 11),
+                                style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: _accent,
@@ -3821,17 +3871,19 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
                           child: Row(
                             children: [
                               const Icon(Icons.check_circle,
-                                  color: Colors.green, size: 16),
+                                  color: SdColors.success, size: 16),
                               const SizedBox(width: 8),
                               Text(
                                 'خط العرض: ${_latCtrl.text}',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     color: _textDark, fontSize: 12),
                               ),
                               const SizedBox(width: 16),
                               Text(
                                 'خط الطول: ${_lngCtrl.text}',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     color: _textDark, fontSize: 12),
                               ),
                             ],
@@ -3842,7 +3894,7 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
                         Text(
                           'انقر على "تحديد على الخريطة" لاختيار موقع المركز',
                           style:
-                              GoogleFonts.cairo(color: _textGray, fontSize: 11),
+                              TextStyle(fontFamily: 'Cairo', color: _textGray, fontSize: 11),
                         ),
                       ],
                     ],
@@ -3863,7 +3915,8 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
                       const Icon(Icons.toggle_on, color: _accent, size: 20),
                       const SizedBox(width: 8),
                       Text('حالة المركز:',
-                          style: GoogleFonts.cairo(
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
                               color: _textDark, fontSize: 13)),
                       const Spacer(),
                       Switch(
@@ -3873,8 +3926,9 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
                       ),
                       Text(
                         _isActive ? 'فعال' : 'معطل',
-                        style: GoogleFonts.cairo(
-                          color: _isActive ? Colors.green : Colors.red,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: _isActive ? SdColors.success : SdColors.danger,
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                         ),
@@ -3889,14 +3943,14 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('إلغاء', style: GoogleFonts.cairo(color: _textGray)),
+            child: Text('إلغاء', style: TextStyle(fontFamily: 'Cairo', color: _textGray)),
           ),
           ElevatedButton.icon(
             onPressed: _submit,
             icon: Icon(_isEditing ? Icons.save : Icons.add, size: 18),
             label: Text(
               _isEditing ? 'حفظ التغييرات' : 'إضافة',
-              style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: _accent,
@@ -3921,18 +3975,19 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+                fontFamily: 'Cairo',
                 color: _textDark, fontSize: 12, fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
         TextField(
           controller: controller,
-          style: GoogleFonts.cairo(color: _textDark, fontSize: 13),
+          style: TextStyle(fontFamily: 'Cairo', color: _textDark, fontSize: 13),
           keyboardType: isNumber
               ? const TextInputType.numberWithOptions(decimal: true)
               : TextInputType.text,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.cairo(color: _textGray, fontSize: 12),
+            hintStyle: TextStyle(fontFamily: 'Cairo', color: _textGray, fontSize: 12),
             prefixIcon: Icon(icon, color: _accent, size: 18),
             isDense: true,
             contentPadding:
@@ -3946,7 +4001,7 @@ class _CenterFormDialogState extends State<_CenterFormDialog> {
               borderRadius: BorderRadius.circular(8),
             ),
             filled: true,
-            fillColor: const Color(0xFFF8F9FA),
+            fillColor: SdColors.surfaceAlt,
           ),
         ),
       ],

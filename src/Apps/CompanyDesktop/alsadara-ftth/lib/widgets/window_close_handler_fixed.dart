@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 import 'dart:io';
 import '../services/app_close_handler.dart';
+import '../frontend/tokens/sd_colors.dart' show SdColors;
 
 // مفتاح global للوصول للNavigator
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -159,7 +160,7 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
             children: [
               Icon(
                 Icons.logout_rounded,
-                color: Colors.blue,
+                color: SdColors.info,
                 size: 28,
               ),
               SizedBox(width: 12),
@@ -168,7 +169,7 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.blue[700],
+                  color: SdColors.info,
                 ),
               ),
             ],
@@ -182,7 +183,7 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
+                  color: SdColors.ink,
                 ),
               ),
               SizedBox(height: 20),
@@ -191,9 +192,9 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red[50],
+                  color: SdColors.dangerTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red[200]!),
+                  border: Border.all(color: SdColors.dangerTintEdge),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,14 +202,14 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
                     Row(
                       children: [
                         Icon(Icons.delete_sweep,
-                            color: Colors.red[600], size: 24),
+                            color: SdColors.danger, size: 24),
                         SizedBox(width: 8),
                         Text(
                           'مسح البيانات والإغلاق',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.red[700],
+                            color: SdColors.danger,
                           ),
                         ),
                       ],
@@ -216,11 +217,11 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
                     SizedBox(height: 8),
                     Text(
                       '• سيتم مسح بيانات تسجيل الدخول المحفوظة',
-                      style: TextStyle(fontSize: 13, color: Colors.red[600]),
+                      style: TextStyle(fontSize: 13, color: SdColors.danger),
                     ),
                     Text(
                       '• ستحتاج لتسجيل الدخول مرة أخرى',
-                      style: TextStyle(fontSize: 13, color: Colors.red[600]),
+                      style: TextStyle(fontSize: 13, color: SdColors.danger),
                     ),
                   ],
                 ),
@@ -232,9 +233,9 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.green[50],
+                  color: SdColors.successTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green[200]!),
+                  border: Border.all(color: SdColors.successTintEdge),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,14 +243,14 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
                     Row(
                       children: [
                         Icon(Icons.exit_to_app,
-                            color: Colors.green[600], size: 24),
+                            color: SdColors.success, size: 24),
                         SizedBox(width: 8),
                         Text(
                           'الإغلاق فقط',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.green[700],
+                            color: SdColors.success,
                           ),
                         ),
                       ],
@@ -257,11 +258,11 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
                     SizedBox(height: 8),
                     Text(
                       '• ستبقى بيانات تسجيل الدخول محفوظة',
-                      style: TextStyle(fontSize: 13, color: Colors.green[600]),
+                      style: TextStyle(fontSize: 13, color: SdColors.success),
                     ),
                     Text(
                       '• يمكنك الدخول تلقائياً في المرة القادمة',
-                      style: TextStyle(fontSize: 13, color: Colors.green[600]),
+                      style: TextStyle(fontSize: 13, color: SdColors.success),
                     ),
                   ],
                 ),
@@ -274,7 +275,7 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
                 Navigator.of(context).pop(null); // إلغاء الإغلاق
               },
               style: TextButton.styleFrom(
-                foregroundColor: Colors.grey[600],
+                foregroundColor: SdColors.muted,
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
               child: Text(
@@ -290,7 +291,7 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
                 Navigator.of(context).pop('close_only'); // إغلاق فقط
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green[600],
+                backgroundColor: SdColors.success,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 elevation: 2,
@@ -308,7 +309,7 @@ class _WindowCloseHandlerFixedState extends State<WindowCloseHandlerFixed>
                 Navigator.of(context).pop('clear_and_close'); // مسح والإغلاق
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[600],
+                backgroundColor: SdColors.danger,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 elevation: 2,

@@ -47,9 +47,9 @@ class _EmployeeTrackingReportPageState
   static const _accentColor = Color(0xFF38BDF8);
 
   // ═══ ألوان السرعة ═══
-  static const _speedSlow = Color(0xFF22C55E);    // أخضر < 10 كم/س (مشي)
-  static const _speedMedium = Color(0xFFF59E0B);  // أصفر 10-40 كم/س
-  static const _speedFast = Color(0xFFEF4444);    // أحمر > 40 كم/س
+  static const _speedSlow = SdColors.success;    // أخضر < 10 كم/س (مشي)
+  static const _speedMedium = SdColors.warning;  // أصفر 10-40 كم/س
+  static const _speedFast = SdColors.danger;    // أحمر > 40 كم/س
 
   @override
   void initState() {
@@ -559,7 +559,7 @@ class _EmployeeTrackingReportPageState
                       // زر إعادة التشغيل
                       FloatingActionButton.small(
                         heroTag: 'replay',
-                        backgroundColor: _isReplaying ? Colors.red : Colors.deepPurple,
+                        backgroundColor: _isReplaying ? SdColors.danger : SdColors.platformBase,
                         onPressed: _isReplaying ? _stopReplay : _startReplay,
                         child: Icon(
                           _isReplaying ? Icons.stop : Icons.replay,
@@ -596,7 +596,7 @@ class _EmployeeTrackingReportPageState
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.deepPurple,
+                      color: SdColors.platformBase,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -657,13 +657,13 @@ class _EmployeeTrackingReportPageState
             ? '${_roadDistanceKm!.toStringAsFixed(1)} كم'
             : '${_totalDistanceKm.toStringAsFixed(1)} كم',
         _roadDistanceKm != null ? 'المسافة (طريق)' : 'المسافة',
-        Colors.green,
+        SdColors.success,
       ),
-      _buildStatCard(Icons.location_on, '$_totalPoints', 'نقاط', Colors.orange),
+      _buildStatCard(Icons.location_on, '$_totalPoints', 'نقاط', SdColors.warning),
       if (_stops.isNotEmpty)
-        _buildStatCard(Icons.pause_circle, '${_stops.length}', 'توقفات', Colors.orange.shade700),
-      _buildStatCard(Icons.login, _firstTime ?? '-', 'أول نشاط', Colors.blue),
-      _buildStatCard(Icons.logout, _lastTime ?? '-', 'آخر نشاط', Colors.purple),
+        _buildStatCard(Icons.pause_circle, '${_stops.length}', 'توقفات', SdColors.warning),
+      _buildStatCard(Icons.login, _firstTime ?? '-', 'أول نشاط', SdColors.info),
+      _buildStatCard(Icons.logout, _lastTime ?? '-', 'آخر نشاط', SdColors.platformBase),
     ];
 
     if (mobile) {
@@ -797,7 +797,7 @@ class _EmployeeTrackingReportPageState
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                           decoration: BoxDecoration(
-                            color: Colors.orange.shade700,
+                            color: SdColors.warning,
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -809,11 +809,11 @@ class _EmployeeTrackingReportPageState
                           width: 18,
                           height: 18,
                           decoration: BoxDecoration(
-                            color: Colors.orange,
+                            color: SdColors.warning,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2),
                             boxShadow: [
-                              BoxShadow(color: Colors.orange.withValues(alpha: 0.5), blurRadius: 6),
+                              BoxShadow(color: SdColors.warning.withValues(alpha: 0.5), blurRadius: 6),
                             ],
                           ),
                           child: const Icon(Icons.pause, color: Colors.white, size: 10),
@@ -838,11 +838,11 @@ class _EmployeeTrackingReportPageState
                 height: 36,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.green,
+                    color: SdColors.success,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2.5),
                     boxShadow: [
-                      BoxShadow(color: Colors.green.withValues(alpha: 0.5), blurRadius: 8),
+                      BoxShadow(color: SdColors.success.withValues(alpha: 0.5), blurRadius: 8),
                     ],
                   ),
                   child: const Icon(Icons.play_arrow, color: Colors.white, size: 18),
@@ -855,11 +855,11 @@ class _EmployeeTrackingReportPageState
                   height: 36,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.red,
+                      color: SdColors.danger,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2.5),
                       boxShadow: [
-                        BoxShadow(color: Colors.red.withValues(alpha: 0.5), blurRadius: 8),
+                        BoxShadow(color: SdColors.danger.withValues(alpha: 0.5), blurRadius: 8),
                       ],
                     ),
                     child: const Icon(Icons.stop, color: Colors.white, size: 18),
@@ -877,11 +877,11 @@ class _EmployeeTrackingReportPageState
                 height: 40,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.deepPurple,
+                    color: SdColors.platformBase,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 3),
                     boxShadow: [
-                      BoxShadow(color: Colors.deepPurple.withValues(alpha: 0.6), blurRadius: 12, spreadRadius: 2),
+                      BoxShadow(color: SdColors.platformBase.withValues(alpha: 0.6), blurRadius: 12, spreadRadius: 2),
                     ],
                   ),
                   child: const Icon(Icons.person_pin, color: Colors.white, size: 20),

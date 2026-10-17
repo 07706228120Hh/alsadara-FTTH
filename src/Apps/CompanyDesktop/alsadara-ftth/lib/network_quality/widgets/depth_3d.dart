@@ -16,15 +16,16 @@ import 'package:flutter/material.dart';
 import '../models/device_models.dart';
 import '../models/quality_models.dart';
 import '../services/network_quality_controller.dart' show QualityStage, QualityStageX;
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
 // ═══════════════════════════ الألوان ═══════════════════════════
 
 class Nq3d {
   Nq3d._();
-  static const indigo = Color(0xFF1A237E);
+  static const indigo = SdColors.primary;
   static const indigoDark = Color(0xFF0F1660);
-  static const indigoLight = Color(0xFF3949AB);
-  static const indigoSoft = Color(0xFF5C6BC0);
+  static const indigoLight = SdColors.primaryLight;
+  static const indigoSoft = SdColors.primarySoft;
   static const teal = Color(0xFF00838F);
   static const tealDark = Color(0xFF005662);
   static const fiber = Color(0xFF00ACC1);
@@ -138,9 +139,9 @@ class IsoShade {
   static const muted =
       IsoShade(Nq3d.groundAlt, Nq3d.edge, Nq3d.sideRight);
   static const teal =
-      IsoShade(Color(0xFF80DEEA), Nq3d.fiber, Nq3d.teal);
+      IsoShade(SdColors.accentTintEdge, Nq3d.fiber, Nq3d.teal);
   static const amber =
-      IsoShade(Color(0xFFFFE0B2), Color(0xFFFFB74D), Color(0xFFEF6C00));
+      IsoShade(SdColors.warningTintEdge, Color(0xFFFFB74D), SdColors.warning);
 }
 
 /// ألوان أوجه المجسّم حسب التقييم.
@@ -148,7 +149,7 @@ IsoShade ratingShade(QualityRating r) {
   switch (r) {
     case QualityRating.excellent:
       return const IsoShade(
-          Color(0xFF81C784), Color(0xFF43A047), Color(0xFF2E7D32));
+          Color(0xFF81C784), SdColors.success, SdColors.success);
     case QualityRating.good:
       return const IsoShade(
           Color(0xFFC5E1A5), Color(0xFF9CCC65), Color(0xFF689F38));
@@ -157,10 +158,10 @@ IsoShade ratingShade(QualityRating r) {
           Color(0xFFFFE082), Color(0xFFFBC02D), Color(0xFFF57F17));
     case QualityRating.poor:
       return const IsoShade(
-          Color(0xFFFFCC80), Color(0xFFFB8C00), Color(0xFFE65100));
+          Color(0xFFFFCC80), Color(0xFFFB8C00), SdColors.warningEdge);
     case QualityRating.bad:
       return const IsoShade(
-          Color(0xFFEF9A9A), Color(0xFFE53935), Color(0xFFB71C1C));
+          Color(0xFFEF9A9A), SdColors.danger, Color(0xFFB71C1C));
     case QualityRating.unknown:
       return IsoShade.muted;
   }
@@ -384,7 +385,7 @@ class _HomeScenePainter extends _DesignPainter {
         IsoShade.light);
     canvas.drawCircle(const Offset(96, 123), 2.4, _fill(Nq3d.teal));
     canvas.drawCircle(
-        const Offset(104, 127.5), 2.4, _fill(const Color(0xFF2E7D32)));
+        const Offset(104, 127.5), 2.4, _fill(SdColors.success));
     _label(canvas, 'ONU', const Offset(114, 84), dir: TextDirection.ltr);
 
     // هوائيات الراوتر.
@@ -405,8 +406,8 @@ class _HomeScenePainter extends _DesignPainter {
         ]),
         _stroke(const Color(0x2EFFFFFF), 1));
     const leds = [
-      (Offset(171.9, 107.8), Color(0xFF80DEEA)),
-      (Offset(180.9, 113), Color(0xFF80DEEA)),
+      (Offset(171.9, 107.8), SdColors.accentTintEdge),
+      (Offset(180.9, 113), SdColors.accentTintEdge),
       (Offset(190, 118.3), Color(0xFFA5D6A7)),
       (Offset(199.1, 123.5), Nq3d.indigoSoft),
     ];
@@ -573,15 +574,15 @@ class _TopologyPainter extends _DesignPainter {
         IsoShade.light);
     canvas.drawCircle(const Offset(86.1, 89), 2.6, _fill(_a(Nq3d.fiber, s.fib)));
     canvas.drawCircle(
-        const Offset(94.1, 93.5), 2.6, _fill(const Color(0xFF2E7D32)));
+        const Offset(94.1, 93.5), 2.6, _fill(SdColors.success));
 
     _clientBox(canvas, const Offset(283.9, 72), Nq3d.indigoSoft, s.dev);
 
     paintIsoBox(canvas, const IsoBox(Offset(180, 70), 60, 44, 20),
         IsoShade.router);
-    canvas.drawCircle(const Offset(154, 108), 2.4, _fill(const Color(0xFF80DEEA)));
+    canvas.drawCircle(const Offset(154, 108), 2.4, _fill(SdColors.accentTintEdge));
     canvas.drawCircle(
-        const Offset(162, 112.6), 2.4, _fill(const Color(0xFF80DEEA)));
+        const Offset(162, 112.6), 2.4, _fill(SdColors.accentTintEdge));
     canvas.drawCircle(
         const Offset(170, 117.2), 2.4, _fill(const Color(0xFFA5D6A7)));
 
@@ -979,7 +980,7 @@ class _PingPainter extends CustomPainter {
         dash: 4, gap: 4);
     _label(canvas, 'حدّ الممتاز ${limit.toStringAsFixed(0)}ms',
         Offset(w - 52, ly - 9),
-        size: 10, weight: FontWeight.w700, color: const Color(0xFF2E7D32));
+        size: 10, weight: FontWeight.w700, color: SdColors.success);
 
     for (var i = 0; i < 3; i++) {
       final x = w * (0.2 + i * 0.3);
@@ -1076,11 +1077,11 @@ class OpticalBand3D extends StatelessWidget {
   static const double _to = -30;
   static const _stops = [-8.0, -15.0, -22.0, -25.0, -27.0, -30.0];
   static const _colors = [
-    Color(0xFF43A047),
+    SdColors.success,
     Color(0xFF9CCC65),
     Color(0xFFFBC02D),
-    Color(0xFFEF6C00),
-    Color(0xFFC62828),
+    SdColors.warning,
+    SdColors.danger,
   ];
 
   double _frac(double dbm) => ((_from - dbm) / (_from - _to)).clamp(0.0, 1.0);
@@ -1478,7 +1479,7 @@ class _IsoDevicePainter extends _DesignPainter {
     if (type == DeviceType.onu) {
       canvas.drawCircle(const Offset(-12, 19), 2, _fill(Nq3d.fiber));
     } else if (type == DeviceType.router || type == DeviceType.accessPoint) {
-      canvas.drawCircle(const Offset(-12, 19), 2, _fill(const Color(0xFF80DEEA)));
+      canvas.drawCircle(const Offset(-12, 19), 2, _fill(SdColors.accentTintEdge));
       canvas.drawCircle(const Offset(-6, 22.5), 2, _fill(const Color(0xFFA5D6A7)));
     }
   }
@@ -1674,13 +1675,13 @@ class RatingChip3D extends StatelessWidget {
   static (Color fg, Color bg, Color edge) colorsFor(QualityRating r) {
     switch (r) {
       case QualityRating.excellent:
-        return (const Color(0xFF1B5E20), const Color(0xFFE8F5E9), const Color(0xFFC8E6C9));
+        return (SdColors.successEdge, SdColors.successTint, const Color(0xFFC8E6C9));
       case QualityRating.good:
         return (const Color(0xFF33691E), const Color(0xFFF1F8E9), const Color(0xFFDCEDC8));
       case QualityRating.fair:
         return (const Color(0xFF7A5D00), const Color(0xFFFFF8E1), const Color(0xFFFFECB3));
       case QualityRating.poor:
-        return (const Color(0xFFBF360C), const Color(0xFFFFF3E0), const Color(0xFFFFE0B2));
+        return (const Color(0xFFBF360C), SdColors.warningTint, SdColors.warningTintEdge);
       case QualityRating.bad:
         return (const Color(0xFFB71C1C), const Color(0xFFFFEBEE), const Color(0xFFFFCDD2));
       case QualityRating.unknown:
@@ -1891,7 +1892,7 @@ class _StagePainter extends _DesignPainter {
     final l0 = Offset.lerp(i0, i1, .02)!.translate(0, y);
     final l1 = Offset.lerp(i0, i1, .98)!.translate(0, y);
     c.drawLine(l0, l1, _stroke(_a(Nq3d.fiber, .3), 6));
-    c.drawLine(l0, l1, _stroke(const Color(0xFF80DEEA), 2));
+    c.drawLine(l0, l1, _stroke(SdColors.accentTintEdge, 2));
     // شريحة المعالج.
     final chip = _on(86, 70, 20, 20, 5);
     paintIsoBox(c, chip, IsoShade.router);
@@ -1987,7 +1988,7 @@ class _StagePainter extends _DesignPainter {
     c.drawCircle(led, 5, _fill(_a(Nq3d.fiber, .25 * blink)));
     c.drawCircle(led, 2.6, _fill(_a(Nq3d.fiber, blink)));
     c.drawCircle(Offset.lerp(onu.left, onu.front, .55)!.translate(0, 7), 2.4,
-        _fill(const Color(0xFF2E7D32)));
+        _fill(SdColors.success));
     final bob = math.sin(v * _tau) * 3;
     final tag = onu.top.translate(6, -18 + bob);
     final rr = RRect.fromRectAndRadius(
@@ -2008,7 +2009,7 @@ class _StagePainter extends _DesignPainter {
       c.drawCircle(
           Offset.lerp(server.left, server.front, .4)!.translate(0, 10 + r * 9),
           2.2,
-          _fill(on ? const Color(0xFF80DEEA) : const Color(0x4D80DEEA)));
+          _fill(on ? SdColors.accentTintEdge : const Color(0x4D80DEEA)));
     }
     final client = _on(12, 66, 22, 22, 12);
     paintIsoBox(c, client, IsoShade.light);
@@ -2062,9 +2063,9 @@ class _StagePainter extends _DesignPainter {
     final lift = -22 * math.sin(math.pi * f);
     c.drawLine(a, b, _stroke(const Color(0x335C6BC0), 1.4));
     _glowDot(c, pos.translate(0, lift),
-        goUp ? Nq3d.indigoSoft : const Color(0xFF43A047), r: 4);
+        goUp ? Nq3d.indigoSoft : SdColors.success, r: 4);
     _label(c, goUp ? 'سؤال' : 'جواب', pos.translate(0, lift - 14),
-        size: 9.5, color: goUp ? Nq3d.indigo : const Color(0xFF2E7D32));
+        size: 9.5, color: goUp ? Nq3d.indigo : SdColors.success);
   }
 
   // التنزيل/الرفع: مكعّبات بيانات تتدفّق بين السحابة والراوتر.
@@ -2103,7 +2104,7 @@ class _StagePainter extends _DesignPainter {
       _cube(c, pos.translate(-4, -4), 8, shade, op: math.sin(f * math.pi));
     }
     _label(c, down ? '↓' : '↑', cc, size: 13, weight: FontWeight.w900,
-        color: down ? Nq3d.teal : const Color(0xFFEF6C00),
+        color: down ? Nq3d.teal : SdColors.warning,
         dir: TextDirection.ltr);
   }
 
@@ -2230,7 +2231,7 @@ class _StageBadge3DState extends State<StageBadge3D>
     switch (st) {
       case StageStatus.done:
         tile = _tile(const ValueKey('done'), Icons.check_rounded,
-            const Color(0xFF2E7D32), const Color(0xFF1B5E20), Colors.white, 3);
+            SdColors.success, SdColors.successEdge, Colors.white, 3);
         break;
       case StageStatus.active:
         tile = _tile(const ValueKey('active'), stageIcon(widget.stage),
@@ -2363,7 +2364,7 @@ class StageTimelineRow3D extends StatelessWidget {
                         width: 3,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: done ? const Color(0xFF43A047) : Nq3d.sideLeft,
+                          color: done ? SdColors.success : Nq3d.sideLeft,
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -2396,7 +2397,7 @@ class StageTimelineRow3D extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: done ? const Color(0xFF2E7D32) : Nq3d.indigo),
+                        color: done ? SdColors.success : Nq3d.indigo),
                   ),
                 ),
               ],
@@ -2464,7 +2465,7 @@ class StageStrip3D extends StatelessWidget {
                   height: 3,
                   decoration: BoxDecoration(
                     color: (allDone || i < currentIndex)
-                        ? const Color(0xFF43A047)
+                        ? SdColors.success
                         : Nq3d.sideLeft,
                     borderRadius: BorderRadius.circular(2),
                   ),

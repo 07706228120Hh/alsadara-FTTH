@@ -410,7 +410,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                           icon: Icons.location_on,
                                           title: 'الزونات',
                                           value: totalZones,
-                                          color: Colors.blue[700]!,
+                                          color: SdColors.info,
                                         ),
                                       ),
                                       SizedBox(
@@ -419,7 +419,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                           icon: Icons.people,
                                           title: 'المستخدمون',
                                           value: totalUsers,
-                                          color: Colors.green[700]!,
+                                          color: SdColors.success,
                                         ),
                                       ),
                                       SizedBox(
@@ -428,7 +428,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                           icon: Icons.check_circle_outline,
                                           title: 'فعّالون',
                                           value: totalActiveUsers,
-                                          color: Colors.orange[700]!,
+                                          color: SdColors.warning,
                                         ),
                                       ),
                                       SizedBox(
@@ -437,7 +437,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                           icon: Icons.highlight_off,
                                           title: 'غير مفعلين',
                                           value: totalInactiveUsers,
-                                          color: Colors.red[700]!,
+                                          color: SdColors.danger,
                                         ),
                                       ),
                                       SizedBox(
@@ -446,7 +446,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                           icon: Icons.functions,
                                           title: 'مجموع FATS',
                                           value: totalFats,
-                                          color: Colors.teal[700]!,
+                                          color: SdColors.accent,
                                         ),
                                       ),
                                       SizedBox(
@@ -456,7 +456,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                           title: 'متوسط FATS',
                                           value: avgFats,
                                           decimals: 2,
-                                          color: Colors.cyan[700]!,
+                                          color: SdColors.accent,
                                         ),
                                       ),
                                       SizedBox(
@@ -465,7 +465,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                           icon: Icons.trending_up,
                                           title: 'أكبر FATS',
                                           value: maxFats,
-                                          color: Colors.green[700]!,
+                                          color: SdColors.success,
                                         ),
                                       ),
                                       SizedBox(
@@ -474,7 +474,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                           icon: Icons.trending_down,
                                           title: 'أصغر FATS',
                                           value: minFats,
-                                          color: Colors.red[700]!,
+                                          color: SdColors.danger,
                                         ),
                                       ),
                                       // إحصائيات المستخدمين في الملخص السريع
@@ -484,7 +484,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                           icon: Icons.trending_up,
                                           title: 'أكبر مستخدمين',
                                           value: maxUsers,
-                                          color: Colors.green[800]!,
+                                          color: SdColors.success,
                                         ),
                                       ),
                                       SizedBox(
@@ -493,7 +493,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                           icon: Icons.trending_down,
                                           title: 'أصغر مستخدمين',
                                           value: minUsers,
-                                          color: Colors.red[800]!,
+                                          color: SdColors.danger,
                                         ),
                                       ),
                                       SizedBox(
@@ -503,7 +503,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                           title: 'متوسط المستخدمين',
                                           value: avgUsers,
                                           decimals: 2,
-                                          color: Colors.indigo[700]!,
+                                          color: SdColors.primary,
                                         ),
                                       ),
                                     ];
@@ -544,7 +544,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                         ratio: totalUsers == 0
                                             ? 0
                                             : totalActiveUsers / totalUsers,
-                                        color: Colors.green[600]!,
+                                        color: SdColors.success,
                                         icon: Icons.verified_user,
                                       ),
                                       _buildProgressTile(
@@ -553,7 +553,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                         ratio: totalUsers == 0
                                             ? 0
                                             : totalInactiveUsers / totalUsers,
-                                        color: Colors.red[600]!,
+                                        color: SdColors.danger,
                                         icon: Icons.block,
                                       ),
                                     ],

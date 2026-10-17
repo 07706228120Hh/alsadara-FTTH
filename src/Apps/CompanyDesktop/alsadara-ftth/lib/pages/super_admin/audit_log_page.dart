@@ -3,12 +3,12 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../theme/energy_dashboard_theme.dart';
 import '../../services/api/api_client.dart';
 import 'widgets/super_admin_widgets.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 class AuditLogPage extends StatefulWidget {
   const AuditLogPage({super.key});
 
@@ -118,7 +118,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: EnergyDashboardTheme.bgPrimary,
+      color: SdColors.ground,
       child: Column(
         children: [
           // Header
@@ -128,12 +128,12 @@ class _AuditLogPageState extends State<AuditLogPage> {
               title: 'سجل العمليات المركزي',
               subtitle: 'تتبع كل العمليات عبر جميع الشركات',
               icon: Icons.history_rounded,
-              color: EnergyDashboardTheme.neonBlue,
-              secondaryColor: EnergyDashboardTheme.neonPurple,
+              color: SdColors.info,
+              secondaryColor: SdColors.platformBase,
               onRefresh: _loadLogs,
               trailing: SACountBadge(
                 count: _filteredLogs.length,
-                color: EnergyDashboardTheme.neonBlue,
+                color: SdColors.info,
               ),
             ),
           ),
@@ -169,7 +169,7 @@ class _AuditLogPageState extends State<AuditLogPage> {
             child: _isLoading
                 ? const Center(
                     child: CircularProgressIndicator(
-                        color: EnergyDashboardTheme.neonGreen))
+                        color: SdColors.success))
                 : _buildLogsList(),
           ),
         ],
@@ -208,10 +208,10 @@ class _AuditLogPageState extends State<AuditLogPage> {
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-            color: EnergyDashboardTheme.borderColor.withOpacity(0.5)),
+            color: SdColors.divider.withOpacity(0.5)),
       ),
       child: Row(
         children: [
@@ -234,8 +234,9 @@ class _AuditLogPageState extends State<AuditLogPage> {
               children: [
                 Text(
                   log['description'] ?? '',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -243,23 +244,25 @@ class _AuditLogPageState extends State<AuditLogPage> {
                 Row(
                   children: [
                     Icon(Icons.person_rounded,
-                        color: EnergyDashboardTheme.textMuted, size: 12),
+                        color: SdColors.faint, size: 12),
                     const SizedBox(width: 4),
                     Text(
                       log['userName'] ?? '',
-                      style: GoogleFonts.cairo(
-                        color: EnergyDashboardTheme.textMuted,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.faint,
                         fontSize: 10,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Icon(Icons.business_rounded,
-                        color: EnergyDashboardTheme.textMuted, size: 12),
+                        color: SdColors.faint, size: 12),
                     const SizedBox(width: 4),
                     Text(
                       log['companyName'] ?? '',
-                      style: GoogleFonts.cairo(
-                        color: EnergyDashboardTheme.textMuted,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.faint,
                         fontSize: 10,
                       ),
                     ),
@@ -273,8 +276,9 @@ class _AuditLogPageState extends State<AuditLogPage> {
             flex: 1,
             child: Text(
               log['ipAddress'] ?? '',
-              style: GoogleFonts.cairo(
-                color: EnergyDashboardTheme.textMuted,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.faint,
                 fontSize: 10,
               ),
             ),
@@ -286,15 +290,17 @@ class _AuditLogPageState extends State<AuditLogPage> {
               children: [
                 Text(
                   DateFormat('yyyy/MM/dd').format(timestamp),
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textSecondary,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.muted,
                     fontSize: 10,
                   ),
                 ),
                 Text(
                   DateFormat('HH:mm').format(timestamp),
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textMuted,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.faint,
                     fontSize: 10,
                   ),
                 ),
@@ -308,27 +314,27 @@ class _AuditLogPageState extends State<AuditLogPage> {
   Color _getActionColor(String action) {
     switch (action) {
       case 'login':
-        return EnergyDashboardTheme.neonGreen;
+        return SdColors.success;
       case 'logout':
-        return EnergyDashboardTheme.textMuted;
+        return SdColors.faint;
       case 'company_created':
-        return EnergyDashboardTheme.neonBlue;
+        return SdColors.info;
       case 'subscription_renewed':
-        return EnergyDashboardTheme.neonPurple;
+        return SdColors.platformBase;
       case 'user_created':
-        return EnergyDashboardTheme.neonOrange;
+        return SdColors.warning;
       case 'settings_changed':
-        return EnergyDashboardTheme.warning;
+        return SdColors.warning;
       case 'status_changed':
-        return EnergyDashboardTheme.neonPink;
+        return SdColors.platformLight;
       case 'permission_changed':
-        return EnergyDashboardTheme.danger;
+        return SdColors.danger;
       case 'password_reset':
-        return EnergyDashboardTheme.warning;
+        return SdColors.warning;
       case 'data_export':
-        return EnergyDashboardTheme.neonBlue;
+        return SdColors.info;
       default:
-        return EnergyDashboardTheme.textMuted;
+        return SdColors.faint;
     }
   }
 

@@ -102,15 +102,15 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   Color _getStatusColor(CompanyStatus status) {
     switch (status) {
       case CompanyStatus.active:
-        return const Color(0xFF10B981);
+        return SdColors.success;
       case CompanyStatus.warning:
         return const Color(0xFFf7971e);
       case CompanyStatus.critical:
         return const Color(0xFFeb3349);
       case CompanyStatus.expired:
-        return Colors.red;
+        return SdColors.danger;
       case CompanyStatus.suspended:
-        return Colors.grey;
+        return SdColors.faint;
     }
   }
 
@@ -182,15 +182,15 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   PreferredSizeWidget _buildPremiumAppBar(
       Color statusColor, String statusText, bool isCompact) {
     return AppBar(
-      backgroundColor: EnergyDashboardTheme.bgLightCard,
+      backgroundColor: SdColors.surface,
       elevation: 0,
       toolbarHeight: isCompact ? 60 : 70,
       flexibleSpace: Container(
         decoration: BoxDecoration(
-          color: EnergyDashboardTheme.bgLightCard,
+          color: SdColors.surface,
           boxShadow: [
             BoxShadow(
-              color: EnergyDashboardTheme.primary.withOpacity(0.15),
+              color: SdColors.info.withOpacity(0.15),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -200,14 +200,14 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       leading: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Material(
-          color: EnergyDashboardTheme.bgLightSurface,
+          color: SdColors.groundAlt,
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
             onTap: () => Navigator.pop(context),
             borderRadius: BorderRadius.circular(12),
             child: const Icon(
               Icons.arrow_back_rounded,
-              color: EnergyDashboardTheme.textDark,
+              color: SdColors.ink,
             ),
           ),
         ),
@@ -221,7 +221,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               gradient: EnergyDashboardTheme.primaryGradient,
               borderRadius: BorderRadius.circular(12),
               boxShadow: EnergyDashboardTheme.glowShadow(
-                  EnergyDashboardTheme.primary.withOpacity(0.5)),
+                  SdColors.info.withOpacity(0.5)),
             ),
             child: Icon(
               Icons.business_rounded,
@@ -239,7 +239,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                 Text(
                   _company.name,
                   style: TextStyle(
-                    color: EnergyDashboardTheme.textDark,
+                    color: SdColors.ink,
                     fontSize: isCompact ? 15 : 17,
                     fontWeight: FontWeight.bold,
                   ),
@@ -249,7 +249,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                 Text(
                   'كود: ${_company.code}',
                   style: TextStyle(
-                    color: EnergyDashboardTheme.textMedium,
+                    color: SdColors.muted,
                     fontSize: isCompact ? 11 : 12,
                   ),
                 ),
@@ -286,7 +286,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: EnergyDashboardTheme.accent.withOpacity(0.5),
+                color: SdColors.success.withOpacity(0.5),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
               ),
@@ -372,18 +372,18 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
 
   /// بطاقة معلومات الشركة المضغوطة
   Widget _buildCompactInfoCard(DateFormat dateFormat, bool isCompact) {
-    const Color infoIconColor = EnergyDashboardTheme.primary;
+    const Color infoIconColor = SdColors.info;
 
     return Container(
       padding: EdgeInsets.all(isCompact ? 16 : 22),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgLightCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-            color: EnergyDashboardTheme.primary.withOpacity(0.2), width: 1),
+            color: SdColors.info.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
-            color: EnergyDashboardTheme.primary.withOpacity(0.18),
+            color: SdColors.info.withOpacity(0.18),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -420,7 +420,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Text(
                 'معلومات الشركة',
                 style: TextStyle(
-                  color: EnergyDashboardTheme.textDark,
+                  color: SdColors.ink,
                   fontSize: isCompact ? 14 : 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -436,7 +436,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                     borderRadius: BorderRadius.circular(25),
                     boxShadow: [
                       BoxShadow(
-                        color: EnergyDashboardTheme.accent.withOpacity(0.5),
+                        color: SdColors.success.withOpacity(0.5),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
@@ -526,16 +526,16 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            EnergyDashboardTheme.primary.withOpacity(0.12),
-            EnergyDashboardTheme.primary.withOpacity(0.15),
+            SdColors.info.withOpacity(0.12),
+            SdColors.info.withOpacity(0.15),
           ],
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-            color: EnergyDashboardTheme.primary.withOpacity(0.25), width: 1.5),
+            color: SdColors.info.withOpacity(0.25), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: EnergyDashboardTheme.primary.withOpacity(0.2),
+            color: SdColors.info.withOpacity(0.2),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -551,7 +551,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: EnergyDashboardTheme.primary.withOpacity(0.4),
+                  color: SdColors.info.withOpacity(0.4),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -563,7 +563,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           Text(
             label,
             style: TextStyle(
-              color: EnergyDashboardTheme.textMedium,
+              color: SdColors.muted,
               fontSize: isCompact ? 10 : 12,
               fontWeight: FontWeight.w600,
             ),
@@ -572,7 +572,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           Text(
             value,
             style: TextStyle(
-              color: EnergyDashboardTheme.textDark,
+              color: SdColors.ink,
               fontSize: isCompact ? 12 : 14,
               fontWeight: FontWeight.bold,
             ),
@@ -597,13 +597,13 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     return Container(
       padding: EdgeInsets.all(isCompact ? 16 : 22),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgLightCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-            color: EnergyDashboardTheme.accent.withOpacity(0.2), width: 1.5),
+            color: SdColors.success.withOpacity(0.2), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: EnergyDashboardTheme.accent.withOpacity(0.12),
+            color: SdColors.success.withOpacity(0.12),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -641,7 +641,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Text(
                 'الاشتراك',
                 style: TextStyle(
-                  color: EnergyDashboardTheme.textDark,
+                  color: SdColors.ink,
                   fontSize: isCompact ? 14 : 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -837,7 +837,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   /// شبكة جميع الأزرار - تصميم جديد منسق
   Widget _buildAllActionsGrid(bool isCompact) {
     // ألوان التصميم الفخم - أغمق وأكثر تبايناً
-    const Color primaryBlue = EnergyDashboardTheme.primary;
+    const Color primaryBlue = SdColors.info;
     const Color lightBlue = Color(0xFF2563EB); // أغمق من 3B82F6
     const Color lightBlueBg = Color(0xFFA5D8FF); // أزرق أغمق
     const Color purple = Color(0xFF7C3AED);
@@ -852,18 +852,18 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     const Color indigoBg = Color(0xFF93C5FD); // نيلي أغمق
     const Color dangerRed = Color(0xFFDC2626);
     const Color dangerBg = Color(0xFFFCA5A5);
-    const Color dangerBorder = Color(0xFFEF4444);
+    const Color dangerBorder = SdColors.danger;
 
     return Container(
       padding: EdgeInsets.all(isCompact ? 18 : 26),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgLightCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-            color: EnergyDashboardTheme.primary.withOpacity(0.35), width: 1.5),
+            color: SdColors.info.withOpacity(0.35), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: EnergyDashboardTheme.primary.withOpacity(0.2),
+            color: SdColors.info.withOpacity(0.2),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -901,7 +901,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Text(
                 'الإجراءات',
                 style: TextStyle(
-                  color: EnergyDashboardTheme.textDark,
+                  color: SdColors.ink,
                   fontSize: isCompact ? 14 : 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1003,7 +1003,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                   label: _company.isActive ? 'تعطيل الشركة' : 'تفعيل الشركة',
                   backgroundColor: _company.isActive ? orangeBg : greenBg,
                   foregroundColor:
-                      _company.isActive ? const Color(0xFFE65100) : green,
+                      _company.isActive ? SdColors.warningEdge : green,
                   onPressed: _toggleCompanyStatus,
                   isCompact: isCompact,
                 ),
@@ -1066,7 +1066,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             boxShadow: [
               BoxShadow(
                 color: isPrimary
-                    ? EnergyDashboardTheme.primary.withOpacity(0.35)
+                    ? SdColors.info.withOpacity(0.35)
                     : foregroundColor.withOpacity(0.35),
                 blurRadius: isPrimary ? 14 : 10,
                 offset: const Offset(0, 5),
@@ -1153,7 +1153,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             boxShadow: [
               BoxShadow(
                 color: isPrimary
-                    ? EnergyDashboardTheme.primary.withOpacity(0.5)
+                    ? SdColors.info.withOpacity(0.5)
                     : Colors.black.withOpacity(0.2),
                 blurRadius: isPrimary ? 10 : 4,
                 offset: const Offset(0, 3),
@@ -1232,7 +1232,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.file_download, color: Color(0xFF4CAF50)),
+            Icon(Icons.file_download, color: SdColors.success),
             SizedBox(width: 8),
             Text('تصدير البيانات'),
           ],
@@ -1245,9 +1245,9 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
+                  color: SdColors.groundAlt,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(color: SdColors.edge),
                 ),
                 child: SelectableText(
                   exportData,
@@ -1261,17 +1261,17 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: SdColors.infoTint,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                    Icon(Icons.info_outline, color: SdColors.info, size: 20),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'يمكنك نسخ النص أعلاه',
-                        style: TextStyle(color: Colors.blue, fontSize: 12),
+                        style: TextStyle(color: SdColors.info, fontSize: 12),
                       ),
                     ),
                   ],
@@ -1308,7 +1308,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.login, color: Color(0xFF1a237e)),
+            Icon(Icons.login, color: SdColors.primary),
             SizedBox(width: 8),
             Text('الدخول للشركة'),
           ],
@@ -1322,17 +1322,17 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: SdColors.infoTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue),
+                  Icon(Icons.info_outline, color: SdColors.info),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'ستحصل على جميع صلاحيات المدير',
-                      style: TextStyle(color: Colors.blue),
+                      style: TextStyle(color: SdColors.info),
                     ),
                   ),
                 ],
@@ -1350,7 +1350,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             icon: const Icon(Icons.login),
             label: const Text('دخول'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1a237e),
+              backgroundColor: SdColors.primary,
               foregroundColor: Colors.white,
             ),
           ),
@@ -1443,7 +1443,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.security_rounded, color: Color(0xFF9C27B0)),
+            Icon(Icons.security_rounded, color: SdColors.platformBase),
             SizedBox(width: 8),
             Text('إدارة الصلاحيات'),
           ],
@@ -1456,10 +1456,10 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withOpacity(0.2),
+                  color: SdColors.success.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.star_rounded, color: Color(0xFF4CAF50)),
+                child: const Icon(Icons.star_rounded, color: SdColors.success),
               ),
               title: const Text('صلاحيات V2 (مفصلة)'),
               subtitle:
@@ -1467,7 +1467,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               trailing: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50),
+                  color: SdColors.success,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
@@ -1486,10 +1486,10 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.2),
+                  color: SdColors.faint.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.toggle_on_rounded, color: Colors.grey),
+                child: const Icon(Icons.toggle_on_rounded, color: SdColors.faint),
               ),
               title: const Text('صلاحيات V1 (بسيطة)'),
               subtitle: const Text('تفعيل/تعطيل الميزة بالكامل'),
@@ -1541,7 +1541,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.warning, color: Colors.red),
+            Icon(Icons.warning, color: SdColors.danger),
             SizedBox(width: 8),
             Text('حذف الشركة'),
           ],
@@ -1555,17 +1555,17 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.shade50,
+                color: SdColors.dangerTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.error_outline, color: Colors.red),
+                  Icon(Icons.error_outline, color: SdColors.danger),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'هذا الإجراء لا يمكن التراجع عنه!',
-                      style: TextStyle(color: Colors.red),
+                      style: TextStyle(color: SdColors.danger),
                     ),
                   ),
                 ],
@@ -1580,7 +1580,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
             child: const Text('حذف'),
           ),
         ],
@@ -1624,7 +1624,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _company.isActive ? Colors.orange : Colors.green,
+              backgroundColor: _company.isActive ? SdColors.warning : SdColors.success,
             ),
             child: Text(_company.isActive ? 'تعطيل' : 'تفعيل'),
           ),
@@ -1708,7 +1708,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
     return ElevatedButton(
       onPressed: () => Navigator.pop(context, days),
       style: ElevatedButton.styleFrom(
-        backgroundColor: EnergyDashboardTheme.primaryColor,
+        backgroundColor: SdColors.info,
         foregroundColor: Colors.white,
       ),
       child: Text(label),
@@ -1722,7 +1722,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.link, color: Colors.teal),
+            Icon(Icons.link, color: SdColors.accent),
             SizedBox(width: 8),
             Text('ربط بوابة المواطن'),
           ],
@@ -1736,17 +1736,17 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.teal.shade50,
+                color: SdColors.accentTint,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.teal),
+                  Icon(Icons.info_outline, color: SdColors.accent),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'سيتم إلغاء ربط أي شركة أخرى مرتبطة حالياً',
-                      style: TextStyle(color: Colors.teal),
+                      style: TextStyle(color: SdColors.accent),
                     ),
                   ),
                 ],
@@ -1764,7 +1764,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             icon: const Icon(Icons.link),
             label: const Text('ربط'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.teal,
+              backgroundColor: SdColors.accent,
               foregroundColor: Colors.white,
             ),
           ),
@@ -1802,7 +1802,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.link_off, color: Colors.orange),
+            Icon(Icons.link_off, color: SdColors.warning),
             SizedBox(width: 8),
             Text('إلغاء الربط'),
           ],
@@ -1819,7 +1819,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             icon: const Icon(Icons.link_off),
             label: const Text('إلغاء الربط'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
+              backgroundColor: SdColors.warning,
               foregroundColor: Colors.white,
             ),
           ),
@@ -2079,11 +2079,11 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.2),
+                    color: SdColors.platformBase.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.security_rounded,
-                      color: Colors.purple, size: 24),
+                      color: SdColors.platformBase, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -2100,7 +2100,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                       Text(
                         widget.company.name,
                         style: TextStyle(
-                          color: EnergyDashboardTheme.textMuted,
+                          color: SdColors.faint,
                           fontSize: 13,
                         ),
                       ),
@@ -2116,9 +2116,9 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
             const SizedBox(height: 20),
             TabBar(
               controller: _tabController,
-              labelColor: EnergyDashboardTheme.primaryColor,
-              unselectedLabelColor: EnergyDashboardTheme.textMuted,
-              indicatorColor: EnergyDashboardTheme.primaryColor,
+              labelColor: SdColors.info,
+              unselectedLabelColor: SdColors.faint,
+              indicatorColor: SdColors.info,
               tabs: const [
                 Tab(text: 'النظام الرئيسي'),
                 Tab(text: 'نظام FTTH'),
@@ -2156,7 +2156,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                       : const Icon(Icons.save_rounded),
                   label: const Text('حفظ الصلاحيات'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: EnergyDashboardTheme.primaryColor,
+                    backgroundColor: SdColors.info,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -2194,13 +2194,13 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isEnabled
-                  ? EnergyDashboardTheme.primaryColor.withOpacity(0.2)
-                  : EnergyDashboardTheme.backgroundColor,
+                  ? SdColors.info.withOpacity(0.2)
+                  : SdColors.ground,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isEnabled
-                    ? EnergyDashboardTheme.primaryColor.withOpacity(0.5)
-                    : EnergyDashboardTheme.borderColor,
+                    ? SdColors.info.withOpacity(0.5)
+                    : SdColors.divider,
               ),
             ),
             child: Row(
@@ -2208,8 +2208,8 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                 Icon(
                   feature['icon'] as IconData,
                   color: isEnabled
-                      ? EnergyDashboardTheme.primaryColor
-                      : EnergyDashboardTheme.textMuted,
+                      ? SdColors.info
+                      : SdColors.faint,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -2218,8 +2218,8 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                     feature['label'] as String,
                     style: TextStyle(
                       color: isEnabled
-                          ? EnergyDashboardTheme.textPrimary
-                          : EnergyDashboardTheme.textMuted,
+                          ? SdColors.ink
+                          : SdColors.faint,
                       fontSize: 12,
                       fontWeight:
                           isEnabled ? FontWeight.w600 : FontWeight.normal,
@@ -2234,7 +2234,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                       permissions[key] = value;
                     });
                   },
-                  activeColor: EnergyDashboardTheme.primaryColor,
+                  activeColor: SdColors.info,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ],
@@ -2371,7 +2371,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                         '${_users.length} مستخدم من ${widget.company.maxUsers}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade600,
+                          color: SdColors.muted,
                         ),
                       ),
                     ],
@@ -2390,7 +2390,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                   icon: const Icon(Icons.person_add_rounded, size: 18),
                   label: const Text('إضافة مستخدم'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF4CAF50),
+                    backgroundColor: SdColors.success,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -2411,10 +2411,10 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.error_outline,
-                                  size: 48, color: Colors.red.shade300),
+                                  size: 48, color: SdColors.dangerTintEdge),
                               const SizedBox(height: 12),
                               Text(_error!,
-                                  style: TextStyle(color: Colors.red.shade700)),
+                                  style: TextStyle(color: SdColors.danger)),
                               const SizedBox(height: 12),
                               ElevatedButton.icon(
                                 onPressed: _loadUsers,
@@ -2430,11 +2430,11 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(Icons.person_off_rounded,
-                                      size: 48, color: Colors.grey.shade400),
+                                      size: 48, color: SdColors.faint),
                                   const SizedBox(height: 12),
                                   Text('لا يوجد مستخدمين',
                                       style: TextStyle(
-                                          color: Colors.grey.shade600)),
+                                          color: SdColors.muted)),
                                 ],
                               ),
                             )
@@ -2460,11 +2460,11 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
         contentPadding: const EdgeInsets.all(12),
         leading: CircleAvatar(
           backgroundColor: user.isActive
-              ? const Color(0xFF4CAF50).withOpacity(0.2)
-              : Colors.grey.withOpacity(0.2),
+              ? SdColors.success.withOpacity(0.2)
+              : SdColors.faint.withOpacity(0.2),
           child: Icon(
             Icons.person_rounded,
-            color: user.isActive ? const Color(0xFF4CAF50) : Colors.grey,
+            color: user.isActive ? SdColors.success : SdColors.faint,
           ),
         ),
         title: Row(
@@ -2478,7 +2478,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
                 color: user.isActive
-                    ? const Color(0xFFE8F5E9)
+                    ? SdColors.successTint
                     : const Color(0xFFFFEBEE),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -2487,8 +2487,8 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                 style: TextStyle(
                   fontSize: 10,
                   color: user.isActive
-                      ? const Color(0xFF4CAF50)
-                      : const Color(0xFFF44336),
+                      ? SdColors.success
+                      : SdColors.danger,
                 ),
               ),
             ),
@@ -2504,7 +2504,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                   user.role!,
                   style: const TextStyle(
                     fontSize: 10,
-                    color: Color(0xFF1976D2),
+                    color: SdColors.info,
                   ),
                 ),
               ),
@@ -2517,17 +2517,17 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.person_outline, size: 14, color: Colors.grey),
+                const Icon(Icons.person_outline, size: 14, color: SdColors.faint),
                 const SizedBox(width: 4),
                 Text(user.username,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    style: const TextStyle(fontSize: 12, color: SdColors.faint)),
                 const SizedBox(width: 16),
                 if (user.email != null) ...[
                   const Icon(Icons.email_outlined,
-                      size: 14, color: Colors.grey),
+                      size: 14, color: SdColors.faint),
                   const SizedBox(width: 4),
                   Text(user.email!,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      style: const TextStyle(fontSize: 12, color: SdColors.faint)),
                 ],
               ],
             ),
@@ -2540,19 +2540,19 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
             IconButton(
               onPressed: () => _managePermissions(user),
               icon:
-                  const Icon(Icons.security_rounded, color: Color(0xFF9C27B0)),
+                  const Icon(Icons.security_rounded, color: SdColors.platformBase),
               tooltip: 'الصلاحيات',
             ),
             // زر تعديل
             IconButton(
               onPressed: () => _editUser(user),
-              icon: const Icon(Icons.edit_rounded, color: Color(0xFF2196F3)),
+              icon: const Icon(Icons.edit_rounded, color: SdColors.info),
               tooltip: 'تعديل',
             ),
             // زر كلمة المرور
             IconButton(
               onPressed: () => _showPassword(user),
-              icon: const Icon(Icons.key_rounded, color: Color(0xFFFF9800)),
+              icon: const Icon(Icons.key_rounded, color: SdColors.warning),
               tooltip: 'كلمة المرور',
             ),
           ],
@@ -2569,7 +2569,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            const Icon(Icons.security_rounded, color: Color(0xFF9C27B0)),
+            const Icon(Icons.security_rounded, color: SdColors.platformBase),
             const SizedBox(width: 8),
             Expanded(
               child: Text('صلاحيات ${user.fullName}',
@@ -2585,10 +2585,10 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withOpacity(0.2),
+                  color: SdColors.success.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.star_rounded, color: Color(0xFF4CAF50)),
+                child: const Icon(Icons.star_rounded, color: SdColors.success),
               ),
               title: const Text('صلاحيات V2 (مفصلة)'),
               subtitle:
@@ -2596,7 +2596,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               trailing: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50),
+                  color: SdColors.success,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
@@ -2615,10 +2615,10 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.2),
+                  color: SdColors.faint.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.toggle_on_rounded, color: Colors.grey),
+                child: const Icon(Icons.toggle_on_rounded, color: SdColors.faint),
               ),
               title: const Text('صلاحيات V1 (بسيطة)'),
               subtitle: const Text('تفعيل/تعطيل الميزة بالكامل'),
@@ -2724,11 +2724,11 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF9C27B0).withOpacity(0.2),
+                  color: SdColors.platformBase.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.security_rounded,
-                    color: Color(0xFF9C27B0)),
+                    color: SdColors.platformBase),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -2740,7 +2740,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                       'تحديد الصلاحيات المتاحة للمستخدم',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey.shade600,
+                        color: SdColors.muted,
                         fontWeight: FontWeight.normal,
                       ),
                     ),
@@ -2759,21 +2759,21 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3E0),
+                    color: SdColors.warningTint,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFFFE0B2)),
+                    border: Border.all(color: SdColors.warningTintEdge),
                   ),
                   child: Row(
                     children: [
                       const Icon(Icons.info_outline,
-                          color: Color(0xFFFF9800), size: 20),
+                          color: SdColors.warning, size: 20),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'يمكن منح الموظف فقط الصلاحيات المفعّلة للشركة',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.orange.shade800,
+                            color: SdColors.warning,
                           ),
                         ),
                       ),
@@ -2795,14 +2795,14 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                         decoration: BoxDecoration(
                           color: isCompanyEnabled
                               ? Colors.white
-                              : Colors.grey.shade100,
+                              : SdColors.groundAlt,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: isCompanyEnabled
                                 ? (isUserEnabled
-                                    ? const Color(0xFF4CAF50)
-                                    : Colors.grey.shade300)
-                                : Colors.grey.shade200,
+                                    ? SdColors.success
+                                    : SdColors.edge)
+                                : SdColors.divider,
                           ),
                         ),
                         child: CheckboxListTile(
@@ -2819,8 +2819,8 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                             style: TextStyle(
                               fontWeight: FontWeight.w500,
                               color: isCompanyEnabled
-                                  ? EnergyDashboardTheme.textPrimary
-                                  : EnergyDashboardTheme.textMuted,
+                                  ? SdColors.ink
+                                  : SdColors.faint,
                             ),
                           ),
                           subtitle: !isCompanyEnabled
@@ -2828,7 +2828,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                                   'غير مفعّل للشركة',
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: Colors.red,
+                                    color: SdColors.danger,
                                   ),
                                 )
                               : null,
@@ -2836,11 +2836,11 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                             _getPermissionIcon(key),
                             color: isCompanyEnabled
                                 ? (isUserEnabled
-                                    ? const Color(0xFF4CAF50)
-                                    : Colors.grey)
-                                : Colors.grey.shade300,
+                                    ? SdColors.success
+                                    : SdColors.faint)
+                                : SdColors.edge,
                           ),
-                          activeColor: const Color(0xFF4CAF50),
+                          activeColor: SdColors.success,
                           dense: true,
                           controlAffinity: ListTileControlAffinity.trailing,
                         ),
@@ -2903,14 +2903,14 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('تم حفظ الصلاحيات بنجاح'),
-                                backgroundColor: Colors.green,
+                                backgroundColor: SdColors.success,
                               ),
                             );
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(response.message ?? 'حدث خطأ'),
-                                backgroundColor: Colors.red,
+                                backgroundColor: SdColors.danger,
                               ),
                             );
                           }
@@ -2921,7 +2921,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('خطأ'),
-                              backgroundColor: Colors.red,
+                              backgroundColor: SdColors.danger,
                             ),
                           );
                         }
@@ -2937,7 +2937,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                   : const Icon(Icons.save_rounded),
               label: const Text('حفظ'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF9C27B0),
+                backgroundColor: SdColors.platformBase,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -3051,7 +3051,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
         builder: (context, setDialogState) => AlertDialog(
           title: Row(
             children: [
-              const Icon(Icons.key_rounded, color: Color(0xFFFF9800)),
+              const Icon(Icons.key_rounded, color: SdColors.warning),
               const SizedBox(width: 8),
               Text('كلمة مرور ${user.fullName}'),
             ],
@@ -3064,21 +3064,21 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF3E0),
+                  color: SdColors.warningTint,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFFE0B2)),
+                  border: Border.all(color: SdColors.warningTintEdge),
                 ),
                 child: Row(
                   children: [
                     const Icon(Icons.security_rounded,
-                        size: 20, color: Color(0xFFFF9800)),
+                        size: 20, color: SdColors.warning),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'كلمات المرور مشفرة ولا يمكن عرضها.\nيمكنك فقط تعيين كلمة مرور جديدة.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.orange.shade800,
+                          color: SdColors.warning,
                         ),
                       ),
                     ),
@@ -3155,7 +3155,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('تم تغيير كلمة المرور بنجاح'),
-                                backgroundColor: Colors.green,
+                                backgroundColor: SdColors.success,
                               ),
                             );
                             _loadUsers();
@@ -3167,7 +3167,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                               SnackBar(
                                 content: Text(response.message ??
                                     'فشل في تغيير كلمة المرور'),
-                                backgroundColor: Colors.red,
+                                backgroundColor: SdColors.danger,
                               ),
                             );
                           }
@@ -3178,7 +3178,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('خطأ'),
-                              backgroundColor: Colors.red,
+                              backgroundColor: SdColors.danger,
                             ),
                           );
                         }
@@ -3193,7 +3193,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                   : const Icon(Icons.save_rounded),
               label: const Text('حفظ'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF9800),
+                backgroundColor: SdColors.warning,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -3236,7 +3236,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
         builder: (context, setDialogState) => AlertDialog(
           title: Row(
             children: [
-              const Icon(Icons.edit_rounded, color: Color(0xFF2196F3)),
+              const Icon(Icons.edit_rounded, color: SdColors.info),
               const SizedBox(width: 8),
               Text('تعديل ${user.fullName}'),
             ],
@@ -3326,7 +3326,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                   onChanged: (value) {
                     setDialogState(() => isActive = value);
                   },
-                  activeColor: const Color(0xFF4CAF50),
+                  activeColor: SdColors.success,
                 ),
               ],
             ),
@@ -3364,7 +3364,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('تم تحديث بيانات المستخدم بنجاح'),
-                                backgroundColor: Colors.green,
+                                backgroundColor: SdColors.success,
                               ),
                             );
                             _loadUsers();
@@ -3376,7 +3376,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                               SnackBar(
                                 content: Text(response.message ??
                                     'فشل في تحديث البيانات'),
-                                backgroundColor: Colors.red,
+                                backgroundColor: SdColors.danger,
                               ),
                             );
                           }
@@ -3387,7 +3387,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('خطأ'),
-                              backgroundColor: Colors.red,
+                              backgroundColor: SdColors.danger,
                             ),
                           );
                         }
@@ -3402,7 +3402,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                   : const Icon(Icons.save_rounded),
               label: const Text('حفظ'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2196F3),
+                backgroundColor: SdColors.info,
                 foregroundColor: Colors.white,
               ),
             ),
@@ -3443,11 +3443,11 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4CAF50).withOpacity(0.2),
+                  color: SdColors.success.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.person_add_rounded,
-                    color: Color(0xFF4CAF50)),
+                    color: SdColors.success),
               ),
               const SizedBox(width: 12),
               const Text('إضافة مستخدم جديد'),
@@ -3464,7 +3464,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                   const Text('المعلومات الأساسية',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF2196F3),
+                        color: SdColors.info,
                       )),
                   const SizedBox(height: 12),
                   // الاسم الكامل (مطلوب)
@@ -3477,7 +3477,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                       ),
                       prefixIcon: const Icon(Icons.person_outline),
                       filled: true,
-                      fillColor: Colors.grey.shade50,
+                      fillColor: SdColors.surfaceAlt,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -3492,7 +3492,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                       ),
                       prefixIcon: const Icon(Icons.phone_outlined),
                       filled: true,
-                      fillColor: Colors.grey.shade50,
+                      fillColor: SdColors.surfaceAlt,
                     ),
                     keyboardType: TextInputType.phone,
                   ),
@@ -3508,7 +3508,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                       ),
                       prefixIcon: const Icon(Icons.lock_outline),
                       filled: true,
-                      fillColor: Colors.grey.shade50,
+                      fillColor: SdColors.surfaceAlt,
                     ),
                     obscureText: true,
                   ),
@@ -3523,7 +3523,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                       ),
                       prefixIcon: const Icon(Icons.email_outlined),
                       filled: true,
-                      fillColor: Colors.grey.shade50,
+                      fillColor: SdColors.surfaceAlt,
                     ),
                     keyboardType: TextInputType.emailAddress,
                   ),
@@ -3532,7 +3532,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                   const Text('الدور الوظيفي',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF2196F3),
+                        color: SdColors.info,
                       )),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -3544,7 +3544,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                       ),
                       prefixIcon: const Icon(Icons.badge_outlined),
                       filled: true,
-                      fillColor: Colors.grey.shade50,
+                      fillColor: SdColors.surfaceAlt,
                     ),
                     items: roles
                         .map((role) => DropdownMenuItem<String>(
@@ -3576,7 +3576,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                             ),
                             prefixIcon: const Icon(Icons.business_outlined),
                             filled: true,
-                            fillColor: Colors.grey.shade50,
+                            fillColor: SdColors.surfaceAlt,
                           ),
                         ),
                       ),
@@ -3591,7 +3591,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                             ),
                             prefixIcon: const Icon(Icons.location_on_outlined),
                             filled: true,
-                            fillColor: Colors.grey.shade50,
+                            fillColor: SdColors.surfaceAlt,
                           ),
                         ),
                       ),
@@ -3607,7 +3607,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                       ),
                       prefixIcon: const Icon(Icons.attach_money_outlined),
                       filled: true,
-                      fillColor: Colors.grey.shade50,
+                      fillColor: SdColors.surfaceAlt,
                     ),
                     keyboardType: TextInputType.number,
                   ),
@@ -3629,7 +3629,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('يرجى إدخال الاسم الكامل'),
-                            backgroundColor: Colors.orange,
+                            backgroundColor: SdColors.warning,
                           ),
                         );
                         return;
@@ -3638,7 +3638,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('يرجى إدخال رقم الهاتف'),
-                            backgroundColor: Colors.orange,
+                            backgroundColor: SdColors.warning,
                           ),
                         );
                         return;
@@ -3680,7 +3680,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('تم إضافة المستخدم بنجاح'),
-                                backgroundColor: Colors.green,
+                                backgroundColor: SdColors.success,
                               ),
                             );
                             _loadUsers();
@@ -3692,7 +3692,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                               SnackBar(
                                 content: Text(response.message ??
                                     'فشل في إضافة المستخدم'),
-                                backgroundColor: Colors.red,
+                                backgroundColor: SdColors.danger,
                               ),
                             );
                           }
@@ -3703,7 +3703,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('خطأ'),
-                              backgroundColor: Colors.red,
+                              backgroundColor: SdColors.danger,
                             ),
                           );
                         }
@@ -3719,7 +3719,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                   : const Icon(Icons.person_add_rounded),
               label: const Text('إضافة'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4CAF50),
+                backgroundColor: SdColors.success,
                 foregroundColor: Colors.white,
               ),
             ),

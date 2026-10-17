@@ -6,7 +6,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
@@ -15,6 +14,7 @@ import '../../utils/responsive_helper.dart';
 import '../super_admin/widgets/super_admin_widgets.dart';
 import '../../services/api/api_config.dart';
 
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
 class DatabaseAdminPage extends StatefulWidget {
   const DatabaseAdminPage({super.key});
 
@@ -183,7 +183,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
       title: 'حذف السجل',
       message: 'هل أنت متأكد من حذف هذا السجل؟ هذا الإجراء لا يمكن التراجع عنه.',
       confirmLabel: 'حذف',
-      confirmColor: EnergyDashboardTheme.danger,
+      confirmColor: SdColors.danger,
     );
 
     if (confirm != true) return;
@@ -193,13 +193,13 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     if (mounted) {
       if (result?['success'] == true) {
         EnergyDashboardTheme.showSnack(
-            context, 'تم الحذف بنجاح', EnergyDashboardTheme.success);
+            context, 'تم الحذف بنجاح', SdColors.success);
         _loadTableData(_selectedTableName!, page: _currentPage);
       } else {
         EnergyDashboardTheme.showSnack(
             context,
             result?['message'] ?? 'فشل الحذف',
-            EnergyDashboardTheme.danger);
+            SdColors.danger);
       }
     }
   }
@@ -213,14 +213,14 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     if (mounted) {
       if (result?['success'] == true) {
         EnergyDashboardTheme.showSnack(
-            context, 'تم التحديث بنجاح', EnergyDashboardTheme.success);
+            context, 'تم التحديث بنجاح', SdColors.success);
         Navigator.pop(context);
         _loadTableData(_selectedTableName!, page: _currentPage);
       } else {
         EnergyDashboardTheme.showSnack(
             context,
             result?['message'] ?? 'فشل التحديث',
-            EnergyDashboardTheme.danger);
+            SdColors.danger);
       }
     }
   }
@@ -266,7 +266,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           EnergyDashboardTheme.showSnack(
             context,
             'تم حفظ الأرشيف: ${categoryLabels[category]}',
-            EnergyDashboardTheme.success,
+            SdColors.success,
           );
           // فتح الملف
           await OpenFilex.open(filePath);
@@ -279,7 +279,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           EnergyDashboardTheme.showSnack(
             context,
             parsed['message'] ?? 'فشل التصدير',
-            EnergyDashboardTheme.danger,
+            SdColors.danger,
           );
         }
       }
@@ -289,7 +289,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         EnergyDashboardTheme.showSnack(
           context,
           'خطأ في التصدير: $e',
-          EnergyDashboardTheme.danger,
+          SdColors.danger,
         );
       }
     }
@@ -326,7 +326,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
       message:
           'هل أنت متأكد؟ سيتم حذف جميع السجلات وتصفير الأرصدة.\nهذا الإجراء لا يمكن التراجع عنه!',
       confirmLabel: 'تصفير',
-      confirmColor: EnergyDashboardTheme.danger,
+      confirmColor: SdColors.danger,
     );
 
     if (confirm != true) return;
@@ -339,7 +339,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         message:
             'أنت على وشك حذف جميع العمليات المحاسبية والحضور والمخزون.\nهل تريد المتابعة؟',
         confirmLabel: 'نعم، صفّر الكل',
-        confirmColor: EnergyDashboardTheme.danger,
+        confirmColor: SdColors.danger,
       );
       if (doubleConfirm != true) return;
     }
@@ -360,7 +360,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         EnergyDashboardTheme.showSnack(
           context,
           result?['message'] ?? 'تم التصفير بنجاح',
-          EnergyDashboardTheme.success,
+          SdColors.success,
         );
         _loadCleanupStats(); // refresh stats
         _showCleanupReport(result!);
@@ -368,7 +368,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         EnergyDashboardTheme.showSnack(
           context,
           result?['message'] ?? 'فشل التصفير',
-          EnergyDashboardTheme.danger,
+          SdColors.danger,
         );
       }
     }
@@ -381,18 +381,19 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: EnergyDashboardTheme.bgCard,
+        backgroundColor: SdColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Icon(Icons.check_circle_rounded,
-                color: EnergyDashboardTheme.success, size: 24),
+                color: SdColors.success, size: 24),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 'تقرير التصفير',
-                style: GoogleFonts.cairo(
-                  color: EnergyDashboardTheme.textPrimary,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.ink,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -414,12 +415,12 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx),
             style: ElevatedButton.styleFrom(
-              backgroundColor: EnergyDashboardTheme.neonGreen,
+              backgroundColor: SdColors.success,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
-            child: Text('حسناً', style: GoogleFonts.cairo()),
+            child: Text('حسناً', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -434,8 +435,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         padding: const EdgeInsets.only(top: 12, bottom: 6),
         child: Text(
           title,
-          style: GoogleFonts.cairo(
-            color: EnergyDashboardTheme.neonBlue,
+          style: TextStyle(
+            fontFamily: 'Cairo',
+            color: SdColors.info,
             fontSize: 13,
             fontWeight: FontWeight.bold,
           ),
@@ -446,7 +448,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           margin: const EdgeInsets.only(bottom: 3),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: EnergyDashboardTheme.bgPrimary,
+            color: SdColors.ground,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
@@ -454,8 +456,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
             children: [
               Text(
                 entry.key,
-                style: GoogleFonts.cairo(
-                  color: EnergyDashboardTheme.textSecondary,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  color: SdColors.muted,
                   fontSize: 11,
                 ),
               ),
@@ -464,16 +467,17 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: (entry.value as num) > 0
-                      ? EnergyDashboardTheme.danger.withOpacity(0.15)
-                      : EnergyDashboardTheme.bgSecondary,
+                      ? SdColors.danger.withOpacity(0.15)
+                      : SdColors.groundAlt,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '${entry.value}',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: (entry.value as num) > 0
-                        ? EnergyDashboardTheme.danger
-                        : EnergyDashboardTheme.textMuted,
+                        ? SdColors.danger
+                        : SdColors.faint,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -510,7 +514,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
             padding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: EnergyDashboardTheme.bgPrimary,
+              color: SdColors.ground,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
@@ -518,8 +522,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
               children: [
                 Text(
                   entry.key,
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textSecondary,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.muted,
                     fontSize: 11,
                   ),
                 ),
@@ -527,13 +532,14 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: EnergyDashboardTheme.danger.withOpacity(0.15),
+                    color: SdColors.danger.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '${entry.value}',
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.danger,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.danger,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                     ),
@@ -584,11 +590,11 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
   Widget build(BuildContext context) {
     final r = context.responsive;
     return Container(
-      color: EnergyDashboardTheme.bgPrimary,
+      color: SdColors.ground,
       child: _isLoadingTables
           ? const Center(
               child: CircularProgressIndicator(
-                  color: EnergyDashboardTheme.neonGreen))
+                  color: SdColors.success))
           : _showCleanupView
               ? _buildCleanupView()
               : r.isMobile
@@ -599,7 +605,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                           children: [
                             // Back button to table list
                             Container(
-                              color: EnergyDashboardTheme.bgCard,
+                              color: SdColors.surface,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               child: Row(
@@ -610,10 +616,10 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                                     icon: const Icon(Icons.arrow_back_rounded,
                                         size: 18),
                                     label: Text('الجداول',
-                                        style: GoogleFonts.cairo(fontSize: 12)),
+                                        style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
                                     style: TextButton.styleFrom(
                                       foregroundColor:
-                                          EnergyDashboardTheme.neonGreen,
+                                          SdColors.success,
                                     ),
                                   ),
                                 ],
@@ -632,7 +638,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                         // Divider
                         Container(
                           width: 1,
-                          color: EnergyDashboardTheme.borderColor,
+                          color: SdColors.divider,
                         ),
                         // Main content — Data view
                         Expanded(child: _buildDataView()),
@@ -647,7 +653,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
 
   Widget _buildTablesSidebar() {
     return Container(
-      color: EnergyDashboardTheme.bgCard,
+      color: SdColors.surface,
       child: Column(
         children: [
           // Header
@@ -656,19 +662,20 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
             decoration: BoxDecoration(
               border: Border(
                 bottom:
-                    BorderSide(color: EnergyDashboardTheme.borderColor),
+                    BorderSide(color: SdColors.divider),
               ),
             ),
             child: Row(
               children: [
                 Icon(Icons.storage_rounded,
-                    color: EnergyDashboardTheme.neonGreen, size: 20),
+                    color: SdColors.success, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'قاعدة البيانات',
-                    style: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textPrimary,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.ink,
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
@@ -676,7 +683,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                 ),
                 SACountBadge(
                   count: _tables.length,
-                  color: EnergyDashboardTheme.neonBlue,
+                  color: SdColors.info,
                 ),
                 const SizedBox(width: 6),
                 InkWell(
@@ -691,8 +698,8 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: _showCleanupView
-                          ? EnergyDashboardTheme.danger.withOpacity(0.2)
-                          : EnergyDashboardTheme.bgSecondary,
+                          ? SdColors.danger.withOpacity(0.2)
+                          : SdColors.groundAlt,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Icon(
@@ -701,8 +708,8 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                           : Icons.delete_sweep_rounded,
                       size: 16,
                       color: _showCleanupView
-                          ? EnergyDashboardTheme.danger
-                          : EnergyDashboardTheme.textMuted,
+                          ? SdColors.danger
+                          : SdColors.faint,
                     ),
                   ),
                 ),
@@ -746,21 +753,22 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
             color: isSelected
-                ? EnergyDashboardTheme.neonGreen.withOpacity(0.2)
-                : EnergyDashboardTheme.bgSecondary,
+                ? SdColors.success.withOpacity(0.2)
+                : SdColors.groundAlt,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected
-                  ? EnergyDashboardTheme.neonGreen
-                  : EnergyDashboardTheme.borderColor,
+                  ? SdColors.success
+                  : SdColors.divider,
             ),
           ),
           child: Text(
             label,
-            style: GoogleFonts.cairo(
+            style: TextStyle(
+              fontFamily: 'Cairo',
               color: isSelected
-                  ? EnergyDashboardTheme.neonGreen
-                  : EnergyDashboardTheme.textMuted,
+                  ? SdColors.success
+                  : SdColors.faint,
               fontSize: 10,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             ),
@@ -793,13 +801,13 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             color: isSelected
-                ? EnergyDashboardTheme.neonGreen.withOpacity(0.1)
+                ? SdColors.success.withOpacity(0.1)
                 : null,
             borderRadius: BorderRadius.circular(8),
             border: isSelected
                 ? Border.all(
                     color:
-                        EnergyDashboardTheme.neonGreen.withOpacity(0.3))
+                        SdColors.success.withOpacity(0.3))
                 : null,
           ),
           child: Row(
@@ -809,8 +817,8 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                 height: 28,
                 decoration: BoxDecoration(
                   color: (isSelected
-                          ? EnergyDashboardTheme.neonGreen
-                          : EnergyDashboardTheme.textMuted)
+                          ? SdColors.success
+                          : SdColors.faint)
                       .withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
@@ -818,8 +826,8 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                   Icons.table_chart_rounded,
                   size: 14,
                   color: isSelected
-                      ? EnergyDashboardTheme.neonGreen
-                      : EnergyDashboardTheme.textMuted,
+                      ? SdColors.success
+                      : SdColors.faint,
                 ),
               ),
               const SizedBox(width: 8),
@@ -829,10 +837,11 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                   children: [
                     Text(
                       displayName,
-                      style: GoogleFonts.cairo(
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
                         color: isSelected
-                            ? EnergyDashboardTheme.neonGreen
-                            : EnergyDashboardTheme.textPrimary,
+                            ? SdColors.success
+                            : SdColors.ink,
                         fontSize: 11,
                         fontWeight:
                             isSelected ? FontWeight.bold : FontWeight.w500,
@@ -842,8 +851,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                     ),
                     Text(
                       '$category / $name',
-                      style: GoogleFonts.cairo(
-                        color: EnergyDashboardTheme.textMuted,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.faint,
                         fontSize: 9,
                       ),
                     ),
@@ -869,20 +879,22 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           children: [
             Icon(Icons.touch_app_rounded,
                 size: 64,
-                color: EnergyDashboardTheme.textMuted.withOpacity(0.3)),
+                color: SdColors.faint.withOpacity(0.3)),
             const SizedBox(height: 16),
             Text(
               'اختر جدولاً من القائمة',
-              style: GoogleFonts.cairo(
-                color: EnergyDashboardTheme.textMuted,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.faint,
                 fontSize: 16,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               '${_tables.length} جدول متاح',
-              style: GoogleFonts.cairo(
-                color: EnergyDashboardTheme.textMuted,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                color: SdColors.faint,
                 fontSize: 12,
               ),
             ),
@@ -904,12 +916,13 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           child: _isLoadingData
               ? const Center(
                   child: CircularProgressIndicator(
-                      color: EnergyDashboardTheme.neonGreen))
+                      color: SdColors.success))
               : _tableData.isEmpty
                   ? Center(
                       child: Text('لا توجد بيانات',
-                          style: GoogleFonts.cairo(
-                              color: EnergyDashboardTheme.textMuted)))
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.faint)))
                   : _buildDataTable(),
         ),
         // Pagination
@@ -922,9 +935,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         border: Border(
-          bottom: BorderSide(color: EnergyDashboardTheme.borderColor),
+          bottom: BorderSide(color: SdColors.divider),
         ),
       ),
       child: Row(
@@ -932,11 +945,11 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: EnergyDashboardTheme.neonBlue.withOpacity(0.1),
+              color: SdColors.info.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(Icons.table_chart_rounded,
-                color: EnergyDashboardTheme.neonBlue, size: 20),
+                color: SdColors.info, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -946,16 +959,18 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                 Text(
                   info?['displayName']?.toString() ??
                       _selectedTableName ?? '',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   '${info?['category'] ?? ''} / $_selectedTableName — ${_columns.length} عمود',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textMuted,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.faint,
                     fontSize: 11,
                   ),
                 ),
@@ -965,14 +980,14 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           if (_pagination != null)
             SACountBadge(
               count: _pagination!['totalCount'] ?? 0,
-              color: EnergyDashboardTheme.neonBlue,
+              color: SdColors.info,
             ),
           const SizedBox(width: 8),
           IconButton(
             onPressed: () =>
                 _loadTableData(_selectedTableName!, page: _currentPage),
             icon: const Icon(Icons.refresh_rounded,
-                color: EnergyDashboardTheme.neonGreen, size: 20),
+                color: SdColors.success, size: 20),
             tooltip: 'تحديث',
           ),
         ],
@@ -983,17 +998,17 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
   Widget _buildSearchBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      color: EnergyDashboardTheme.bgCard,
+      color: SdColors.surface,
       child: Row(
         children: [
           Expanded(
             child: Container(
               height: 36,
               decoration: BoxDecoration(
-                color: EnergyDashboardTheme.bgPrimary,
+                color: SdColors.ground,
                 borderRadius: BorderRadius.circular(12),
                 border:
-                    Border.all(color: EnergyDashboardTheme.borderColor),
+                    Border.all(color: SdColors.divider),
               ),
               child: TextField(
                 controller: _searchController,
@@ -1001,14 +1016,16 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                   _searchQuery = _searchController.text;
                   _loadTableData(_selectedTableName!, page: 1);
                 },
-                style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary, fontSize: 12),
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink, fontSize: 12),
                 decoration: InputDecoration(
                   hintText: 'بحث...',
-                  hintStyle: GoogleFonts.cairo(
-                      color: EnergyDashboardTheme.textMuted, fontSize: 12),
+                  hintStyle: TextStyle(
+                      fontFamily: 'Cairo',
+                      color: SdColors.faint, fontSize: 12),
                   prefixIcon: const Icon(Icons.search_rounded,
-                      color: EnergyDashboardTheme.textMuted, size: 18),
+                      color: SdColors.faint, size: 18),
                   border: InputBorder.none,
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: 8),
@@ -1021,7 +1038,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           IconButton(
             onPressed: _showColumnsDialog,
             icon: Icon(Icons.view_column_rounded,
-                color: EnergyDashboardTheme.neonPurple, size: 20),
+                color: SdColors.platformBase, size: 20),
             tooltip: 'معلومات الأعمدة',
           ),
         ],
@@ -1056,14 +1073,15 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  color: EnergyDashboardTheme.bgSecondary,
+                  color: SdColors.groundAlt,
                   child: Row(
                     children: [
                       ...visibleColumns.map((col) => Expanded(
                             child: Text(
                               col['clrName']?.toString() ?? col['name']?.toString() ?? '',
-                              style: GoogleFonts.cairo(
-                                color: EnergyDashboardTheme.textMuted,
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                color: SdColors.faint,
                                 fontSize: r.isMobile ? 9 : 10,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -1077,8 +1095,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                         child: Text(
                           'إجراءات',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.cairo(
-                            color: EnergyDashboardTheme.textMuted,
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            color: SdColors.faint,
                             fontSize: r.isMobile ? 9 : 10,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1108,7 +1127,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-                color: EnergyDashboardTheme.borderColor.withOpacity(0.3)),
+                color: SdColors.divider.withOpacity(0.3)),
           ),
         ),
         child: Row(
@@ -1119,17 +1138,18 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
               final displayValue = _formatValue(value);
               final type = col['type']?.toString() ?? '';
 
-              Color textColor = EnergyDashboardTheme.textSecondary;
+              Color textColor = SdColors.muted;
               if (type == 'Boolean') {
                 textColor = value == true
-                    ? EnergyDashboardTheme.success
-                    : EnergyDashboardTheme.danger;
+                    ? SdColors.success
+                    : SdColors.danger;
               }
 
               return Expanded(
                 child: Text(
                   displayValue,
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: textColor,
                     fontSize: 11,
                   ),
@@ -1149,12 +1169,12 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: EnergyDashboardTheme.neonBlue
+                        color: SdColors.info
                             .withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Icon(Icons.edit_rounded,
-                          color: EnergyDashboardTheme.neonBlue,
+                          color: SdColors.info,
                           size: 14),
                     ),
                   ),
@@ -1165,11 +1185,11 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
                         color:
-                            EnergyDashboardTheme.danger.withOpacity(0.1),
+                            SdColors.danger.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Icon(Icons.delete_rounded,
-                          color: EnergyDashboardTheme.danger, size: 14),
+                          color: SdColors.danger, size: 14),
                     ),
                   ),
                 ],
@@ -1207,9 +1227,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         border: Border(
-          top: BorderSide(color: EnergyDashboardTheme.borderColor),
+          top: BorderSide(color: SdColors.divider),
         ),
       ),
       child: Row(
@@ -1217,8 +1237,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         children: [
           Text(
             'صفحة $_currentPage من $totalPages ($totalCount سجل)',
-            style: GoogleFonts.cairo(
-              color: EnergyDashboardTheme.textMuted,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              color: SdColors.faint,
               fontSize: 11,
             ),
           ),
@@ -1230,20 +1251,21 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                         page: _currentPage - 1)
                     : null,
                 icon: const Icon(Icons.chevron_right_rounded, size: 20),
-                color: EnergyDashboardTheme.neonGreen,
-                disabledColor: EnergyDashboardTheme.textMuted,
+                color: SdColors.success,
+                disabledColor: SdColors.faint,
               ),
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
-                  color: EnergyDashboardTheme.neonGreen.withOpacity(0.1),
+                  color: SdColors.success.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '$_currentPage',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.neonGreen,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.success,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
                   ),
@@ -1255,8 +1277,8 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                         page: _currentPage + 1)
                     : null,
                 icon: const Icon(Icons.chevron_left_rounded, size: 20),
-                color: EnergyDashboardTheme.neonGreen,
-                disabledColor: EnergyDashboardTheme.textMuted,
+                color: SdColors.success,
+                disabledColor: SdColors.faint,
               ),
             ],
           ),
@@ -1276,9 +1298,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: EnergyDashboardTheme.bgCard,
+            color: SdColors.surface,
             border: Border(
-              bottom: BorderSide(color: EnergyDashboardTheme.borderColor),
+              bottom: BorderSide(color: SdColors.divider),
             ),
           ),
           child: Row(
@@ -1286,11 +1308,11 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: EnergyDashboardTheme.danger.withOpacity(0.1),
+                  color: SdColors.danger.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(Icons.delete_sweep_rounded,
-                    color: EnergyDashboardTheme.danger, size: 24),
+                    color: SdColors.danger, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1299,16 +1321,18 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                   children: [
                     Text(
                       'تصفير العمليات',
-                      style: GoogleFonts.cairo(
-                        color: EnergyDashboardTheme.textPrimary,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.ink,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
                       'حذف جميع السجلات التشغيلية وتصفير الأرصدة — لا يمكن التراجع',
-                      style: GoogleFonts.cairo(
-                        color: EnergyDashboardTheme.textMuted,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        color: SdColors.faint,
                         fontSize: 11,
                       ),
                     ),
@@ -1318,7 +1342,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
               IconButton(
                 onPressed: _loadCleanupStats,
                 icon: Icon(Icons.refresh_rounded,
-                    color: EnergyDashboardTheme.neonGreen, size: 20),
+                    color: SdColors.success, size: 20),
                 tooltip: 'تحديث الإحصائيات',
               ),
               const SizedBox(width: 8),
@@ -1329,20 +1353,21 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: EnergyDashboardTheme.bgSecondary,
+                    color: SdColors.groundAlt,
                     borderRadius: BorderRadius.circular(8),
                     border:
-                        Border.all(color: EnergyDashboardTheme.borderColor),
+                        Border.all(color: SdColors.divider),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.arrow_back_rounded,
-                          size: 14, color: EnergyDashboardTheme.textMuted),
+                          size: 14, color: SdColors.faint),
                       const SizedBox(width: 4),
                       Text('العودة للجداول',
-                          style: GoogleFonts.cairo(
-                              color: EnergyDashboardTheme.textMuted,
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.faint,
                               fontSize: 11)),
                     ],
                   ),
@@ -1356,18 +1381,19 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           child: _isLoadingStats
               ? const Center(
                   child: CircularProgressIndicator(
-                      color: EnergyDashboardTheme.neonGreen))
+                      color: SdColors.success))
               : _isCleaningUp
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const CircularProgressIndicator(
-                              color: EnergyDashboardTheme.danger),
+                              color: SdColors.danger),
                           const SizedBox(height: 16),
                           Text('جارٍ التصفير...',
-                              style: GoogleFonts.cairo(
-                                  color: EnergyDashboardTheme.textMuted,
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  color: SdColors.faint,
                                   fontSize: 14)),
                         ],
                       ),
@@ -1382,7 +1408,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                                   'accounting',
                                   'المحاسبة والعمليات المالية',
                                   Icons.account_balance_rounded,
-                                  EnergyDashboardTheme.neonBlue,
+                                  SdColors.info,
                                   [
                                     'القيود المحاسبية وبنودها',
                                     'معاملات وتحصيلات الفنيين',
@@ -1401,7 +1427,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                                   'attendance',
                                   'الحضور والبصمات والإجازات',
                                   Icons.fingerprint_rounded,
-                                  EnergyDashboardTheme.neonPurple,
+                                  SdColors.platformBase,
                                   [
                                     'سجلات الحضور والانصراف',
                                     'سجل تدقيق محاولات الحضور',
@@ -1415,7 +1441,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                                   'inventory',
                                   'المخزون والمستودعات',
                                   Icons.warehouse_rounded,
-                                  EnergyDashboardTheme.warning,
+                                  SdColors.warning,
                                   [
                                     'صرف مواد الفنيين وبنودها',
                                     'أوامر الشراء وبنودها',
@@ -1439,7 +1465,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                                       'accounting',
                                       'المحاسبة والعمليات المالية',
                                       Icons.account_balance_rounded,
-                                      EnergyDashboardTheme.neonBlue,
+                                      SdColors.info,
                                       [
                                         'القيود المحاسبية وبنودها',
                                         'معاملات وتحصيلات الفنيين',
@@ -1459,7 +1485,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                                       'attendance',
                                       'الحضور والبصمات والإجازات',
                                       Icons.fingerprint_rounded,
-                                      EnergyDashboardTheme.neonPurple,
+                                      SdColors.platformBase,
                                       [
                                         'سجلات الحضور والانصراف',
                                         'سجل تدقيق محاولات الحضور',
@@ -1479,7 +1505,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                                       'inventory',
                                       'المخزون والمستودعات',
                                       Icons.warehouse_rounded,
-                                      EnergyDashboardTheme.warning,
+                                      SdColors.warning,
                                       [
                                         'صرف مواد الفنيين وبنودها',
                                         'أوامر الشراء وبنودها',
@@ -1517,7 +1543,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: color.withOpacity(0.2),
@@ -1541,8 +1567,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1554,15 +1581,16 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                 decoration: BoxDecoration(
                   color: totalRecords > 0
                       ? color.withOpacity(0.15)
-                      : EnergyDashboardTheme.bgSecondary,
+                      : SdColors.groundAlt,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   '$totalRecords سجل',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
                     color: totalRecords > 0
                         ? color
-                        : EnergyDashboardTheme.textMuted,
+                        : SdColors.faint,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1580,17 +1608,19 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                     children: [
                       Text(
                         e.key,
-                        style: GoogleFonts.cairo(
-                          color: EnergyDashboardTheme.textMuted,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: SdColors.faint,
                           fontSize: 10,
                         ),
                       ),
                       Text(
                         '${e.value}',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: (e.value as num) > 0
                               ? color
-                              : EnergyDashboardTheme.textMuted,
+                              : SdColors.faint,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1603,7 +1633,7 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: EnergyDashboardTheme.bgPrimary,
+              color: SdColors.ground,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
@@ -1611,8 +1641,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
               children: [
                 Text(
                   'سيتم حذف/تصفير:',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textMuted,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.faint,
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1624,14 +1655,16 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('• ',
-                              style: GoogleFonts.cairo(
-                                  color: EnergyDashboardTheme.textMuted,
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  color: SdColors.faint,
                                   fontSize: 10)),
                           Expanded(
                             child: Text(
                               item,
-                              style: GoogleFonts.cairo(
-                                color: EnergyDashboardTheme.textSecondary,
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                color: SdColors.muted,
                                 fontSize: 10,
                               ),
                             ),
@@ -1659,13 +1692,13 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                       size: 16),
                   label: Text(
                     _isArchiving ? 'جارٍ التصدير...' : 'أرشفة Excel',
-                    style: GoogleFonts.cairo(fontSize: 11),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: EnergyDashboardTheme.neonGreen,
+                    backgroundColor: SdColors.success,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: EnergyDashboardTheme.bgSecondary,
-                    disabledForegroundColor: EnergyDashboardTheme.textMuted,
+                    disabledBackgroundColor: SdColors.groundAlt,
+                    disabledForegroundColor: SdColors.faint,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
@@ -1682,13 +1715,13 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                   icon: Icon(Icons.delete_forever_rounded, size: 16),
                   label: Text(
                     totalRecords > 0 ? 'تصفير' : 'لا توجد بيانات',
-                    style: GoogleFonts.cairo(fontSize: 11),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 11),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: EnergyDashboardTheme.danger,
+                    backgroundColor: SdColors.danger,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: EnergyDashboardTheme.bgSecondary,
-                    disabledForegroundColor: EnergyDashboardTheme.textMuted,
+                    disabledBackgroundColor: SdColors.groundAlt,
+                    disabledForegroundColor: SdColors.faint,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
@@ -1712,14 +1745,14 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: EnergyDashboardTheme.bgCard,
+        color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: EnergyDashboardTheme.danger.withOpacity(0.3),
+          color: SdColors.danger.withOpacity(0.3),
         ),
         boxShadow: [
           BoxShadow(
-            color: EnergyDashboardTheme.danger.withOpacity(0.05),
+            color: SdColors.danger.withOpacity(0.05),
             blurRadius: 10,
           ),
         ],
@@ -1733,18 +1766,19 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: EnergyDashboardTheme.danger.withOpacity(0.15),
+                  color: SdColors.danger.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(Icons.warning_amber_rounded,
-                    color: EnergyDashboardTheme.danger, size: 20),
+                    color: SdColors.danger, size: 20),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'تصفير شامل',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.danger,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.danger,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1754,13 +1788,14 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: EnergyDashboardTheme.danger.withOpacity(0.15),
+                  color: SdColors.danger.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   '$allTotal سجل',
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.danger,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.danger,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1773,22 +1808,23 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: EnergyDashboardTheme.danger.withOpacity(0.08),
+              color: SdColors.danger.withOpacity(0.08),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: EnergyDashboardTheme.danger.withOpacity(0.2),
+                color: SdColors.danger.withOpacity(0.2),
               ),
             ),
             child: Column(
               children: [
                 Icon(Icons.dangerous_rounded,
-                    color: EnergyDashboardTheme.danger, size: 32),
+                    color: SdColors.danger, size: 32),
                 const SizedBox(height: 8),
                 Text(
                   'تحذير: هذا الإجراء سيحذف جميع العمليات',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.danger,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.danger,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1797,8 +1833,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                 Text(
                   'سيتم تصفير كل البيانات المحاسبية والحضور والبصمات والمخزون دفعة واحدة. يتطلب تأكيد مزدوج.',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textMuted,
+                  style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.faint,
                     fontSize: 10,
                   ),
                 ),
@@ -1825,17 +1862,19 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                     children: [
                       Text(
                         labels[category.key] ?? category.key,
-                        style: GoogleFonts.cairo(
-                          color: EnergyDashboardTheme.textSecondary,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: SdColors.muted,
                           fontSize: 11,
                         ),
                       ),
                       Text(
                         '$catTotal سجل',
-                        style: GoogleFonts.cairo(
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
                           color: catTotal > 0
-                              ? EnergyDashboardTheme.danger
-                              : EnergyDashboardTheme.textMuted,
+                              ? SdColors.danger
+                              : SdColors.faint,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1862,14 +1901,15 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                 _isArchiving
                     ? 'جارٍ تصدير الأرشيف...'
                     : 'أرشفة الكل كـ Excel',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 13, fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: EnergyDashboardTheme.neonGreen,
+                backgroundColor: SdColors.success,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: EnergyDashboardTheme.bgSecondary,
-                disabledForegroundColor: EnergyDashboardTheme.textMuted,
+                disabledBackgroundColor: SdColors.groundAlt,
+                disabledForegroundColor: SdColors.faint,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
@@ -1886,14 +1926,15 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
               icon: Icon(Icons.delete_forever_rounded, size: 18),
               label: Text(
                 allTotal > 0 ? 'تصفير جميع العمليات' : 'لا توجد بيانات',
-                style: GoogleFonts.cairo(
+                style: TextStyle(
+                    fontFamily: 'Cairo',
                     fontSize: 13, fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: EnergyDashboardTheme.danger,
+                backgroundColor: SdColors.danger,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor: EnergyDashboardTheme.bgSecondary,
-                disabledForegroundColor: EnergyDashboardTheme.textMuted,
+                disabledBackgroundColor: SdColors.groundAlt,
+                disabledForegroundColor: SdColors.faint,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
@@ -1913,16 +1954,17 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: EnergyDashboardTheme.bgCard,
+        backgroundColor: SdColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Row(
           children: [
             Icon(Icons.info_rounded,
-                color: EnergyDashboardTheme.neonBlue, size: 20),
+                color: SdColors.info, size: 20),
             const SizedBox(width: 8),
             Text('تفاصيل السجل',
-                style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary,
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink,
                     fontSize: 16,
                     fontWeight: FontWeight.bold)),
           ],
@@ -1947,8 +1989,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                               Expanded(
                                 child: Text(
                                   e.key,
-                                  style: GoogleFonts.cairo(
-                                    color: EnergyDashboardTheme.textMuted,
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    color: SdColors.faint,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -1959,19 +2002,20 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                                   Clipboard.setData(ClipboardData(
                                       text: e.value?.toString() ?? ''));
                                   EnergyDashboardTheme.showSnack(ctx,
-                                      'تم النسخ', EnergyDashboardTheme.success);
+                                      'تم النسخ', SdColors.success);
                                 },
                                 child: Icon(Icons.copy_rounded,
                                     size: 14,
-                                    color: EnergyDashboardTheme.textMuted),
+                                    color: SdColors.faint),
                               ),
                             ],
                           ),
                           const SizedBox(height: 2),
                           SelectableText(
                             _formatValue(e.value),
-                            style: GoogleFonts.cairo(
-                              color: EnergyDashboardTheme.textPrimary,
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.ink,
                               fontSize: 11,
                             ),
                           ),
@@ -1985,8 +2029,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                             width: 140,
                             child: Text(
                               e.key,
-                              style: GoogleFonts.cairo(
-                                color: EnergyDashboardTheme.textMuted,
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                color: SdColors.faint,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -1995,8 +2040,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                           Expanded(
                             child: SelectableText(
                               _formatValue(e.value),
-                              style: GoogleFonts.cairo(
-                                color: EnergyDashboardTheme.textPrimary,
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                color: SdColors.ink,
                                 fontSize: 11,
                               ),
                             ),
@@ -2006,11 +2052,11 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                               Clipboard.setData(ClipboardData(
                                   text: e.value?.toString() ?? ''));
                               EnergyDashboardTheme.showSnack(ctx,
-                                  'تم النسخ', EnergyDashboardTheme.success);
+                                  'تم النسخ', SdColors.success);
                             },
                             icon: Icon(Icons.copy_rounded,
                                 size: 14,
-                                color: EnergyDashboardTheme.textMuted),
+                                color: SdColors.faint),
                             constraints: const BoxConstraints(
                                 minWidth: 28, minHeight: 28),
                             padding: EdgeInsets.zero,
@@ -2025,8 +2071,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text('إغلاق',
-                style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textMuted)),
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.faint)),
           ),
           ElevatedButton.icon(
             onPressed: () {
@@ -2034,9 +2081,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
               _showEditDialog(row);
             },
             icon: const Icon(Icons.edit_rounded, size: 16),
-            label: Text('تعديل', style: GoogleFonts.cairo()),
+            label: Text('تعديل', style: TextStyle(fontFamily: 'Cairo')),
             style: ElevatedButton.styleFrom(
-              backgroundColor: EnergyDashboardTheme.neonBlue,
+              backgroundColor: SdColors.info,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
@@ -2063,16 +2110,17 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: EnergyDashboardTheme.bgCard,
+        backgroundColor: SdColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Row(
           children: [
             Icon(Icons.edit_rounded,
-                color: EnergyDashboardTheme.neonBlue, size: 20),
+                color: SdColors.info, size: 20),
             const SizedBox(width: 8),
             Text('تعديل السجل',
-                style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary,
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink,
                     fontSize: 16,
                     fontWeight: FontWeight.bold)),
           ],
@@ -2094,8 +2142,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                         children: [
                           Text(
                             e.key,
-                            style: GoogleFonts.cairo(
-                              color: EnergyDashboardTheme.textMuted,
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              color: SdColors.faint,
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),
@@ -2103,29 +2152,30 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                           const SizedBox(height: 4),
                           TextField(
                             controller: controllers[e.key],
-                            style: GoogleFonts.cairo(
-                                color: EnergyDashboardTheme.textPrimary,
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                color: SdColors.ink,
                                 fontSize: 12),
                             decoration: InputDecoration(
                               filled: true,
-                              fillColor: EnergyDashboardTheme.bgPrimary,
+                              fillColor: SdColors.ground,
                               isDense: true,
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 10),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                                 borderSide: BorderSide(
-                                    color: EnergyDashboardTheme.borderColor),
+                                    color: SdColors.divider),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                                 borderSide: BorderSide(
-                                    color: EnergyDashboardTheme.borderColor),
+                                    color: SdColors.divider),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                                 borderSide: const BorderSide(
-                                    color: EnergyDashboardTheme.neonGreen),
+                                    color: SdColors.success),
                               ),
                             ),
                           ),
@@ -2140,8 +2190,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                         padding: const EdgeInsets.only(top: 10),
                         child: Text(
                           e.key,
-                          style: GoogleFonts.cairo(
-                            color: EnergyDashboardTheme.textMuted,
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            color: SdColors.faint,
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -2151,12 +2202,13 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                     Expanded(
                       child: TextField(
                         controller: controllers[e.key],
-                        style: GoogleFonts.cairo(
-                            color: EnergyDashboardTheme.textPrimary,
+                        style: TextStyle(
+                            fontFamily: 'Cairo',
+                            color: SdColors.ink,
                             fontSize: 12),
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: EnergyDashboardTheme.bgPrimary,
+                          fillColor: SdColors.ground,
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 10),
@@ -2164,19 +2216,19 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide(
                                 color:
-                                    EnergyDashboardTheme.borderColor),
+                                    SdColors.divider),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: BorderSide(
                                 color:
-                                    EnergyDashboardTheme.borderColor),
+                                    SdColors.divider),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                             borderSide: const BorderSide(
                                 color:
-                                    EnergyDashboardTheme.neonGreen),
+                                    SdColors.success),
                           ),
                         ),
                       ),
@@ -2191,8 +2243,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text('إلغاء',
-                style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textMuted)),
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.faint)),
           ),
           ElevatedButton.icon(
             onPressed: () {
@@ -2222,9 +2275,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
               _updateRecord(id, updatedData);
             },
             icon: const Icon(Icons.save_rounded, size: 16),
-            label: Text('حفظ', style: GoogleFonts.cairo()),
+            label: Text('حفظ', style: TextStyle(fontFamily: 'Cairo')),
             style: ElevatedButton.styleFrom(
-              backgroundColor: EnergyDashboardTheme.neonGreen,
+              backgroundColor: SdColors.success,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
@@ -2242,16 +2295,17 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: EnergyDashboardTheme.bgCard,
+        backgroundColor: SdColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Row(
           children: [
             Icon(Icons.view_column_rounded,
-                color: EnergyDashboardTheme.neonPurple, size: 20),
+                color: SdColors.platformBase, size: 20),
             const SizedBox(width: 8),
             Text('أعمدة الجدول (${_columns.length})',
-                style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textPrimary,
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.ink,
                     fontSize: 16,
                     fontWeight: FontWeight.bold)),
           ],
@@ -2271,13 +2325,13 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: isPK
-                      ? EnergyDashboardTheme.neonGreen.withOpacity(0.05)
+                      ? SdColors.success.withOpacity(0.05)
                       : null,
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: isPK
-                        ? EnergyDashboardTheme.neonGreen.withOpacity(0.2)
-                        : EnergyDashboardTheme.borderColor
+                        ? SdColors.success.withOpacity(0.2)
+                        : SdColors.divider
                             .withOpacity(0.3),
                   ),
                 ),
@@ -2285,16 +2339,17 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                   children: [
                     if (isPK)
                       Icon(Icons.key_rounded,
-                          color: EnergyDashboardTheme.neonGreen, size: 14)
+                          color: SdColors.success, size: 14)
                     else
                       Icon(Icons.circle,
-                          color: EnergyDashboardTheme.textMuted, size: 6),
+                          color: SdColors.faint, size: 6),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         col['clrName']?.toString() ?? '',
-                        style: GoogleFonts.cairo(
-                          color: EnergyDashboardTheme.textPrimary,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: SdColors.ink,
                           fontSize: 12,
                           fontWeight:
                               isPK ? FontWeight.bold : FontWeight.w500,
@@ -2306,13 +2361,14 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color:
-                            EnergyDashboardTheme.neonBlue.withOpacity(0.1),
+                            SdColors.info.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         col['type']?.toString() ?? '',
-                        style: GoogleFonts.cairo(
-                          color: EnergyDashboardTheme.neonBlue,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          color: SdColors.info,
                           fontSize: 9,
                         ),
                       ),
@@ -2322,8 +2378,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
                         padding: const EdgeInsets.only(right: 4),
                         child: Text(
                           '?',
-                          style: GoogleFonts.cairo(
-                            color: EnergyDashboardTheme.warning,
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            color: SdColors.warning,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -2339,8 +2396,9 @@ class _DatabaseAdminPageState extends State<DatabaseAdminPage> {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text('إغلاق',
-                style: GoogleFonts.cairo(
-                    color: EnergyDashboardTheme.textMuted)),
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: SdColors.faint)),
           ),
         ],
       ),

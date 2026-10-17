@@ -4,8 +4,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../frontend/tokens/sd_colors.dart';
 
 /// ثيم المحاسبة الفاتح - XONEPROO Style
@@ -247,14 +245,14 @@ class AccountingTheme {
           const SizedBox(height: 16),
           Text(
             message,
-            style: GoogleFonts.cairo(color: textSecondary, fontSize: 14),
+            style: TextStyle(fontFamily: 'Cairo', color: textSecondary, fontSize: 14),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh),
-            label: Text('إعادة المحاولة', style: GoogleFonts.cairo()),
+            label: Text('إعادة المحاولة', style: TextStyle(fontFamily: 'Cairo')),
             style: primaryButton,
           ),
         ],
@@ -270,7 +268,7 @@ class AccountingTheme {
         children: [
           Icon(icon, color: textMuted, size: 64),
           const SizedBox(height: 16),
-          Text(message, style: GoogleFonts.cairo(color: textMuted)),
+          Text(message, style: TextStyle(fontFamily: 'Cairo', color: textMuted)),
         ],
       ),
     );
@@ -280,7 +278,7 @@ class AccountingTheme {
   static void showSnack(BuildContext context, String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg, style: GoogleFonts.cairo()),
+        content: Text(msg, style: TextStyle(fontFamily: 'Cairo')),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
@@ -305,13 +303,13 @@ class AccountingTheme {
         backgroundColor: bgCard,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusLarge)),
-        title: Text(title, style: GoogleFonts.cairo(color: textPrimary)),
-        content: Text(message, style: GoogleFonts.cairo(color: textSecondary)),
+        title: Text(title, style: TextStyle(fontFamily: 'Cairo', color: textPrimary)),
+        content: Text(message, style: TextStyle(fontFamily: 'Cairo', color: textSecondary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child:
-                Text(cancelLabel, style: GoogleFonts.cairo(color: textMuted)),
+                Text(cancelLabel, style: TextStyle(fontFamily: 'Cairo', color: textMuted)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -321,7 +319,7 @@ class AccountingTheme {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(radiusMedium)),
             ),
-            child: Text(confirmLabel, style: GoogleFonts.cairo()),
+            child: Text(confirmLabel, style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),

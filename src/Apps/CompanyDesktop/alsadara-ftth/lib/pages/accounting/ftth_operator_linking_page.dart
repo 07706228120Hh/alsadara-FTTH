@@ -1,6 +1,5 @@
 ﻿import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
 import '../../frontend/frontend.dart';
@@ -132,12 +131,13 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
         builder: (ctx, setDialogState) => AlertDialog(
           title: Row(
             children: [
-              Icon(Icons.link, color: Colors.teal),
+              Icon(Icons.link, color: SdColors.accent),
               SizedBox(width: context.accR.spaceS),
               Expanded(
                 child: Text(
                   'ربط المشغل: ${opName.isNotEmpty ? opName : ftthUsername}',
-                  style: GoogleFonts.cairo(
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
                       fontSize: context.accR.headingSmall,
                       fontWeight: FontWeight.w700),
                 ),
@@ -158,14 +158,14 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                       horizontal: context.accR.spaceM,
                       vertical: context.accR.spaceS),
                   decoration: BoxDecoration(
-                    color: Colors.teal.shade50,
+                    color: SdColors.accentTint,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.teal.shade200),
+                    border: Border.all(color: SdColors.accentTintEdge),
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.person,
-                          color: Colors.teal.shade700,
+                          color: SdColors.accent,
                           size: context.accR.iconM),
                       SizedBox(width: context.accR.spaceS),
                       Expanded(
@@ -173,14 +173,16 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('اسم المستخدم في FTTH: $ftthUsername',
-                                style: GoogleFonts.cairo(
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
                                     fontSize: context.accR.financialSmall,
                                     fontWeight: FontWeight.w600)),
                             if (opName.isNotEmpty)
                               Text('الاسم: $opName',
-                                  style: GoogleFonts.cairo(
+                                  style: TextStyle(
+                                      fontFamily: 'Cairo',
                                       fontSize: context.accR.small,
-                                      color: Colors.grey.shade700)),
+                                      color: SdColors.muted)),
                           ],
                         ),
                       ),
@@ -189,7 +191,8 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                 ),
                 SizedBox(height: context.accR.spaceXL),
                 Text('اختر الموظف من نظامنا لربطه بهذا المشغل:',
-                    style: GoogleFonts.cairo(
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
                         fontSize: context.accR.financialSmall)),
                 SizedBox(height: context.accR.spaceS),
                 // قائمة الموظفين
@@ -197,13 +200,13 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                   const Padding(
                     padding: EdgeInsets.all(12),
                     child: Text('لا يوجد موظفون متاحون للربط',
-                        style: TextStyle(color: Colors.grey)),
+                        style: TextStyle(color: SdColors.faint)),
                   )
                 else
                   Container(
                     height: 250,
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: SdColors.edge),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: ListView.builder(
@@ -219,13 +222,13 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                         return ListTile(
                           dense: true,
                           selected: isSelected,
-                          selectedTileColor: Colors.teal.shade50,
+                          selectedTileColor: SdColors.accentTint,
                           leading: Icon(
                             isSelected
                                 ? Icons.radio_button_checked
                                 : Icons.radio_button_off,
                             size: context.accR.iconM,
-                            color: isSelected ? Colors.teal : Colors.grey,
+                            color: isSelected ? SdColors.accent : SdColors.faint,
                           ),
                           title: Text(fullName,
                               style: TextStyle(
@@ -262,7 +265,7 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
             if (currentLinked != null)
               TextButton(
                 onPressed: () => Navigator.pop(ctx, '__UNLINK__'),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                style: TextButton.styleFrom(foregroundColor: SdColors.danger),
                 child: const Text('إزالة الربط'),
               ),
             ElevatedButton(
@@ -270,7 +273,7 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                   ? null
                   : () => Navigator.pop(ctx, selectedUserId),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal, foregroundColor: Colors.white),
+                  backgroundColor: SdColors.accent, foregroundColor: Colors.white),
               child: const Text('ربط'),
             ),
           ],
@@ -305,7 +308,7 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                   : 'تم ربط $ftthUsername بنجاح',
               style: const TextStyle(fontFamily: 'Cairo'),
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: SdColors.success,
           ),
         );
       }
@@ -313,7 +316,7 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ'), backgroundColor: Colors.red),
+          SnackBar(content: Text('خطأ'), backgroundColor: SdColors.danger),
         );
       }
       setState(() => _isLoading = false);
@@ -647,19 +650,19 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
               Color roleColor;
               switch (role) {
                 case 'Super Admin Member':
-                  roleColor = Colors.red.shade700;
+                  roleColor = SdColors.danger;
                   break;
                 case 'Zone Admin':
-                  roleColor = Colors.blue.shade700;
+                  roleColor = SdColors.info;
                   break;
                 case 'Field Worker':
-                  roleColor = Colors.green.shade700;
+                  roleColor = SdColors.success;
                   break;
                 case 'Contractor':
-                  roleColor = Colors.purple.shade700;
+                  roleColor = SdColors.platformBase;
                   break;
                 default:
-                  roleColor = Colors.grey.shade700;
+                  roleColor = SdColors.muted;
               }
 
               return DataRow(
@@ -736,7 +739,7 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
                         style: TextStyle(fontSize: context.accR.small)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
-                          hasLink ? Colors.blue.shade600 : Colors.teal.shade600,
+                          hasLink ? SdColors.info : SdColors.accent,
                       foregroundColor: Colors.white,
                       padding: EdgeInsets.symmetric(
                           horizontal: context.accR.spaceM,
