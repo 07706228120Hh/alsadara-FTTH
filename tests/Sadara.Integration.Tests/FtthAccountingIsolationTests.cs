@@ -597,7 +597,7 @@ public class FtthAccountingIsolationTests
     }
 
     [SkippableFact]
-    public async Task ZoneCheck_Allows_Activation_Screen_User()
+    public async Task ZoneCheck_Allows_Any_Active_Company_Employee()
     {
         _fx.SkipIfUnavailable();
         var w = SeedWorld();
@@ -608,9 +608,113 @@ public class FtthAccountingIsolationTests
         Assert.Equal(200, StatusOf(res));
         Assert.True(BodyOf(res).GetProperty("hasMaintenanceFee").GetBoolean());
 
-        // An employee with V2 set but none of the accepted keys is rejected.
+        // R2: the fee lookup needs no permission key — an employee without any relevant grant
+        // must still get the (company-scoped) fee, otherwise activation could post a silent zero fee.
         var (noPerm, db2) = Zones(new Caller(w.NoPermA, w.CompanyA, "Employee"));
         using (db2)
-            AssertDenied(await noPerm.CheckZone(w.ZoneName, null), 403);
+        {
+            var r2 = await noPerm.CheckZone(w.ZoneName, w.CompanyB);
+            Assert.Equal(200, StatusOf(r2));
+            Assert.Equal(1000, BodyOf(r2).GetProperty("amount").GetDecimal()); // A's fee, not B's
+        }
+
+        // Deactivated employee → refused.
+        using (var sys = _fx.CreateContext(PostgresFixture.SystemTenant))
+        {
+            var u = sys.Set<User>().Single(x => x.Id == w.NoPermA);
+            u.IsActive = false;
+            sys.SaveChanges();
+        }
+        var (inactive, db3) = Zones(new Caller(w.NoPermA, w.CompanyA, "Employee"));
+        using (db3)
+            AssertDenied(await inactive.CheckZone(w.ZoneName, null), 403);
+    }
+
+    // ═══════════════════════════ Remediation (S8 / S12 / P3) ═══════════════════════════
+
+    [SkippableFact]
+    public async Task Staff_Lists_Open_To_Any_Active_Employee_Phones_Only_With_Permission()
+    {
+        _fx.SkipIfUnavailable();
+        var w = SeedWorld();
+
+        static List<JsonElement> Rows(IActionResult r) =>
+            BodyOf(r).GetProperty("data").EnumerateArray().ToList();
+
+        // Employee with no relevant grant (e.g. only subscriptions.activate): lists work, phones hidden.
+        var (plain, db1) = Ftth(new Caller(w.NoPermA, w.CompanyA, "Employee"));
+        using (db1)
+        {
+            var techs = await plain.GetTechniciansList(null);
+            Assert.Equal(200, StatusOf(techs));
+            var rows = Rows(techs);
+            Assert.Contains(rows, r => r.GetProperty("Id").GetGuid() == w.OperatorA);
+            Assert.DoesNotContain(rows, r => r.GetProperty("Id").GetGuid() == w.OperatorB);
+            Assert.All(rows, r => Assert.Equal(JsonValueKind.Null, r.GetProperty("PhoneNumber").ValueKind));
+
+            Assert.Equal(200, StatusOf(await plain.GetAgentsList(null)));
+        }
+
+        // subscriptions/view (Second system) → phones visible.
+        var (activator, db2) = Ftth(new Caller(w.ActivatorA, w.CompanyA, "Employee"));
+        using (db2)
+        {
+            var rows = Rows(await activator.GetTechniciansList(null));
+            Assert.Contains(rows, r => r.GetProperty("PhoneNumber").ValueKind == JsonValueKind.String);
+        }
+    }
+
+    [SkippableFact]
+    public async Task ResolveFullName_Never_Uses_Another_Companys_User()
+    {
+        _fx.SkipIfUnavailable();
+        var w = SeedWorld();
+        string usernameA, usernameB;
+        using (var sys = _fx.CreateContext(PostgresFixture.SystemTenant))
+        {
+            usernameA = sys.Set<User>().Single(u => u.Id == w.OperatorA).Username!;
+            usernameB = sys.Set<User>().Single(u => u.Id == w.OperatorB).Username!;
+        }
+
+        var (ctrl, db) = Ftth(new Caller(w.AdminA, w.CompanyA, "Manager"));
+        using var _ = db;
+
+        FtthLogWithAccountingDto Dto(string activatedBy) => new(
+            "C1", "زبون", null, null, "FIBER 35", 0m, null, null, null, null, "renew", activatedBy,
+            DateTime.UtcNow, null, null, w.ZoneName, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, w.CompanyA, false, false, null, null, null, null, null,
+            "cash", null, null, null, null, null, null, null, null);
+
+        var okB = await ctrl.LogWithAccounting(Dto(usernameB));
+        Assert.Equal(200, StatusOf(okB));
+        Assert.Equal(usernameB, ReadLog(BodyOf(okB).GetProperty("logId").GetInt64()).ActivatedBy); // not B's FullName
+
+        var okA = await ctrl.LogWithAccounting(Dto(usernameA));
+        Assert.Equal("مشغل أ", ReadLog(BodyOf(okA).GetProperty("logId").GetInt64()).ActivatedBy);
+    }
+
+    [SkippableFact]
+    public async Task RecalculateSyncRevenues_Rejects_Wrong_Or_Missing_Key()
+    {
+        _fx.SkipIfUnavailable();
+        var w = SeedWorld();
+        var caller = new Caller(w.AdminA, w.CompanyA, "Manager");
+        var tenant = Tenant(caller);
+        using var db = _fx.CreateContext(tenant);
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["Security:InternalApiKey"] = "test-key-123" })
+            .Build();
+
+        foreach (var key in new[] { null, "", "test-key-12", "test-key-1234", "TEST-KEY-123" })
+        {
+            var http = new DefaultHttpContext { User = Principal(caller) };
+            if (key is not null) http.Request.Headers["X-Api-Key"] = key;
+            var ctrl = new FtthAccountingController(new UnitOfWork(db),
+                NullLogger<FtthAccountingController>.Instance, config, tenant)
+            {
+                ControllerContext = new ControllerContext { HttpContext = http }
+            };
+            Assert.IsType<UnauthorizedObjectResult>(await ctrl.RecalculateSyncRevenues(companyId: w.CompanyA));
+        }
     }
 }

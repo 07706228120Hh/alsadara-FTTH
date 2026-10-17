@@ -97,6 +97,12 @@ public class FtthAccountingController : ControllerBase
     private Task<bool> HasAnyPermissionAsync(params (string Key, string Action, PermissionSystem System)[] options) =>
         FtthAccessGate.HasAnyPermissionAsync(_unitOfWork, User, options);
 
+    /// <summary>Phone numbers in staff/agent pick-lists: FTTH-operators accounting view or subscriptions view.</summary>
+    private Task<bool> CanSeeStaffPhonesAsync() =>
+        HasAnyPermissionAsync(
+            (FtthPerm, "view", PermissionSystem.First),
+            ("subscriptions", "view", PermissionSystem.Second));
+
     /// <summary>
     /// The only update the activation screen (subscription_details_page) sends without accounting rights:
     /// marking the caller's own operation as unverified —
@@ -133,12 +139,15 @@ public class FtthAccountingController : ControllerBase
     }
 
     /// تحويل اسم المستخدم (FtthUsername/Username) إلى الاسم الكامل — للعمليات الفردية
-    private async Task<string> _resolveFullName(string? activatedBy)
+    /// Isolation: resolves only against staff of <paramref name="companyId"/>; without a company the
+    /// value is returned unchanged (never matched against another company's users).
+    private async Task<string> _resolveFullName(string? activatedBy, Guid? companyId)
     {
         if (string.IsNullOrEmpty(activatedBy)) return activatedBy ?? "";
+        if (!companyId.HasValue || companyId.Value == Guid.Empty) return activatedBy;
         var key = activatedBy.Trim().ToLower();
         var user = await _unitOfWork.Users.AsQueryable()
-            .FirstOrDefaultAsync(u => !u.IsDeleted &&
+            .FirstOrDefaultAsync(u => !u.IsDeleted && u.CompanyId == companyId.Value &&
                 ((u.FtthUsername != null && u.FtthUsername.ToLower() == key) ||
                  (u.Username != null && u.Username.ToLower() == key)));
         return user?.FullName ?? activatedBy;
@@ -230,7 +239,7 @@ public class FtthAccountingController : ControllerBase
                 LinkedAgentId = dto.LinkedAgentId,
                 IsReconciled = false
             };
-            log.ActivatedBy = await _resolveFullName(log.ActivatedBy);
+            log.ActivatedBy = await _resolveFullName(log.ActivatedBy, companyId);
 
             // ═══ حساب BasePrice وأجور الصيانة تلقائياً إذا لم تُرسل ═══
             if (dto.CompanyId.HasValue)
@@ -323,7 +332,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في حفظ سجل FTTH مع المحاسبة");
-            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 
@@ -1543,7 +1552,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في تسليم النقد");
-            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "حدث خطأ أثناء تنفيذ العملية" });
         }
     }
 
@@ -1606,7 +1615,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في جلب عملاء الآجل");
-            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "حدث خطأ أثناء تنفيذ العملية" });
         }
     }
 
@@ -1660,7 +1669,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في تحديد دورة التجديد");
-            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "حدث خطأ أثناء تنفيذ العملية" });
         }
     }
 
@@ -1721,7 +1730,7 @@ public class FtthAccountingController : ControllerBase
             if (request.PlanPrice.HasValue) log.PlanPrice = request.PlanPrice.Value;
             if (request.CommitmentPeriod != null) log.CommitmentPeriod = request.CommitmentPeriod;
             if (request.OperationType != null) log.OperationType = request.OperationType;
-            if (request.ActivatedBy != null) log.ActivatedBy = await _resolveFullName(request.ActivatedBy);
+            if (request.ActivatedBy != null) log.ActivatedBy = await _resolveFullName(request.ActivatedBy, log.CompanyId);
             if (request.ActivationDate.HasValue)
                 log.ActivationDate = DateTime.SpecifyKind(request.ActivationDate.Value.Date.AddHours(12 - 3), DateTimeKind.Utc);
             if (request.ZoneId != null) log.ZoneId = request.ZoneId;
@@ -2051,7 +2060,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في تحصيل شهر مكرر");
-            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "حدث خطأ أثناء تنفيذ العملية" });
         }
     }
 
@@ -2131,7 +2140,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في تحصيل الآجل");
-            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "حدث خطأ أثناء تنفيذ العملية" });
         }
     }
 
@@ -2221,11 +2230,11 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
-            // Gate: accounting (operators screens) or the activation screen (Second system "subscriptions").
-            if (!await HasAnyPermissionAsync(
-                    (FtthPerm, "view", PermissionSystem.First),
-                    ("subscriptions", "view", PermissionSystem.Second)))
+            // Gate: any active employee of the company (the activation dialog needs this list whatever
+            // subscription sub-permission the operator holds). Phone numbers only for privileged callers.
+            if (!await FtthAccessGate.IsActiveEmployeeAsync(_unitOfWork, User))
                 return Forbidden();
+            var showPhones = await CanSeeStaffPhonesAsync();
 
             var query = _unitOfWork.Agents.AsQueryable()
                 .Where(a => a.Status == AgentStatus.Active);
@@ -2236,7 +2245,7 @@ public class FtthAccountingController : ControllerBase
                 query = query.Where(a => a.CompanyId == scope.Value);
 
             var agents = await query
-                .Select(a => new { a.Id, a.Name, a.AgentCode, a.PhoneNumber })
+                .Select(a => new { a.Id, a.Name, a.AgentCode, PhoneNumber = showPhones ? a.PhoneNumber : null })
                 .OrderBy(a => a.Name)
                 .ToListAsync();
 
@@ -2259,11 +2268,11 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
-            // Gate: accounting (operators screens) or the activation screen (Second system "subscriptions").
-            if (!await HasAnyPermissionAsync(
-                    (FtthPerm, "view", PermissionSystem.First),
-                    ("subscriptions", "view", PermissionSystem.Second)))
+            // Gate: any active employee of the company (the activation dialog needs this list whatever
+            // subscription sub-permission the operator holds). Phone numbers only for privileged callers.
+            if (!await FtthAccessGate.IsActiveEmployeeAsync(_unitOfWork, User))
                 return Forbidden();
+            var showPhones = await CanSeeStaffPhonesAsync();
 
             // Isolation: token company for non-SuperAdmin (client companyId ignored). Previously a null
             // companyId returned every user of every company, citizens included.
@@ -2278,7 +2287,7 @@ public class FtthAccountingController : ControllerBase
                 query = query.Where(u => u.CompanyId == scope.Value);
 
             var technicians = await query
-                .Select(u => new { u.Id, Name = u.FullName, u.Username, u.PhoneNumber })
+                .Select(u => new { u.Id, Name = u.FullName, u.Username, PhoneNumber = showPhones ? u.PhoneNumber : null })
                 .OrderBy(u => u.Name)
                 .ToListAsync();
 
@@ -2439,7 +2448,8 @@ public class FtthAccountingController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { success = false, message = ex.Message });
+            _logger.LogError(ex, "خطأ في جلب معرّفات FTTH المحفوظة");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 
@@ -2864,7 +2874,8 @@ public class FtthAccountingController : ControllerBase
                 catch (Exception ex)
                 {
                     failed++;
-                    errors.Add($"{tx.FtthTransactionId}: {ex.Message}");
+                    errors.Add($"{tx.FtthTransactionId}: فشل حفظ العملية");
+                    _logger.LogWarning(ex, "فشل حفظ عملية المزامنة {TxId}", tx.FtthTransactionId);
                 }
             }
 
@@ -2884,7 +2895,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في مزامنة عمليات FTTH");
-            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "حدث خطأ أثناء تنفيذ العملية" });
         }
     }
 
@@ -3044,7 +3055,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في تصحيح تواريخ القيود");
-            return StatusCode(500, new { success = false, message = ex.Message });
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 
@@ -3067,7 +3078,12 @@ public class FtthAccountingController : ControllerBase
             var apiKey = Request.Headers["X-Api-Key"].FirstOrDefault();
             var configKey = _configuration["Security:InternalApiKey"]
                 ?? Environment.GetEnvironmentVariable("SADARA_INTERNAL_API_KEY") ?? "";
-            if (string.IsNullOrEmpty(configKey) || apiKey != configKey)
+            // Auth model unchanged (AllowAnonymous + internal API key — deferred P0-3 / stream 0-A);
+            // only the comparison is now constant-time to avoid a timing side channel.
+            if (string.IsNullOrEmpty(configKey) || string.IsNullOrEmpty(apiKey)
+                || !System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+                    System.Text.Encoding.UTF8.GetBytes(apiKey),
+                    System.Text.Encoding.UTF8.GetBytes(configKey)))
                 return Unauthorized(new { success = false, message = "Invalid API Key" });
         }
         try
@@ -3251,7 +3267,7 @@ public class FtthAccountingController : ControllerBase
                 catch (Exception ex)
                 {
                     failed++;
-                    errors.Add($"Log #{log.Id}: {ex.Message}");
+                    errors.Add($"Log #{log.Id}: فشل إعادة الحساب");
                     _logger.LogWarning(ex, "فشل إعادة حساب الإيرادات للسجل {LogId}", log.Id);
                 }
             }
@@ -3271,7 +3287,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في إعادة حساب إيرادات المزامنة");
-            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "حدث خطأ أثناء تنفيذ العملية" });
         }
     }
 
@@ -3495,7 +3511,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في دمج العمليات المكررة");
-            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "حدث خطأ أثناء تنفيذ العملية" });
         }
     }
 
@@ -3567,7 +3583,8 @@ public class FtthAccountingController : ControllerBase
                 catch (Exception ex)
                 {
                     failed++;
-                    errors.Add($"#{dto.OriginalId}←#{dto.DuplicateId}: {ex.Message}");
+                    errors.Add($"#{dto.OriginalId}←#{dto.DuplicateId}: فشل الدمج");
+                    _logger.LogWarning(ex, "فشل دمج العملية {OriginalId} مع {DuplicateId}", dto.OriginalId, dto.DuplicateId);
                 }
             }
 
@@ -3578,7 +3595,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في دمج العمليات المكررة");
-            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "حدث خطأ أثناء تنفيذ العملية" });
         }
     }
 
@@ -3650,7 +3667,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في التسليم السريع");
-            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "حدث خطأ أثناء تنفيذ العملية" });
         }
     }
 
@@ -3755,7 +3772,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في التحصيل السريع");
-            return StatusCode(500, new { success = false, message = "خطأ: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "حدث خطأ أثناء تنفيذ العملية" });
         }
     }
 
@@ -3948,7 +3965,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في إعادة حساب الأرصدة");
-            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 
@@ -4015,7 +4032,7 @@ public class FtthAccountingController : ControllerBase
                 catch (Exception ex)
                 {
                     failCount++;
-                    errors.Add($"Log {log.Id} ({log.CollectionType}): {ex.Message}");
+                    errors.Add($"Log {log.Id} ({log.CollectionType}): فشل إنشاء القيد");
                     _logger.LogWarning(ex, "فشل إعادة إنشاء القيد للسجل {LogId}", log.Id);
                 }
             }
@@ -4033,7 +4050,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في إعادة إنشاء القيود المفقودة");
-            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 
@@ -4132,7 +4149,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في تصحيح معرفات المستخدمين");
-            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 
@@ -4187,7 +4204,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في تعيين السجلات");
-            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 
@@ -4349,7 +4366,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في تصحيح السجلات اليتيمة");
-            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 
@@ -4424,7 +4441,7 @@ public class FtthAccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في تصحيح أسماء المشغلين");
-            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 
@@ -4465,6 +4482,23 @@ internal static class FtthAccessGate
     /// must be a company-employee row in Users (defense in depth: citizen/agent tokens have no Users row,
     /// and Users rows with Citizen/Merchant/Driver roles are rejected even when their V2 JSON is empty).
     /// </summary>
+    /// <summary>
+    /// True for SuperAdmin, or for an active, non-deleted Users row with a company-staff role
+    /// (Role ≥ Employee). Used for low-sensitivity lookups the activation screen needs regardless of
+    /// which permission keys the operator was granted (zone fee check, technicians/agents lists).
+    /// </summary>
+    internal static async Task<bool> IsActiveEmployeeAsync(IUnitOfWork unitOfWork, ClaimsPrincipal user)
+    {
+        if (user.Identity?.IsAuthenticated != true) return false;
+        if (IsSuperAdmin(user)) return true;
+
+        var userId = GetUserId(user);
+        if (!userId.HasValue) return false;
+
+        var dbUser = await unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+        return dbUser != null && !dbUser.IsDeleted && dbUser.IsActive && dbUser.Role >= UserRole.Employee;
+    }
+
     internal static async Task<bool> HasAnyPermissionAsync(
         IUnitOfWork unitOfWork,
         ClaimsPrincipal user,

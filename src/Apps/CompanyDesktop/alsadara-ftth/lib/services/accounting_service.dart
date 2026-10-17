@@ -1197,11 +1197,22 @@ class AccountingService {
     return _toMap(response);
   }
 
+  /// فحص أجور صيانة الزون.
+  /// عند فشل الطلب (401/403/500/شبكة) أو استجابة بلا `hasMaintenanceFee` يُرمى استثناء
+  /// بدل إرجاع خريطة تُقرأ خطأً كـ "لا توجد أجور" (= صفر صامت).
   Future<Map<String, dynamic>> checkZoneMaintenanceFee(String zoneName, {String? companyId}) async {
     String query = '/zone-maintenance-fees/check?zoneName=${Uri.encodeComponent(zoneName)}';
     if (companyId != null) query += '&companyId=$companyId';
     final response = await _client.get(query, (json) => json);
-    return _toMap(response);
+    final result = _toMap(response);
+    final data = result['data'];
+    if (result['success'] != true ||
+        data is! Map ||
+        !data.containsKey('hasMaintenanceFee')) {
+      throw Exception(
+          'تعذّر التحقق من أجور صيانة الزون (${result['statusCode'] ?? '-'}): ${result['message'] ?? 'استجابة غير صالحة'}');
+    }
+    return result;
   }
 
   Future<Map<String, dynamic>> createZoneMaintenanceFee(Map<String, dynamic> body) async {

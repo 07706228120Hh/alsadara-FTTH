@@ -66,15 +66,14 @@ public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork, ICurrentTenan
     /// <summary>جلب أجور صيانة زون محدد بالاسم — يُستخدم من شاشة التفعيل</summary>
     /// <remarks>
     /// Was [AllowAnonymous]; the only caller (activation screen via AccountingService) sends the employee
-    /// JWT, so anonymous access is removed. Gate: accounting view OR the activation screen permission.
+    /// JWT, so anonymous access is removed. The fee amount is not sensitive and a refusal here could make
+    /// the activation post a wrong (zero) fee, so ANY active employee of the company may read it — no
+    /// permission key, but still company-scoped (client companyId ignored for non-SuperAdmin).
     /// </remarks>
     [HttpGet("check")]
     public async Task<IActionResult> CheckZone([FromQuery] string zoneName, [FromQuery] Guid? companyId)
     {
-        if (!await FtthAccessGate.HasAnyPermissionAsync(_unitOfWork, User,
-                ("accounting", "view", PermissionSystem.First),
-                ("accounting.ftth_operators", "view", PermissionSystem.First),
-                ("subscriptions", "view", PermissionSystem.Second)))
+        if (!await FtthAccessGate.IsActiveEmployeeAsync(_unitOfWork, User))
             return StatusCode(403, new { success = false, message = "لا تملك صلاحية كافية" });
 
         if (!TryGetReadScope(companyId, out var scope))
