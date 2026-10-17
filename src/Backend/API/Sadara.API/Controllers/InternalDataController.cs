@@ -60,8 +60,11 @@ public class InternalDataController : ControllerBase
     private Task<InternalCaller> ResolveCallerAsync() =>
         InternalCallerAccess.ResolveAsync(HttpContext, _configuration, _unitOfWork);
 
-    private IActionResult InvalidCredentials() =>
-        Unauthorized(new { success = false, message = "Invalid API Key" });
+    /// <summary>401: رسالة عربية لمن أرسل توكناً منتهياً/غير صالح؛ الرسالة القديمة لعملاء المفتاح.</summary>
+    private IActionResult InvalidCredentials(InternalCaller caller) =>
+        caller.PresentedBearerToken
+            ? Unauthorized(new { success = false, message = "انتهت الجلسة — أعد تسجيل الدخول" })
+            : Unauthorized(new { success = false, message = "Invalid API Key" });
 
     private IActionResult ForbiddenResult(string message) =>
         StatusCode(403, new { success = false, message });
@@ -85,7 +88,7 @@ public class InternalDataController : ControllerBase
         switch (caller.Mode)
         {
             case InternalAuthMode.None:
-                return (caller, InvalidCredentials());
+                return (caller, InvalidCredentials(caller));
             case InternalAuthMode.Rejected:
                 return (caller, ForbiddenResult("غير مصرح"));
             case InternalAuthMode.ApiKey:
@@ -135,6 +138,50 @@ public class InternalDataController : ControllerBase
     /// <summary>هل الوكيل ينتمي للشركة المحدّدة؟</summary>
     private Task<bool> AgentBelongsToCompanyAsync(Guid agentId, Guid? companyId) =>
         _unitOfWork.Agents.AsQueryable().AnyAsync(a => a.Id == agentId && !a.IsDeleted && (Guid?)a.CompanyId == companyId);
+
+    /// <summary>
+    /// JWT: إنشاء سجل تفعيل (ينشئ قيداً وقد ينشئ ذمة على فني/وكيل) — يتطلب منحاً صريحاً لإضافة الاشتراكات
+    /// (subscriptions أو subscriptions.activate، إضافة — في النظام الثاني حيث تُعرَّف، أو الأول) أو صلاحية
+    /// المحاسبة أو دور إدارة الشركة. fail-closed: فراغ صلاحيات V2 لا يمنحها (مطابق للتطبيق الذي يُخفي
+    /// الشاشات عند فراغها).
+    /// </summary>
+    private static bool CanCreateSubscriptionLog(InternalCaller caller)
+    {
+        if (!caller.IsTenantBound || caller.IsCompanyManager) return true;
+        foreach (var system in new[] { PermissionSystem.Second, PermissionSystem.First })
+        {
+            if (caller.HasPermission("subscriptions", "add", failClosed: true, system)
+                || caller.HasPermission("subscriptions.activate", "add", failClosed: true, system))
+                return true;
+        }
+        return caller.HasPermission("accounting", "view", failClosed: true)
+               || caller.HasPermission("accounting.ftth_operators", "view", failClosed: true);
+    }
+
+    /// <summary>
+    /// هل المستدعي (JWT) صاحب تقرير التسديد؟ بالمعرّف إن وُجد، وإلا بالاسم (FTTH/المستخدم/الاسم الكامل)
+    /// للتقارير القديمة المسجّلة بالاسم فقط.
+    /// </summary>
+    private static bool IsSettlementOwner(InternalCaller caller, string? operatorId, string? operatorName)
+    {
+        if (!caller.IsJwt || !caller.UserId.HasValue) return false;
+        if (Guid.TryParse(operatorId, out var opId)) return opId == caller.UserId.Value;
+        return caller.IsNamed(operatorName);
+    }
+
+    /// <summary>
+    /// اعتمادات حسّاسة لموظف (اسم/كلمة مرور FTTH): لصاحب الحساب أو SuperAdmin أو المفتاح القديم فقط.
+    /// </summary>
+    private static bool CanViewCredentialsOf(InternalCaller caller, Guid employeeId) =>
+        !caller.IsTenantBound || caller.UserId == employeeId;
+
+    /// <summary>
+    /// كود أمان البصمة: لصاحبه، SuperAdmin، المفتاح القديم، أو من يملك منحاً صريحاً لـ hr.security_code
+    /// (الموارد البشرية تُديره).
+    /// </summary>
+    private static bool CanViewSecurityCodeOf(InternalCaller caller, Guid employeeId) =>
+        CanViewCredentialsOf(caller, employeeId)
+        || caller.HasPermission("hr.security_code", "view", failClosed: true);
 
     // ═══════════════════════════════════════════════════════
     // Backfill: قيود محاسبية لأجور المهام التاريخية (بلا قيد) — المرحلة 2ب
@@ -844,12 +891,15 @@ public class InternalDataController : ControllerBase
     public async Task<IActionResult> GetCompanyEmployees(Guid id)
     {
         // JWT: موظفو الشركة نفسها فقط (يُستخدم لقوائم الفنيين/الموظفين داخل الشركة)
-        var (_, authError) = await AuthorizeInternalAsync(companyId: id);
+        var (caller, authError) = await AuthorizeInternalAsync(companyId: id);
         if (authError != null) return authError;
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
         if (company == null || company.IsDeleted)
             return NotFound(new { success = false, message = "الشركة غير موجودة" });
+
+        // الراتب وJSON الصلاحيات لا يظهران في قائمة الزملاء إلا لمن يدير الموظفين (الشكل ثابت: القيمة null)
+        var showHrFields = caller.CanManageEmployees("view");
 
         var employees = await _unitOfWork.Users.AsQueryable()
             .Where(u => u.CompanyId == id && !u.IsDeleted)
@@ -864,10 +914,10 @@ public class InternalDataController : ControllerBase
                 u.Department,
                 u.EmployeeCode,
                 u.Center,
-                u.Salary,
+                Salary = showHrFields ? u.Salary : null,
                 u.IsActive,
-                u.FirstSystemPermissions,
-                u.SecondSystemPermissions,
+                FirstSystemPermissions = showHrFields ? u.FirstSystemPermissions : null,
+                SecondSystemPermissions = showHrFields ? u.SecondSystemPermissions : null,
                 u.CreatedAt,
                 u.FtthUsername,
             })
@@ -894,6 +944,14 @@ public class InternalDataController : ControllerBase
 
         if (employee == null)
             return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        // JWT: قراءة موظف آخر تخضع لسقف الدور (لا يقرأ مديرٌ أدنى سجلّ مدير أعلى)
+        if (caller.IsTenantBound && caller.UserId != employeeId && !caller.CanActOnRole(employee.Role))
+            return ForbiddenResult(MsgNoPermission);
+
+        // C2: كلمة المرور النصية لا تُعاد إطلاقاً؛ كلمة مرور FTTH لصاحب الحساب فقط؛ كود البصمة لصاحبه أو للموارد البشرية
+        var canViewCredentials = CanViewCredentialsOf(caller, employeeId);
+        var canViewSecurityCode = CanViewSecurityCodeOf(caller, employeeId);
 
         return Ok(new
         {
@@ -927,13 +985,13 @@ public class InternalDataController : ControllerBase
                 employee.WorkScheduleId,
                 CustomWorkStartTime = employee.CustomWorkStartTime?.ToString("HH:mm"),
                 CustomWorkEndTime = employee.CustomWorkEndTime?.ToString("HH:mm"),
-                // Attendance security code
-                employee.AttendanceSecurityCode,
-                // FTTH Integration
+                // Attendance security code (مخفي ⇒ null + SecurityCodeHidden=true)
+                AttendanceSecurityCode = canViewSecurityCode ? employee.AttendanceSecurityCode : null,
+                SecurityCodeHidden = !canViewSecurityCode,
+                // FTTH Integration — اسم المستخدم معرّف غير سرّي؛ كلمة المرور لصاحب الحساب فقط
                 employee.FtthUsername,
-                employee.FtthPasswordEncrypted,
-                // كلمة المرور (للإدارة الداخلية فقط)
-                employee.PlainPassword,
+                FtthPasswordEncrypted = canViewCredentials ? employee.FtthPasswordEncrypted : null,
+                CredentialsHidden = !canViewCredentials,
             }
         });
     }
@@ -958,7 +1016,7 @@ public class InternalDataController : ControllerBase
 
         // JWT: لا تعديل لمستخدم بدور أعلى من دور المستدعي، ولا منح دور أعلى منه
         if (!caller.CanActOnRole(employee.Role)
-            || (!string.IsNullOrEmpty(request.Role) && !caller.CanActOnRole(ParseUserRole(request.Role))))
+            || (!string.IsNullOrEmpty(request.Role) && !caller.CanAssignRole(ParseUserRole(request.Role))))
             return ForbiddenResult(MsgNoPermission);
 
         // تحديث البيانات
@@ -1037,7 +1095,7 @@ public class InternalDataController : ControllerBase
         if (!string.IsNullOrEmpty(request.NewPassword) && request.NewPassword.Length >= 4)
         {
             employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-            employee.PlainPassword = request.NewPassword;
+            employee.PlainPassword = null; // C2: لا تخزين لكلمة المرور النصية (ويُمسح أي نص قديم)
         }
         if (request.FtthPassword != null)
             employee.FtthPasswordEncrypted = request.FtthPassword;
@@ -1090,7 +1148,7 @@ public class InternalDataController : ControllerBase
             return BadRequest(new { success = false, message = "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
 
         employee.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-        employee.PlainPassword = request.NewPassword;
+        employee.PlainPassword = null; // C2: لا تخزين لكلمة المرور النصية (ويُمسح أي نص قديم)
         employee.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Users.Update(employee);
@@ -1341,7 +1399,7 @@ public class InternalDataController : ControllerBase
     {
         var (caller, authError) = await AuthorizeInternalAsync(companyId: id);
         if (authError != null) return authError;
-        if (!caller.CanManageEmployees("add") || !caller.CanActOnRole(ParseUserRole(request.Role ?? "Employee")))
+        if (!caller.CanManageEmployees("add") || !caller.CanAssignRole(ParseUserRole(request.Role ?? "Employee")))
             return ForbiddenResult(MsgNoPermission);
 
         var company = await _unitOfWork.Companies.GetByIdAsync(id);
@@ -1372,6 +1430,30 @@ public class InternalDataController : ControllerBase
         // توليد كود أمان بصمة فريد تلقائياً
         var securityCode = await GenerateUniqueSecurityCodeAsync(id);
 
+        // C3: لا كلمة مرور افتراضية ثابتة — إن لم تُرسل تُولَّد عشوائياً وتُعاد مرة واحدة للمُنشئ
+        string? generatedPassword = null;
+        var password = request.Password;
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            password = GenerateRandomPassword();
+            generatedPassword = password;
+        }
+        else if (password.Length < 6)
+        {
+            return BadRequest(new { success = false, message = "كلمة المرور يجب أن تكون 6 أحرف على الأقل" });
+        }
+
+        // C3: صلاحيات V2 صريحة — "{}" (رفض الكل) ما لم تُرسل صلاحيات/قالب في الطلب (مفلترة بميزات الشركة).
+        // سابقاً كانت فارغة (null) ⇒ fail-open على الخادم.
+        var firstV2 = request.FirstSystemPermissionsV2 != null
+            ? JsonSerializer.Serialize(FilterPermissionsV2ByCompany(request.FirstSystemPermissionsV2,
+                DeserializeV2Dict(company.EnabledFirstSystemFeaturesV2), DeserializeBoolDict(company.EnabledFirstSystemFeatures)))
+            : "{}";
+        var secondV2 = request.SecondSystemPermissionsV2 != null
+            ? JsonSerializer.Serialize(FilterPermissionsV2ByCompany(request.SecondSystemPermissionsV2,
+                DeserializeV2Dict(company.EnabledSecondSystemFeaturesV2), DeserializeBoolDict(company.EnabledSecondSystemFeatures)))
+            : "{}";
+
         var employee = new Sadara.Domain.Entities.User
         {
             Id = Guid.NewGuid(),
@@ -1379,7 +1461,9 @@ public class InternalDataController : ControllerBase
             Username = request.FullName,
             PhoneNumber = request.PhoneNumber,
             Email = request.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password ?? "123456"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            FirstSystemPermissionsV2 = firstV2,
+            SecondSystemPermissionsV2 = secondV2,
             Role = ParseUserRole(request.Role ?? "Employee"),
             CompanyId = id,
             Department = request.Department,
@@ -1412,7 +1496,9 @@ public class InternalDataController : ControllerBase
                 employee.Salary,
                 employee.AttendanceSecurityCode,
                 employee.IsActive,
-                employee.CreatedAt
+                employee.CreatedAt,
+                // تُعاد مرة واحدة فقط عند التوليد التلقائي (لا تُخزَّن نصاً ولا تُسجَّل)
+                GeneratedPassword = generatedPassword,
             }
         });
     }
@@ -1440,6 +1526,13 @@ public class InternalDataController : ControllerBase
             "viewer" => Sadara.Domain.Enums.UserRole.Viewer,
             _ => Sadara.Domain.Enums.UserRole.Employee
         };
+    }
+
+    /// <summary>كلمة مرور عشوائية (10 أحرف، بلا أحرف ملتبسة) بمولّد تشفيري.</summary>
+    private static string GenerateRandomPassword()
+    {
+        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+        return RandomNumberGenerator.GetString(alphabet, 10);
     }
 
     private string GenerateEmployeeCode()
@@ -2143,6 +2236,13 @@ public class InternalDataController : ControllerBase
         var companyFilter = EffectiveCompanyFilter(caller, companyId);
         if (companyFilter.HasValue)
             query = query.Where(l => l.CompanyId == companyFilter.Value);
+
+        // S9: مستخدم شركة بلا صلاحية محاسبة يرى سجلاته هو فقط (UserId = صاحب التوكن)
+        if (caller.IsTenantBound && !HasAccountingAccess(caller))
+        {
+            var ownId = caller.UserId;
+            query = query.Where(l => l.UserId == ownId);
+        }
 
         // بحث شامل في كل قاعدة البيانات (بدون فلتر تاريخ)
         if (!string.IsNullOrEmpty(search))
@@ -3043,6 +3143,9 @@ public class InternalDataController : ControllerBase
     {
         var (caller, authError) = await AuthorizeInternalAsync();
         if (authError != null) return authError;
+        // S9: إنشاء سجل تفعيل (قيد + ذمة محتملة) لمن يملك إضافة الاشتراكات أو المحاسبة أو إدارة الشركة فقط
+        if (caller.IsJwt && !CanCreateSubscriptionLog(caller))
+            return ForbiddenResult(MsgNoPermission);
 
         try
         {
@@ -3889,6 +3992,10 @@ public class InternalDataController : ControllerBase
                     return BadRequest(new { success = false, message = "المشغل المحدد لا ينتمي لهذه الشركة" });
                 if (Guid.TryParse(deliveredToId, out var dtUserId) && !await TechnicianBelongsToCompanyAsync(dtUserId, companyId))
                     return BadRequest(new { success = false, message = "المستلم المحدد لا ينتمي لهذه الشركة" });
+
+                // S10: بلا صلاحية محاسبة لا يُرسل المشغل إلا تقريره هو (المعرّف أو الاسم يطابق صاحب التوكن)
+                if (!HasAccountingAccess(caller) && !IsSettlementOwner(caller, operatorId, operatorName))
+                    return ForbiddenResult("لا يمكنك إرسال تقرير تسديد باسم مشغل آخر");
             }
 
             // Parse items
@@ -3911,6 +4018,11 @@ public class InternalDataController : ControllerBase
             if (caller.IsTenantBound)
                 existingQuery = existingQuery.Where(r => r.CompanyId == companyId);
             var existing = await existingQuery.FirstOrDefaultAsync();
+
+            // S10: تحديث (upsert) تقرير قائم يخص مشغلاً آخر ممنوع بلا صلاحية محاسبة
+            if (existing != null && caller.IsJwt && !HasAccountingAccess(caller)
+                && !IsSettlementOwner(caller, existing.OperatorId, existing.OperatorName))
+                return ForbiddenResult("لا يمكنك تعديل تقرير تسديد مشغل آخر");
 
             bool isUpdate = existing != null;
             DailySettlementReport report;
@@ -4193,8 +4305,14 @@ public class InternalDataController : ControllerBase
         var report = await _unitOfWork.DailySettlementReports.GetByIdAsync(id);
         if (report == null)
             return NotFound(new { success = false, message = "التقرير غير موجود" });
-        if (caller.IsJwt && !caller.CanAccessCompany(report.CompanyId))
-            return ForbiddenResult(MsgOtherCompany);
+        if (caller.IsJwt)
+        {
+            // JWT: نفس الشركة + (صاحب التقرير نفسه أو صلاحية المحاسبة) — مطابق للحذف
+            if (!caller.CanAccessCompany(report.CompanyId))
+                return ForbiddenResult(MsgOtherCompany);
+            if (!IsSettlementOwner(caller, report.OperatorId, report.OperatorName) && !HasAccountingAccess(caller))
+                return ForbiddenResult(MsgNoPermission);
+        }
 
         if (request.TryGetProperty("notes", out var nProp))
             report.Notes = nProp.GetString();
@@ -4237,9 +4355,7 @@ public class InternalDataController : ControllerBase
             // JWT: نفس الشركة + (صاحب التقرير نفسه أو صلاحية المحاسبة)
             if (!caller.CanAccessCompany(report.CompanyId))
                 return ForbiddenResult(MsgOtherCompany);
-            var isOwner = caller.UserId.HasValue
-                && string.Equals(report.OperatorId, caller.UserId.Value.ToString(), StringComparison.OrdinalIgnoreCase);
-            if (!isOwner && !HasAccountingAccess(caller))
+            if (!IsSettlementOwner(caller, report.OperatorId, report.OperatorName) && !HasAccountingAccess(caller))
                 return ForbiddenResult(MsgNoPermission);
         }
 
@@ -4409,6 +4525,9 @@ public class InternalCreateEmployeeRequest
     public string? EmployeeCode { get; set; }
     public string? Center { get; set; }
     public decimal? Salary { get; set; }
+    /// <summary>صلاحيات/قالب V2 اختيارية عند الإنشاء (null ⇒ "{}" رفض الكل).</summary>
+    public Dictionary<string, Dictionary<string, bool>>? FirstSystemPermissionsV2 { get; set; }
+    public Dictionary<string, Dictionary<string, bool>>? SecondSystemPermissionsV2 { get; set; }
 }
 
 /// <summary>

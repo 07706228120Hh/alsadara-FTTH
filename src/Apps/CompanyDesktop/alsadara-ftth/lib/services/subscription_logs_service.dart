@@ -20,6 +20,19 @@ class SubscriptionLogsService {
   static String get baseUrl => '${ApiConfig.vpsBaseUrl}/api/internal';
 
   // المصادقة بتوكن JWT للمستخدم (الخادم يأخذ الشركة/المستخدم من التوكن) — لا مفتاح مضمّن.
+  // كل الطلبات عبر VpsAuthHeaders.send: عند 401 يُحدَّث التوكن مرة ويُعاد الطلب.
+
+  /// آخر رسالة خطأ موجّهة للمستخدم (مثل انتهاء الجلسة أو رفض الصلاحية) — للعرض بدل فشل صامت.
+  String? lastErrorMessage;
+
+  /// يستخرج رسالة الخادم العربية من جسم الاستجابة إن وُجدت.
+  static String? _serverMessage(http.Response r) {
+    try {
+      final b = jsonDecode(r.body);
+      if (b is Map && b['message'] is String) return b['message'] as String;
+    } catch (_) {}
+    return null;
+  }
 
   /// حفظ سجل اشتراك جديد — يرجع ID السجل عند النجاح، أو null عند الفشل
   Future<int?> saveSubscriptionLog({
@@ -143,11 +156,12 @@ class SubscriptionLogsService {
       // إزالة القيم null
       body.removeWhere((key, value) => value == null);
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/subscriptionlogs'),
-        headers: await VpsAuthHeaders.build(),
-        body: jsonEncode(body),
-      );
+      lastErrorMessage = null;
+      final response = await VpsAuthHeaders.send((h) => http.post(
+            Uri.parse('$baseUrl/subscriptionlogs'),
+            headers: h,
+            body: jsonEncode(body),
+          ));
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         debugPrint('✅ SubscriptionLogsService: تم حفظ السجل بنجاح');
@@ -169,8 +183,13 @@ class SubscriptionLogsService {
       } else {
         debugPrint(
             '❌ SubscriptionLogsService: فشل الحفظ - ${response.statusCode}: ${response.body}');
+        lastErrorMessage = _serverMessage(response);
         return null;
       }
+    } on VpsSessionExpiredException {
+      lastErrorMessage = VpsSessionExpiredException.userMessage;
+      debugPrint('❌ SubscriptionLogsService: انتهت الجلسة أثناء الحفظ');
+      return null;
     } catch (e) {
       debugPrint('❌ SubscriptionLogsService: خطأ في الحفظ - $e');
       return null;
@@ -192,11 +211,11 @@ class SubscriptionLogsService {
       if (notes != null) body['subscriptionNotes'] = notes;
       if (printCount != null) body['printCount'] = printCount;
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/subscriptionlogs/$logId'),
-        headers: await VpsAuthHeaders.build(),
-        body: jsonEncode(body),
-      );
+      final response = await VpsAuthHeaders.send((h) => http.put(
+            Uri.parse('$baseUrl/subscriptionlogs/$logId'),
+            headers: h,
+            body: jsonEncode(body),
+          ));
 
       if (response.statusCode == 200) {
         debugPrint('✅ SubscriptionLogsService: تم تحديث السجل $logId بنجاح');
@@ -219,11 +238,11 @@ class SubscriptionLogsService {
   }) async {
     if (fields.isEmpty) return true;
     try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/subscriptionlogs/$logId'),
-        headers: await VpsAuthHeaders.build(),
-        body: jsonEncode(fields),
-      );
+      final response = await VpsAuthHeaders.send((h) => http.put(
+            Uri.parse('$baseUrl/subscriptionlogs/$logId'),
+            headers: h,
+            body: jsonEncode(fields),
+          ));
 
       if (response.statusCode == 200) {
         debugPrint('✅ SubscriptionLogsService: تم تحديث حقول السجل $logId بنجاح');
@@ -252,12 +271,10 @@ class SubscriptionLogsService {
         'customerId': customerId,
       });
 
-      final response = await http
-          .get(
-            uri,
-            headers: await VpsAuthHeaders.build(json: false),
-          )
-          .timeout(const Duration(seconds: 10));
+      final response = await VpsAuthHeaders.send(
+        (h) => http.get(uri, headers: h).timeout(const Duration(seconds: 10)),
+        json: false,
+      );
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body) as Map<String, dynamic>;
@@ -273,9 +290,12 @@ class SubscriptionLogsService {
   /// البحث عن سجل بواسطة SessionId — يرجع الـ ID أو null
   Future<int?> findLogBySessionId(String sessionId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/subscriptionlogs/by-session/$sessionId'),
-        headers: await VpsAuthHeaders.build(json: false),
+      final response = await VpsAuthHeaders.send(
+        (h) => http.get(
+          Uri.parse('$baseUrl/subscriptionlogs/by-session/$sessionId'),
+          headers: h,
+        ),
+        json: false,
       );
 
       if (response.statusCode == 200) {

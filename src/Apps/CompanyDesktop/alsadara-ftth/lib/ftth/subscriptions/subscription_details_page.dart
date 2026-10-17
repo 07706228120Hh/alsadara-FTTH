@@ -5286,7 +5286,9 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
       }
     } catch (e) {
       debugPrint('❌ خطأ في حفظ البيانات في VPS');
-      throw Exception('فشل في حفظ البيانات في الخادم');
+      // رسالة الخادم/انتهاء الجلسة بالعربية بدل فشل عام صامت
+      throw Exception(SubscriptionLogsService.instance.lastErrorMessage ??
+          'فشل في حفظ البيانات في الخادم');
     }
   }
 
