@@ -1324,6 +1324,7 @@ public class AccountingController : ControllerBase
     /// جلب رواتب شهر معين
     /// </summary>
     [HttpGet("salaries")]
+    [RequirePermission("accounting.salaries", "view")]
     public async Task<IActionResult> GetSalaries(
         [FromQuery] Guid? companyId = null,
         [FromQuery] int? month = null,
@@ -1825,6 +1826,7 @@ public class AccountingController : ControllerBase
     /// جلب كادر الرواتب (جميع موظفي الشركة مع حالة الكادر)
     /// </summary>
     [HttpGet("salary-roster")]
+    [RequirePermission("accounting.salaries", "view")]
     public async Task<IActionResult> GetSalaryRoster([FromQuery] Guid companyId)
     {
         if (ScopeReadCompany(ref companyId) is { } denied) return denied;
@@ -2316,6 +2318,7 @@ public class AccountingController : ControllerBase
     /// جلب تفاصيل كشف راتب موظف واحد
     /// </summary>
     [HttpGet("salaries/{id}/details")]
+    [RequirePermission("accounting.salaries", "view")]
     public async Task<IActionResult> GetSalaryDetails(long id)
     {
         try
@@ -5415,10 +5418,13 @@ public class AccountingController : ControllerBase
         try
         {
             var plan = await _unitOfWork.InternetPlans.GetByIdAsync(id);
-            // Company-owned plans are restricted to their company; shared plans (CompanyId == null) keep the
-            // legacy behaviour (see report: shared-plan profit is still editable by any accounting user).
+            // Company-owned plans are restricted to their company.
             if (plan == null || (plan.CompanyId != null && !IsOwnCompany(plan.CompanyId)))
                 return NotFound(new { success = false, message = "الباقة غير موجودة" });
+
+            // Shared plans (CompanyId == null) affect every tenant ⇒ only SuperAdmin may change their profit.
+            if (plan.CompanyId == null && !_tenant.IsSuperAdmin)
+                return StatusCode(403, new { success = false, message = "ربح الباقة المشتركة يعدّله مدير النظام فقط" });
 
             plan.ProfitAmount = dto.ProfitAmount;
             plan.UpdatedAt = DateTime.UtcNow;
