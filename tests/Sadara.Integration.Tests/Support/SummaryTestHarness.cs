@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Sadara.API.Controllers;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
@@ -120,6 +121,7 @@ public static class SummaryTestHarness
     {
         using var ctx = fx.CreateContext(PostgresFixture.SystemTenant);
         var n = 0;
+        var createdAtById = new List<(Guid Id, DateTime CreatedAt)>();
         foreach (var s in specs)
         {
             string? details = s.RawDetails;
@@ -136,9 +138,12 @@ public static class SummaryTestHarness
             var department = NormalizeDetailValue(s.Details, "department");
             var technicianName = NormalizeDetailValue(s.Details, "technician");
 
+            var id = Guid.NewGuid();
+            createdAtById.Add((id, DateTime.SpecifyKind(s.CreatedAt, DateTimeKind.Utc)));
+
             ctx.Set<ServiceRequest>().Add(new ServiceRequest
             {
-                Id = Guid.NewGuid(),
+                Id = id,
                 RequestNumber = $"SR-TEST-{Guid.NewGuid():N}".Substring(0, 20) + (n++),
                 ServiceId = serviceId,
                 OperationTypeId = operationTypeId,
@@ -155,6 +160,16 @@ public static class SummaryTestHarness
             });
         }
         ctx.SaveChanges();
+
+        // SadaraDbContext.ApplyTenantAndAudit overwrites CreatedAt with DateTime.UtcNow for every Added
+        // entity (by design, since the initial commit), so the value assigned above never reaches the
+        // database. Date-filter tests depend on exact CreatedAt values, so restore them after insert
+        // with a parameterized UPDATE executed through EF (same Npgsql path as production).
+        foreach (var (id, createdAt) in createdAtById)
+        {
+            ctx.Database.ExecuteSqlInterpolated(
+                $"UPDATE \"ServiceRequests\" SET \"CreatedAt\" = {createdAt} WHERE \"Id\" = {id}");
+        }
     }
 
     /// <summary>

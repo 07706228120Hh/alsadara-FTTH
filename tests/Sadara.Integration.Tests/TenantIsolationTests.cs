@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Infrastructure.Data;
@@ -23,24 +25,53 @@ public class TenantIsolationTests
     private static readonly Guid CompanyB = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
     /// <summary>مزوّد مستأجر قابل للضبط للاختبار.</summary>
+    /// <remarks>
+    /// The central read filter (SadaraDbContext.OnModelCreating) is only built when
+    /// <c>ICurrentTenant.EnforceIsolation</c> is true (flag <c>Tenancy:EnforceIsolation</c>, OFF in production).
+    /// The isolation scenarios in this class describe the flag-ON contract, so the default here is <c>true</c>.
+    /// Flag-OFF behaviour (current production) is covered explicitly by the <c>FlagOff_*</c> tests below.
+    /// </remarks>
     private sealed class TestTenant : ICurrentTenant
     {
         public Guid? CompanyId { get; init; }
         public bool IsSuperAdmin { get; init; }
         public bool BypassTenantFilter { get; init; }
         public Guid? DefaultCompanyId { get; init; }
-        public bool EnforceIsolation { get; init; }
+        public bool EnforceIsolation { get; init; } = true;
     }
 
     // سياق نظام يتجاوز الفلتر — يُستخدم للزرع والتحقّق المحايد.
     private static ICurrentTenant SystemTenant =>
         new TestTenant { BypassTenantFilter = true, IsSuperAdmin = true };
 
-    private static SadaraDbContext NewContext(string dbName, ICurrentTenant tenant) =>
-        new(new DbContextOptionsBuilder<SadaraDbContext>()
-                .UseInMemoryDatabase(dbName)
-                .Options,
-            tenant);
+    // EF Core caches the compiled model per DbContext type (per internal service provider), and
+    // SadaraDbContext decides in OnModelCreating whether to add the tenant filter based on the
+    // *first* tenant that builds the model. Other InMemory test classes build the model with
+    // EnforceIsolation=false, so without separation the result would depend on test order.
+    // We therefore use a distinct model-cache key per flag value, and a shared InMemoryDatabaseRoot
+    // so flag-ON and flag-OFF contexts of the same test still see the same store.
+    private static readonly InMemoryDatabaseRoot SharedRoot = new();
+
+    private sealed class IsolationOnModelCacheKeyFactory : IModelCacheKeyFactory
+    {
+        public object Create(DbContext context, bool designTime) => (context.GetType(), designTime, "tenant-isolation:on");
+    }
+
+    private sealed class IsolationOffModelCacheKeyFactory : IModelCacheKeyFactory
+    {
+        public object Create(DbContext context, bool designTime) => (context.GetType(), designTime, "tenant-isolation:off");
+    }
+
+    private static SadaraDbContext NewContext(string dbName, ICurrentTenant tenant)
+    {
+        var builder = new DbContextOptionsBuilder<SadaraDbContext>()
+            .UseInMemoryDatabase(dbName, SharedRoot);
+        if (tenant.EnforceIsolation)
+            builder.ReplaceService<IModelCacheKeyFactory, IsolationOnModelCacheKeyFactory>();
+        else
+            builder.ReplaceService<IModelCacheKeyFactory, IsolationOffModelCacheKeyFactory>();
+        return new SadaraDbContext(builder.Options, tenant);
+    }
 
     // يزرع سجلاً لكل شركة (أ، ب) عبر سياق النظام (يحترم CompanyId الصريح).
     private static void SeedTwoCompanies(string dbName)
@@ -386,5 +417,82 @@ public class TenantIsolationTests
         using var check = NewContext(dbName, SystemTenant);
         var line = Assert.Single(check.Set<JournalEntryLine>());
         Assert.Equal(CompanyA, line.CompanyId);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // Flag OFF (Tenancy:EnforceIsolation=false — current production state).
+    // Characterisation tests: they pin today's contract so the ongoing tenant-isolation
+    // work notices any change. With the flag OFF:
+    //   - there is NO central read filter → isolation must be enforced in each controller;
+    //   - CompanyId is still stamped on insert when empty (guard for the v2.3.4 regression);
+    //   - an explicit (even foreign) CompanyId is NOT overwritten → injection must be blocked
+    //     in the controller by taking CompanyId from the token.
+    // ══════════════════════════════════════════════════════════════════════
+
+    private static TestTenant FlagOff(Guid? companyId) =>
+        new() { CompanyId = companyId, EnforceIsolation = false };
+
+    [Fact]
+    public void FlagOff_No_Central_Read_Filter_CompanyA_Context_Sees_All_Rows()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        SeedTwoCompanies(dbName);
+
+        using var ctxA = NewContext(dbName, FlagOff(CompanyA));
+        var accounts = ctxA.Set<Account>().ToList();
+
+        // No global filter while the flag is OFF: read isolation is the controller's job.
+        Assert.Contains(accounts, a => a.CompanyId == CompanyA);
+        Assert.Contains(accounts, a => a.CompanyId == CompanyB);
+    }
+
+    [Fact]
+    public void FlagOff_Insert_With_Empty_CompanyId_Is_Still_Stamped_With_Current_Company()
+    {
+        // Regression guard (companyid-stamping-regression): stamping must stay independent of the flag.
+        var dbName = Guid.NewGuid().ToString();
+        using (var ctxA = NewContext(dbName, FlagOff(CompanyA)))
+        {
+            ctxA.Set<Account>().Add(new Account { Id = Guid.NewGuid() });
+            ctxA.Set<JournalEntryLine>().Add(new JournalEntryLine { JournalEntryId = Guid.NewGuid(), AccountId = Guid.NewGuid() });
+            ctxA.Set<Notification>().Add(new Notification { Id = 901 });
+            ctxA.SaveChanges();
+        }
+
+        using var check = NewContext(dbName, SystemTenant);
+        Assert.Equal(CompanyA, Assert.Single(check.Set<Account>()).CompanyId);
+        Assert.Equal(CompanyA, Assert.Single(check.Set<JournalEntryLine>()).CompanyId);
+        Assert.Equal(CompanyA, Assert.Single(check.Set<Notification>()).CompanyId);
+    }
+
+    [Fact]
+    public void FlagOff_Explicit_Foreign_CompanyId_Is_Not_Overwritten()
+    {
+        // Documents the gap the controllers must close while the flag is OFF:
+        // the DbContext does not force the caller's company over an explicit value.
+        var dbName = Guid.NewGuid().ToString();
+        using (var ctxA = NewContext(dbName, FlagOff(CompanyA)))
+        {
+            ctxA.Set<Account>().Add(new Account { Id = Guid.NewGuid(), CompanyId = CompanyB });
+            ctxA.SaveChanges();
+        }
+
+        using var check = NewContext(dbName, SystemTenant);
+        Assert.Equal(CompanyB, Assert.Single(check.Set<Account>()).CompanyId);
+    }
+
+    [Fact]
+    public void FlagOff_Bypass_Insert_With_Empty_CompanyId_Uses_DefaultCompany()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        using (var apiKeyCtx = NewContext(dbName,
+            new TestTenant { CompanyId = null, BypassTenantFilter = true, DefaultCompanyId = CompanyA, EnforceIsolation = false }))
+        {
+            apiKeyCtx.Set<Account>().Add(new Account { Id = Guid.NewGuid() });
+            apiKeyCtx.SaveChanges();
+        }
+
+        using var check = NewContext(dbName, SystemTenant);
+        Assert.Equal(CompanyA, Assert.Single(check.Set<Account>()).CompanyId);
     }
 }
