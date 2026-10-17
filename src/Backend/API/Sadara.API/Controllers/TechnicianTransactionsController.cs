@@ -480,7 +480,8 @@ public class TechnicianTransactionsController(
                 var techUser = Guid.TryParse(acc.Description, out var accUserId) && userById.TryGetValue(accUserId, out var byId)
                     ? byId
                     : (acc.Name != null && userByUniqueName.TryGetValue(acc.Name, out var byName) ? byName : null);
-                if (techUser == null) continue;
+                // Remediation S6: an account that cannot be linked (no Description, duplicate name, user gone)
+                // is no longer dropped silently — it is listed as an unlinked row so the totals stay complete.
 
                 var jlQuery = _unitOfWork.JournalEntryLines.AsQueryable()
                     .Where(l => l.AccountId == acc.Id
@@ -506,24 +507,32 @@ public class TechnicianTransactionsController(
                     : null;
                 var netBalance = credit - debit; // سالب = مدين
 
+                // Unlinked accounts with no posted lines in the period add nothing to the totals ⇒ skipped.
+                if (techUser == null && txCount == 0) continue;
+
                 technicians.Add(new
                 {
-                    id = techUser.Id,
-                    name = techUser.FullName,
-                    phone = techUser.PhoneNumber,
+                    id = techUser != null ? techUser.Id : (Guid?)null,
+                    name = techUser != null ? techUser.FullName : acc.Name,
+                    phone = techUser?.PhoneNumber,
                     totalCharges = debit,
                     totalPayments = credit,
                     netBalance,
                     transactionCount = txCount,
-                    lastTransactionDate = lastDate
+                    lastTransactionDate = lastDate,
+                    accountId = acc.Id,
+                    linked = techUser != null,
+                    linkStatus = techUser != null ? null : "غير مرتبط",
                 });
             }
 
             technicians = technicians.OrderBy(t => ((dynamic)t).netBalance).ToList();
 
             // مزامنة حقول User المخزّنة مع القيم المحسوبة (لمنع التضارب مستقبلاً)
+            // (unchanged Phase 0 behaviour — removal is Phase 1; unlinked rows have no user to sync)
             foreach (dynamic t in technicians)
             {
+                if (!(bool)t.linked) continue;
                 var dbUser = await _unitOfWork.Users.GetByIdAsync((Guid)t.id);
                 if (dbUser != null && (dbUser.TechTotalCharges != (decimal)t.totalCharges
                     || dbUser.TechTotalPayments != (decimal)t.totalPayments))
@@ -545,7 +554,8 @@ public class TechnicianTransactionsController(
                 technicians,
                 summary = new
                 {
-                    technicianCount = technicians.Count,
+                    technicianCount = technicians.Count(t => (bool)((dynamic)t).linked),
+                    unlinkedAccountCount = technicians.Count(t => !(bool)((dynamic)t).linked),
                     totalCharges = totalAllCharges,
                     totalPayments = totalAllPayments,
                     totalNetBalance = totalNetBalance,

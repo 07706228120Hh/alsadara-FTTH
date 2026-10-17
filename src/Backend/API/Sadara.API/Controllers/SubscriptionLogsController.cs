@@ -17,6 +17,10 @@ namespace Sadara.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+// Phase 0-D remediation (C1): company employees only (agent/citizen tokens rejected) + DB employee check.
+// The class previously had no [Authorize] at all; actions carried bare [Authorize] or Admin/SuperAdmin.
+[Authorize(Policy = "CompanyEmployee")]
+[RequireEmployeeUser]
 public class SubscriptionLogsController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -25,13 +29,16 @@ public class SubscriptionLogsController : ControllerBase
 
     /// <summary>
     /// تحويل اسم المستخدم (FtthUsername/Username) إلى الاسم العربي الكامل
+    /// Phase 0-D remediation (S12): searched inside the log company only (was: all companies).
+    /// Unknown company ⇒ the value is kept as sent.
     /// </summary>
-    private async Task<string> _resolveFullName(string? activatedBy)
+    private async Task<string> _resolveFullName(string? activatedBy, Guid? companyId)
     {
         if (string.IsNullOrEmpty(activatedBy)) return activatedBy ?? "";
+        if (!companyId.HasValue) return activatedBy;
         var key = activatedBy.Trim().ToLower();
         var user = await _unitOfWork.Users.AsQueryable()
-            .FirstOrDefaultAsync(u => !u.IsDeleted &&
+            .FirstOrDefaultAsync(u => !u.IsDeleted && u.CompanyId == companyId &&
                 ((u.FtthUsername != null && u.FtthUsername.ToLower() == key) ||
                  (u.Username != null && u.Username.ToLower() == key)));
         return user?.FullName ?? activatedBy;
@@ -131,7 +138,6 @@ public class SubscriptionLogsController : ControllerBase
     /// جلب سجل واحد بالمعرف
     /// </summary>
     [HttpGet("{id:long}")]
-    [Authorize]
     public async Task<IActionResult> GetById(long id)
     {
         if (!HasCompanyScope())
@@ -148,7 +154,6 @@ public class SubscriptionLogsController : ControllerBase
     /// إضافة سجل جديد (يُستخدم من Flutter بعد كل عملية تجديد/شراء)
     /// </summary>
     [HttpPost]
-    [Authorize]
     public async Task<IActionResult> Create([FromBody] CreateSubscriptionLogRequest request)
     {
         // Phase 0-D: CompanyId/UserId come from the token (client values honoured only for SuperAdmin).
@@ -187,7 +192,7 @@ public class SubscriptionLogsController : ControllerBase
 
             // معلومات العملية
             OperationType = request.OperationType,
-            ActivatedBy = await _resolveFullName(request.ActivatedBy),
+            ActivatedBy = await _resolveFullName(request.ActivatedBy, logCompanyId),
             ActivationDate = request.ActivationDate ?? DateTime.UtcNow,
             ActivationTime = request.ActivationTime,
             SessionId = request.SessionId,
@@ -453,7 +458,6 @@ public class SubscriptionLogsController : ControllerBase
     /// تحديث سجل موجود (مثلاً لتحديث حالة الطباعة أو الواتساب)
     /// </summary>
     [HttpPut("{id:long}")]
-    [Authorize]
     public async Task<IActionResult> Update(long id, [FromBody] UpdateSubscriptionLogRequest request)
     {
         if (!HasCompanyScope())
@@ -836,7 +840,6 @@ public class SubscriptionLogsController : ControllerBase
     /// البحث عن سجلات باستخدام رقم الاشتراك
     /// </summary>
     [HttpGet("subscription/{subscriptionId}")]
-    [Authorize]
     public async Task<IActionResult> GetBySubscription(string subscriptionId)
     {
         if (!HasCompanyScope())
