@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
@@ -14,9 +16,14 @@ namespace Sadara.API.Controllers;
 /// تكامل FTTH مع نظام المحاسبة
 /// حفظ عمليات التفعيل مع قيود محاسبية تلقائية + كشف حساب المشغل + المطابقة
 /// </summary>
+/// <remarks>
+/// Phase 0-B (tenant isolation): the class is restricted to company-employee roles (rejects citizen/agent
+/// tokens signed with the same key), every action carries a permission gate, and the company is always
+/// taken from the token for non-SuperAdmin callers (any client-sent companyId is ignored).
+/// </remarks>
 [ApiController]
 [Route("api/ftth-accounting")]
-[Authorize]
+[Authorize(Policy = FtthAccessGate.EmployeePolicy)]
 [Tags("FTTH Accounting")]
 public class FtthAccountingController : ControllerBase
 {
@@ -25,12 +32,104 @@ public class FtthAccountingController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly ICurrentTenant _tenant;
 
+    /// <summary>Permission key of the FTTH operators accounting screen (First system).</summary>
+    private const string FtthPerm = "accounting.ftth_operators";
+
     public FtthAccountingController(IUnitOfWork unitOfWork, ILogger<FtthAccountingController> logger, IConfiguration configuration, ICurrentTenant tenant)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _configuration = configuration;
         _tenant = tenant;
+    }
+
+    // ==================== Tenant isolation helpers (Phase 0-B) ====================
+
+    /// <summary>
+    /// Read scope: SuperAdmin keeps the requested company (null = all companies, existing capability);
+    /// everyone else is pinned to the token company and the client value is ignored.
+    /// Returns false when a non-SuperAdmin token carries no company.
+    /// </summary>
+    private bool TryGetReadScope(Guid? requested, out Guid? scope)
+    {
+        if (_tenant.IsSuperAdmin)
+        {
+            scope = requested.HasValue && requested.Value != Guid.Empty ? requested : null;
+            return true;
+        }
+        scope = _tenant.CompanyId;
+        return scope.HasValue && scope.Value != Guid.Empty;
+    }
+
+    /// <summary>
+    /// Write company: SuperAdmin may target the requested company (falls back to its token company);
+    /// everyone else always writes into the token company (client value ignored).
+    /// </summary>
+    private bool TryGetWriteCompany(Guid? requested, out Guid companyId)
+    {
+        Guid? resolved = _tenant.IsSuperAdmin
+            ? (requested.HasValue && requested.Value != Guid.Empty ? requested : _tenant.CompanyId)
+            : _tenant.CompanyId;
+        companyId = resolved ?? Guid.Empty;
+        return companyId != Guid.Empty;
+    }
+
+    private ObjectResult NoCompany() =>
+        StatusCode(403, new { success = false, message = "لا توجد شركة مرتبطة بحسابك" });
+
+    private ObjectResult Forbidden(string message = "لا تملك صلاحية كافية") =>
+        StatusCode(403, new { success = false, message });
+
+    /// <summary>Does the user belong to the company? (scope null = SuperAdmin all-companies → true)</summary>
+    private async Task<bool> UserInScopeAsync(Guid userId, Guid? scope)
+    {
+        if (!scope.HasValue) return true;
+        return await _unitOfWork.Users.AsQueryable()
+            .AnyAsync(u => u.Id == userId && u.CompanyId == scope.Value);
+    }
+
+    private static bool LogInScope(SubscriptionLog log, Guid? scope) =>
+        !scope.HasValue || log.CompanyId == scope.Value;
+
+    private Guid? CurrentUserId => FtthAccessGate.GetUserId(User);
+
+    /// <summary>OR-permission gate (see <see cref="FtthAccessGate.HasAnyPermissionAsync"/>).</summary>
+    private Task<bool> HasAnyPermissionAsync(params (string Key, string Action, PermissionSystem System)[] options) =>
+        FtthAccessGate.HasAnyPermissionAsync(_unitOfWork, User, options);
+
+    /// <summary>
+    /// The only update the activation screen (subscription_details_page) sends without accounting rights:
+    /// marking the caller's own operation as unverified —
+    /// <c>{ IsReconciled: false, ReconciliationNotes: "...", PaymentStatus: "pending_verification" }</c>.
+    /// Any other field, value or a log owned by someone else is rejected.
+    /// </summary>
+    private bool IsOwnPendingVerificationMark(SubscriptionLog log, JsonElement body)
+    {
+        var callerId = CurrentUserId;
+        if (!callerId.HasValue || log.UserId != callerId.Value) return false;
+        if (body.ValueKind != JsonValueKind.Object) return false;
+
+        var any = false;
+        foreach (var prop in body.EnumerateObject())
+        {
+            any = true;
+            switch (prop.Name.ToLowerInvariant())
+            {
+                case "isreconciled":
+                    if (prop.Value.ValueKind != JsonValueKind.False) return false;
+                    break;
+                case "reconciliationnotes":
+                    if (prop.Value.ValueKind != JsonValueKind.String) return false;
+                    break;
+                case "paymentstatus":
+                    if (prop.Value.ValueKind != JsonValueKind.String
+                        || prop.Value.GetString() != "pending_verification") return false;
+                    break;
+                default:
+                    return false;
+            }
+        }
+        return any;
     }
 
     /// تحويل اسم المستخدم (FtthUsername/Username) إلى الاسم الكامل — للعمليات الفردية
@@ -65,10 +164,25 @@ public class FtthAccountingController : ControllerBase
     /// يُستدعى من Flutter بعد كل تفعيل/تجديد
     /// </summary>
     [HttpPost("log-with-accounting")]
+    [RequirePermission(FtthPerm, "add")]
     public async Task<IActionResult> LogWithAccounting([FromBody] FtthLogWithAccountingDto dto)
     {
         try
         {
+            // Isolation: company from token (client CompanyId ignored for non-SuperAdmin), and every
+            // referenced operator/technician/agent must belong to that company.
+            if (!TryGetWriteCompany(dto.CompanyId, out var companyId))
+                return NoCompany();
+            dto = dto with { CompanyId = companyId };
+
+            if (dto.UserId.HasValue && !await UserInScopeAsync(dto.UserId.Value, companyId))
+                return NotFound(new { success = false, message = "المشغل غير موجود" });
+            if (dto.LinkedTechnicianId.HasValue && !await UserInScopeAsync(dto.LinkedTechnicianId.Value, companyId))
+                return NotFound(new { success = false, message = "الفني غير موجود" });
+            if (dto.LinkedAgentId.HasValue && !await _unitOfWork.Agents.AsQueryable()
+                    .AnyAsync(a => a.Id == dto.LinkedAgentId.Value && a.CompanyId == companyId))
+                return NotFound(new { success = false, message = "الوكيل غير موجود" });
+
             // 1. إنشاء SubscriptionLog
             var log = new SubscriptionLog
             {
@@ -154,7 +268,7 @@ public class FtthAccountingController : ControllerBase
                 if (!dto.MaintenanceFee.HasValue || dto.MaintenanceFee == 0)
                 {
                     var zoneFee = await _unitOfWork.ZoneMaintenanceFees.AsQueryable()
-                        .Where(z => !z.IsDeleted && z.IsEnabled
+                        .Where(z => !z.IsDeleted && z.IsEnabled && z.CompanyId == dto.CompanyId
                             && (z.ZoneId == dto.ZoneId || z.ZoneName == dto.ZoneId))
                         .Select(z => z.MaintenanceAmount)
                         .FirstOrDefaultAsync();
@@ -516,8 +630,18 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
+            // Gate: own statement, or FTTH-operators accounting view. Customer names/phones are included,
+            // so other operators' statements require the accounting permission.
+            var isSelf = CurrentUserId == userId;
+            if (!isSelf && !await HasAnyPermissionAsync((FtthPerm, "view", PermissionSystem.First)))
+                return Forbidden();
+
+            if (!TryGetReadScope(companyId, out var scope))
+                return NoCompany();
+            companyId = scope;
+
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
-            if (user == null)
+            if (user == null || (scope.HasValue && user.CompanyId != scope.Value))
                 return NotFound(new { success = false, message = "المستخدم غير موجود" });
 
             var query = _unitOfWork.SubscriptionLogs.AsQueryable();
@@ -526,9 +650,9 @@ public class FtthAccountingController : ControllerBase
             else
                 query = query.Where(l => l.UserId == userId);
 
+            // Orphan rows (CompanyId == null) are no longer pulled into company reports (data cleanup item).
             if (companyId.HasValue)
-                // تضمين السجلات القديمة التي لم يُحدد لها CompanyId (للتوافق مع البيانات السابقة)
-                query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
+                query = query.Where(l => l.CompanyId == companyId);
             if (from.HasValue)
             {
                 var fromUtc = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
@@ -718,6 +842,7 @@ public class FtthAccountingController : ControllerBase
     /// ملخص كل المشغلين (للمدير)
     /// </summary>
     [HttpGet("operators-dashboard")]
+    [RequirePermission(FtthPerm, "view")]
     public async Task<IActionResult> GetOperatorsDashboard(
         [FromQuery] Guid? companyId = null,
         [FromQuery] DateTime? from = null,
@@ -725,11 +850,16 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
+            // Isolation: token company for non-SuperAdmin (client companyId ignored).
+            if (!TryGetReadScope(companyId, out var scope))
+                return NoCompany();
+            companyId = scope;
+
             var query = _unitOfWork.SubscriptionLogs.AsQueryable();
 
+            // Orphan rows (CompanyId == null) are no longer pulled into company reports (data cleanup item).
             if (companyId.HasValue)
-                // تضمين السجلات القديمة التي لم يُحدد لها CompanyId (للتوافق مع البيانات السابقة)
-                query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
+                query = query.Where(l => l.CompanyId == companyId);
             if (from.HasValue)
             {
                 var fromUtc = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
@@ -1328,13 +1458,24 @@ public class FtthAccountingController : ControllerBase
     /// تسليم نقد من المشغل لصندوق الشركة
     /// </summary>
     [HttpPost("deliver-cash")]
+    [RequirePermission(FtthPerm, "add")]
     public async Task<IActionResult> DeliverCash([FromBody] OperatorCashDeliveryDto dto)
     {
         try
         {
+            // Isolation: company from token; operator, deliverer and cash box must belong to it.
+            if (!TryGetWriteCompany(dto.CompanyId, out var companyId))
+                return NoCompany();
+            dto = dto with { CompanyId = companyId };
+
             var user = await _unitOfWork.Users.GetByIdAsync(dto.OperatorUserId);
-            if (user == null)
+            if (user == null || user.CompanyId != companyId)
                 return NotFound(new { success = false, message = "المشغل غير موجود" });
+            if (dto.DeliveredById.HasValue && !await UserInScopeAsync(dto.DeliveredById.Value, companyId))
+                return NotFound(new { success = false, message = "المستخدم المُسلِّم غير موجود" });
+            if (dto.CashBoxId.HasValue && !await _unitOfWork.CashBoxes.AsQueryable()
+                    .AnyAsync(c => c.Id == dto.CashBoxId.Value && c.CompanyId == companyId))
+                return NotFound(new { success = false, message = "الصندوق غير موجود" });
 
             // صندوق المشغل (فرعي تحت 1110)
             var operatorAccount = await _unitOfWork.Accounts.AsQueryable()
@@ -1412,10 +1553,18 @@ public class FtthAccountingController : ControllerBase
     /// جلب عملاء الآجل غير المسددين لمشغل معين
     /// </summary>
     [HttpGet("credit-customers/{operatorUserId}")]
+    [RequirePermission(FtthPerm, "view")]
     public async Task<IActionResult> GetCreditCustomers(Guid operatorUserId, [FromQuery] Guid? companyId = null)
     {
         try
         {
+            // Isolation: token company for non-SuperAdmin; operator must belong to it.
+            if (!TryGetReadScope(companyId, out var scope))
+                return NoCompany();
+            companyId = scope;
+            if (!await UserInScopeAsync(operatorUserId, scope))
+                return NotFound(new { success = false, message = "المشغل غير موجود" });
+
             var query = _unitOfWork.SubscriptionLogs.AsQueryable()
                 .Where(l => l.UserId == operatorUserId
                     && (l.PaymentStatus == null || l.PaymentStatus != "مسدد")
@@ -1467,12 +1616,16 @@ public class FtthAccountingController : ControllerBase
     /// تحديد أو تعديل دورة التجديد المتكرر لسجل اشتراك
     /// </summary>
     [HttpPost("set-renewal-cycle")]
+    [RequirePermission(FtthPerm, "edit")]
     public async Task<IActionResult> SetRenewalCycle([FromBody] SetRenewalCycleDto dto)
     {
         try
         {
+            if (!TryGetReadScope(null, out var scope))
+                return NoCompany();
+
             var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(dto.LogId);
-            if (log == null)
+            if (log == null || !LogInScope(log, scope))
                 return NotFound(new { success = false, message = "السجل غير موجود" });
 
             log.RenewalCycleMonths = dto.CycleMonths;
@@ -1521,9 +1674,19 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
+            if (!TryGetReadScope(null, out var scope))
+                return NoCompany();
+
             var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
-            if (log == null)
+            if (log == null || !LogInScope(log, scope))
                 return NotFound(new { success = false, message = "السجل غير موجود" });
+
+            // Gate: full edit (amounts, collection type, links...) needs accounting.ftth_operators/edit.
+            // The activation screen only marks the caller's OWN just-saved operation as
+            // "pending verification" — that exact narrow update stays allowed without the accounting permission.
+            if (!await HasAnyPermissionAsync((FtthPerm, "edit", PermissionSystem.First))
+                && !IsOwnPendingVerificationMark(log, body))
+                return Forbidden();
 
             UpdateFtthLogRequest? request;
             try
@@ -1537,6 +1700,18 @@ public class FtthAccountingController : ControllerBase
             }
             if (request == null)
                 return BadRequest(new { success = false, message = "الطلب فارغ" });
+
+            // Ownership of linked technician/agent: must belong to the log's company.
+            if (log.CompanyId.HasValue)
+            {
+                if (request.HasLinkedTechnicianId && request.LinkedTechnicianId.HasValue
+                    && !await UserInScopeAsync(request.LinkedTechnicianId.Value, log.CompanyId))
+                    return NotFound(new { success = false, message = "الفني غير موجود" });
+                if (request.HasLinkedAgentId && request.LinkedAgentId.HasValue
+                    && !await _unitOfWork.Agents.AsQueryable()
+                        .AnyAsync(a => a.Id == request.LinkedAgentId.Value && a.CompanyId == log.CompanyId.Value))
+                    return NotFound(new { success = false, message = "الوكيل غير موجود" });
+            }
 
             // بيانات العميل
             if (request.CustomerName != null) log.CustomerName = request.CustomerName;
@@ -1782,12 +1957,18 @@ public class FtthAccountingController : ControllerBase
     /// تحصيل شهر واحد من اشتراك مكرر (دفع جزئي)
     /// </summary>
     [HttpPost("collect-renewal-month")]
+    [RequirePermission(FtthPerm, "add")]
     public async Task<IActionResult> CollectRenewalMonth([FromBody] CollectRenewalMonthDto dto)
     {
         try
         {
+            // Isolation: company from token; the log must belong to it.
+            if (!TryGetWriteCompany(dto.CompanyId, out var companyId))
+                return NoCompany();
+            dto = dto with { CompanyId = companyId };
+
             var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(dto.LogId);
-            if (log == null)
+            if (log == null || log.CompanyId != companyId)
                 return NotFound(new { success = false, message = "السجل غير موجود" });
 
             if (log.RenewalCycleMonths == null || log.RenewalCycleMonths <= 0)
@@ -1880,13 +2061,25 @@ public class FtthAccountingController : ControllerBase
     /// تحصيل دين آجل من مشغل (العميل دفع لاحقاً)
     /// </summary>
     [HttpPost("collect-credit")]
+    [RequirePermission(FtthPerm, "add")]
     public async Task<IActionResult> CollectCredit([FromBody] OperatorCreditCollectionDto dto)
     {
         try
         {
+            // Isolation: company from token; operator, collector and log must belong to it
+            // (checked before any journal entry is created).
+            if (!TryGetWriteCompany(dto.CompanyId, out var companyId))
+                return NoCompany();
+            dto = dto with { CompanyId = companyId };
+
             var user = await _unitOfWork.Users.GetByIdAsync(dto.OperatorUserId);
-            if (user == null)
+            if (user == null || user.CompanyId != companyId)
                 return NotFound(new { success = false, message = "المشغل غير موجود" });
+            if (dto.CollectedById.HasValue && !await UserInScopeAsync(dto.CollectedById.Value, companyId))
+                return NotFound(new { success = false, message = "المستخدم المُحصِّل غير موجود" });
+            if (dto.SubscriptionLogId.HasValue && !await _unitOfWork.SubscriptionLogs.AsQueryable()
+                    .AnyAsync(l => l.Id == dto.SubscriptionLogId.Value && l.CompanyId == companyId))
+                return NotFound(new { success = false, message = "السجل غير موجود" });
 
             // ذمة المشغل (فرعي تحت 1160)
             var operatorDebtAccount = await _unitOfWork.Accounts.AsQueryable()
@@ -1952,8 +2145,16 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
+            // Gate: FTTH-operators accounting edit, or HR "FTTH info" edit (linking page is reachable from both).
+            if (!await HasAnyPermissionAsync(
+                    (FtthPerm, "edit", PermissionSystem.First),
+                    ("hr.ftth_info", "edit", PermissionSystem.First)))
+                return Forbidden();
+            if (!TryGetReadScope(null, out var scope))
+                return NoCompany();
+
             var user = await _unitOfWork.Users.GetByIdAsync(dto.UserId);
-            if (user == null)
+            if (user == null || (scope.HasValue && user.CompanyId != scope.Value))
                 return NotFound(new { success = false, message = "المستخدم غير موجود" });
 
             user.FtthUsername = dto.FtthUsername;
@@ -1978,8 +2179,18 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
+            // Gate: own credentials (used at login by dual_auth_service), otherwise the same view
+            // permissions as the operators-linking list; target must be in the caller's company.
+            var isSelf = CurrentUserId == userId;
+            if (!isSelf && !await HasAnyPermissionAsync(
+                    (FtthPerm, "view", PermissionSystem.First),
+                    ("hr.ftth_info", "view", PermissionSystem.First)))
+                return Forbidden();
+            if (!TryGetReadScope(null, out var scope))
+                return NoCompany();
+
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
-            if (user == null)
+            if (user == null || (!isSelf && scope.HasValue && user.CompanyId != scope.Value))
                 return NotFound(new { success = false, message = "المستخدم غير موجود" });
 
             return Ok(new
@@ -2010,6 +2221,12 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
+            // Gate: accounting (operators screens) or the activation screen (Second system "subscriptions").
+            if (!await HasAnyPermissionAsync(
+                    (FtthPerm, "view", PermissionSystem.First),
+                    ("subscriptions", "view", PermissionSystem.Second)))
+                return Forbidden();
+
             var query = _unitOfWork.Agents.AsQueryable()
                 .Where(a => a.Status == AgentStatus.Active);
 
@@ -2042,11 +2259,23 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
-            var query = _unitOfWork.Users.AsQueryable()
-                .Where(u => !u.IsDeleted);
+            // Gate: accounting (operators screens) or the activation screen (Second system "subscriptions").
+            if (!await HasAnyPermissionAsync(
+                    (FtthPerm, "view", PermissionSystem.First),
+                    ("subscriptions", "view", PermissionSystem.Second)))
+                return Forbidden();
 
-            if (companyId.HasValue)
-                query = query.Where(u => u.CompanyId == companyId);
+            // Isolation: token company for non-SuperAdmin (client companyId ignored). Previously a null
+            // companyId returned every user of every company, citizens included.
+            if (!TryGetReadScope(companyId, out var scope))
+                return NoCompany();
+
+            // Company staff only — never citizens/merchants/drivers.
+            var query = _unitOfWork.Users.AsQueryable()
+                .Where(u => !u.IsDeleted && u.Role >= UserRole.Employee);
+
+            if (scope.HasValue)
+                query = query.Where(u => u.CompanyId == scope.Value);
 
             var technicians = await query
                 .Select(u => new { u.Id, Name = u.FullName, u.Username, u.PhoneNumber })
@@ -2072,6 +2301,15 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
+            // Gate: FTTH-operators accounting view, or HR "FTTH info" view (linking page is reachable from both).
+            if (!await HasAnyPermissionAsync(
+                    (FtthPerm, "view", PermissionSystem.First),
+                    ("hr.ftth_info", "view", PermissionSystem.First)))
+                return Forbidden();
+            if (!TryGetReadScope(companyId, out var scope))
+                return NoCompany();
+            companyId = scope;
+
             var query = _unitOfWork.Users.AsQueryable().Where(u => !u.IsDeleted);
             if (companyId.HasValue)
                 query = query.Where(u => u.CompanyId == companyId);
@@ -2106,6 +2344,7 @@ public class FtthAccountingController : ControllerBase
     /// يرجع بصمات العمليات المحفوظة (FtthTransactionId + composite keys) لتحديد العمليات الناقصة
     /// </summary>
     [HttpGet("existing-ftth-ids")]
+    [RequirePermission(FtthPerm, "view")]
     public async Task<IActionResult> GetExistingFtthIds(
         [FromQuery] Guid? companyId = null,
         [FromQuery] DateTime? from = null,
@@ -2113,6 +2352,10 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
+            if (!TryGetReadScope(companyId, out var scope))
+                return NoCompany();
+            companyId = scope;
+
             var baseQuery = _unitOfWork.SubscriptionLogs.AsQueryable()
                 .Where(l => !l.IsDeleted && l.PlanName != null && (
                     l.PlanName.ToUpper().Contains("FIBER") ||
@@ -2122,8 +2365,9 @@ public class FtthAccountingController : ControllerBase
                     l.PlanName.ToUpper().Contains("PRO MAX") ||
                     l.PlanName.ToUpper().Contains("PROMAX")));
 
+            // Orphan rows (CompanyId == null) are no longer included (data cleanup item).
             if (companyId.HasValue)
-                baseQuery = baseQuery.Where(l => l.CompanyId == companyId || l.CompanyId == null);
+                baseQuery = baseQuery.Where(l => l.CompanyId == companyId);
             if (from.HasValue)
             {
                 var fromUtc = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
@@ -2208,6 +2452,7 @@ public class FtthAccountingController : ControllerBase
     /// </summary>
     [HttpPost("sync-ftth-transactions")]
     [DisableRequestSizeLimit]
+    [RequirePermission(FtthPerm, "add")]
     public async Task<IActionResult> SyncFtthTransactions([FromBody] SyncFtthTransactionsDto? dto)
     {
         try
@@ -2217,18 +2462,34 @@ public class FtthAccountingController : ControllerBase
             if (dto.Transactions == null || dto.Transactions.Count == 0)
                 return BadRequest(new { success = false, message = "لا توجد عمليات للمزامنة" });
 
+            // Isolation: target company from token (client CompanyId ignored for non-SuperAdmin).
+            // SuperAdmin without a company keeps the legacy per-operator company resolution.
+            Guid? syncCompany;
+            if (_tenant.IsSuperAdmin)
+                syncCompany = TryGetWriteCompany(dto.CompanyId, out var saCompany) ? saCompany : null;
+            else if (TryGetWriteCompany(null, out var tokenCompany))
+                syncCompany = tokenCompany;
+            else
+                return NoCompany();
+
             // جلب معرّفات العمليات المحفوظة مسبقاً (النشطة فقط — استبعاد المحذوفة)
+            // NOTE: kept global on purpose (dedupe only — prevents re-inserting an FTTH id that already
+            // exists anywhere); existing rows are only ever UPDATED when they belong to syncCompany.
             var existingIds = await _unitOfWork.SubscriptionLogs.AsQueryable()
                 .Where(l => !l.IsDeleted && l.FtthTransactionId != null && l.FtthTransactionId != "")
                 .Select(l => l.FtthTransactionId!)
                 .ToListAsync();
             var existingSet = new HashSet<string>(existingIds);
 
-            // خريطة شاملة: FtthUsername / Username / FullName → UserId
+            // خريطة شاملة: FtthUsername / Username / FullName → UserId (company staff only when scoped)
             var userMap = await _unitOfWork.Users.AsQueryable()
-                .Where(u => !u.IsDeleted)
+                .Where(u => !u.IsDeleted && (syncCompany == null || u.CompanyId == syncCompany))
                 .Select(u => new { u.Id, u.FtthUsername, u.Username, u.FullName, u.CompanyId })
                 .ToListAsync();
+            var scopedUserIds = new HashSet<Guid>(userMap.Select(u => u.Id));
+            // operatorUserId sent by the client is honoured only for users of the target company.
+            Guid? ParseOperatorId(string? raw) =>
+                Guid.TryParse(raw, out var g) && (syncCompany == null || scopedUserIds.Contains(g)) ? g : null;
             var ftthToUser = new Dictionary<string, dynamic>();
             foreach (var u in userMap)
             {
@@ -2253,7 +2514,7 @@ public class FtthAccountingController : ControllerBase
 
             // ═══ جلب أسعار الباقات وأجور الصيانة لحساب الإيرادات تلقائياً ═══
             var allPlans = await _unitOfWork.InternetPlans.AsQueryable()
-                .Where(p => !p.IsDeleted && p.IsActive)
+                .Where(p => !p.IsDeleted && p.IsActive && (syncCompany == null || p.CompanyId == syncCompany))
                 .Select(p => new { p.Name, p.MonthlyPrice, p.CompanyId })
                 .ToListAsync();
             // خريطة: اسم الباقة (lowercase) → السعر الشهري
@@ -2264,7 +2525,7 @@ public class FtthAccountingController : ControllerBase
             }
 
             var allZoneFees = await _unitOfWork.ZoneMaintenanceFees.AsQueryable()
-                .Where(z => !z.IsDeleted && z.IsEnabled)
+                .Where(z => !z.IsDeleted && z.IsEnabled && (syncCompany == null || z.CompanyId == syncCompany))
                 .Select(z => new { z.ZoneName, z.ZoneId, z.MaintenanceAmount })
                 .ToListAsync();
             // خريطة: اسم الزون أو معرفه → مبلغ الصيانة
@@ -2294,7 +2555,8 @@ public class FtthAccountingController : ControllerBase
                     if (hasNewData)
                     {
                         var existing = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                            .FirstOrDefaultAsync(l => l.FtthTransactionId == tx.FtthTransactionId && !l.IsDeleted);
+                            .FirstOrDefaultAsync(l => l.FtthTransactionId == tx.FtthTransactionId && !l.IsDeleted
+                                && (syncCompany == null || l.CompanyId == syncCompany));
                         if (existing != null)
                         {
                             bool needsUpdate = false;
@@ -2307,7 +2569,7 @@ public class FtthAccountingController : ControllerBase
                             {
                                 existing.ActivatedBy = _resolveFullNameFromMap(tx.CreatedBy, ftthToUser);
                                 // ربط بالمشغل: أولاً operatorUserId، ثانياً بحث بالاسم
-                                if (!string.IsNullOrEmpty(tx.OperatorUserId) && Guid.TryParse(tx.OperatorUserId, out var directId))
+                                if (ParseOperatorId(tx.OperatorUserId) is Guid directId)
                                 {
                                     existing.UserId = directId;
                                 }
@@ -2323,7 +2585,7 @@ public class FtthAccountingController : ControllerBase
                                 needsUpdate = true;
                             }
                             // إذا لا يزال بدون مشغل، حاول الربط من operatorUserId
-                            if (existing.UserId == null && !string.IsNullOrEmpty(tx.OperatorUserId) && Guid.TryParse(tx.OperatorUserId, out var opId))
+                            if (existing.UserId == null && ParseOperatorId(tx.OperatorUserId) is Guid opId)
                             {
                                 existing.UserId = opId;
                                 needsUpdate = true;
@@ -2359,7 +2621,8 @@ public class FtthAccountingController : ControllerBase
                             && l.CustomerId == cid
                             && l.ActivationDate >= txDateStart && l.ActivationDate < txDateEnd
                             && l.PlanPrice == txAmount
-                            && (l.FtthTransactionId == null || l.FtthTransactionId == ""));
+                            && (l.FtthTransactionId == null || l.FtthTransactionId == "")
+                            && (syncCompany == null || l.CompanyId == syncCompany));
 
                     if (similarLog != null)
                     {
@@ -2389,10 +2652,10 @@ public class FtthAccountingController : ControllerBase
                 {
                     // البحث عن المشغل
                     Guid? userId = null;
-                    Guid? companyId = dto.CompanyId;
+                    Guid? companyId = syncCompany;
 
-                    // أولاً: استخدام operatorUserId المرسل مباشرة (من المقارنة)
-                    if (!string.IsNullOrEmpty(tx.OperatorUserId) && Guid.TryParse(tx.OperatorUserId, out var directUserId))
+                    // أولاً: استخدام operatorUserId المرسل مباشرة (من المقارنة) — مستخدمو الشركة فقط
+                    if (ParseOperatorId(tx.OperatorUserId) is Guid directUserId)
                     {
                         userId = directUserId;
                     }
@@ -2631,18 +2894,23 @@ public class FtthAccountingController : ControllerBase
     /// تصحيح BasePrice (المستقطع) لعدة سجلات دفعة واحدة حسب مبلغ FTTH الفعلي
     /// </summary>
     [HttpPost("fix-base-prices")]
+    [RequirePermission(FtthPerm, "edit")]
     public async Task<IActionResult> FixBasePrices([FromBody] List<FixBasePriceItem> items)
     {
         if (items == null || items.Count == 0)
             return BadRequest(new { success = false, message = "لا توجد بيانات" });
+        if (!TryGetReadScope(null, out var scope))
+            return NoCompany();
 
         int updated = 0, failed = 0;
         foreach (var item in items)
         {
             try
             {
+                // Isolation: logs of other companies are treated as not found (counted as failed).
                 var log = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                    .FirstOrDefaultAsync(l => l.Id == item.LogId && !l.IsDeleted);
+                    .FirstOrDefaultAsync(l => l.Id == item.LogId && !l.IsDeleted
+                        && (scope == null || l.CompanyId == scope));
                 if (log == null) { failed++; continue; }
 
                 // المستقطع = BasePrice - CompanyDiscount = FtthAmount
@@ -3162,17 +3430,23 @@ public class FtthAccountingController : ControllerBase
     /// ينقل FtthTransactionId و CustomerId والمنطقة من المُزامنة للأصلية ثم يحذف المُزامنة
     /// </summary>
     [HttpPost("merge-duplicate")]
+    [RequirePermission(FtthPerm, "edit")]
     public async Task<IActionResult> MergeDuplicate([FromBody] MergeDuplicateDto dto)
     {
         try
         {
             if (dto.OriginalId <= 0 || dto.DuplicateId <= 0)
                 return BadRequest(new { success = false, message = "معرّفات غير صالحة" });
+            if (!TryGetReadScope(null, out var scope))
+                return NoCompany();
 
+            // Isolation: both logs must belong to the caller's company.
             var original = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                .FirstOrDefaultAsync(l => l.Id == dto.OriginalId && !l.IsDeleted);
+                .FirstOrDefaultAsync(l => l.Id == dto.OriginalId && !l.IsDeleted
+                    && (scope == null || l.CompanyId == scope));
             var duplicate = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                .FirstOrDefaultAsync(l => l.Id == dto.DuplicateId && !l.IsDeleted);
+                .FirstOrDefaultAsync(l => l.Id == dto.DuplicateId && !l.IsDeleted
+                    && (scope == null || l.CompanyId == scope));
 
             if (original == null)
                 return NotFound(new { success = false, message = "العملية الأصلية غير موجودة" });
@@ -3229,12 +3503,15 @@ public class FtthAccountingController : ControllerBase
     /// دمج مجموعة عمليات مكررة دفعة واحدة
     /// </summary>
     [HttpPost("merge-duplicates-batch")]
+    [RequirePermission(FtthPerm, "edit")]
     public async Task<IActionResult> MergeDuplicatesBatch([FromBody] List<MergeDuplicateDto> items)
     {
         try
         {
             if (items == null || items.Count == 0)
                 return BadRequest(new { success = false, message = "لا توجد عمليات للدمج" });
+            if (!TryGetReadScope(null, out var scope))
+                return NoCompany();
 
             int merged = 0, failed = 0;
             var errors = new List<string>();
@@ -3243,10 +3520,13 @@ public class FtthAccountingController : ControllerBase
             {
                 try
                 {
+                    // Isolation: both logs must belong to the caller's company (else counted as failed).
                     var original = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                        .FirstOrDefaultAsync(l => l.Id == dto.OriginalId && !l.IsDeleted);
+                        .FirstOrDefaultAsync(l => l.Id == dto.OriginalId && !l.IsDeleted
+                            && (scope == null || l.CompanyId == scope));
                     var duplicate = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                        .FirstOrDefaultAsync(l => l.Id == dto.DuplicateId && !l.IsDeleted);
+                        .FirstOrDefaultAsync(l => l.Id == dto.DuplicateId && !l.IsDeleted
+                            && (scope == null || l.CompanyId == scope));
 
                     if (original == null || duplicate == null) { failed++; continue; }
 
@@ -3308,12 +3588,18 @@ public class FtthAccountingController : ControllerBase
     /// تسليم نقد سريع - يستخدم userId مباشرة
     /// </summary>
     [HttpPost("quick-deliver")]
+    [RequirePermission(FtthPerm, "add")]
     public async Task<IActionResult> QuickDeliver([FromBody] QuickDeliverDto dto)
     {
         try
         {
+            // Isolation: company from token (client CompanyId ignored); operator must belong to it.
+            if (!TryGetWriteCompany(dto.CompanyId, out var companyId))
+                return NoCompany();
+            dto = dto with { CompanyId = companyId };
+
             var user = await _unitOfWork.Users.GetByIdAsync(dto.OperatorUserId);
-            if (user == null)
+            if (user == null || user.CompanyId != companyId)
                 return NotFound(new { success = false, message = "المشغل غير موجود" });
 
             // صندوق المشغل
@@ -3372,13 +3658,29 @@ public class FtthAccountingController : ControllerBase
     /// تحصيل آجل سريع
     /// </summary>
     [HttpPost("quick-collect")]
+    [RequirePermission(FtthPerm, "add")]
     public async Task<IActionResult> QuickCollect([FromBody] QuickCollectDto dto)
     {
         try
         {
+            // Isolation: company from token (client CompanyId ignored); operator and every referenced
+            // log must belong to it — checked before any journal entry is created.
+            if (!TryGetWriteCompany(dto.CompanyId, out var companyId))
+                return NoCompany();
+            dto = dto with { CompanyId = companyId };
+
             var user = await _unitOfWork.Users.GetByIdAsync(dto.OperatorUserId);
-            if (user == null)
+            if (user == null || user.CompanyId != companyId)
                 return NotFound(new { success = false, message = "المشغل غير موجود" });
+
+            if (dto.SubscriptionLogIds != null && dto.SubscriptionLogIds.Any())
+            {
+                var requestedIds = dto.SubscriptionLogIds.Distinct().ToList();
+                var ownedCount = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                    .CountAsync(l => requestedIds.Contains(l.Id) && l.CompanyId == companyId);
+                if (ownedCount != requestedIds.Count)
+                    return NotFound(new { success = false, message = "بعض السجلات غير موجودة" });
+            }
 
             // ذمة المشغل
             var debtAccount = await _unitOfWork.Accounts.AsQueryable()
@@ -3467,6 +3769,16 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
+            // Gate: same keys the Flutter screens use (funds overview card, statistics page, operators dashboard).
+            if (!await HasAnyPermissionAsync(
+                    ("accounting.funds_overview", "view", PermissionSystem.First),
+                    ("accounting.statistics", "view", PermissionSystem.First),
+                    (FtthPerm, "view", PermissionSystem.First)))
+                return Forbidden();
+            if (!TryGetReadScope(companyId, out var scope))
+                return NoCompany();
+            companyId = scope;
+
             // 1. جلب جميع الحسابات الفرعية المهمة
             var accountsQuery = _unitOfWork.Accounts.AsQueryable()
                 .Where(a => a.IsActive && !a.IsDeleted);
@@ -3529,7 +3841,8 @@ public class FtthAccountingController : ControllerBase
             // 3. إحصائيات العمليات (آخر 30 يوم)
             var thirtyDaysAgo = DateTime.UtcNow.AddDays(-30);
             var recentLogs = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                .Where(l => !l.IsDeleted && l.ActivationDate >= thirtyDaysAgo)
+                .Where(l => !l.IsDeleted && l.ActivationDate >= thirtyDaysAgo
+                    && (companyId == null || l.CompanyId == companyId))
                 .GroupBy(l => l.CollectionType)
                 .Select(g => new { Type = g.Key, Count = g.Count(), Total = g.Sum(l =>
                     (l.BasePrice ?? 0) > 0
@@ -3735,24 +4048,33 @@ public class FtthAccountingController : ControllerBase
     /// </summary>
     [HttpPost("fix-missing-userids")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission(FtthPerm, "edit")]
     public async Task<IActionResult> FixMissingUserIds([FromQuery] Guid? companyId = null)
     {
         try
         {
+            if (!TryGetReadScope(companyId, out var scope))
+                return NoCompany();
+
             var query = _unitOfWork.SubscriptionLogs.AsQueryable()
                 .Where(l => !l.IsDeleted && (l.UserId == null || l.CollectionType == null || l.CollectionType == ""));
 
-            if (companyId.HasValue)
-                query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
+            // Isolation: non-SuperAdmin touches only its own company's rows. Orphans (CompanyId == null)
+            // stay reachable for SuperAdmin only (explicit companyId keeps the legacy orphan inclusion).
+            if (!_tenant.IsSuperAdmin)
+                query = query.Where(l => l.CompanyId == scope);
+            else if (scope.HasValue)
+                query = query.Where(l => l.CompanyId == scope || l.CompanyId == null);
 
             var logsToFix = await query.ToListAsync();
 
             if (!logsToFix.Any())
                 return Ok(new { success = true, message = "لا توجد سجلات تحتاج إصلاح", updated = 0 });
 
-            // جلب جميع المستخدمين مع FtthUsername لمطابقة ActivatedBy
+            // جلب جميع المستخدمين مع FtthUsername لمطابقة ActivatedBy (موظفو الشركة فقط لغير SuperAdmin)
             var allUsers = await _unitOfWork.Users.AsQueryable()
-                .Where(u => u.FtthUsername != null && u.FtthUsername != "")
+                .Where(u => u.FtthUsername != null && u.FtthUsername != ""
+                    && (_tenant.IsSuperAdmin || u.CompanyId == scope))
                 .Select(u => new { u.Id, u.FtthUsername, u.FullName, u.CompanyId })
                 .ToListAsync();
 
@@ -3819,19 +4141,26 @@ public class FtthAccountingController : ControllerBase
     /// </summary>
     [HttpPost("assign-unknown-records")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission(FtthPerm, "edit")]
     public async Task<IActionResult> AssignUnknownRecords([FromQuery] Guid targetUserId, [FromQuery] Guid? companyId = null)
     {
         try
         {
+            if (!TryGetReadScope(companyId, out var scope))
+                return NoCompany();
+
             var user = await _unitOfWork.Users.GetByIdAsync(targetUserId);
-            if (user == null)
+            if (user == null || (scope.HasValue && user.CompanyId != scope.Value))
                 return NotFound(new { success = false, message = "المستخدم غير موجود" });
 
             var query = _unitOfWork.SubscriptionLogs.AsQueryable()
                 .Where(l => !l.IsDeleted && l.UserId == null);
 
-            if (companyId.HasValue)
-                query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
+            // Isolation: non-SuperAdmin assigns only its own company's rows (orphans: SuperAdmin only).
+            if (!_tenant.IsSuperAdmin)
+                query = query.Where(l => l.CompanyId == scope);
+            else if (scope.HasValue)
+                query = query.Where(l => l.CompanyId == scope || l.CompanyId == null);
 
             var logs = await query.ToListAsync();
             if (!logs.Any())
@@ -3864,12 +4193,18 @@ public class FtthAccountingController : ControllerBase
 
     [HttpPost("fix-missing-accounting")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission(FtthPerm, "edit")]
     public async Task<IActionResult> FixMissingAccounting([FromQuery] Guid? companyId)
     {
         try
         {
+            // Isolation: previously ignored companyId entirely and processed every company.
+            if (!TryGetReadScope(companyId, out var scope))
+                return NoCompany();
+
             var logsWithout = await _unitOfWork.SubscriptionLogs.AsQueryable()
                 .Where(l => l.FtthTransactionId != null && l.JournalEntryId == null
+                    && (scope == null || l.CompanyId == scope)
                     && !l.IsDeleted && l.UserId.HasValue && l.CompanyId.HasValue
                     && l.PlanPrice > 0 && l.PlanName != null && (
                         l.PlanName.ToUpper().Contains("FIBER") ||
@@ -3931,10 +4266,22 @@ public class FtthAccountingController : ControllerBase
 
     [HttpPost("fix-orphan-records")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission(FtthPerm, "edit")]
     public async Task<IActionResult> FixOrphanRecords([FromQuery] Guid? targetCompanyId = null)
     {
         try
         {
+            // Isolation: a non-SuperAdmin may NOT stamp arbitrary orphans with a company of its choice
+            // (that would let any company claim other companies' legacy rows). It can only adopt orphans
+            // whose operator (UserId) is one of its own employees; targetCompanyId is ignored.
+            Guid? callerCompany = null;
+            if (!_tenant.IsSuperAdmin)
+            {
+                if (!TryGetReadScope(null, out callerCompany))
+                    return NoCompany();
+                targetCompanyId = null;
+            }
+
             // جلب كل السجلات التي ليس لها CompanyId
             var orphanQuery = _unitOfWork.SubscriptionLogs.AsQueryable()
                 .Where(l => !l.IsDeleted && l.CompanyId == null);
@@ -3970,6 +4317,10 @@ public class FtthAccountingController : ControllerBase
                 {
                     resolvedCompany = userCompany;
                 }
+
+                // Non-SuperAdmin: only adopt rows that resolve to its own company.
+                if (callerCompany.HasValue && resolvedCompany != callerCompany)
+                    resolvedCompany = null;
 
                 if (resolvedCompany.HasValue)
                 {
@@ -4009,12 +4360,19 @@ public class FtthAccountingController : ControllerBase
     /// </summary>
     [HttpPost("fix-activated-by-names")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission(FtthPerm, "edit")]
     public async Task<IActionResult> FixActivatedByNames([FromQuery] Guid? companyId = null)
     {
         try
         {
+            // Isolation: token company for non-SuperAdmin; names resolved from that company's staff only.
+            if (!TryGetReadScope(companyId, out var scope))
+                return NoCompany();
+            companyId = scope;
+
             var allUsers = await _unitOfWork.Users.AsQueryable()
-                .Where(u => !u.IsDeleted && u.FullName != null && u.FullName != "")
+                .Where(u => !u.IsDeleted && u.FullName != null && u.FullName != ""
+                    && (scope == null || u.CompanyId == scope))
                 .Select(u => new { u.FtthUsername, u.Username, u.FullName })
                 .ToListAsync();
 
@@ -4070,6 +4428,67 @@ public class FtthAccountingController : ControllerBase
         }
     }
 
+}
+
+// ==================== Access gate (shared with ZoneMaintenanceFeesController) ====================
+
+/// <summary>
+/// Phase 0-B authorization helpers shared by <see cref="FtthAccountingController"/> and
+/// <see cref="ZoneMaintenanceFeesController"/>.
+/// </summary>
+internal static class FtthAccessGate
+{
+    /// <summary>
+    /// Existing policy from Program.cs: SuperAdmin, CompanyAdmin, Manager, TechnicalLeader, Technician,
+    /// Employee, Viewer. Rejects citizen tokens (no role claim) and agent tokens (role "Agent").
+    /// </summary>
+    internal const string EmployeePolicy = "CompanyEmployee";
+
+    internal static Guid? GetUserId(ClaimsPrincipal user)
+    {
+        var raw = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+               ?? user.FindFirst("sub")?.Value
+               ?? user.FindFirst("nameid")?.Value;
+        return Guid.TryParse(raw, out var id) ? id : null;
+    }
+
+    internal static bool IsSuperAdmin(ClaimsPrincipal user)
+    {
+        var role = user.FindFirst(ClaimTypes.Role)?.Value ?? user.FindFirst("role")?.Value;
+        return role == "SuperAdmin";
+    }
+
+    /// <summary>
+    /// True when the caller satisfies ANY of the given (key, action, system) options, using the exact
+    /// semantics of <see cref="RequirePermissionAttribute.HasPermission"/> (hierarchical keys, existing
+    /// fail-open on empty V2 JSON). SuperAdmin bypasses (same as the attribute). In addition the caller
+    /// must be a company-employee row in Users (defense in depth: citizen/agent tokens have no Users row,
+    /// and Users rows with Citizen/Merchant/Driver roles are rejected even when their V2 JSON is empty).
+    /// </summary>
+    internal static async Task<bool> HasAnyPermissionAsync(
+        IUnitOfWork unitOfWork,
+        ClaimsPrincipal user,
+        params (string Key, string Action, PermissionSystem System)[] options)
+    {
+        if (user.Identity?.IsAuthenticated != true) return false;
+        if (IsSuperAdmin(user)) return true;
+
+        var userId = GetUserId(user);
+        if (!userId.HasValue) return false;
+
+        var dbUser = await unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+        if (dbUser == null || dbUser.Role < UserRole.Employee) return false;
+
+        foreach (var (key, action, system) in options)
+        {
+            var json = system == PermissionSystem.First
+                ? dbUser.FirstSystemPermissionsV2
+                : dbUser.SecondSystemPermissionsV2;
+            if (RequirePermissionAttribute.HasPermission(json, key, action))
+                return true;
+        }
+        return false;
+    }
 }
 
 // ==================== DTOs ====================
