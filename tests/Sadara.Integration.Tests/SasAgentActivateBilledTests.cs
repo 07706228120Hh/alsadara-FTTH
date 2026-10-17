@@ -132,7 +132,8 @@ public class SasAgentActivateBilledTests
         public Task<string> SasPostAsync(string s, string u, string p, string path, object? payload = null, CancellationToken ct = default) => Empty();
         public Task<string> TestAccountAsync(string s, string u, string p, CancellationToken ct = default) => Empty();
         public Task<string> SyncAccountAsync(string s, string u, string p, string accountId, CancellationToken ct = default) => Empty();
-        public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, string? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => Empty();
+        public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, string? profile = null, string? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => Empty();
+        public Task<string> DecryptPayloadsAsync(IEnumerable<string> items, CancellationToken ct = default) => Empty();
         public Task<string> GetSubscribersSummaryAsync(string accountId, CancellationToken ct = default) => Empty();
         public Task<string> SubmitReportAsync(string accountId, string companyId, string ownerUserId, int declaredTotal, int declaredActive, string? note = null, string? submittedBy = null, CancellationToken ct = default) => Empty();
         public Task<string> ListReportsAsync(string accountId, CancellationToken ct = default) => Empty();
@@ -195,7 +196,15 @@ public class SasAgentActivateBilledTests
         return ctrl;
     }
 
-    private static SasAccount SeedAccount(string dbName, Guid accountId, Guid companyId, Guid ownerUserId)
+    /// <remarks>
+    /// <paramref name="amountMultiplier"/>: since v2.4.1 (abd2bc8) the controller multiplies the SAS4
+    /// activationData price by <c>SasAccount.AmountMultiplier</c> (entity default 1000). The fixtures in
+    /// this class express prices already in full dinars (e.g. 25000), so the default here is 1 to keep
+    /// their intent; the multiplier path itself is covered by
+    /// <see cref="ActivateBilled_Applies_Account_AmountMultiplier_To_Log_And_Journal"/>.
+    /// </remarks>
+    private static SasAccount SeedAccount(string dbName, Guid accountId, Guid companyId, Guid ownerUserId,
+        decimal amountMultiplier = 1m)
     {
         var sysTenant = new FakeTenant { BypassTenantFilter = true, IsSuperAdmin = true };
         using var seed = NewInMemoryContext(dbName, sysTenant);
@@ -209,6 +218,7 @@ public class SasAgentActivateBilledTests
             Username          = "agent",
             PasswordEncrypted = "FAKE:" + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(PlainPassword)),
             AccountType       = SasAccountType.SasManager,
+            AmountMultiplier  = amountMultiplier,
             IsActive          = true,
             IsDeleted         = false,
         });
@@ -388,6 +398,45 @@ public class SasAgentActivateBilledTests
         var pageLine = Assert.Single(lines, l => l.AccountId == pageAccount.Id);
         Assert.Equal(30000m, pageLine.CreditAmount);
         Assert.Equal(0m, pageLine.DebitAmount);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // 2b) AmountMultiplier (v2.4.1): SAS4 price in thousands × account multiplier (default 1000)
+    //     must be applied once at the source → SubscriptionLog.BasePrice and the 11102 line in full dinars.
+    // ══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task ActivateBilled_Applies_Account_AmountMultiplier_To_Log_And_Journal()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        var accId  = Guid.NewGuid();
+        SeedAccount(dbName, accId, CompanyA, UserA, amountMultiplier: new SasAccount().AmountMultiplier);
+        SeedChartOfAccounts(dbName, CompanyA);
+        SeedUser(dbName, UserA, CompanyA);
+
+        // SAS4 providers that report in thousands: 25 → 25,000 IQD after the default ×1000.
+        var sas = new BilledSasClient
+        {
+            ActivationDataResponse = """{"n_required_amount":25,"profile_name":"باقة 25"}"""
+        };
+        var tenantA = new FakeTenant { CompanyId = CompanyA };
+        using var db = NewInMemoryContext(dbName, tenantA);
+        var ctrl = BuildController(db, tenantA, UserA, sas);
+
+        var result = await ctrl.ActivateBilled(accId, "u25", ActivateCash(transactionId: "txn-multiplier-001"), CancellationToken.None);
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var je = JsonDocument.Parse(JsonSerializer.Serialize(ok.Value)).RootElement.GetProperty("journalEntryId").GetGuid();
+
+        var sysTenant = new FakeTenant { BypassTenantFilter = true, IsSuperAdmin = true };
+        using var check = NewInMemoryContext(dbName, sysTenant);
+
+        Assert.Equal(1000m, new SasAccount().AmountMultiplier); // documents the entity default
+        var log = Assert.Single(check.SubscriptionLogs.Where(l => l.FtthTransactionId == "txn-multiplier-001"));
+        Assert.Equal(25000m, log.BasePrice);
+
+        var pageAccount = Assert.Single(check.Accounts.Where(a => a.Code == "11102" && a.CompanyId == CompanyA));
+        var pageLine = Assert.Single(check.JournalEntryLines.Where(l => l.JournalEntryId == je && l.AccountId == pageAccount.Id));
+        Assert.Equal(25000m, pageLine.CreditAmount);
     }
 
     // ══════════════════════════════════════════════════════════════════════════
