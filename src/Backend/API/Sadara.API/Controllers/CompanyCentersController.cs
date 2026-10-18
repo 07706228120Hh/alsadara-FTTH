@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 
@@ -12,9 +13,37 @@ namespace Sadara.API.Controllers;
 [ApiController]
 [Route("api/companies/{companyId:guid}/centers")]
 [Authorize(Policy = "CompanyAdminOrAbove")]
-public class CompanyCentersController(IUnitOfWork unitOfWork) : ControllerBase
+public class CompanyCentersController(IUnitOfWork unitOfWork, ICurrentTenant tenant) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly ICurrentTenant _tenant = tenant;
+
+    // ── عزل المستأجر: التحقّق من أن companyId المأخوذ من مسار الـ URL يخصّ شركة التوكن ──
+    // SuperAdmin: يصل لأي شركة (يحترم companyId المُرسَل لدعم لوحات مدير النظام عبر الشركات).
+    // أي مستخدم آخر: يجب أن يساوي companyId المطلوب شركة توكنه، وإلا 403 (منع IDOR عبر الشركات).
+    // إن لم يحمل التوكن شركة (غير SuperAdmin) ⇒ 403. القيمة الفعّالة تُستخدم لختم CompanyId عند الكتابة
+    // كي لا نثق بأي قيمة من العميل (عزل تام مستقل عن علَم EnforceIsolation العام).
+    private bool TryScopeCompanyId(Guid requested, out Guid effective, out IActionResult? error)
+    {
+        if (_tenant.IsSuperAdmin)
+        {
+            effective = requested;
+            error = null;
+            return true;
+        }
+
+        var tenantCompany = _tenant.CompanyId;
+        if (tenantCompany is null || tenantCompany.Value == Guid.Empty || requested != tenantCompany.Value)
+        {
+            effective = Guid.Empty;
+            error = StatusCode(403, new { success = false, message = "لا تملك صلاحية الوصول لبيانات هذه الشركة" });
+            return false;
+        }
+
+        effective = tenantCompany.Value;
+        error = null;
+        return true;
+    }
 
     /// <summary>
     /// جلب جميع مراكز الشركة
@@ -22,6 +51,9 @@ public class CompanyCentersController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid companyId)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         var centers = await _unitOfWork.WorkCenters.AsQueryable()
             .Where(c => c.CompanyId == companyId)
             .OrderBy(c => c.Name)
@@ -47,6 +79,9 @@ public class CompanyCentersController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(Guid companyId, [FromBody] CreateCenterRequest request)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         var company = await _unitOfWork.Companies.GetByIdAsync(companyId);
         if (company == null)
             return NotFound(new { success = false, message = "الشركة غير موجودة" });
@@ -98,6 +133,9 @@ public class CompanyCentersController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpPut("{centerId:int}")]
     public async Task<IActionResult> Update(Guid companyId, int centerId, [FromBody] UpdateCenterRequest request)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         var center = await _unitOfWork.WorkCenters.FirstOrDefaultAsync(
             c => c.Id == centerId && c.CompanyId == companyId);
 
@@ -138,6 +176,9 @@ public class CompanyCentersController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpDelete("{centerId:int}")]
     public async Task<IActionResult> Delete(Guid companyId, int centerId)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         var center = await _unitOfWork.WorkCenters.FirstOrDefaultAsync(
             c => c.Id == centerId && c.CompanyId == companyId);
 

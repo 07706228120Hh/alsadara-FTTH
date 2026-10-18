@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 
@@ -12,9 +13,37 @@ namespace Sadara.API.Controllers;
 [ApiController]
 [Route("api/companies/{companyId:guid}/departments")]
 [Authorize(Policy = "CompanyAdminOrAbove")]
-public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
+public class DepartmentsController(IUnitOfWork unitOfWork, ICurrentTenant tenant) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly ICurrentTenant _tenant = tenant;
+
+    // ── عزل المستأجر: التحقّق من أن companyId المأخوذ من مسار الـ URL يخصّ شركة التوكن ──
+    // SuperAdmin: يصل لأي شركة (يحترم companyId المُرسَل لدعم لوحات مدير النظام عبر الشركات).
+    // أي مستخدم آخر: يجب أن يساوي companyId المطلوب شركة توكنه، وإلا 403 (منع IDOR عبر الشركات).
+    // إن لم يحمل التوكن شركة (غير SuperAdmin) ⇒ 403. القيمة الفعّالة تُستخدم لختم CompanyId عند الكتابة
+    // كي لا نثق بأي قيمة من العميل (عزل تام مستقل عن علَم EnforceIsolation العام).
+    private bool TryScopeCompanyId(Guid requested, out Guid effective, out IActionResult? error)
+    {
+        if (_tenant.IsSuperAdmin)
+        {
+            effective = requested;
+            error = null;
+            return true;
+        }
+
+        var tenantCompany = _tenant.CompanyId;
+        if (tenantCompany is null || tenantCompany.Value == Guid.Empty || requested != tenantCompany.Value)
+        {
+            effective = Guid.Empty;
+            error = StatusCode(403, new { success = false, message = "لا تملك صلاحية الوصول لبيانات هذه الشركة" });
+            return false;
+        }
+
+        effective = tenantCompany.Value;
+        error = null;
+        return true;
+    }
 
     #region Departments (الأقسام)
 
@@ -24,6 +53,9 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll(Guid companyId)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         var departments = await _unitOfWork.Departments.AsQueryable()
             .Where(d => d.CompanyId == companyId)
             .Include(d => d.Tasks.Where(t => !t.IsDeleted))
@@ -63,6 +95,9 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(Guid companyId, [FromBody] CreateDepartmentRequest request)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         // التحقق من وجود الشركة
         var company = await _unitOfWork.Companies.GetByIdAsync(companyId);
         if (company == null)
@@ -115,6 +150,9 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpPut("{departmentId:int}")]
     public async Task<IActionResult> Update(Guid companyId, int departmentId, [FromBody] UpdateDepartmentRequest request)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         var department = await _unitOfWork.Departments.FirstOrDefaultAsync(
             d => d.Id == departmentId && d.CompanyId == companyId);
         if (department == null)
@@ -147,6 +185,9 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpDelete("{departmentId:int}")]
     public async Task<IActionResult> Delete(Guid companyId, int departmentId)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         var department = await _unitOfWork.Departments.FirstOrDefaultAsync(
             d => d.Id == departmentId && d.CompanyId == companyId);
         if (department == null)
@@ -180,6 +221,9 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpPost("{departmentId:int}/tasks")]
     public async Task<IActionResult> CreateTask(Guid companyId, int departmentId, [FromBody] CreateDepartmentTaskRequest request)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         // التحقق من وجود القسم ويتبع الشركة
         var department = await _unitOfWork.Departments.FirstOrDefaultAsync(
             d => d.Id == departmentId && d.CompanyId == companyId);
@@ -234,6 +278,9 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpPut("{departmentId:int}/tasks/{taskId:int}")]
     public async Task<IActionResult> UpdateTask(Guid companyId, int departmentId, int taskId, [FromBody] UpdateDepartmentTaskRequest request)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         // التحقق من وجود القسم ويتبع الشركة
         var department = await _unitOfWork.Departments.FirstOrDefaultAsync(
             d => d.Id == departmentId && d.CompanyId == companyId);
@@ -272,6 +319,9 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpDelete("{departmentId:int}/tasks/{taskId:int}")]
     public async Task<IActionResult> DeleteTask(Guid companyId, int departmentId, int taskId)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         // التحقق من وجود القسم ويتبع الشركة
         var department = await _unitOfWork.Departments.FirstOrDefaultAsync(
             d => d.Id == departmentId && d.CompanyId == companyId);
@@ -301,6 +351,9 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpPost("seed-defaults")]
     public async Task<IActionResult> SeedDefaults(Guid companyId)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         var company = await _unitOfWork.Companies.GetByIdAsync(companyId);
         if (company == null)
             return NotFound(new { success = false, message = "الشركة غير موجودة" });
@@ -362,6 +415,9 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpGet("~/api/companies/{companyId:guid}/users/{userId:guid}/departments")]
     public async Task<IActionResult> GetUserDepartments(Guid companyId, Guid userId)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         var userDepts = await _unitOfWork.UserDepartments.AsQueryable()
             .Where(ud => ud.UserId == userId && ud.Department.CompanyId == companyId)
             .Include(ud => ud.Department)
@@ -387,6 +443,9 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
     [HttpPut("~/api/companies/{companyId:guid}/users/{userId:guid}/departments")]
     public async Task<IActionResult> SetUserDepartments(Guid companyId, Guid userId, [FromBody] SetUserDepartmentsRequest request)
     {
+        if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+            return scopeError!;
+
         var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId && u.CompanyId == companyId);
         if (user == null)
             return NotFound(new { success = false, message = "الموظف غير موجود" });
@@ -427,7 +486,9 @@ public class DepartmentsController(IUnitOfWork unitOfWork) : ControllerBase
             if (primarySet)
             {
                 var primaryDeptId = request.PrimaryDepartmentId ?? request.DepartmentIds.First();
-                var primaryDept = await _unitOfWork.Departments.GetByIdAsync(primaryDeptId);
+                // عزل: اجلب القسم الرئيسي مقيّداً بالشركة الفعّالة كي لا يتسرّب اسم قسم شركة أخرى.
+                var primaryDept = await _unitOfWork.Departments
+                    .FirstOrDefaultAsync(d => d.Id == primaryDeptId && d.CompanyId == companyId);
                 if (primaryDept != null)
                 {
                     user.Department = primaryDept.NameAr;
