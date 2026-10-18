@@ -16,9 +16,6 @@ import '../../services/api/api_client.dart';
 import '../../permissions/permissions.dart';
 import '../../widgets/update_dialog.dart';
 import '../../services/dual_auth_service.dart';
-import '../../services/linked_accounts_service.dart';
-import '../../widgets/window_close_handler_fixed.dart' show navigatorKey;
-import 'ftth_account_selector.dart';
 import '../../services/fcm_token_service.dart';
 import '../../services/notification_service.dart';
 import '../../ftth/widgets/floating_toolbar.dart';
@@ -496,9 +493,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   /// عند تعدّد حسابات FTTH يُعرض حوار الاختيار فوق الصفحة الرئيسية.
   Future<void> _performSilentFtthLogin() async {
     try {
-      final result = await DualAuthService.instance.smartFtthLogin(
-        onMultiple: (accounts) => _promptFtthAccountSelection(accounts),
-      );
+      // لا حوار اختيار عند الدخول — ندخل تلقائياً بالحساب الأساسي؛
+      // التبديل يتم لاحقاً من مُبدّل الحساب في الشريط العلوي داخل التطبيق.
+      final result = await DualAuthService.instance.smartFtthLogin();
       if (result.success) {
         print('✅ [Login] تم تسجيل دخول FTTH بصمت: ${result.ftthUsername}');
       } else if (result.cancelled) {
@@ -514,14 +511,6 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     }
   }
 
-  /// عرض حوار اختيار حساب FTTH عبر الـ navigatorKey العام (لأن صفحة الدخول
-  /// تُستبدَل بالرئيسية أثناء تشغيل هذا المسار في الخلفية).
-  Future<LinkedAccount?> _promptFtthAccountSelection(
-      List<LinkedAccount> accounts) async {
-    final ctx = navigatorKey.currentContext;
-    if (ctx == null) return null; // لا واجهة متاحة — لا نُجبر الاختيار
-    return FtthAccountSelector.show(ctx, accounts);
-  }
 
   /// فحص التحديثات في الخلفية بعد تسجيل الدخول (بدون حظر)
   /// يعمل فقط على Windows — على Android التحديث يدوي
