@@ -3,13 +3,15 @@ using System.Text.Json.Serialization;
 namespace Sadara.Domain.Entities;
 
 /// <summary>مشترك IPTV - بيانات اشتراكات التلفزيون عبر الإنترنت</summary>
-public class IptvSubscriber : BaseEntity<long>
+public class IptvSubscriber : BaseEntity<long>, ITenantScoped
 {
     [JsonPropertyName("id")]
     public new long Id { get; set; }
 
+    // CompanyId من نوع Guid? ليدخل الكيان في فلتر العزل المركزي (يشترط Guid/Guid?).
+    // nullable: صفوف قديمة قد تحمل قيمة نصّية غير صالحة تُحوَّل إلى NULL أثناء الهجرة.
     [JsonPropertyName("companyId")]
-    public string CompanyId { get; set; } = string.Empty;
+    public Guid? CompanyId { get; set; }
 
     [JsonPropertyName("subscriptionId")]
     public string? SubscriptionId { get; set; }

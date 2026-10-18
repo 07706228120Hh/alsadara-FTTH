@@ -3996,9 +3996,8 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasAnnotation("Relational:JsonPropertyName", "activationDate");
 
-                    b.Property<string>("CompanyId")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid")
                         .HasAnnotation("Relational:JsonPropertyName", "companyId");
 
                     b.Property<DateTime>("CreatedAt")

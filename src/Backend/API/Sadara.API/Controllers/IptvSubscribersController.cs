@@ -36,9 +36,10 @@ public class IptvSubscribersController : ControllerBase
     {
         if (!ValidateApiKey()) return Unauthorized(new { message = "API Key غير صالح" });
         if (string.IsNullOrEmpty(companyId)) return BadRequest(new { message = "companyId مطلوب" });
+        if (!Guid.TryParse(companyId, out var companyGuid)) return BadRequest(new { message = "companyId غير صالح" });
 
         var items = await _unitOfWork.IptvSubscribers.AsQueryable()
-            .Where(s => s.CompanyId == companyId)
+            .Where(s => s.CompanyId == companyGuid)
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync();
 
@@ -63,11 +64,12 @@ public class IptvSubscribersController : ControllerBase
     {
         if (!ValidateApiKey()) return Unauthorized(new { message = "API Key غير صالح" });
         if (string.IsNullOrEmpty(request.CompanyId)) return BadRequest(new { message = "companyId مطلوب" });
+        if (!Guid.TryParse(request.CompanyId, out var companyGuid)) return BadRequest(new { message = "companyId غير صالح" });
         if (string.IsNullOrEmpty(request.CustomerName)) return BadRequest(new { message = "customerName مطلوب" });
 
         var subscriber = new IptvSubscriber
         {
-            CompanyId = request.CompanyId,
+            CompanyId = companyGuid,
             SubscriptionId = request.SubscriptionId,
             CustomerName = request.CustomerName,
             Phone = request.Phone,
