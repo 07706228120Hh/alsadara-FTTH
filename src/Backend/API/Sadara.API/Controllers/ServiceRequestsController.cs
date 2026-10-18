@@ -74,6 +74,14 @@ public class ServiceRequestsController : ControllerBase
     {
         var query = _unitOfWork.ServiceRequests.AsQueryable();
 
+        // ═══ عزل المستأجر ═══
+        // غير SuperAdmin ⇒ يُقيَّد بشركة التوكن ويتجاهل companyId العميل؛ توكن بلا شركة ⇒ لا نتائج.
+        // SuperAdmin ⇒ companyId المُرسَل إن وُجد وإلا كل الشركات.
+        if (!TryResolveCompanyScope(companyId, out var effectiveCompanyId))
+            query = query.Where(r => false);
+        else if (effectiveCompanyId.HasValue)
+            query = query.Where(r => r.CompanyId == effectiveCompanyId.Value);
+
         // فلتر التاريخ: من - إلى (حسب تاريخ الإنشاء)
         if (fromDate.HasValue)
             query = query.Where(r => r.CreatedAt >= fromDate.Value.Date);
@@ -85,9 +93,6 @@ public class ServiceRequestsController : ControllerBase
 
         if (serviceId.HasValue)
             query = query.Where(r => r.ServiceId == serviceId);
-
-        if (companyId.HasValue)
-            query = query.Where(r => r.CompanyId == companyId);
 
         // فلتر المصدر: agent = طلبات الوكلاء فقط، company = طلبات الشركة فقط
         if (!string.IsNullOrEmpty(source))
@@ -574,6 +579,10 @@ ORDER BY ""TotalCollected"" DESC;";
         if (request == null)
             return NotFound(new { success = false, message = "الطلب غير موجود" });
 
+        // عزل المستأجر: غير SuperAdmin لا يصل لطلب شركة أخرى (404 لإخفاء الوجود)
+        if (!IsRequestInScope(request.CompanyId))
+            return NotFound(new { success = false, message = "الطلب غير موجود" });
+
         return Ok(new { success = true, data = MapToDetailedResponse(request) });
     }
 
@@ -591,6 +600,10 @@ ORDER BY ""TotalCollected"" DESC;";
         if (request == null)
             return NotFound(new { success = false, message = "الطلب غير موجود" });
 
+        // عزل المستأجر: غير SuperAdmin لا يصل لطلب شركة أخرى (404 لإخفاء الوجود)
+        if (!IsRequestInScope(request.CompanyId))
+            return NotFound(new { success = false, message = "الطلب غير موجود" });
+
         return Ok(new { success = true, data = MapToResponse(request) });
     }
 
@@ -600,6 +613,11 @@ ORDER BY ""TotalCollected"" DESC;";
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateServiceRequestDto dto)
     {
+        // عزل المستأجر (fail-closed): لا مستهلك مواطن/خارجي لهذا المسار — إنشاء بين موظفين فقط.
+        // غير SuperAdmin بلا شركة في التوكن ⇒ رفض بدل إنشاء صفّ يتيم (CompanyId=NULL).
+        if (!_tenant.IsSuperAdmin && (_tenant.CompanyId is null || _tenant.CompanyId.Value == Guid.Empty))
+            return StatusCode(403, new { success = false, message = "لا يمكن تحديد الشركة من التوكن" });
+
         // التحقق من الخدمة
         var service = await _unitOfWork.Services.GetByIdAsync(dto.ServiceId);
         if (service == null || !service.IsActive)
@@ -617,7 +635,8 @@ ORDER BY ""TotalCollected"" DESC;";
             ServiceId = dto.ServiceId,
             OperationTypeId = dto.OperationTypeId,
             CitizenId = dto.CitizenId,
-            CompanyId = dto.CompanyId,
+            // ختم الشركة من التوكن (غير SuperAdmin): لا نثق بـ dto.CompanyId لمنع حقن سجل في شركة أخرى.
+            CompanyId = ResolveWriteCompanyId(dto.CompanyId),
             Details = dto.Details != null ? JsonSerializer.Serialize(dto.Details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }) : null,
             // dual-write (مرحلة ب): تعبئة العمودين المطبّعين بالتوازي مع Details JSON (توافق خلفي — لا حذف من JSON)
             Department = ExtractDetailValue(dto.Details, "department"),
@@ -671,6 +690,10 @@ ORDER BY ""TotalCollected"" DESC;";
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
         if (request == null)
+            return NotFound(new { success = false, message = "الطلب غير موجود" });
+
+        // عزل المستأجر: غير SuperAdmin لا يعدّل طلب شركة أخرى
+        if (!IsRequestInScope(request.CompanyId))
             return NotFound(new { success = false, message = "الطلب غير موجود" });
 
         if (!Enum.TryParse<ServiceRequestStatus>(dto.Status, true, out var newStatus))
@@ -1186,6 +1209,10 @@ ORDER BY ""TotalCollected"" DESC;";
         if (request == null)
             return NotFound(new { success = false, message = "الطلب غير موجود" });
 
+        // عزل المستأجر: غير SuperAdmin لا يعدّل طلب شركة أخرى
+        if (!IsRequestInScope(request.CompanyId))
+            return NotFound(new { success = false, message = "الطلب غير موجود" });
+
         var employee = await _unitOfWork.Users.GetByIdAsync(dto.EmployeeId);
         if (employee == null)
             return BadRequest(new { success = false, message = "الموظف غير موجود" });
@@ -1228,6 +1255,10 @@ ORDER BY ""TotalCollected"" DESC;";
         if (request == null)
             return NotFound(new { success = false, message = "الطلب غير موجود" });
 
+        // عزل المستأجر: غير SuperAdmin لا يعلّق على طلب شركة أخرى
+        if (!IsRequestInScope(request.CompanyId))
+            return NotFound(new { success = false, message = "الطلب غير موجود" });
+
         var comment = new ServiceRequestComment
         {
             ServiceRequestId = id,
@@ -1250,6 +1281,12 @@ ORDER BY ""TotalCollected"" DESC;";
     [HttpGet("{id:guid}/comments")]
     public async Task<IActionResult> GetComments(Guid id)
     {
+        // عزل المستأجر: تحقّق أن الطلب ضمن نطاق شركة المستخدم قبل كشف تعليقاته
+        var ownerCompanyId = await _unitOfWork.ServiceRequests.AsQueryable()
+            .Where(r => r.Id == id).Select(r => r.CompanyId).FirstOrDefaultAsync();
+        if (!IsRequestInScope(ownerCompanyId))
+            return NotFound(new { success = false, message = "الطلب غير موجود" });
+
         var comments = await _unitOfWork.ServiceRequestComments.AsQueryable()
             .Where(c => c.ServiceRequestId == id)
             .Include(c => c.User)
@@ -1283,6 +1320,10 @@ ORDER BY ""TotalCollected"" DESC;";
         {
             var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
             if (request == null)
+                return NotFound(new { success = false, message = "الطلب غير موجود" });
+
+            // عزل المستأجر: غير SuperAdmin لا يرفع مرفقاً لطلب شركة أخرى
+            if (!IsRequestInScope(request.CompanyId))
                 return NotFound(new { success = false, message = "الطلب غير موجود" });
 
             var userId = GetCurrentUserId();
@@ -1332,6 +1373,12 @@ ORDER BY ""TotalCollected"" DESC;";
     [HttpGet("{id:guid}/attachments")]
     public async Task<IActionResult> GetAttachments(Guid id)
     {
+        // عزل المستأجر: تحقّق أن الطلب ضمن نطاق شركة المستخدم قبل كشف مرفقاته
+        var ownerCompanyId = await _unitOfWork.ServiceRequests.AsQueryable()
+            .Where(r => r.Id == id).Select(r => r.CompanyId).FirstOrDefaultAsync();
+        if (!IsRequestInScope(ownerCompanyId))
+            return NotFound(new { success = false, message = "الطلب غير موجود" });
+
         var attachments = await _unitOfWork.ServiceRequestAttachments.AsQueryable()
             .Where(a => a.ServiceRequestId == id)
             .Include(a => a.UploadedBy)
@@ -1365,8 +1412,15 @@ ORDER BY ""TotalCollected"" DESC;";
         [FromQuery] string? technician = null)
     {
         var query = _unitOfWork.ServiceRequests.AsQueryable();
-        if (companyId.HasValue)
-            query = query.Where(r => r.CompanyId == companyId);
+
+        // ═══ عزل المستأجر ═══
+        // غير SuperAdmin ⇒ يُقيَّد بشركة التوكن ويتجاهل companyId العميل؛ توكن بلا شركة ⇒ لا نتائج (أصفار).
+        // SuperAdmin ⇒ companyId المُرسَل إن وُجد وإلا كل الشركات.
+        if (!TryResolveCompanyScope(companyId, out var effectiveCompanyId))
+            query = query.Where(r => false);
+        else if (effectiveCompanyId.HasValue)
+            query = query.Where(r => r.CompanyId == effectiveCompanyId.Value);
+
         // (مرحلة ب) الفلترة من الأعمدة المطبّعة بدل استخراج Details JSON.
         if (!string.IsNullOrEmpty(department))
         {
@@ -1414,11 +1468,35 @@ ORDER BY ""TotalCollected"" DESC;";
         // مع إبقاء fallback على Technician.FullName للسجلات القديمة قبل الـbackfill.
         if (!string.IsNullOrEmpty(technicianName))
         {
-            query = query.Where(r =>
-                r.TechnicianName == technicianName ||
-                (r.Technician != null && r.Technician.FullName == technicianName) ||
-                r.AssignedToId == userId ||
-                r.TechnicianId == userId);
+            if (_tenant.IsSuperAdmin)
+            {
+                query = query.Where(r =>
+                    r.TechnicianName == technicianName ||
+                    (r.Technician != null && r.Technician.FullName == technicianName) ||
+                    r.AssignedToId == userId ||
+                    r.TechnicianId == userId);
+            }
+            else
+            {
+                // عزل المستأجر: مطابقة الاسم مقيّدة بشركة التوكن (تمنع تسريب مهام فنيين بنفس الاسم
+                // عبر الشركات)؛ الفرع الذاتي (userId) يبقى كما هو — آمن أصلاً لأنه مُقيّد بالمستخدم.
+                var tenantCompany = _tenant.CompanyId;
+                if (tenantCompany is null || tenantCompany.Value == Guid.Empty)
+                {
+                    // توكن بلا شركة لغير SuperAdmin: لا مطابقة بالاسم (تمنع التقاط صفوف يتيمة بـ CompanyId=NULL)
+                    // — يُقتصر على الفرع الذاتي الآمن.
+                    query = query.Where(r => r.AssignedToId == userId || r.TechnicianId == userId);
+                }
+                else
+                {
+                    query = query.Where(r =>
+                        ((r.TechnicianName == technicianName ||
+                          (r.Technician != null && r.Technician.FullName == technicianName))
+                            && r.CompanyId == tenantCompany) ||
+                        r.AssignedToId == userId ||
+                        r.TechnicianId == userId);
+                }
+            }
         }
         else
         {
@@ -1536,6 +1614,10 @@ ORDER BY ""TotalCollected"" DESC;";
             if (request == null)
                 return NotFound(new { success = false, message = "الطلب غير موجود" });
 
+            // عزل المستأجر: غير SuperAdmin لا يحذف طلب شركة أخرى
+            if (!IsRequestInScope(request.CompanyId))
+                return NotFound(new { success = false, message = "الطلب غير موجود" });
+
             // حذف المعاملة المالية المرتبطة إن وجدت (مع عكس الرصيد)
             var linkedTransaction = await _unitOfWork.AgentTransactions.AsQueryable()
                 .FirstOrDefaultAsync(t => t.ServiceRequestId == id);
@@ -1601,6 +1683,11 @@ ORDER BY ""TotalCollected"" DESC;";
     {
         try
         {
+            // عزل المستأجر (fail-closed): مسار داخلي بين موظفين — غير SuperAdmin بلا شركة ⇒ رفض
+            // بدل إنشاء مهمة يتيمة (CompanyId=NULL).
+            if (!_tenant.IsSuperAdmin && (_tenant.CompanyId is null || _tenant.CompanyId.Value == Guid.Empty))
+                return StatusCode(403, new { success = false, message = "لا يمكن تحديد الشركة من التوكن" });
+
             // التحقق من عدم وجود مهمة مكررة لنفس رقم الهاتف ونفس النوع في نفس اليوم
             // مهمة "تركيب" لا تمنع "شراء اشتراك" — فقط نفس النوع يُمنع
             if (!string.IsNullOrWhiteSpace(dto.CustomerPhone))
@@ -1701,6 +1788,8 @@ ORDER BY ""TotalCollected"" DESC;";
                 RequestNumber = GenerateRequestNumber(),
                 ServiceId = dto.ServiceId,
                 OperationTypeId = operationTypeId,
+                // ختم الشركة من التوكن صراحةً (لا نعتمد على الختم المركزي وحده) — المهمة تُنشأ ضمن شركة المنشئ
+                CompanyId = ResolveWriteCompanyId(null),
                 Details = JsonSerializer.Serialize(details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }),
                 // dual-write (مرحلة ب): تعبئة العمودين المطبّعين بالتوازي مع Details JSON (توافق خلفي)
                 Department = string.IsNullOrWhiteSpace(dto.Department) ? null : dto.Department.Trim(),
@@ -1795,6 +1884,10 @@ ORDER BY ""TotalCollected"" DESC;";
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
         if (request == null)
+            return NotFound(new { success = false, message = "الطلب غير موجود" });
+
+        // عزل المستأجر: غير SuperAdmin لا يعيّن مهمة طلب شركة أخرى
+        if (!IsRequestInScope(request.CompanyId))
             return NotFound(new { success = false, message = "الطلب غير موجود" });
 
         // تحديث Details JSON بإضافة بيانات التعيين
@@ -1894,6 +1987,10 @@ ORDER BY ""TotalCollected"" DESC;";
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
         if (request == null)
+            return NotFound(new { success = false, message = "الطلب غير موجود" });
+
+        // عزل المستأجر: غير SuperAdmin لا يعدّل مهمة طلب شركة أخرى
+        if (!IsRequestInScope(request.CompanyId))
             return NotFound(new { success = false, message = "الطلب غير موجود" });
 
         // تحديث Details JSON
@@ -2041,6 +2138,24 @@ ORDER BY ""TotalCollected"" DESC;";
             };
         }
 
+        // عزل المستأجر: خيارات FBG من إحصاءات المناطق مقيّدة بشركة التوكن لغير SuperAdmin
+        // (توكن بلا شركة ⇒ قائمة فارغة). SuperAdmin ⇒ كل المناطق.
+        var fbgQuery = _unitOfWork.ZoneStatistics.AsQueryable()
+            .Where(z => !string.IsNullOrEmpty(z.ZoneName));
+        if (!_tenant.IsSuperAdmin)
+        {
+            var tenantCompany = _tenant.CompanyId;
+            if (tenantCompany is null || tenantCompany.Value == Guid.Empty)
+                fbgQuery = fbgQuery.Where(z => false);
+            else
+                fbgQuery = fbgQuery.Where(z => z.CompanyId == tenantCompany.Value);
+        }
+        var fbgOptions = await fbgQuery
+            .OrderBy(z => z.ZoneName)
+            .Select(z => z.ZoneName)
+            .Distinct()
+            .ToListAsync();
+
         var data = new
         {
             departments,
@@ -2075,12 +2190,7 @@ ORDER BY ""TotalCollected"" DESC;";
                 new { value = "Rejected", label = "مرفوضة" },
                 new { value = "OnHold", label = "معلقة" }
             },
-            fbgOptions = await _unitOfWork.ZoneStatistics.AsQueryable()
-                .Where(z => !string.IsNullOrEmpty(z.ZoneName))
-                .OrderBy(z => z.ZoneName)
-                .Select(z => z.ZoneName)
-                .Distinct()
-                .ToListAsync()
+            fbgOptions
         };
 
         return Ok(new { success = true, data });
@@ -2095,9 +2205,20 @@ ORDER BY ""TotalCollected"" DESC;";
     {
         try
         {
-            // جلب كل الموظفين النشطين بدون فلتر قسم أو دور
-            var staff = await _unitOfWork.Users.AsQueryable()
-                .Where(u => u.IsActive && u.Role != UserRole.Citizen)
+            // عزل المستأجر: غير SuperAdmin يرى موظفي شركته فقط؛ توكن بلا شركة ⇒ قائمة فارغة.
+            var staffQuery = _unitOfWork.Users.AsQueryable()
+                .Where(u => u.IsActive && u.Role != UserRole.Citizen);
+            if (!_tenant.IsSuperAdmin)
+            {
+                var tenantCompany = _tenant.CompanyId;
+                if (tenantCompany is null || tenantCompany.Value == Guid.Empty)
+                    staffQuery = staffQuery.Where(u => false);
+                else
+                    staffQuery = staffQuery.Where(u => u.CompanyId == tenantCompany.Value);
+            }
+
+            // جلب الموظفين النشطين (ضمن نطاق الشركة) بدون فلتر قسم أو دور
+            var staff = await staffQuery
                 .Select(u => new
                 {
                     u.Id,
@@ -2188,6 +2309,54 @@ ORDER BY ""TotalCollected"" DESC;";
     #endregion
 
     #region Helper Methods
+
+    // ── عزل المستأجر: نطاق الشركة الفعّال لطلبات الخدمة ──
+    // SuperAdmin: يصل لكل الشركات — إن أرسل companyId استُخدم للتصفية، وإلا null = كل الشركات.
+    // أي مستخدم آخر: يُقيَّد دائماً بشركة توكنه ويتجاهل أي companyId مُرسَل من العميل (منع العبور).
+    // توكن بلا شركة (غير SuperAdmin) ⇒ يعيد false ليُرجع المستدعي نتيجة فارغة آمنة بدل تسريب.
+    private bool TryResolveCompanyScope(Guid? requestedCompanyId, out Guid? effectiveCompanyId)
+    {
+        if (_tenant.IsSuperAdmin)
+        {
+            effectiveCompanyId = requestedCompanyId;
+            return true;
+        }
+
+        var tenantCompany = _tenant.CompanyId;
+        if (tenantCompany is null || tenantCompany.Value == Guid.Empty)
+        {
+            effectiveCompanyId = null;
+            return false;
+        }
+
+        effectiveCompanyId = tenantCompany.Value;
+        return true;
+    }
+
+    // ── فحص ملكية طلب بعينه (للمسارات التي تجلب الكيان بالـ id) ──
+    // SuperAdmin: مسموح دائماً. غيره: يُسمح فقط إن طابقت شركة الطلب شركة التوكن.
+    // (ملاحظة: الصفوف القديمة ذات CompanyId = NULL تُعامَل كغير مملوكة لأي شركة ⇒ 404 لغير SuperAdmin.)
+    private bool IsRequestInScope(Guid? requestCompanyId)
+    {
+        if (_tenant.IsSuperAdmin)
+            return true;
+
+        var c = _tenant.CompanyId;
+        if (c is null || c.Value == Guid.Empty)
+            return false;
+
+        return requestCompanyId.HasValue && requestCompanyId.Value == c.Value;
+    }
+
+    // ── ختم شركة الكتابة من التوكن (منع حقن سجل في شركة أخرى) ──
+    // غير SuperAdmin: شركة التوكن دائماً (تُتجاهل قيمة العميل). SuperAdmin: قيمة الطلب إن وُجدت وإلا شركته.
+    private Guid? ResolveWriteCompanyId(Guid? requestedCompanyId)
+    {
+        if (_tenant.IsSuperAdmin)
+            return requestedCompanyId ?? _tenant.CompanyId;
+
+        return _tenant.CompanyId;
+    }
 
     /// <summary>
     /// الانتقالات المسموحة بين الحالات (State Machine)
