@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
@@ -17,10 +18,38 @@ namespace Sadara.API.Controllers;
 [Route("api/hr-reports")]
 [Authorize]
 [RequirePermission("hr.reports", "view")]
-public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsController> logger) : ControllerBase
+public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsController> logger, ICurrentTenant tenant) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<HrReportsController> _logger = logger;
+    private readonly ICurrentTenant _tenant = tenant;
+
+    // ── عزل المستأجر: نطاق الشركة الفعّال لتقارير الموارد البشرية ──
+    // SuperAdmin: يصل لكل الشركات (يحترم companyId المُرسَل لدعم لوحات مدير النظام عبر الشركات).
+    // أي مستخدم آخر: يُقيَّد دائماً بشركة توكنه ويتجاهل أي companyId مُرسَل من العميل —
+    // فلا يرى رواتب/حضور/إجازات شركة أخرى (عزل تام مستقل عن علَم EnforceIsolation العام).
+    // إن لم يحمل التوكن شركة (غير SuperAdmin) ⇒ يُمنع الطلب (403) بدل تسريب/كسر.
+    private bool TryScopeCompanyId(Guid requested, out Guid effective, out IActionResult? error)
+    {
+        if (_tenant.IsSuperAdmin)
+        {
+            effective = requested;
+            error = null;
+            return true;
+        }
+
+        var tenantCompany = _tenant.CompanyId;
+        if (tenantCompany is null || tenantCompany.Value == Guid.Empty)
+        {
+            effective = Guid.Empty;
+            error = StatusCode(403, new { success = false, message = "لا يمكن تحديد الشركة من التوكن" });
+            return false;
+        }
+
+        effective = tenantCompany.Value;
+        error = null;
+        return true;
+    }
 
     // ==================== تقرير الحضور الشهري ====================
 
@@ -36,6 +65,9 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
     {
         try
         {
+            if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+                return scopeError!;
+
             var targetMonth = month ?? DateTime.UtcNow.Month;
             var targetYear = year ?? DateTime.UtcNow.Year;
             var startDate = new DateOnly(targetYear, targetMonth, 1);
@@ -110,6 +142,9 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
     {
         try
         {
+            if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+                return scopeError!;
+
             var targetMonth = month ?? DateTime.UtcNow.Month;
             var targetYear = year ?? DateTime.UtcNow.Year;
 
@@ -184,6 +219,9 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
     {
         try
         {
+            if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+                return scopeError!;
+
             var targetYear = year ?? DateTime.UtcNow.Year;
             var startDate = month.HasValue
                 ? new DateOnly(targetYear, month.Value, 1)
@@ -260,6 +298,9 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
     {
         try
         {
+            if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+                return scopeError!;
+
             var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3));
             var currentMonth = DateTime.UtcNow.AddHours(3).Month;
             var currentYear = DateTime.UtcNow.AddHours(3).Year;
@@ -408,10 +449,15 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
 
             var employee = await _unitOfWork.Users.AsQueryable()
                 .Where(u => u.Id == userId)
-                .Select(u => new { u.Id, u.FullName, u.PhoneNumber, u.Email, u.Role, u.Salary })
+                .Select(u => new { u.Id, u.FullName, u.PhoneNumber, u.Email, u.Role, u.Salary, u.CompanyId })
                 .FirstOrDefaultAsync();
 
             if (employee == null)
+                return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+            // عزل مستأجر: غير SuperAdmin لا يصل لموظف خارج شركته (منع تسرّب التقرير عبر userId).
+            // نُعيد 404 (لا 403) كي لا نكشف وجود الموظف لشركة أخرى.
+            if (!_tenant.IsSuperAdmin && employee.CompanyId != _tenant.CompanyId)
                 return NotFound(new { success = false, message = "الموظف غير موجود" });
 
             // حضور الشهر
@@ -652,6 +698,9 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
     {
         try
         {
+            if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+                return scopeError!;
+
             var targetMonth = month ?? DateTime.UtcNow.Month;
             var targetYear = year ?? DateTime.UtcNow.Year;
             var startDate = new DateOnly(targetYear, targetMonth, 1);
@@ -705,6 +754,9 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
     {
         try
         {
+            if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+                return scopeError!;
+
             var targetMonth = month ?? DateTime.UtcNow.Month;
             var targetYear = year ?? DateTime.UtcNow.Year;
 
@@ -761,6 +813,9 @@ public class HrReportsController(IUnitOfWork unitOfWork, ILogger<HrReportsContro
     {
         try
         {
+            if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
+                return scopeError!;
+
             var targetYear = year ?? DateTime.UtcNow.Year;
             var startDate = new DateOnly(targetYear, 1, 1);
             var endDate = new DateOnly(targetYear, 12, 31);
