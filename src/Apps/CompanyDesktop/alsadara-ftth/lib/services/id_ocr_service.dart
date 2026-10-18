@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../services/api/api_config.dart';
+import '../services/api/api_client.dart';
 
 /// خدمة OCR — ترسل صورة الهوية للسيرفر ويرجع البيانات المستخرجة
 class IdOcrService {
@@ -11,9 +12,18 @@ class IdOcrService {
     required String? backPath,
   }) async {
     if (frontPath == null && backPath == null) return null;
+
+    // توكن الصدارة (JWT Bearer) — نفس مصدر بقية التطبيق (ApiClient)
+    // الـ endpoint صار يتطلب مصادقة، فبدون توكن لا جدوى من الطلب
+    final token = ApiClient.instance.authToken;
+    if (token == null || token.isEmpty) {
+      throw Exception('يجب تسجيل الدخول أولاً لقراءة بيانات الهوية');
+    }
+
     try {
       final url = '${ApiConfig.baseUrl}/ocr/id-card-both';
-      final request = http.MultipartRequest('POST', Uri.parse(url));
+      final request = http.MultipartRequest('POST', Uri.parse(url))
+        ..headers['Authorization'] = 'Bearer $token';
 
       if (frontPath != null) {
         request.files.add(await http.MultipartFile.fromPath('front', frontPath));

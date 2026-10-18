@@ -12,7 +12,7 @@ namespace Sadara.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[AllowAnonymous]
+[Authorize]
 public class OcrController : ControllerBase
 {
     private readonly ILogger<OcrController> _logger;
