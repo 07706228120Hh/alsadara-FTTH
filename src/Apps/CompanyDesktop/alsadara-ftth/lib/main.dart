@@ -130,14 +130,45 @@ Future<void> main(List<String> args) async {
   // تحميل مقياس النص الداخلي للتطبيق
   await AppTextScale.instance.load();
 
+  // تحميل متغيرات البيئة بشكل آمن (محلي سريع)
   try {
-    // تهيئة Firebase قبل أي استخدام لـ FCM
+    await dotenv.load(fileName: ".env");
+    logSuccess('تم تحميل متغيرات البيئة', tag: 'Init');
+  } catch (e) {
+    logWarning('فشل في تحميل متغيرات البيئة', tag: 'Init');
+  }
+
+  // تحميل الجلسة وتهيئة نظام المصادقة الموحّد (محلي سريع — لا يعتمد على Firebase)
+  try {
+    await SessionManager.instance.loadFromStorage();
+    await UnifiedAuthManager.instance.initialize();
+    logSuccess('تم تهيئة UnifiedAuthManager', tag: 'Auth');
+  } catch (e) {
+    logWarning('فشل تحميل الجلسة الأولية', tag: 'Auth');
+  }
+
+  // ✅ لا نستعيد جلسة VPS تلقائياً — تظهر صفحة تسجيل الدخول دائماً.
+  // 🚀 عرض الواجهة فوراً، ثم تهيئة الخدمات الثقيلة (Firebase/الإشعارات/التذاكر)
+  //    بالخلفية بعد أول إطار كي لا تحجب ظهور شاشة الدخول عند الإقلاع.
+  runApp(WindowCloseHandlerFixed(
+    child: const SessionBootstrap(child: MyApp()),
+  ));
+
+  unawaited(_initHeavyServicesInBackground());
+}
+
+/// تهيئة الخدمات الثقيلة (Firebase، الإشعارات، التذاكر، البادج) بعد عرض الواجهة.
+/// مؤجّلة عمداً كي لا تؤخّر ظهور شاشة الدخول عند الإقلاع.
+/// تحافظ على ترتيب التبعيات: Firebase قبل FCM واستعادة جلسة Firebase.
+Future<void> _initHeavyServicesInBackground() async {
+  // تهيئة Firebase قبل أي استخدام لـ FCM
+  try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
     FirebaseAvailability.markInitialized(); // ✅ تسجيل نجاح التهيئة
     logSuccess('Firebase initialized', tag: 'Init');
-    // تسجيل معالج رسائل الخلفية (يجب قبل استقبال أي رسالة في الخلفية)
+    // تسجيل معالج رسائل الخلفية
     try {
       FirebaseMessaging.onBackgroundMessage(
           NotificationService.firebaseMessagingBackgroundHandler);
@@ -150,12 +181,12 @@ Future<void> main(List<String> args) async {
         tag: 'Init');
   }
 
-  // تهيئة خدمة الإشعارات (محلية + FCM)
+  // تهيئة خدمة الإشعارات (محلية + FCM) والخدمات الخلفية
   try {
     await NotificationService.initialize();
     LocationForegroundService.init(); // تهيئة خدمة الموقع في الخلفية
     logSuccess('تم تهيئة خدمة الإشعارات', tag: 'Notifications');
-    // تشغيل خدمة التذاكر الخلفية (Polling) لبيئة Windows فقط بدون انتظار
+    // تشغيل خدمة التذاكر الخلفية (Polling)
     TicketUpdatesService.instance.start();
     // تشغيل خدمة مراقبة مهام التحصيل المكتملة (Polling)
     CollectionTasksPollingService.instance.start();
@@ -182,25 +213,6 @@ Future<void> main(List<String> args) async {
         tag: 'Notifications');
   }
 
-  // تحميل متغيرات البيئة بشكل آمن
-  try {
-    await dotenv.load(fileName: ".env");
-    logSuccess('تم تحميل متغيرات البيئة', tag: 'Init');
-  } catch (e) {
-    logWarning('فشل في تحميل متغيرات البيئة', tag: 'Init');
-  }
-
-  // تحميل الجلسة (إن وُجدت) مبكراً للاستفادة من سياق الهوية لاحقاً
-  try {
-    await SessionManager.instance.loadFromStorage();
-    // تهيئة نظام المصادقة الموحد
-    await UnifiedAuthManager.instance.initialize();
-    logSuccess('تم تهيئة UnifiedAuthManager', tag: 'Auth');
-  } catch (e) {
-    // عدم إيقاف التطبيق إذا فشل التحميل
-    logWarning('فشل تحميل الجلسة الأولية', tag: 'Auth');
-  }
-
   // ✅ استعادة جلسة Firebase إن وجدت (فقط إذا كان Firebase متاحاً)
   if (FirebaseAvailability.isAvailable) {
     try {
@@ -210,13 +222,6 @@ Future<void> main(List<String> args) async {
       logDebug('لم يتم العثور على جلسة Firebase سابقة', tag: 'Auth');
     }
   }
-
-  // ✅ لا نستعيد جلسة VPS تلقائياً - سيقوم المستخدم بتسجيل الدخول
-  // هذا يضمن ظهور صفحة تسجيل الدخول دائماً
-
-  runApp(WindowCloseHandlerFixed(
-    child: const SessionBootstrap(child: MyApp()),
-  ));
 }
 
 class MyApp extends StatefulWidget {

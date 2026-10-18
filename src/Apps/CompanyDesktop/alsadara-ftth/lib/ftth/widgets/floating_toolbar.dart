@@ -43,6 +43,17 @@ class FloatingToolbar {
   static final ValueNotifier<bool> _collapsedNotifier =
       ValueNotifier<bool>(false);
 
+  // كبت الإظهار طوال وجود شاشة الدخول (يمنع ظهور الأيقونة أثناء انتقالات الدخول/الخروج)
+  static final ValueNotifier<bool> _suppressed = ValueNotifier<bool>(false);
+  static void setSuppressed(bool v) {
+    if (_suppressed.value == v) return;
+    // تأجيل التغيير لما بعد إطار البناء الحالي — تفادياً لـ markNeedsBuild
+    // أثناء البناء (يُستدعى من initState/dispose لشاشة الدخول).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _suppressed.value = v;
+    });
+  }
+
   // إشعار shake لزر معين
   static final ValueNotifier<String?> _shakeButtonNotifier =
       ValueNotifier<String?>(null);
@@ -729,6 +740,14 @@ class _ToolbarOverlayState extends State<_ToolbarOverlay>
 
   @override
   Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: FloatingToolbar._suppressed,
+      builder: (_, suppressed, __) =>
+          suppressed ? const SizedBox.shrink() : _buildToolbar(context),
+    );
+  }
+
+  Widget _buildToolbar(BuildContext context) {
     final mq = MediaQuery.of(context).size;
     final isMobile = Platform.isAndroid || Platform.isIOS;
     final smallPhone = _isSmallPhone;

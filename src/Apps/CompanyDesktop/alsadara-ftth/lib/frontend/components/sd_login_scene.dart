@@ -259,8 +259,8 @@ class _SdLoginSceneState extends State<SdLoginScene>
 
   void _onTapUp(TapUpDetails d) {
     if (_dragMoved) return;
-    final h = _pick(d.localPosition);
-    _setFocus(h != null && !identical(h, _focused) ? h : null);
+    // البطاقات معطّلة بطلب المالك: الضغط على مبنى لا يُظهر بطاقة ولا يُكبّر —
+    // المشهد زخرفي فقط (دوران تلقائي + توهّج عند المرور).
     _focusNode.requestFocus();
   }
 
@@ -355,7 +355,7 @@ class _SdLoginSceneState extends State<SdLoginScene>
                 top: narrow ? null : 8,
                 bottom: narrow ? 8 : null,
                 left: 8,
-                width: narrow ? w - 16 : math.min(300, w * 0.55),
+                width: narrow ? w - 16 : math.min(250, w * 0.5),
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 320),
                   switchInCurve: Curves.easeOutCubic,
@@ -396,15 +396,15 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     const label = TextStyle(
         fontFamily: 'Cairo',
-        fontSize: 11.5,
+        fontSize: 10,
         fontWeight: FontWeight.w700,
         color: Color(0x99FFFFFF));
     Widget kv(String v, String k, {Color color = Colors.white, bool ltr = false}) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
         decoration: BoxDecoration(
           color: const Color(0x0FFFFFFF),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(11),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -413,7 +413,7 @@ class _InfoCard extends StatelessWidget {
                 textDirection: ltr ? TextDirection.ltr : null,
                 style: TextStyle(
                     fontFamily: 'Cairo',
-                    fontSize: 19,
+                    fontSize: 16,
                     fontWeight: FontWeight.w900,
                     color: color)),
             Text(k, style: label),
@@ -427,10 +427,10 @@ class _InfoCard extends StatelessWidget {
       container: true,
       label: 'تفاصيل ${b.name}',
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         decoration: BoxDecoration(
           color: const Color(0xD90E1446),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0x5980DEEA)),
           boxShadow: const [
             BoxShadow(color: Color(0x40000000), offset: Offset(0, 8)),
@@ -454,7 +454,7 @@ class _InfoCard extends StatelessWidget {
                       Text(b.name,
                           style: const TextStyle(
                               fontFamily: 'Cairo',
-                              fontSize: 17,
+                              fontSize: 15,
                               fontWeight: FontWeight.w900,
                               color: Colors.white)),
                       Text('${b.type} · ${b.floors} طوابق', style: label),
@@ -470,17 +470,17 @@ class _InfoCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       onTap: onClose,
                       child: const SizedBox(
-                        width: 44,
-                        height: 44,
+                        width: 36,
+                        height: 36,
                         child: Icon(Icons.close_rounded,
-                            color: Colors.white, size: 20),
+                            color: Colors.white, size: 18),
                       ),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Row(children: [
               Expanded(child: kv('${b.subscribers}', 'مشترك')),
               const SizedBox(width: 8),
@@ -494,11 +494,11 @@ class _InfoCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(child: kv(b.fat, 'صندوق التوزيع')),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(99),
               child: SizedBox(
-                height: 8,
+                height: 5,
                 child: Stack(children: [
                   const Positioned.fill(
                       child: ColoredBox(color: Color(0x1FFFFFFF))),

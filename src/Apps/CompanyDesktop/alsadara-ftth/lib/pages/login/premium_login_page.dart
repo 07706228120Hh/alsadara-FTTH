@@ -158,8 +158,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   @override
   void initState() {
     super.initState();
-    // إزالة الشريط العائم عند وصول صفحة تسجيل الدخول (احتياطي)
+    // إزالة الشريط العائم وكبته طوال وجود شاشة الدخول (يمنع ظهوره أثناء انتقالات الدخول/الخروج)
     FloatingToolbar.dispose();
+    FloatingToolbar.setSuppressed(true);
     _initAnimations();
     _loadAllData();
     PackageInfo.fromPlatform().then((info) {
@@ -193,6 +194,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
 
   @override
   void dispose() {
+    // رفع الكبت بعد مغادرة شاشة الدخول (ظهور الأيقونة في التطبيق طبيعي)
+    FloatingToolbar.setSuppressed(false);
     _usernameController.dispose();
     _passwordController.dispose();
     _formAnimController.dispose();
@@ -841,26 +844,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
               ],
             ),
             children: [
-              TextSpan(text: 'إدارة متكاملة لشبكتك\n'),
+              TextSpan(text: 'إدارة متكاملة لشبكتك'),
             ],
-          ),
-        ),
-        ShaderMask(
-          shaderCallback: (rect) => const LinearGradient(
-            colors: [SdColors.accentGlow, SdColors.gold],
-          ).createShader(rect),
-          child: const Text(
-            'من البرج إلى المشترك',
-            style: TextStyle(
-              fontFamily: SdText.family,
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              height: 1.2,
-              shadows: [
-                Shadow(color: Color(0x99000000), offset: Offset(0, 2), blurRadius: 10),
-              ],
-            ),
           ),
         ),
         const SizedBox(height: 8),
