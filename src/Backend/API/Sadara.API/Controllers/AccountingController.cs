@@ -40,6 +40,19 @@ public class AccountingController : ControllerBase
         return null;
     }
 
+    /// <summary>
+    /// عزل المستأجرين عند القراءة: يحدّد الشركة التي يُفلتر بها الاستعلام.
+    /// - غير SuperAdmin: يُفلتر <b>دائماً</b> بشركة التوكن (يتجاهل companyId المُرسل من العميل).
+    /// - غير SuperAdmin بلا شركة في التوكن: <c>denied = true</c> (لا يُعاد أي صفّ).
+    /// - SuperAdmin: يستخدم companyId المُرسل إن وُجد، وإلا كل الشركات (<c>scopedCompanyId = null</c>).
+    /// </summary>
+    private (Guid? scopedCompanyId, bool denied) ResolveReadScope(Guid? requestedCompanyId)
+    {
+        if (_tenant.IsSuperAdmin) return (requestedCompanyId, false);
+        if (_tenant.CompanyId == null) return (null, true);
+        return (_tenant.CompanyId, false);
+    }
+
     // ==================== شجرة الحسابات - Chart of Accounts ====================
 
     /// <summary>
@@ -50,9 +63,13 @@ public class AccountingController : ControllerBase
     {
         try
         {
+            var (scopedCompanyId, denied) = ResolveReadScope(companyId);
+            if (denied)
+                return Ok(new { success = true, data = Array.Empty<object>(), total = 0 });
+
             var query = _unitOfWork.Accounts.AsQueryable();
-            if (companyId.HasValue)
-                query = query.Where(a => a.CompanyId == companyId);
+            if (scopedCompanyId.HasValue)
+                query = query.Where(a => a.CompanyId == scopedCompanyId);
 
             var accounts = await query.OrderBy(a => a.Code).Select(a => new
             {
@@ -89,9 +106,13 @@ public class AccountingController : ControllerBase
     {
         try
         {
+            var (scopedCompanyId, denied) = ResolveReadScope(companyId);
+            if (denied)
+                return Ok(new { success = true, data = Array.Empty<object>() });
+
             var query = _unitOfWork.Accounts.AsQueryable();
-            if (companyId.HasValue)
-                query = query.Where(a => a.CompanyId == companyId);
+            if (scopedCompanyId.HasValue)
+                query = query.Where(a => a.CompanyId == scopedCompanyId);
 
             var allAccounts = await query.OrderBy(a => a.Code).ToListAsync();
             var rootAccounts = allAccounts.Where(a => a.ParentAccountId == null).ToList();
@@ -101,8 +122,8 @@ public class AccountingController : ControllerBase
             try
             {
                 var feQuery = _unitOfWork.FixedExpensePayments.AsQueryable();
-                if (companyId.HasValue)
-                    feQuery = feQuery.Where(p => p.CompanyId == companyId);
+                if (scopedCompanyId.HasValue)
+                    feQuery = feQuery.Where(p => p.CompanyId == scopedCompanyId);
 
                 var unpaidPayments = await feQuery
                     .Where(p => !p.IsPaid)
