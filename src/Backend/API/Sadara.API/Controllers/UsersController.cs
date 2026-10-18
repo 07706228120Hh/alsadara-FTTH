@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 
@@ -12,11 +13,29 @@ public class UsersController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
+    private readonly ICurrentTenant _tenant;
 
-    public UsersController(IUnitOfWork unitOfWork, IPasswordHasher passwordHasher)
+    public UsersController(IUnitOfWork unitOfWork, IPasswordHasher passwordHasher, ICurrentTenant tenant)
     {
         _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
+        _tenant = tenant;
+    }
+
+    // ── عزل المستأجر: هل المستخدم المستهدف خارج نطاق شركة المتصل؟ ──
+    // SuperAdmin: يصل لأي مستخدم في أي شركة (false دائماً).
+    // أي مستخدم آخر: يُقيَّد بشركة توكنه؛ إن اختلفت شركة الهدف أو كانت شركة التوكن فارغة
+    // يُعتبر الهدف خارج النطاق (true) ⇒ يُعامل كغير موجود (404) كي لا يُكشف وجوده لشركة أخرى.
+    private bool IsOutOfTenantScope(User targetUser)
+    {
+        if (_tenant.IsSuperAdmin)
+            return false;
+
+        var tenantCompany = _tenant.CompanyId;
+        if (tenantCompany is null || tenantCompany.Value == Guid.Empty)
+            return true;
+
+        return targetUser.CompanyId != tenantCompany.Value;
     }
 
     [HttpGet]
@@ -24,6 +43,18 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var query = _unitOfWork.Users.AsQueryable();
+
+        // عزل المستأجر: غير SuperAdmin يرى مستخدمي شركته فقط.
+        // شركة فارغة لغير SuperAdmin ⇒ قائمة فارغة بأمان (لا تسريب عبر الشركات).
+        if (!_tenant.IsSuperAdmin)
+        {
+            var tenantCompany = _tenant.CompanyId;
+            if (tenantCompany is null || tenantCompany.Value == Guid.Empty)
+                return Ok(new { success = true, data = Array.Empty<UserDto>(), total = 0, page, pageSize });
+
+            query = query.Where(u => u.CompanyId == tenantCompany.Value);
+        }
+
         var total = await query.CountAsync();
         var users = await query
             .OrderByDescending(u => u.CreatedAt)
@@ -51,6 +82,10 @@ public class UsersController : ControllerBase
     {
         var user = await _unitOfWork.Users.GetByIdAsync(id);
         if (user == null)
+            return NotFound(new { success = false, message = "المستخدم غير موجود" });
+
+        // عزل المستأجر: لا تكشف مستخدمي شركة أخرى (404 بدل 403 كي لا نؤكّد وجوده)
+        if (IsOutOfTenantScope(user))
             return NotFound(new { success = false, message = "المستخدم غير موجود" });
 
         return Ok(new
@@ -87,6 +122,10 @@ public class UsersController : ControllerBase
     {
         var user = await _unitOfWork.Users.GetByIdAsync(id);
         if (user == null)
+            return NotFound(new { success = false, message = "المستخدم غير موجود" });
+
+        // عزل المستأجر: امنع تعديل مستخدمي شركة أخرى (404 بدل 403 كي لا نؤكّد وجوده)
+        if (IsOutOfTenantScope(user))
             return NotFound(new { success = false, message = "المستخدم غير موجود" });
 
         user.FullName = request.FullName ?? user.FullName;
@@ -130,6 +169,10 @@ public class UsersController : ControllerBase
         if (user == null)
             return NotFound(new { success = false, message = "المستخدم غير موجود" });
 
+        // عزل المستأجر: امنع تعطيل/تفعيل مستخدمي شركة أخرى (404 بدل 403)
+        if (IsOutOfTenantScope(user))
+            return NotFound(new { success = false, message = "المستخدم غير موجود" });
+
         user.IsActive = request.IsActive;
         user.UpdatedAt = DateTime.UtcNow;
 
@@ -145,6 +188,10 @@ public class UsersController : ControllerBase
     {
         var user = await _unitOfWork.Users.GetByIdAsync(id);
         if (user == null)
+            return NotFound(new { success = false, message = "المستخدم غير موجود" });
+
+        // عزل المستأجر: امنع حذف مستخدمي شركة أخرى (404 بدل 403)
+        if (IsOutOfTenantScope(user))
             return NotFound(new { success = false, message = "المستخدم غير موجود" });
 
         user.IsDeleted = true;
