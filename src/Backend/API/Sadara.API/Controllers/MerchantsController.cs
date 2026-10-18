@@ -33,6 +33,7 @@ public class MerchantsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id)
     {
         var merchant = await _unitOfWork.Merchants.GetByIdAsync(id);
@@ -43,6 +44,7 @@ public class MerchantsController : ControllerBase
     }
 
     [HttpGet("by-user/{userId:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetByUserId(Guid userId)
     {
         var merchant = await _unitOfWork.Merchants.FirstOrDefaultAsync(m => m.UserId == userId);

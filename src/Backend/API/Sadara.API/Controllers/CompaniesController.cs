@@ -392,16 +392,26 @@ public class CompaniesController : ControllerBase
     /// الحصول على شركة بالكود
     /// </summary>
     [HttpGet("by-code/{code}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetByCode(string code)
     {
+        // نقطة متاحة قبل تسجيل الدخول (شاشة اختيار الشركة) ⇒ لا تُعيد أي PII للمدير.
+        // DTO مصغّر فقط بنفس حقول قائمة الشركات العامة (GetCompanyList) + نفس فلتر النشاط.
         var company = await _unitOfWork.Companies.AsQueryable()
-            .Include(c => c.AdminUser)
-            .FirstOrDefaultAsync(c => c.Code == code && !c.IsDeleted);
+            .Where(c => c.Code == code && !c.IsDeleted && c.IsActive)
+            .Select(c => new
+            {
+                c.Id,
+                c.Name,
+                c.Code,
+                c.LogoUrl
+            })
+            .FirstOrDefaultAsync();
 
         if (company == null)
             return NotFound(new { success = false, message = "الشركة غير موجودة" });
 
-        return Ok(new { success = true, data = MapCompanyToResponse(company) });
+        return Ok(new { success = true, data = company });
     }
 
     /// <summary>

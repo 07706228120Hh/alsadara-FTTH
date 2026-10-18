@@ -84,6 +84,9 @@ public class NotificationsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetByUser(Guid userId, [FromQuery] bool? unreadOnly, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
+        if (!CanAccessUser(userId))
+            return StatusCode(StatusCodes.Status403Forbidden, new { success = false, message = "غير مصرح بالوصول لإشعارات هذا المستخدم" });
+
         var query = _unitOfWork.Notifications.AsQueryable()
             .Where(n => n.UserId == userId);
 
@@ -104,6 +107,9 @@ public class NotificationsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetUnreadCount(Guid userId)
     {
+        if (!CanAccessUser(userId))
+            return StatusCode(StatusCodes.Status403Forbidden, new { success = false, message = "غير مصرح بالوصول لإشعارات هذا المستخدم" });
+
         var count = await _unitOfWork.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead);
         return Ok(new { success = true, data = count });
     }
@@ -128,6 +134,9 @@ public class NotificationsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> MarkAllAsRead(Guid userId)
     {
+        if (!CanAccessUser(userId))
+            return StatusCode(StatusCodes.Status403Forbidden, new { success = false, message = "غير مصرح بالوصول لإشعارات هذا المستخدم" });
+
         var notifications = await _unitOfWork.Notifications.FindAsync(n => n.UserId == userId && !n.IsRead);
 
         foreach (var notification in notifications)
@@ -185,7 +194,22 @@ public class NotificationsController : ControllerBase
     private Guid GetCurrentUserId()
     {
         var claim = User.FindFirst("sub") ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-        return claim != null ? Guid.Parse(claim.Value) : Guid.Empty;
+        return claim != null && Guid.TryParse(claim.Value, out var id) ? id : Guid.Empty;
+    }
+
+    /// <summary>
+    /// يسمح بالوصول لإشعارات مستخدم آخر فقط لصاحب الحساب نفسه أو لدور إداري.
+    /// (منع IDOR على مسارات user/{userId})
+    /// </summary>
+    private bool CanAccessUser(Guid userId)
+    {
+        var current = GetCurrentUserId();
+        if (current != Guid.Empty && current == userId)
+            return true;
+
+        var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                   ?? User.FindFirst("role")?.Value;
+        return role is "SuperAdmin" or "CompanyAdmin";
     }
 }
 
