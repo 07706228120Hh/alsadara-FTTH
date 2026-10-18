@@ -2250,6 +2250,52 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.ToTable("Coupons");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.CredentialRevealAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("RevealedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "AccountId");
+
+                    b.HasIndex("CompanyId", "RequestedByUserId");
+
+                    b.ToTable("CredentialRevealAudits");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.Customer", b =>
                 {
                     b.Property<long>("Id")
@@ -3049,6 +3095,77 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.HasIndex("JournalEntryId");
 
                     b.ToTable("FixedExpensePayments");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.FtthAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LastVerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PasswordEncrypted")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Role")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ServerUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId");
+
+                    b.HasIndex("CompanyId", "OwnerUserId");
+
+                    b.HasIndex("CompanyId", "OwnerUserId", "Username")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("FtthAccounts");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.FtthSubscriberCache", b =>
@@ -9672,6 +9789,17 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Navigation("Merchant");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.CredentialRevealAudit", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.Customer", b =>
                 {
                     b.HasOne("Sadara.Domain.Entities.Merchant", "Merchant")
@@ -9846,6 +9974,23 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Navigation("FixedExpense");
 
                     b.Navigation("JournalEntry");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.FtthAccount", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Sadara.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Company");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.FtthSubscriberCache", b =>

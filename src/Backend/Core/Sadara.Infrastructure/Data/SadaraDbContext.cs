@@ -160,6 +160,12 @@ public class SadaraDbContext : DbContext
     public DbSet<FtthSubscriberCache> FtthSubscriberCaches => Set<FtthSubscriberCache>();
     public DbSet<FtthSyncLog> FtthSyncLogs => Set<FtthSyncLog>();
 
+    // ==================== FTTH Multi-Account Linking (حسابات FTTH المتعددة لكل موظف) ====================
+    public DbSet<FtthAccount> FtthAccounts => Set<FtthAccount>();
+
+    // ==================== Credential Reveal Audit (تدقيق كشف الاعتماد المُعمَّر) ====================
+    public DbSet<CredentialRevealAudit> CredentialRevealAudits => Set<CredentialRevealAudit>();
+
     // ==================== SAS Agent (وحدة وكيل SAS) ====================
     public DbSet<SasAccount> SasAccounts => Set<SasAccount>();
     public DbSet<CompanySasSettings> CompanySasSettings => Set<CompanySasSettings>();
@@ -440,6 +446,37 @@ public class SadaraDbContext : DbContext
         // مُضاعِف القيم المالية (SAS4→دينار حقيقي): افتراضي 1000 — يُطبَّق على الصفوف القائمة عند الهجرة.
         modelBuilder.Entity<SasAccount>().Property(x => x.AmountMultiplier)
             .HasPrecision(18, 2).HasDefaultValue(1000m);
+
+        // ==================== FTTH Multi-Account Linking (حسابات FTTH المتعددة لكل موظف) ====================
+        // حسابات FTTH المربوطة بالموظفين (بنفس نمط SasAccount): فهرس مركّب (شركة + مالك) لسرعة الجلب المعزول.
+        // FK الشركة Cascade، وFK المالك Restrict لتفادي مسارات حذف متسلسلة متعددة (Company→User→FtthAccount).
+        // فهرس فريد مُرشّح (شركة + مالك + اسم مستخدم) بـ !IsDeleted: يمنع تكرار نفس الحساب لنفس الموظف
+        // مع السماح بربط حسابات FTTH مختلفة متعددة لنفس الموظف.
+        modelBuilder.Entity<FtthAccount>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<FtthAccount>()
+            .HasIndex(x => new { x.CompanyId, x.OwnerUserId });
+        modelBuilder.Entity<FtthAccount>()
+            .HasIndex(x => new { x.CompanyId, x.OwnerUserId, x.Username })
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false");
+        modelBuilder.Entity<FtthAccount>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<FtthAccount>()
+            .HasOne<User>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+
+        // ==================== Credential Reveal Audit (تدقيق كشف الاعتماد المُعمَّر) ====================
+        // سجلّ دائم لكل عملية كشف كلمة مرور (FTTH/ساس). معزول بالشركة + فهرسان مركّبان للجلب المعزول:
+        //   (شركة + مَن طلب) لعرض نشاط مستخدم، و(شركة + الحساب المكشوف) لتتبّع حساب بعينه.
+        // FK الشركة Cascade (بنفس نمط FtthAccount): حذف الشركة يزيل سجلّات تدقيقها.
+        // لا توجد مفاتيح أجنبية على RequestedByUserId/OwnerUserId عمداً — مجرّد مراجع تدقيق،
+        // لتفادي مسارات حذف متسلسلة متعددة وضمان بقاء السجلّ حتى لو تغيّر/حُذف المستخدم.
+        modelBuilder.Entity<CredentialRevealAudit>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<CredentialRevealAudit>()
+            .HasIndex(x => new { x.CompanyId, x.RequestedByUserId });
+        modelBuilder.Entity<CredentialRevealAudit>()
+            .HasIndex(x => new { x.CompanyId, x.AccountId });
+        modelBuilder.Entity<CredentialRevealAudit>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
 
         // ==================== سجل العقارات المستقل (Property Registry) ====================
         // العقار: نواة محايدة محورها QR دائم. عزل بالشركة + فهارس تطابق/تفرّد.

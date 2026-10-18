@@ -212,6 +212,36 @@ class AuthService {
     };
   }
 
+  /// حفظ توكنات FTTH تم الحصول عليها خادمياً (مسار الحسابات المرتبطة الجديد).
+  /// يعكس نفس آلية [_saveTokens] + بدء مؤقّت التجديد + إعلام حالة المصادقة،
+  /// لكن **بلا أي كلمة مرور على العميل** — الاعتماد على refresh token فقط.
+  Future<void> saveExternalTokens({
+    required String accessToken,
+    String? refreshToken,
+    int? expiresInSeconds,
+    int? refreshExpiresInSeconds,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final now = DateTime.now();
+    final accessExpiry =
+        now.add(Duration(seconds: expiresInSeconds ?? 3600));
+    final refreshExpiry =
+        now.add(Duration(seconds: refreshExpiresInSeconds ?? 691200));
+
+    await prefs.setString(_accessTokenKey, accessToken);
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      await prefs.setString(_refreshTokenKey, refreshToken);
+    } else {
+      await prefs.remove(_refreshTokenKey);
+    }
+    await prefs.setString(_tokenExpiryKey, accessExpiry.toIso8601String());
+    await prefs.setString(_refreshExpiryKey, refreshExpiry.toIso8601String());
+
+    _startTokenRefreshTimer();
+    _initializeAuthStateController();
+    _notifyAuthStateChange(true);
+  }
+
   // حفظ التوكنات
   Future<void> _saveTokens(Map<String, dynamic> tokenData) async {
     final prefs = await SharedPreferences.getInstance();

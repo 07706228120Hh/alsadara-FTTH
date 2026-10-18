@@ -16,6 +16,9 @@ import '../../services/api/api_client.dart';
 import '../../permissions/permissions.dart';
 import '../../widgets/update_dialog.dart';
 import '../../services/dual_auth_service.dart';
+import '../../services/linked_accounts_service.dart';
+import '../../widgets/window_close_handler_fixed.dart' show navigatorKey;
+import 'ftth_account_selector.dart';
 import '../../services/fcm_token_service.dart';
 import '../../services/notification_service.dart';
 import '../../ftth/widgets/floating_toolbar.dart';
@@ -484,11 +487,19 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
   }
 
   /// تسجيل دخول FTTH صامت في الخلفية (لا يمنع التنقل)
+  ///
+  /// يستخدم المسار الذكي الجديد (الحسابات المرتبطة المتعددة) مع تدرّج آمن:
+  /// عند غياب الصلاحية/الحسابات أو أي خطأ يرجع تلقائياً للمسار القديم.
+  /// عند تعدّد حسابات FTTH يُعرض حوار الاختيار فوق الصفحة الرئيسية.
   Future<void> _performSilentFtthLogin() async {
     try {
-      final result = await DualAuthService.instance.silentFtthLogin();
+      final result = await DualAuthService.instance.smartFtthLogin(
+        onMultiple: (accounts) => _promptFtthAccountSelection(accounts),
+      );
       if (result.success) {
         print('✅ [Login] تم تسجيل دخول FTTH بصمت: ${result.ftthUsername}');
+      } else if (result.cancelled) {
+        print('ℹ️ [Login] أُلغي اختيار حساب FTTH');
       } else if (result.noCredentials) {
         print(
             'ℹ️ [Login] لا توجد بيانات FTTH مربوطة - سيتم عرض صفحة تسجيل الدخول عند الحاجة');
@@ -498,6 +509,15 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
     } catch (e) {
       print('⚠️ [Login] خطأ في تسجيل دخول FTTH الصامت');
     }
+  }
+
+  /// عرض حوار اختيار حساب FTTH عبر الـ navigatorKey العام (لأن صفحة الدخول
+  /// تُستبدَل بالرئيسية أثناء تشغيل هذا المسار في الخلفية).
+  Future<LinkedAccount?> _promptFtthAccountSelection(
+      List<LinkedAccount> accounts) async {
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null) return null; // لا واجهة متاحة — لا نُجبر الاختيار
+    return FtthAccountSelector.show(ctx, accounts);
   }
 
   /// فحص التحديثات في الخلفية بعد تسجيل الدخول (بدون حظر)

@@ -71,7 +71,10 @@ public static class SeedData
             new() { Id = 12, Code = "admin", Name = "System Administration", NameAr = "إدارة النظام", Description = "صلاحيات مدير النظام الأعلى", Icon = "admin_panel_settings", SystemType = SystemType.All, DisplayOrder = 99 },
 
             // مجموعة وكيل SAS
-            new() { Id = 13, Code = "sas_agent", Name = "SAS Agent", NameAr = "وكيل SAS", Description = "صلاحيات صفحة وكيل SAS", Icon = "router", SystemType = SystemType.SecondSystem, DisplayOrder = 13 }
+            new() { Id = 13, Code = "sas_agent", Name = "SAS Agent", NameAr = "وكيل SAS", Description = "صلاحيات صفحة وكيل SAS", Icon = "router", SystemType = SystemType.SecondSystem, DisplayOrder = 13 },
+
+            // مجموعة الحسابات المرتبطة (FTTH/الساس)
+            new() { Id = 14, Code = "linked_accounts", Name = "Linked Accounts", NameAr = "إدارة الحسابات المرتبطة (FTTH/الساس)", Description = "صلاحيات إدارة الحسابات المرتبطة بالموظف (FTTH/الساس)", Icon = "link", SystemType = SystemType.SecondSystem, DisplayOrder = 14 }
         };
 
         await context.PermissionGroups.AddRangeAsync(permissionGroups);
@@ -165,6 +168,12 @@ public static class SeedData
             // ==================== SAS Agent (Group 13) ====================
             new() { Id = 96, PermissionGroupId = 13, Module = "sas_agent", Action = "view", Code = "sas_agent.view", Name = "View SAS Agent", NameAr = "عرض صفحة وكيل SAS", Description = "View SAS agent page", SystemType = SystemType.SecondSystem, IsFirstSystem = false, IsSecondSystem = true, DisplayOrder = 96 },
             new() { Id = 97, PermissionGroupId = 13, Module = "sas_agent", Action = "manage", Code = "sas_agent.manage", Name = "Manage SAS Agent", NameAr = "إدارة صفحة وكيل SAS", Description = "Manage SAS accounts and settings", SystemType = SystemType.SecondSystem, IsFirstSystem = false, IsSecondSystem = true, DisplayOrder = 97 },
+
+            // ==================== Linked Accounts (Group 14) ====================
+            new() { Id = 98, PermissionGroupId = 14, Module = "linked_accounts", Action = "view", Code = "linked_accounts.view", Name = "View Linked Accounts", NameAr = "عرض الحسابات المرتبطة", Description = "View linked FTTH/SAS accounts", SystemType = SystemType.SecondSystem, IsFirstSystem = false, IsSecondSystem = true, DisplayOrder = 98 },
+            new() { Id = 99, PermissionGroupId = 14, Module = "linked_accounts", Action = "add", Code = "linked_accounts.add", Name = "Create Linked Account", NameAr = "إنشاء حساب مرتبط", Description = "Create linked FTTH account", SystemType = SystemType.SecondSystem, IsFirstSystem = false, IsSecondSystem = true, DisplayOrder = 99 },
+            new() { Id = 100, PermissionGroupId = 14, Module = "linked_accounts", Action = "edit", Code = "linked_accounts.edit", Name = "Edit Linked Account", NameAr = "تعديل حساب مرتبط", Description = "Edit/verify/reveal/backfill linked FTTH account", SystemType = SystemType.SecondSystem, IsFirstSystem = false, IsSecondSystem = true, DisplayOrder = 100 },
+            new() { Id = 101, PermissionGroupId = 14, Module = "linked_accounts", Action = "delete", Code = "linked_accounts.delete", Name = "Delete Linked Account", NameAr = "حذف حساب مرتبط", Description = "Delete linked FTTH account", SystemType = SystemType.SecondSystem, IsFirstSystem = false, IsSecondSystem = true, DisplayOrder = 101 },
         };
 
         await context.Permissions.AddRangeAsync(permissions);

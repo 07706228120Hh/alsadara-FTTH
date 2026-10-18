@@ -41,7 +41,7 @@ Sadara .NET API  (/api/sas-agent/*)   ← يفرض: التوكن + عزل الش
 | `SasAccount : BaseEntity<Guid>, ITenantScoped` | حساب ساس مربوط بموظف (يدعم عدّة حسابات) | `CompanyId` (مستأجر) + `OwnerUserId` |
 | `CompanySasSettings : ITenantScoped` (اختياري، 1‑1 مع الشركة) | عنوان خادم ساس افتراضي للشركة يرثه الموظفون | `CompanyId` |
 
-**حقول `SasAccount`:** `Id`, `CompanyId`, `OwnerUserId`, `Label`, `ServerUrl`, `Username`, `PasswordEncrypted` (لا يُعاد أبداً), `AccountType` (enum: `SasManager` = صفحة وكيل · `SasUser` = نظام ساس), `IsActive`, `LastSyncAt`, `SyncStatus`, + حقول التدقيق و`IsDeleted`.
+**حقول `SasAccount`:** `Id`, `CompanyId`, `OwnerUserId`, `Label`, `ServerUrl`, `Username`, `PasswordEncrypted` (لا يُعاد أبداً — **استثناء معتمد**: كشف لأدمن الشركة فقط عبر بوّابة الحسابات المرتبطة، محصور بعلَم `Sas:AllowCredentialReveal` OFF افتراضياً + تدقيق DB + rate-limit؛ قرار مالك موقّع من security-auditor), `AccountType` (enum: `SasManager` = صفحة وكيل · `SasUser` = نظام ساس), `IsActive`, `LastSyncAt`, `SyncStatus`, + حقول التدقيق و`IsDeleted`.
 
 ### المهام
 
@@ -122,7 +122,7 @@ Sadara .NET API  (/api/sas-agent/*)   ← يفرض: التوكن + عزل الش
 | الخطر | الإجراء | حالة |
 |---|---|---|
 | تسرّب بين الشركات | كل كيان ساس `ITenantScoped` + فلتر مستأجر مُسجَّل | ☐ |
-| كشف كلمة مرور الساس | تشفير Data Protection + DTO لا يحوي كلمة المرور | ☐ |
+| كشف كلمة مرور الساس | تشفير Data Protection + DTO لا يحوي كلمة المرور. **استثناء معتمد**: كشف لأدمن الشركة فقط عبر بوّابة الحسابات المرتبطة، محصور بعلَم `Sas:AllowCredentialReveal` (OFF افتراضياً) + تدقيق مُعمَّر في DB + rate-limit؛ قرار مالك موقّع من security-auditor | ☐ |
 | وصول موظف بلا صلاحية | `[RequirePermission("sas_agent")]` على كل نقطة | ☐ |
 | انتحال حساب موظف آخر | مطابقة `OwnerUserId == المستخدم` فوق فلتر المستأجر | ☐ |
 | كشف خدمة Python | ربط 127.0.0.1 + `X-Internal-Secret` + بلا Nginx عام | ☐ |

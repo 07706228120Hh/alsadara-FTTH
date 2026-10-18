@@ -21,10 +21,11 @@ class AuthErrorHandler {
     _isHandling401 = true;
 
     try {
-      // محاولة تسجيل دخول صامت أولاً
+      // محاولة تسجيل دخول صامت أولاً (المسار الذكي الجديد مع تدرّج آمن
+      // للمسار القديم؛ بلا حوار اختيار في مسار تعافي 401 — يُختار الأساسي)
       print('🔄 [AuthErrorHandler] خطأ 401 — محاولة تسجيل دخول صامت...');
       final dual = DualAuthService.instance;
-      final result = await dual.silentFtthLogin();
+      final result = await dual.smartFtthLogin();
 
       if (result.success && dual.ftthToken != null) {
         print('✅ [AuthErrorHandler] نجح تسجيل الدخول الصامت — لا حاجة لشاشة تسجيل الدخول');

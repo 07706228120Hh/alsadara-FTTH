@@ -61,6 +61,8 @@ import '../../services/vps_upload_service.dart';
 import '../../services/ftth_whatsapp_settings_service.dart';
 import '../../services/auth/auth_context.dart';
 import '../../services/dual_auth_service.dart';
+import '../../services/vps_auth_service.dart'; // لمعرّف الموظف الحالي (مُبدّل حساب FTTH)
+import '../../services/linked_accounts_service.dart'; // جلب حسابات FTTH المرتبطة للتبديل
 import '../../services/ftth/ftth_cache_service.dart';
 import '../../services/ftth/ftth_event_bus.dart';
 
@@ -190,6 +192,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final Set<String> _searchZoneFetching = {};
   StreamSubscription<String>? _ftthEventBusSub;
 
+  // حسابات FTTH المرتبطة بالموظف الحالي — لمُبدّل الحساب في الشريط العلوي.
+  // يُعرض المبدّل فقط إذا كان العدد >= 2 (بعد فلترة النشط + نوع FTTH).
+  List<LinkedAccount> _ftthAccounts = [];
+
   @override
   void initState() {
     super.initState();
@@ -239,6 +245,224 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
 
     // الزر العائم للواتساب يتم إظهاره بعد تحميل الصلاحيات في _initializeApp
+
+    // جلب حسابات FTTH المرتبطة للموظف الحالي (fire-and-forget؛ فشل صامت)
+    _loadFtthAccounts();
+  }
+
+  // ─────────────── مُبدّل حساب FTTH في الشريط العلوي ───────────────
+
+  /// يجلب حسابات FTTH المرتبطة بالموظف المسجَّل دخوله (نظام الصدارة الأول)
+  /// ويحتفظ بالنشطة منها فقط. فشل الطلب/403/غياب المعرّف = فشل صامت لا يكسر
+  /// الشريط. لا يُخزَّن أي اعتماد — فقط بيانات العرض من البوّابة الداخلية.
+  Future<void> _loadFtthAccounts() async {
+    try {
+      final selfUserId = VpsAuthService.instance.currentUser?.id;
+      if (selfUserId == null || selfUserId.isEmpty) return;
+
+      final result =
+          await LinkedAccountsService.instance.getAccounts(selfUserId);
+      if (!mounted) return;
+      if (result['success'] != true) return;
+
+      final data = result['data'];
+      if (data is! List) return;
+      final ftth = data
+          .whereType<LinkedAccount>()
+          .where((a) => a.isFtth && a.isActive)
+          .toList();
+
+      setState(() => _ftthAccounts = ftth);
+    } catch (_) {
+      // فشل صامت — لا يُظهر المبدّل ولا يكسر الشريط العلوي.
+    }
+  }
+
+  /// تنفيذ تبديل الجلسة النشطة إلى حساب FTTH مرتبط آخر.
+  /// يسجّل الدخول خادمياً (توكن فقط، بلا كلمة مرور على العميل) ثم يعيد بناء
+  /// كامل شاشة HomePage بالتوكن/الاسم الجديدين عبر pushReplacement.
+  Future<void> _onSwitchFtthAccount(LinkedAccount account) async {
+    final currentUsername = DualAuthService.instance.ftthUsername;
+    if (account.username == currentUsername) return; // نفس الحساب — لا شيء.
+
+    // مؤشّر انشغال غير قابل للإلغاء أثناء الدخول الخادمي.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final result =
+        await DualAuthService.instance.loginWithLinkedFtthAccount(account);
+
+    if (!mounted) return;
+    // أغلق مؤشّر الانشغال.
+    Navigator.of(context, rootNavigator: true).pop();
+
+    if (!result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.message ?? 'تعذّر تبديل الحساب — بقي الحساب الحالي',
+            style: const TextStyle(fontFamily: SdText.family),
+          ),
+          backgroundColor: SdColors.danger,
+        ),
+      );
+      return;
+    }
+
+    final newUsername = DualAuthService.instance.ftthUsername ?? account.username;
+    final newToken = DualAuthService.instance.ftthToken ?? '';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'تم التبديل إلى: ${account.label.isNotEmpty ? account.label : account.username}',
+          style: const TextStyle(fontFamily: SdText.family),
+        ),
+        backgroundColor: SdColors.success,
+      ),
+    );
+
+    // إعادة بناء كامل الشاشة بالقيم الجديدة — نفس وسائط HomePage الحالية.
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        settings: const RouteSettings(name: '/ftth-home'),
+        builder: (_) => HomePage(
+          username: newUsername,
+          authToken: newToken,
+          permissions: widget.permissions,
+          department: widget.department,
+          center: widget.center,
+          salary: widget.salary,
+          firstSystemUsername: widget.firstSystemUsername,
+          firstSystemDepartment: widget.firstSystemDepartment,
+          firstSystemCenter: widget.firstSystemCenter,
+          firstSystemSalary: widget.firstSystemSalary,
+          isSuperAdminMode: widget.isSuperAdminMode,
+          tenantId: widget.tenantId,
+          tenantCode: widget.tenantCode,
+        ),
+      ),
+    );
+  }
+
+  /// ودجت مُبدّل حساب FTTH في الشريط العلوي (على نمط مُبدّل الساس).
+  /// يظهر فقط عند توفّر حسابين نشطين فأكثر؛ غير ذلك = فراغ.
+  Widget _buildFtthAccountSwitcher() {
+    final accounts = _ftthAccounts;
+    if (accounts.length < 2) return const SizedBox.shrink();
+
+    final currentUsername = DualAuthService.instance.ftthUsername;
+    String labelOf(LinkedAccount a) =>
+        a.label.isNotEmpty ? a.label : a.username;
+    final currentAcc = accounts.firstWhere(
+      (a) => a.username == currentUsername,
+      orElse: () => accounts.first,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: PopupMenuButton<String>(
+        tooltip: 'تبديل حساب FTTH',
+        position: PopupMenuPosition.under,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        onSelected: (id) {
+          final acc = accounts.firstWhere((a) => a.id == id,
+              orElse: () => accounts.first);
+          _onSwitchFtthAccount(acc);
+        },
+        itemBuilder: (_) => [
+          for (final a in accounts)
+            PopupMenuItem<String>(
+              value: a.id,
+              child: Row(
+                children: [
+                  Icon(
+                    a.username == currentUsername
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    size: 18,
+                    color: a.username == currentUsername
+                        ? SdColors.primary
+                        : SdColors.faint,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      labelOf(a),
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: SdText.family,
+                        fontWeight: a.username == currentUsername
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                        color: SdColors.ink,
+                      ),
+                    ),
+                  ),
+                  if (a.isPrimary) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: SdColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text(
+                        'أساسي',
+                        style: TextStyle(
+                          fontFamily: SdText.family,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: SdColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+        ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.26)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.swap_horiz_rounded,
+                  size: 16, color: Colors.white),
+              const SizedBox(width: 6),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 120),
+                child: Text(
+                  labelOf(currentAcc),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 2),
+              const Icon(Icons.expand_more_rounded,
+                  size: 16, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// إعداد إشعار المزامنة في الخلفية
@@ -2495,6 +2719,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       actions: [
         // جرس الإشعارات (ودجت موحّد قائم بذاته)
         const NotificationBell(iconSize: 22.0),
+        // مُبدّل حساب FTTH — يظهر فقط عند توفّر حسابين نشطين فأكثر للموظف.
+        _buildFtthAccountSwitcher(),
         // معلومات الحساب — تفتح نفس نافذة بيانات المستخدم
         if (name != null)
           SdAppBarAction(

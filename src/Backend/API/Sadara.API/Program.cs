@@ -240,6 +240,28 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 50
             }));
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // سياسة مشدّدة لنقاط كشف الاعتماد/الدخول الحسّاسة (ميزة الحسابات المرتبطة).
+    // التقسيم بمعرّف المستخدم من التوكن (NameIdentifier/sub) — يتطلّب تشغيل UseRateLimiter بعد
+    // UseAuthentication ليكون HttpContext.User مُعبّأً؛ وإلا فالاحتياط عنوان IP ثم "anonymous".
+    // 10 طلبات/دقيقة لكل مستخدم، بلا طابور ⇒ رفض فوري 429 لما يزيد.
+    options.AddPolicy("credential-reveal", context =>
+    {
+        var userKey = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? context.User?.FindFirst("sub")?.Value
+            ?? context.Connection.RemoteIpAddress?.ToString()
+            ?? "anonymous";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"credential-reveal:{userKey}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
 });
 
 // Response Compression
@@ -331,7 +353,6 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 app.UseResponseCompression();
-app.UseRateLimiter();
 
 // خدمة بوابة المواطن (Citizen Portal) كملفات ثابتة
 var citizenPortalPath = Path.Combine(AppContext.BaseDirectory, "citizen_portal");
@@ -351,6 +372,12 @@ if (Directory.Exists(citizenPortalPath))
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// بعد المصادقة/التفويض ليتوفّر HttpContext.User لتقسيم سياسة "credential-reveal" بمعرّف المستخدم.
+// السياسة الافتراضية (العامّة) لا تتأثر بالموضع (تقسّم بعنوان IP)، والمسارات بلا [EnableRateLimiting]
+// تبقى محكومة بالحدّ العام فقط دون أي قيد إضافي.
+app.UseRateLimiter();
+
 app.UseSerilogRequestLogging();
 
 app.MapControllers();

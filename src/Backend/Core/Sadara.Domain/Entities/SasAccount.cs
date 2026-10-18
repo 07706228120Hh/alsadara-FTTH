@@ -28,6 +28,9 @@ public class SasAccount : BaseEntity<Guid>, ITenantScoped
     /// <summary>
     /// كلمة مرور الساس مشفّرة (تُحفظ مشفّرة عبر Data Protection في المرحلة 1.4).
     /// ⚠️ لا يُعاد هذا الحقل أبداً في أي استجابة API — يُفكّ تشفيره داخلياً فقط عند التمرير لخدمة Python.
+    /// استثناء معتمد وحيد (قرار المالك): يجوز كشفه لأدمن الشركة فقط عبر بوّابة «الحسابات المرتبطة»
+    /// (<c>POST /api/linked-accounts/sas/{id}/reveal</c>)، محصوراً بعلَم <c>Sas:AllowCredentialReveal</c>
+    /// (OFF افتراضياً) + تدقيق مُعمَّر في القاعدة (<c>CredentialRevealAudit</c>) + rate-limit.
     /// </summary>
     public string PasswordEncrypted { get; set; } = string.Empty;
 

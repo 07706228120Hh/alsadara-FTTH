@@ -9,6 +9,7 @@ import 'auth_service.dart';
 import 'auth/session_manager.dart';
 import 'vps_auth_service.dart';
 import 'accounting_service.dart';
+import 'linked_accounts_service.dart';
 
 /// حالة تسجيل الدخول الصامت لـ FTTH
 class FtthSilentLoginResult {
@@ -17,6 +18,7 @@ class FtthSilentLoginResult {
   final String? ftthToken;
   final String? message;
   final bool noCredentials; // لا توجد بيانات FTTH مربوطة
+  final bool cancelled; // ألغى المستخدم اختيار الحساب (لا فشل فعلي)
 
   const FtthSilentLoginResult({
     required this.success,
@@ -24,6 +26,7 @@ class FtthSilentLoginResult {
     this.ftthToken,
     this.message,
     this.noCredentials = false,
+    this.cancelled = false,
   });
 
   const FtthSilentLoginResult.noCredentials()
@@ -31,14 +34,24 @@ class FtthSilentLoginResult {
         ftthUsername = null,
         ftthToken = null,
         message = 'لا توجد بيانات اعتماد FTTH مربوطة بهذا الحساب',
-        noCredentials = true;
+        noCredentials = true,
+        cancelled = false;
 
   const FtthSilentLoginResult.failed(String error)
       : success = false,
         ftthUsername = null,
         ftthToken = null,
         message = error,
-        noCredentials = false;
+        noCredentials = false,
+        cancelled = false;
+
+  const FtthSilentLoginResult.cancelledByUser()
+      : success = false,
+        ftthUsername = null,
+        ftthToken = null,
+        message = 'تم إلغاء اختيار حساب FTTH',
+        noCredentials = false,
+        cancelled = true;
 }
 
 /// خدمة المصادقة المزدوجة (Singleton)
@@ -198,6 +211,190 @@ class DualAuthService {
       print('❌ [DualAuth] خطأ غير متوقع');
       return FtthSilentLoginResult.failed('خطأ غير متوقع');
     }
+  }
+
+  // ======================================================================
+  // المسار الجديد: الحسابات المرتبطة المتعددة (دخول FTTH خادمي)
+  //
+  // تدرّج آمن 100% إضافي: المستخدمون الحاليون (بلا صلاحية linked_accounts،
+  // أو بلا حسابات مرتبطة جديدة، أو عند أي خطأ شبكة) يرجعون تلقائياً للمسار
+  // القديم [silentFtthLogin] دون أي تغيير سلوكي. في المسار الجديد لا تُخزَّن
+  // ولا تُمرَّر كلمة مرور FTTH على العميل إطلاقاً — فقط التوكن المُعاد من الخادم.
+  // ======================================================================
+
+  /// منسّق دخول FTTH الذكي.
+  /// [onMultiple]: دالّة واجهة تعرض اختيار الحساب عند وجود أكثر من حساب FTTH
+  /// نشط؛ تُعيد الحساب المختار أو null عند الإلغاء. عند غيابها (مسار خلفي بلا
+  /// واجهة) يُختار الحساب الأساسي تلقائياً.
+  Future<FtthSilentLoginResult> smartFtthLogin({
+    Future<LinkedAccount?> Function(List<LinkedAccount> accounts)? onMultiple,
+  }) async {
+    try {
+      final vpsUser = VpsAuthService.instance.currentUser;
+      if (vpsUser == null) {
+        // ليس موظف شركة (مثلاً Super Admin) — المسار القديم يتولّى الأمر
+        return await silentFtthLogin();
+      }
+
+      final userId = vpsUser.id;
+
+      // 1) جلب الحسابات المرتبطة للمستخدم الحالي
+      Map<String, dynamic> accountsResult;
+      try {
+        accountsResult =
+            await LinkedAccountsService.instance.getAccounts(userId);
+      } catch (e) {
+        // خطأ شبكة/استثناء ⇒ ارجع للمسار القديم كما هو
+        print('⚠️ [DualAuth] تعذّر جلب الحسابات المرتبطة — المسار القديم');
+        return await silentFtthLogin();
+      }
+
+      if (accountsResult['success'] != true) {
+        // 403 (لا صلاحية linked_accounts) أو أي خطأ ⇒ المسار القديم
+        print(
+            'ℹ️ [DualAuth] الحسابات المرتبطة غير متاحة (${accountsResult['statusCode']}) — المسار القديم');
+        return await silentFtthLogin();
+      }
+
+      final all = (accountsResult['data'] as List?)
+              ?.whereType<LinkedAccount>()
+              .toList() ??
+          const <LinkedAccount>[];
+      final ftthAccounts =
+          all.where((a) => a.isFtth && a.isActive).toList();
+
+      if (ftthAccounts.isEmpty) {
+        // لا حسابات FTTH مرتبطة جديدة ⇒ المسار القديم (المستخدمون الحاليون)
+        print('ℹ️ [DualAuth] لا حسابات FTTH مرتبطة — المسار القديم');
+        return await silentFtthLogin();
+      }
+
+      // 2) تحديد الحساب المطلوب
+      LinkedAccount chosen;
+      if (ftthAccounts.length == 1) {
+        chosen = ftthAccounts.first;
+      } else {
+        if (onMultiple != null) {
+          final selected = await onMultiple(ftthAccounts);
+          if (selected == null) {
+            // ألغى المستخدم الاختيار صراحةً — لا دخول ولا رجوع للقديم
+            return const FtthSilentLoginResult.cancelledByUser();
+          }
+          chosen = selected;
+        } else {
+          // مسار خلفي بلا واجهة ⇒ الحساب الأساسي ثم الأول
+          chosen = _pickPrimary(ftthAccounts);
+        }
+      }
+
+      // 3) تسجيل الدخول خادمياً بالحساب المختار (بلا كلمة مرور على العميل)
+      return await loginWithLinkedFtthAccount(chosen);
+    } catch (e) {
+      // أي خطأ غير متوقّع ⇒ المسار القديم الآمن
+      print('⚠️ [DualAuth] خطأ غير متوقّع في المسار الذكي — المسار القديم');
+      return await silentFtthLogin();
+    }
+  }
+
+  LinkedAccount _pickPrimary(List<LinkedAccount> accounts) {
+    for (final a in accounts) {
+      if (a.isPrimary) return a;
+    }
+    return accounts.first;
+  }
+
+  /// تسجيل دخول FTTH خادمياً عبر حساب مرتبط محدّد (المسار الجديد).
+  /// يستخدم التوكن المُعاد من الخادم فقط ويحفظه عبر نفس آلية جلسة FTTH في
+  /// [AuthService]/[SessionManager]. لا يُخزَّن أي كلمة مرور على العميل.
+  /// عند فشل الدخول الخادمي يرجع للمسار القديم كاحتياطي أخير.
+  Future<FtthSilentLoginResult> loginWithLinkedFtthAccount(
+      LinkedAccount account) async {
+    try {
+      print('🔐 [DualAuth] دخول FTTH خادمي للحساب المرتبط: ${account.label}');
+      final result = await LinkedAccountsService.instance.login(account.id);
+
+      if (result['success'] != true) {
+        print(
+            '⚠️ [DualAuth] فشل الدخول الخادمي (${result['statusCode']}) — المسار القديم');
+        return await silentFtthLogin();
+      }
+
+      final tokens = _extractTokens(result['data']);
+      final accessToken = tokens['accessToken'];
+      final refreshToken = tokens['refreshToken'];
+
+      if (accessToken == null || accessToken.isEmpty) {
+        print('⚠️ [DualAuth] الاستجابة الخادمية بلا توكن — المسار القديم');
+        return await silentFtthLogin();
+      }
+
+      // حفظ جلسة FTTH بالتوكن الخادمي (بلا كلمة مرور على العميل)
+      await AuthService.instance.saveExternalTokens(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      );
+
+      // تحديث SessionManager
+      try {
+        await SessionManager.instance.onLoginCompleted();
+      } catch (e) {
+        print('⚠️ [DualAuth] تعذّر تحديث الجلسة');
+      }
+
+      // حفظ الحالة في الذاكرة
+      _isFtthLoggedIn = true;
+      _ftthUsername = account.username;
+      _ftthToken = accessToken;
+
+      // حفظ علامات الربط في SharedPreferences — دون أي كلمة مرور
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_ftthLinkedKey, true);
+      await prefs.setString(_ftthUsernameKey, account.username);
+      await prefs.setString('savedUsername', account.username);
+      // المسار الجديد لا يعتمد على كلمة مرور للعميل — نمنع relogin بكلمة مرور
+      await prefs.remove('savedPassword');
+      await prefs.setBool('rememberMe', false);
+
+      print('✅ [DualAuth] تم دخول FTTH خادمياً: ${account.username}');
+      // إعلام مؤشّر حالة الاتصال وبقية المستمعين (مطابق للمسار القديم)
+      _notifyFtthStateChange(true);
+
+      return FtthSilentLoginResult(
+        success: true,
+        ftthUsername: account.username,
+        ftthToken: accessToken,
+        message: 'تم تسجيل دخول FTTH بنجاح',
+      );
+    } catch (e) {
+      print('⚠️ [DualAuth] خطأ في الدخول الخادمي — المسار القديم');
+      return await silentFtthLogin();
+    }
+  }
+
+  /// استخراج التوكنات من استجابة الخادم بمرونة (camelCase/PascalCase/snake).
+  Map<String, String?> _extractTokens(dynamic data) {
+    if (data is Map) {
+      final outer = Map<String, dynamic>.from(data);
+      final inner = outer['data'] is Map
+          ? Map<String, dynamic>.from(outer['data'] as Map)
+          : outer;
+      String? pick(List<String> keys) {
+        for (final k in keys) {
+          final v = inner[k] ?? outer[k];
+          if (v != null && v.toString().isNotEmpty) return v.toString();
+        }
+        return null;
+      }
+
+      // حصر المفاتيح تطابقاً مع عقد بوّابة /api/linked-accounts/ftth/{id}/login:
+      // access token: accessToken/access_token فقط · refresh: refreshToken/refresh_token فقط.
+      // (حُذفت المفاتيح العامة المبهمة token/Token.)
+      return {
+        'accessToken': pick(['accessToken', 'access_token']),
+        'refreshToken': pick(['refreshToken', 'refresh_token']),
+      };
+    }
+    return {'accessToken': null, 'refreshToken': null};
   }
 
   /// التحقق مما إذا كان FTTH مسجل دخول حالياً (من التوكن المحفوظ)

@@ -1066,6 +1066,19 @@ class PermissionRegistry {
       allowedActions: ['view', 'add', 'edit', 'delete'],
     ),
 
+    // ─── الحسابات المرتبطة (بوّابة /api/linked-accounts) — مجموعة الباكند Id=14 ───
+    PermissionEntry(
+      key: 'linked_accounts',
+      labelAr: 'إدارة الحسابات المرتبطة (FTTH/الساس)',
+      description:
+          'ربط وإدارة حسابات FTTH والساس للموظفين عبر بوّابة الصدارة (عرض/إنشاء/تعديل/حذف)',
+      icon: Icons.link_rounded,
+      category: 'الوكلاء',
+      // view=عرض · add=إنشاء (create في الباكند) · edit=تعديل · delete=حذف
+      // يطابق بذور الباكند: linked_accounts.view/create/edit/delete
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
+
     // ─── واتساب ───
     PermissionEntry(
       key: 'whatsapp',

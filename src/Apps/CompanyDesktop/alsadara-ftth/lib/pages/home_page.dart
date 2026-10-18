@@ -29,6 +29,7 @@ import '../widgets/maintenance_messages_dialog.dart'; // إضافة حوار إ�
 import '../services/vps_auth_service.dart'; // ✅ خدمة VPS لتسجيل الخروج
 import '../services/api/api_client.dart'; // ✅ ApiClient للتحقق من التوكن
 import 'login/premium_login_page.dart'; // ✨ صفحة تسجيل الدخول الفخمة
+import 'login/ftth_account_selector.dart';
 import '../ftth/whatsapp/whatsapp_bottom_window.dart'; // WhatsApp floating button
 import '../ftth/widgets/floating_toolbar.dart'; // شريط الأدوات العائم الموحد
 import 'super_admin/super_admin_dashboard.dart'; // لوحة تحكم Super Admin
@@ -1618,14 +1619,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       return;
     }
 
-    // 2) الجلسة منتهية — حاول تسجيل دخول صامت تلقائياً
+    // 2) الجلسة منتهية — حاول تسجيل دخول صامت تلقائياً (المسار الذكي الجديد
+    //    مع تدرّج آمن للمسار القديم، وحوار اختيار عند تعدّد حسابات FTTH)
     print('🔄 [FTTH] الجلسة منتهية — محاولة تسجيل دخول صامت...');
-    final silentResult = await dual.silentFtthLogin();
+    final silentResult = await dual.smartFtthLogin(
+      onMultiple: (accounts) async {
+        if (!mounted) return null;
+        return FtthAccountSelector.show(context, accounts);
+      },
+    );
 
     if (silentResult.success && dual.ftthToken != null && dual.ftthUsername != null) {
       print('✅ [FTTH] نجح تسجيل الدخول الصامت — الانتقال مباشرة');
       if (!mounted) return;
       _goToFtthHome(dual);
+      return;
+    }
+
+    // 2.ب) ألغى المستخدم اختيار الحساب — ابقَ في الرئيسية بلا إعادة توجيه
+    if (silentResult.cancelled) {
+      print('ℹ️ [FTTH] أُلغي اختيار حساب FTTH — البقاء في الصفحة الرئيسية');
       return;
     }
 

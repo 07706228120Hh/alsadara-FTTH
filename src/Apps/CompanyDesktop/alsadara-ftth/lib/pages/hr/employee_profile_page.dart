@@ -16,6 +16,7 @@ import 'tabs/attendance_tab.dart';
 import 'tabs/tasks_tab.dart';
 import 'tabs/salary_tab.dart';
 import 'tabs/ftth_tab.dart';
+import 'tabs/linked_accounts_tab.dart';
 import 'tabs/transactions_tab.dart';
 import 'tabs/performance_tab.dart';
 import '../accounting/ftth_operator_linking_page.dart';
@@ -137,6 +138,15 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
     //     icon: Icons.router,
     //   ));
     // }
+
+    // 6.5 الحسابات المرتبطة — يظهر لمن يستطيع رؤية الموظف (الخادم يفرض صلاحية linked_accounts)
+    if (_pm.canView('hr.employees') || _pm.canView('users')) {
+      _visibleTabs.add(_TabInfo(
+        key: 'linked_accounts',
+        label: 'الحسابات المرتبطة',
+        icon: Icons.account_tree_outlined,
+      ));
+    }
 
     // 7. المعاملات المالية — يحتاج transactions.view أو technicians.view
     if (_pm.canView('transactions') || _pm.canView('technicians')) {
@@ -861,6 +871,11 @@ class _EmployeeProfilePageState extends State<EmployeeProfilePage>
           employeeId: widget.employeeId,
           employeeName: _employee['fullName'] ?? _employee['FullName'] ?? '',
           ftthUsername: _employee['ftthUsername'] ?? _employee['FtthUsername'],
+        );
+      case 'linked_accounts':
+        return LinkedAccountsTab(
+          userId: widget.employeeId,
+          employeeName: _employee['fullName'] ?? _employee['FullName'] ?? '',
         );
       case 'transactions':
         return TransactionsTab(
