@@ -12,10 +12,12 @@ namespace Sadara.API.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IConfiguration _config;
 
-    public PaymentsController(IUnitOfWork unitOfWork)
+    public PaymentsController(IUnitOfWork unitOfWork, IConfiguration config)
     {
         _unitOfWork = unitOfWork;
+        _config = config;
     }
 
     [HttpGet]
@@ -106,6 +108,10 @@ public class PaymentsController : ControllerBase
     [HttpPost("callback/zaincash")]
     public async Task<IActionResult> ZainCashCallback([FromBody] ZainCashCallbackRequest request)
     {
+        // زين كاش غير مستخدم حالياً؛ النقطة محروسة خلف علَم إعداد (افتراضي false) لمنع تأكيد الطلبات زوراً.
+        if (!_config.GetValue<bool>("Payments:ZainCashCallbackEnabled"))
+            return NotFound();
+
         var payment = await _unitOfWork.Payments.FirstOrDefaultAsync(p => p.TransactionId == request.TransactionId);
         if (payment == null)
             return NotFound();
