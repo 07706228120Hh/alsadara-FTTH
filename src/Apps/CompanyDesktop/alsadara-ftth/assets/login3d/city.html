@@ -5,11 +5,11 @@
 html,body{margin:0;height:100%;overflow:hidden;background:#0A1430;font-family:"Segoe UI",Tahoma,"Noto Sans Arabic",Arial,sans-serif;user-select:none;-webkit-user-select:none}
 #c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
 #c:active{cursor:grabbing}
-#label{position:fixed;left:0;top:0;pointer-events:none;padding:7px 14px;border-radius:999px;background:rgba(11,27,63,.88);border:1px solid #E6C67A;color:#F3DFA6;font-size:13px;font-weight:700;white-space:nowrap;opacity:0;transition:opacity .2s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#label{display:none !important;position:fixed;left:0;top:0;pointer-events:none;padding:7px 14px;border-radius:999px;background:rgba(11,27,63,.88);border:1px solid #E6C67A;color:#F3DFA6;font-size:13px;font-weight:700;white-space:nowrap;opacity:0;transition:opacity .2s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 #label.on{opacity:1}
 #hint{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);padding:8px 16px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.82);font-size:12.5px;font-weight:600;backdrop-filter:blur(10px);transition:opacity .3s;white-space:nowrap}
 #hint.off{opacity:0}
-#info{position:fixed;top:24px;left:24px;width:300px;padding:18px;border-radius:22px;background:linear-gradient(160deg,rgba(19,42,94,.86),rgba(11,27,63,.92));border:1px solid rgba(230,198,122,.55);color:#fff;backdrop-filter:blur(16px);box-shadow:0 30px 60px -20px rgba(0,0,0,.7);opacity:0;transform:translateY(12px) scale(.96);pointer-events:none;transition:all .35s cubic-bezier(.2,.8,.2,1)}
+#info{display:none !important;position:fixed;top:24px;left:24px;width:300px;padding:18px;border-radius:22px;background:linear-gradient(160deg,rgba(19,42,94,.86),rgba(11,27,63,.92));border:1px solid rgba(230,198,122,.55);color:#fff;backdrop-filter:blur(16px);box-shadow:0 30px 60px -20px rgba(0,0,0,.7);opacity:0;transform:translateY(12px) scale(.96);pointer-events:none;transition:all .35s cubic-bezier(.2,.8,.2,1)}
 #info.on{opacity:1;transform:none;pointer-events:auto}
 #info .n{font-size:18px;font-weight:800;color:#F3DFA6}
 #info .t{font-size:12.5px;color:rgba(255,255,255,.65);font-weight:600;margin-top:2px}
