@@ -289,7 +289,6 @@ class _SdLoginSceneState extends State<SdLoginScene>
         cam: _cam,
         logo: _logo,
         timeOf: () => _time,
-        hovered: () => _hovered,
         focused: () => _focused,
         onSize: (s) => _size = s,
         repaint: _frame,
@@ -344,37 +343,14 @@ class _SdLoginSceneState extends State<SdLoginScene>
                       child: Center(
                         child: _Hint(
                           text: narrow
-                              ? 'اضغط على مبنى لعرض تفاصيله'
-                              : 'اسحب للتدوير · العجلة للتكبير · اضغط على مبنى للدخول لتفاصيله',
+                              ? 'اسحب للتدوير'
+                              : 'اسحب للتدوير · العجلة للتكبير',
                         ),
                       ),
                     ),
                   ),
                 ),
-              Positioned(
-                top: narrow ? null : 8,
-                bottom: narrow ? 8 : null,
-                left: 8,
-                width: narrow ? w - 16 : math.min(250, w * 0.5),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 320),
-                  switchInCurve: Curves.easeOutCubic,
-                  transitionBuilder: (child, a) => FadeTransition(
-                    opacity: a,
-                    child: ScaleTransition(
-                      scale: Tween(begin: 0.94, end: 1.0).animate(a),
-                      child: child,
-                    ),
-                  ),
-                  child: _focused == null
-                      ? const SizedBox.shrink()
-                      : _InfoCard(
-                          key: ValueKey(_focused!.id),
-                          b: _focused!,
-                          onClose: () => _setFocus(null),
-                        ),
-                ),
-              ),
+              // بطاقة تفاصيل المبنى محذوفة بطلب المالك — المشهد زخرفي فقط.
             ],
           ),
         ),
@@ -386,149 +362,6 @@ class _SdLoginSceneState extends State<SdLoginScene>
 // ═══════════════════════════════════════════════════════════════════
 // بطاقة التفاصيل والتلميح
 // ═══════════════════════════════════════════════════════════════════
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({super.key, required this.b, required this.onClose});
-  final SdSceneBuilding b;
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    const label = TextStyle(
-        fontFamily: 'Cairo',
-        fontSize: 10,
-        fontWeight: FontWeight.w700,
-        color: Color(0x99FFFFFF));
-    Widget kv(String v, String k, {Color color = Colors.white, bool ltr = false}) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0x0FFFFFFF),
-          borderRadius: BorderRadius.circular(11),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(v,
-                textDirection: ltr ? TextDirection.ltr : null,
-                style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: color)),
-            Text(k, style: label),
-          ],
-        ),
-      );
-    }
-
-    final ratio = b.subscribers == 0 ? 0.0 : b.online / b.subscribers;
-    return Semantics(
-      container: true,
-      label: 'تفاصيل ${b.name}',
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        decoration: BoxDecoration(
-          color: const Color(0xD90E1446),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0x5980DEEA)),
-          boxShadow: const [
-            BoxShadow(color: Color(0x40000000), offset: Offset(0, 8)),
-            BoxShadow(
-                color: Color(0xB3000000),
-                blurRadius: 50,
-                spreadRadius: -20,
-                offset: Offset(0, 30)),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(b.name,
-                          style: const TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white)),
-                      Text('${b.type} · ${b.floors} طوابق', style: label),
-                    ],
-                  ),
-                ),
-                Tooltip(
-                  message: 'إغلاق التفاصيل',
-                  child: Material(
-                    color: const Color(0x14FFFFFF),
-                    borderRadius: BorderRadius.circular(12),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: onClose,
-                      child: const SizedBox(
-                        width: 36,
-                        height: 36,
-                        child: Icon(Icons.close_rounded,
-                            color: Colors.white, size: 18),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(children: [
-              Expanded(child: kv('${b.subscribers}', 'مشترك')),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: kv('${b.online}', 'متصل الآن',
-                      color: const Color(0xFF69F0AE))),
-            ]),
-            const SizedBox(height: 8),
-            Row(children: [
-              Expanded(child: kv(b.rx, 'الإشارة الضوئية dBm', ltr: true)),
-              const SizedBox(width: 8),
-              Expanded(child: kv(b.fat, 'صندوق التوزيع')),
-            ]),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: SizedBox(
-                height: 5,
-                child: Stack(children: [
-                  const Positioned.fill(
-                      child: ColoredBox(color: Color(0x1FFFFFFF))),
-                  FractionallySizedBox(
-                    alignment: AlignmentDirectional.centerStart,
-                    widthFactor: ratio,
-                    heightFactor: 1,
-                    child: const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                            colors: [Color(0xFF00ACC1), Color(0xFF69F0AE)]),
-                      ),
-                    ),
-                  ),
-                ]),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text('بيانات توضيحية — تُربط لاحقاً بالبيانات الفعلية',
-                style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0x73FFFFFF))),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _Hint extends StatelessWidget {
   const _Hint({required this.text});
@@ -1109,7 +942,6 @@ class _ScenePainter extends CustomPainter {
     required this.cam,
     required this.logo,
     required this.timeOf,
-    required this.hovered,
     required this.focused,
     required this.onSize,
     required Listenable repaint,
@@ -1119,7 +951,6 @@ class _ScenePainter extends CustomPainter {
   final _Camera cam;
   final ui.Image? logo;
   final double Function() timeOf;
-  final SdSceneBuilding? Function() hovered;
   final SdSceneBuilding? Function() focused;
   final void Function(Size) onSize;
 
@@ -1161,7 +992,6 @@ class _ScenePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     onSize(size);
     final t = timeOf();
-    final hov = hovered();
     final foc = focused();
     final pj = _Projector(cam, size);
     canvas.save();
@@ -1308,10 +1138,6 @@ class _ScenePainter extends CustomPainter {
 
     _drawLogo(canvas, pj, t);
 
-    if (hov != null && foc == null) {
-      final q = pj.project(_V(hov.x, hov.height + 1.0, hov.z));
-      _label(canvas, q.o, hov.name, hov.accent);
-    }
     canvas.restore();
   }
 
@@ -1469,37 +1295,6 @@ class _ScenePainter extends CustomPainter {
       ..strokeWidth = 2
       ..color = const Color(0xD9FFFFFF);
     canvas.drawCircle(lp.o, r, _line);
-  }
-
-  void _label(Canvas canvas, Offset at, String text, Color accent) {
-    final tp = TextPainter(
-      text: TextSpan(
-          text: text,
-          style: const TextStyle(
-              fontFamily: 'Cairo',
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: Colors.white)),
-      textDirection: TextDirection.rtl,
-    )..layout();
-    final w = tp.width + 28;
-    final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(at.dx - w / 2, at.dy - 34, w, 30), const Radius.circular(15));
-    _fill.color = const Color(0xDB0B1033);
-    canvas.drawRRect(rect, _fill);
-    _line
-      ..strokeWidth = 1.5
-      ..color = accent;
-    canvas.drawRRect(rect, _line);
-    tp.paint(canvas, Offset(at.dx - tp.width / 2, at.dy - 19 - tp.height / 2));
-    _fill.color = accent;
-    canvas.drawPath(
-        Path()
-          ..moveTo(at.dx - 6, at.dy - 4)
-          ..lineTo(at.dx + 6, at.dy - 4)
-          ..lineTo(at.dx, at.dy + 4)
-          ..close(),
-        _fill);
   }
 
   @override
