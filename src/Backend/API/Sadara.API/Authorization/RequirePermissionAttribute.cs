@@ -88,6 +88,14 @@ public class RequirePermissionAttribute : Attribute, IAsyncAuthorizationFilter
             return;
         }
 
+        // صلاحية «الحسابات المرتبطة» متاحة تلقائياً لمدير الشركة فأعلى (قرار المالك:
+        // مرتبطة بالمدير — بلا حاجة لمنح يدوي لكل مدير جديد). محصورة بهذا المفتاح فقط
+        // فلا تؤثّر على بقية الصلاحيات؛ والعزل (شركة/مالك) يبقى مفروضاً داخل المتحكّم.
+        if (_permissionKey == "linked_accounts" && dbUser.IsCompanyAdminOrAbove)
+        {
+            return;
+        }
+
         // اختيار JSON المناسب
         var permJson = _system == PermissionSystem.First
             ? dbUser.FirstSystemPermissionsV2
