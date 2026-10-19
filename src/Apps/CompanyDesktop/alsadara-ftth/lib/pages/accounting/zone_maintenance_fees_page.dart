@@ -6,6 +6,7 @@ import '../../frontend/frontend.dart'; // نظام تصميم الصدارة ا�
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
+import '../../permissions/permissions.dart';
 /// صفحة إدارة أجور صيانة الزونات
 class ZoneMaintenanceFeesPage extends StatefulWidget {
   final String? companyId;
@@ -63,11 +64,12 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
               label: 'تحديث',
               onPressed: _loadData,
             ),
-            SdAppBarAction(
-              icon: Icons.add,
-              label: 'إضافة',
-              onPressed: _showAddDialog,
-            ),
+            if (PermissionManager.instance.canAdd('accounting'))
+              SdAppBarAction(
+                icon: Icons.add,
+                label: 'إضافة',
+                onPressed: _showAddDialog,
+              ),
           ],
         ),
         body: SafeArea(
@@ -176,7 +178,9 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                         fontSize: 14,
                         fontWeight: FontWeight.w900)),
                 const SizedBox(width: SdSpace.xs),
-                PopupMenuButton<String>(
+                if (PermissionManager.instance.canEdit('accounting') ||
+                    PermissionManager.instance.canDelete('accounting'))
+                  PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert, size: 18, color: SdColors.muted),
                   color: SdColors.surface,
                   onSelected: (action) {
@@ -185,29 +189,32 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                     if (action == 'delete') _confirmDelete(id, name);
                   },
                   itemBuilder: (_) => [
-                    const PopupMenuItem(
-                        value: 'edit',
-                        child: Text('تعديل',
-                            style: TextStyle(
-                                fontFamily: SdText.family,
-                                color: SdColors.ink,
-                                fontSize: 13))),
-                    PopupMenuItem(
-                        value: 'toggle',
-                        child: Text(enabled ? 'تعطيل' : 'تفعيل',
-                            style: TextStyle(
-                                fontFamily: SdText.family,
-                                color: enabled
-                                    ? SdColors.warningText
-                                    : SdColors.success,
-                                fontSize: 13))),
-                    const PopupMenuItem(
-                        value: 'delete',
-                        child: Text('حذف',
-                            style: TextStyle(
-                                fontFamily: SdText.family,
-                                color: SdColors.danger,
-                                fontSize: 13))),
+                    if (PermissionManager.instance.canEdit('accounting')) ...[
+                      const PopupMenuItem(
+                          value: 'edit',
+                          child: Text('تعديل',
+                              style: TextStyle(
+                                  fontFamily: SdText.family,
+                                  color: SdColors.ink,
+                                  fontSize: 13))),
+                      PopupMenuItem(
+                          value: 'toggle',
+                          child: Text(enabled ? 'تعطيل' : 'تفعيل',
+                              style: TextStyle(
+                                  fontFamily: SdText.family,
+                                  color: enabled
+                                      ? SdColors.warningText
+                                      : SdColors.success,
+                                  fontSize: 13))),
+                    ],
+                    if (PermissionManager.instance.canDelete('accounting'))
+                      const PopupMenuItem(
+                          value: 'delete',
+                          child: Text('حذف',
+                              style: TextStyle(
+                                  fontFamily: SdText.family,
+                                  color: SdColors.danger,
+                                  fontSize: 13))),
                   ],
                 ),
               ],

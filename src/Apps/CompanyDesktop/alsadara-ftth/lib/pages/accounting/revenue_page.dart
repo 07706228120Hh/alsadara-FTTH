@@ -3,6 +3,7 @@ import '../../frontend/frontend.dart'; // نظام تصميم الصدارة ا�
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../permissions/permissions.dart';
 
 /// صفحة الإيرادات - Revenue Page
 class RevenuePage extends StatefulWidget {
@@ -173,11 +174,12 @@ class _RevenuePageState extends State<RevenuePage> {
               label: 'تحديث',
               onPressed: _loadData,
             ),
-            SdAppBarAction(
-              icon: Icons.add,
-              label: 'إضافة إيراد',
-              onPressed: _showAddRevenueDialog,
-            ),
+            if (PermissionManager.instance.canAdd('accounting.revenue'))
+              SdAppBarAction(
+                icon: Icons.add,
+                label: 'إضافة إيراد',
+                onPressed: _showAddRevenueDialog,
+              ),
           ],
         ),
         body: SafeArea(
@@ -593,11 +595,14 @@ class _RevenuePageState extends State<RevenuePage> {
                     ),
                   ],
                   const Spacer(),
-                  _actionBtn(Icons.edit, SdStatus.info.tone.base,
-                      () => _showEditRevenueDialog(entry)),
-                  SizedBox(width: context.accR.spaceXS),
-                  _actionBtn(Icons.delete_outline, SdStatus.danger.tone.base,
-                      () => _confirmDeleteRevenue(entry)),
+                  if (PermissionManager.instance.canEdit('accounting.revenue')) ...[
+                    _actionBtn(Icons.edit, SdStatus.info.tone.base,
+                        () => _showEditRevenueDialog(entry)),
+                    SizedBox(width: context.accR.spaceXS),
+                  ],
+                  if (PermissionManager.instance.canDelete('accounting.revenue'))
+                    _actionBtn(Icons.delete_outline, SdStatus.danger.tone.base,
+                        () => _confirmDeleteRevenue(entry)),
                 ],
               ),
             ],

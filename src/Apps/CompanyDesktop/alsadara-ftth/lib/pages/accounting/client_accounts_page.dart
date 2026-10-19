@@ -3,6 +3,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/accounting_service.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../frontend/frontend.dart';
+import '../../permissions/permissions.dart';
 
 /// صفحة كشف الحسابات - عرض جميع الحسابات الفرعية مع كشف حساب مفصّل
 class ClientAccountsPage extends StatefulWidget {
@@ -3170,7 +3171,11 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
   void _showFullEntryDialog(Map<String, dynamic> entry) {
     final status = entry['Status']?.toString() ?? 'Draft';
     final isVoided = status == 'Voided';
-    final effectiveReadOnly = isVoided;
+    // تعديل القيد من كشف الحساب = تعديل قيد يومي (مفتاح موجود accounting.journals)
+    // من لا يملك صلاحية التعديل يرى القيد للعرض فقط
+    final canEditJournals =
+        PermissionManager.instance.canEdit('accounting.journals');
+    final effectiveReadOnly = isVoided || !canEditJournals;
 
     final descCtrl = TextEditingController(text: entry['Description'] ?? '');
     final notesCtrl = TextEditingController(text: entry['Notes'] ?? '');
@@ -3264,7 +3269,8 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                           ),
                           const SizedBox(width: 8),
                           // زر حذف القيد
-                          if (!effectiveReadOnly)
+                          if (!effectiveReadOnly &&
+                              PermissionManager.instance.canDelete('accounting.journals'))
                             IconButton(
                               onPressed: () => _confirmDeleteEntryFromDialog(ctx, entry),
                               icon: const Icon(Icons.delete_outline, size: 20),

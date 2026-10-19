@@ -12,6 +12,7 @@ import 'dart:io';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/api/api_config.dart';
+import '../../permissions/permission_manager.dart';
 
 class DailySettlementPage extends StatefulWidget {
   final String authToken;
@@ -971,7 +972,15 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
                       child: SizedBox(
                         height: 46,
                         child: ElevatedButton.icon(
-                          onPressed: _reportLoading ? null : _submitReport,
+                          // الإدخال اليدوي للحركة تحت الصلاحية: جديد=transactions(add) / تحديث=transactions(edit)
+                          onPressed: (_reportLoading ||
+                                  !(_reportSubmitted
+                                      ? PermissionManager.instance
+                                          .canEdit('transactions')
+                                      : PermissionManager.instance
+                                          .canAdd('transactions')))
+                              ? null
+                              : _submitReport,
                           icon: _reportLoading
                               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                               : Icon(_reportSubmitted ? Icons.update : Icons.send, size: 20),
@@ -1733,7 +1742,8 @@ class _DailySettlementPageState extends State<DailySettlementPage> {
               ),
             );
           }),
-          if (isAdmin)
+          // حذف تقرير التسوية تحت الصلاحية: transactions(delete) — إضافةً لقيد الأدمن القائم
+          if (isAdmin && PermissionManager.instance.canDelete('transactions'))
             Padding(
               padding: const EdgeInsets.all(8),
               child: Align(

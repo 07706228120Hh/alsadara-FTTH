@@ -4,6 +4,7 @@ import 'package:excel/excel.dart' as xls;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../permissions/permission_manager.dart';
 import '../../frontend/frontend.dart';
 import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
@@ -170,6 +171,11 @@ class SasBulkImportPage extends StatefulWidget {
 
 class _SasBulkImportPageState extends State<SasBulkImportPage> {
   final _api = SasAgentApiService.instance;
+
+  // ─── حجب الإنشاء الدفعي بصلاحية وكيل الساس (مفتاح موجود: sas_agent/add) ───
+  // الخادم يبقى الحكم النهائي (403). إعداد الجدول محلياً (استيراد/إضافة صفّ/مسح)
+  // يبقى متاحاً لأنه لا يُجري أي كتابة على الخادم.
+  bool get _canCreate => PermissionManager.instance.canAdd('sas_agent');
 
   // الباقات المجلوبة (id + name) لمنتقي الباقة والمطابقة بالاسم.
   List<Map<String, dynamic>> _profiles = const [];
@@ -745,6 +751,21 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
         ),
       );
     }
+    if (!_canCreate) {
+      return SizedBox(
+        height: 48.h,
+        child: OutlinedButton.icon(
+          onPressed: null,
+          style: OutlinedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(SasUi.radiusSm.r)),
+          ),
+          icon: const Icon(Icons.lock_outline_rounded, size: 20),
+          label: Text('لا تملك صلاحية الإنشاء',
+              style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
+        ),
+      );
+    }
     return SizedBox(
       height: 48.h,
       child: FilledButton.icon(
@@ -801,7 +822,7 @@ class _SasBulkImportPageState extends State<SasBulkImportPage> {
                       : SdColors.success),
             ),
           ),
-          if (_finished && _failCount > 0) ...[
+          if (_finished && _failCount > 0 && _canCreate) ...[
             SizedBox(height: 10.h),
             SizedBox(
               height: 40.h,

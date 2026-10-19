@@ -7,6 +7,8 @@ import '../../utils/responsive_helper.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
 import '../../frontend/components/sd_ui_kit.dart';
+import '../../permissions/permissions.dart';
+
 /// صفحة إدارة الصناديق النقدية
 class CashBoxPage extends StatefulWidget {
   final String? companyId;
@@ -204,7 +206,8 @@ class _CashBoxPageState extends State<CashBoxPage> {
                 foregroundColor: SdColors.muted),
           ),
           SizedBox(width: isMobile ? 4 : ar.spaceXS),
-          ElevatedButton.icon(
+          if (PermissionManager.instance.canAdd('accounting.cashbox'))
+            ElevatedButton.icon(
             onPressed: _showAddDialog,
             icon: Icon(Icons.add, size: isMobile ? 16 : ar.iconS),
             label: Text(isMobile ? 'إضافة' : 'إضافة صندوق',
@@ -292,6 +295,7 @@ class _CashBoxPageState extends State<CashBoxPage> {
                   ),
                 ),
                 SizedBox(width: context.accR.spaceS),
+                if (PermissionManager.instance.canEdit('accounting.cashbox'))
                 InkWell(
                   onTap: () => _showEditCashBoxDialog(box),
                   borderRadius: BorderRadius.circular(6),
@@ -354,6 +358,8 @@ class _CashBoxPageState extends State<CashBoxPage> {
   Widget _buildBoxDetail() {
     final box = _selectedBox!;
     final isMobile = context.responsive.isMobile;
+    final canTransact =
+        PermissionManager.instance.canAdd('accounting.cashbox');
     return Column(
       children: [
         // بطاقة معلومات الصندوق
@@ -412,11 +418,13 @@ class _CashBoxPageState extends State<CashBoxPage> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
+                        if (canTransact)
                         Expanded(
                           child: _actionButton('إيداع', Icons.add, SdColors.success,
                               () => _showTransactionDialog(true)),
                         ),
-                        const SizedBox(width: 8),
+                        if (canTransact) const SizedBox(width: 8),
+                        if (canTransact)
                         Expanded(
                           child: _actionButton('سحب', Icons.remove, SdColors.danger,
                               () => _showTransactionDialog(false)),
@@ -470,11 +478,13 @@ class _CashBoxPageState extends State<CashBoxPage> {
               // أزرار إيداع/سحب
               Column(
                 children: [
-                  _actionButton('إيداع', Icons.add, SdColors.success,
-                      () => _showTransactionDialog(true)),
-                  SizedBox(height: context.accR.spaceS),
-                  _actionButton('سحب', Icons.remove, SdColors.danger,
-                      () => _showTransactionDialog(false)),
+                  if (canTransact)
+                    _actionButton('إيداع', Icons.add, SdColors.success,
+                        () => _showTransactionDialog(true)),
+                  if (canTransact) SizedBox(height: context.accR.spaceS),
+                  if (canTransact)
+                    _actionButton('سحب', Icons.remove, SdColors.danger,
+                        () => _showTransactionDialog(false)),
                 ],
               ),
             ],

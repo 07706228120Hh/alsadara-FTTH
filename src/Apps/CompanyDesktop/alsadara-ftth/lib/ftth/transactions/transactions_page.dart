@@ -19,6 +19,7 @@ import 'package:multi_select_flutter/multi_select_flutter.dart';
 import 'creator_amounts_page.dart';
 import '../reports/profits_page.dart';
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
+import '../../permissions/permission_manager.dart';
 
 class TransactionsPage extends StatefulWidget {
   final String authToken;
@@ -4335,11 +4336,13 @@ class _TransactionsPageState extends State<TransactionsPage> {
             label: 'حساب الارباح',
             onPressed: _navigateToProfitsPage,
           ),
-          SdAppBarAction(
-            icon: Icons.file_download,
-            label: 'تصدير إلى Excel',
-            onPressed: _exportToExcel,
-          ),
+          // تصدير إلى Excel — تحت صلاحية التصدير (export/export)
+          if (PermissionManager.instance.canExport('export'))
+            SdAppBarAction(
+              icon: Icons.file_download,
+              label: 'تصدير إلى Excel',
+              onPressed: _exportToExcel,
+            ),
           SdAppBarAction(
             icon: Icons.refresh,
             label: 'تحديث',

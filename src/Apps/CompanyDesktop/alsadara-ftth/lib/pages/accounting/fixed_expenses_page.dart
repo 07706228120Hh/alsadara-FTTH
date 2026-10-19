@@ -4,6 +4,7 @@ import '../../frontend/frontend.dart'; // نظام تصميم الصدارة ا�
 import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_responsive.dart';
+import '../../permissions/permissions.dart';
 
 /// صفحة إدارة المصاريف الثابتة الشهرية (إيجارات، مولد، ...)
 class FixedExpensesPage extends StatefulWidget {
@@ -147,11 +148,12 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
               ? 'المصاريف الثابتة'
               : 'المصاريف الثابتة الشهرية',
           actions: [
-            SdAppBarAction(
-              icon: Icons.add_circle_outline,
-              label: 'إضافة مصروف ثابت',
-              onPressed: _showAddDialog,
-            ),
+            if (PermissionManager.instance.canAdd('accounting.fixed_expenses'))
+              SdAppBarAction(
+                icon: Icons.add_circle_outline,
+                label: 'إضافة مصروف ثابت',
+                onPressed: _showAddDialog,
+              ),
             SdAppBarAction(
               icon: Icons.refresh,
               label: 'تحديث',
@@ -509,16 +511,20 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                               const SdStatusChip('مدفوع',
                                   status: SdStatus.success,
                                   icon: Icons.check_circle),
-                              SizedBox(width: context.accR.spaceXS),
-                              IconButton(
-                                icon:
-                                    Icon(Icons.undo, size: context.accR.iconM),
-                                tooltip: 'إلغاء الدفع',
-                                onPressed: () => _unpayExpense(payment!),
-                                color: SdStatus.warning.tone.base,
-                                splashRadius: 20,
-                              ),
-                            ] else ...[
+                              if (PermissionManager.instance
+                                  .canEdit('accounting.fixed_expenses')) ...[
+                                SizedBox(width: context.accR.spaceXS),
+                                IconButton(
+                                  icon: Icon(Icons.undo,
+                                      size: context.accR.iconM),
+                                  tooltip: 'إلغاء الدفع',
+                                  onPressed: () => _unpayExpense(payment!),
+                                  color: SdStatus.warning.tone.base,
+                                  splashRadius: 20,
+                                ),
+                              ],
+                            ] else if (PermissionManager.instance
+                                .canEdit('accounting.fixed_expenses')) ...[
                               ElevatedButton.icon(
                                 onPressed: isActive
                                     ? () => _payExpenseFromItem(item)
@@ -539,50 +545,59 @@ class _FixedExpensesPageState extends State<FixedExpensesPage> {
                             ],
                             SizedBox(width: context.accR.spaceXS),
                             // قائمة الإجراءات
-                            PopupMenuButton<String>(
+                            if (PermissionManager.instance
+                                    .canEdit('accounting.fixed_expenses') ||
+                                PermissionManager.instance
+                                    .canDelete('accounting.fixed_expenses'))
+                              PopupMenuButton<String>(
                               icon: const Icon(Icons.more_vert,
                                   color: SdColors.faint),
                               splashRadius: 20,
                               itemBuilder: (_) => [
-                                PopupMenuItem(
-                                    value: 'edit',
+                                if (PermissionManager.instance
+                                    .canEdit('accounting.fixed_expenses')) ...[
+                                  PopupMenuItem(
+                                      value: 'edit',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.edit,
+                                              size: context.accR.iconM,
+                                              color: SdColors.info),
+                                          SizedBox(width: 8),
+                                          Text('تعديل'),
+                                        ],
+                                      )),
+                                  PopupMenuItem(
+                                    value: 'toggle',
                                     child: Row(
                                       children: [
-                                        Icon(Icons.edit,
+                                        Icon(
+                                            isActive
+                                                ? Icons.pause_circle
+                                                : Icons.play_circle,
                                             size: context.accR.iconM,
-                                            color: SdColors.info),
-                                        SizedBox(width: 8),
-                                        Text('تعديل'),
+                                            color: SdColors.warning),
+                                        SizedBox(width: context.accR.spaceS),
+                                        Text(isActive ? 'إيقاف' : 'تفعيل'),
                                       ],
-                                    )),
-                                PopupMenuItem(
-                                  value: 'toggle',
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                          isActive
-                                              ? Icons.pause_circle
-                                              : Icons.play_circle,
-                                          size: context.accR.iconM,
-                                          color: SdColors.warning),
-                                      SizedBox(width: context.accR.spaceS),
-                                      Text(isActive ? 'إيقاف' : 'تفعيل'),
-                                    ],
+                                    ),
                                   ),
-                                ),
-                                PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.delete,
-                                            size: context.accR.iconM,
-                                            color: SdColors.danger),
-                                        SizedBox(width: 8),
-                                        Text('حذف',
-                                            style:
-                                                TextStyle(color: SdColors.danger)),
-                                      ],
-                                    )),
+                                ],
+                                if (PermissionManager.instance
+                                    .canDelete('accounting.fixed_expenses'))
+                                  PopupMenuItem(
+                                      value: 'delete',
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.delete,
+                                              size: context.accR.iconM,
+                                              color: SdColors.danger),
+                                          SizedBox(width: 8),
+                                          Text('حذف',
+                                              style:
+                                                  TextStyle(color: SdColors.danger)),
+                                        ],
+                                      )),
                               ],
                               onSelected: (v) => _onExpenseAction(v, item),
                             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../permissions/permission_manager.dart';
 import '../../frontend/frontend.dart';
 import '../models/sas_account.dart';
 import '../services/sas_agent_api_service.dart';
@@ -242,6 +243,13 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
   final _api = SasAgentApiService.instance;
   bool _busy = false;
 
+  // ─── حجب أزرار الإجراءات بصلاحية وكيل الساس (مفتاح موجود: sas_agent) ───
+  // الحركات المالية (إيداع/سحب/نقاط/سداد دين) تُحكم بصلاحية الإضافة (manage في الخادم)،
+  // والتعديل/الحذف بصلاحيتيهما المخصّصتين. الخادم يبقى الحكم النهائي (403).
+  bool get _canAdd => PermissionManager.instance.canAdd('sas_agent');
+  bool get _canEdit => PermissionManager.instance.canEdit('sas_agent');
+  bool get _canDelete => PermissionManager.instance.canDelete('sas_agent');
+
   @override
   Widget build(BuildContext context) {
     final m = widget.manager;
@@ -296,22 +304,29 @@ class _ManagerActionsSheetState extends State<_ManagerActionsSheet> {
               spacing: 8.w,
               runSpacing: 8.h,
               children: [
-                _act('إيداع رصيد', Icons.add_card_rounded, SdColors.success,
-                    () => _amount('deposit', 'إيداع رصيد')),
-                _act('سحب رصيد', Icons.money_off_rounded, SdColors.warning,
-                    () => _amount('withdraw', 'سحب رصيد')),
-                _act('إضافة نقاط', Icons.stars_rounded, SdColors.warningLight,
-                    () => _points('addRewardPoints', 'إضافة نقاط مكافأة')),
-                _act('خصم نقاط', Icons.remove_circle_outline_rounded,
-                    SdColors.warning,
-                    () => _points('deductRewardPoints', 'خصم نقاط مكافأة')),
-                _act('سداد دين', Icons.receipt_long_rounded,
-                    SdColors.accent,
-                    () => _amount('payDebt', 'سداد دين')),
-                _act('تعديل', Icons.edit_rounded, SdColors.primaryLight,
-                    _edit),
-                _act('حذف', Icons.delete_forever_rounded, SdColors.danger,
-                    _delete),
+                if (_canAdd)
+                  _act('إيداع رصيد', Icons.add_card_rounded, SdColors.success,
+                      () => _amount('deposit', 'إيداع رصيد')),
+                if (_canAdd)
+                  _act('سحب رصيد', Icons.money_off_rounded, SdColors.warning,
+                      () => _amount('withdraw', 'سحب رصيد')),
+                if (_canAdd)
+                  _act('إضافة نقاط', Icons.stars_rounded, SdColors.warningLight,
+                      () => _points('addRewardPoints', 'إضافة نقاط مكافأة')),
+                if (_canAdd)
+                  _act('خصم نقاط', Icons.remove_circle_outline_rounded,
+                      SdColors.warning,
+                      () => _points('deductRewardPoints', 'خصم نقاط مكافأة')),
+                if (_canAdd)
+                  _act('سداد دين', Icons.receipt_long_rounded,
+                      SdColors.accent,
+                      () => _amount('payDebt', 'سداد دين')),
+                if (_canEdit)
+                  _act('تعديل', Icons.edit_rounded, SdColors.primaryLight,
+                      _edit),
+                if (_canDelete)
+                  _act('حذف', Icons.delete_forever_rounded, SdColors.danger,
+                      _delete),
               ],
             ),
           ],
