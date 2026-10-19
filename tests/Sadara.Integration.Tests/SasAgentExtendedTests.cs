@@ -126,7 +126,7 @@ public class SasAgentExtendedTests
         // التخزين المحلي
         public Task<string> TestAccountAsync(string s, string u, string p, CancellationToken ct = default) => Handle("test_account");
         public Task<string> SyncAccountAsync(string s, string u, string p, string accountId, CancellationToken ct = default) => Handle("sync_account");
-        public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, string? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => Handle("local_subscribers");
+        public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, string? profile = null, string? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => Handle("local_subscribers");
         public Task<string> GetSubscribersSummaryAsync(string accountId, CancellationToken ct = default) => Handle("subscribers_summary");
         public Task<string> SubmitReportAsync(string accountId, string companyId, string ownerUserId, int declaredTotal, int declaredActive, string? note = null, string? submittedBy = null, CancellationToken ct = default) => Handle("submit_report");
         public Task<string> ListReportsAsync(string accountId, CancellationToken ct = default) => Handle("list_reports");
@@ -142,6 +142,9 @@ public class SasAgentExtendedTests
                 throw new SasServiceUnavailableException("unavailable");
             return Task.FromResult(AgentsSummaryResponse ?? DefaultResponse);
         }
+
+        // مستكشف الساس (فكّ حمولات مشفّرة)
+        public Task<string> DecryptPayloadsAsync(IEnumerable<string> items, CancellationToken ct = default) => Handle("decrypt_payloads");
 
         // التذاكر
         public Task<string> GetTicketsStatsAsync(string companyId, string ownerUserId, CancellationToken ct = default) => Handle("tickets_stats");
@@ -1539,12 +1542,13 @@ internal sealed class CapturingSasClient : ISasServiceClient
     public Task<string> SasPostAsync(string s, string u, string p, string path, object? payload = null, CancellationToken ct = default) => Empty();
     public Task<string> TestAccountAsync(string s, string u, string p, CancellationToken ct = default) => Empty();
     public Task<string> SyncAccountAsync(string s, string u, string p, string accountId, CancellationToken ct = default) => Empty();
-    public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, string? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => Empty();
+    public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, string? profile = null, string? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => Empty();
     public Task<string> GetSubscribersSummaryAsync(string accountId, CancellationToken ct = default) => Empty();
     public Task<string> SubmitReportAsync(string accountId, string companyId, string ownerUserId, int declaredTotal, int declaredActive, string? note = null, string? submittedBy = null, CancellationToken ct = default) => Empty();
     public Task<string> ListReportsAsync(string accountId, CancellationToken ct = default) => Empty();
     public Task<string> GetReconciliationAsync(string accountId, string s, string u, string p, CancellationToken ct = default) => Empty();
     public Task<string> GetAgentsSummaryAsync(string companyId, IEnumerable<string> accountIds, CancellationToken ct = default) => Empty();
+    public Task<string> DecryptPayloadsAsync(IEnumerable<string> items, CancellationToken ct = default) => Empty();
 
     public Task<string> GetTicketsStatsAsync(string companyId, string ownerUserId, CancellationToken ct = default)
     {

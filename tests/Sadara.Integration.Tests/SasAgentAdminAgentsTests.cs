@@ -113,11 +113,12 @@ public class SasAgentAdminAgentsTests
         public Task<string> SasPostAsync(string s, string u, string p, string path, object? payload = null, CancellationToken ct = default) => Nope();
         public Task<string> TestAccountAsync(string s, string u, string p, CancellationToken ct = default) => Nope();
         public Task<string> SyncAccountAsync(string s, string u, string p, string accountId, CancellationToken ct = default) => Nope();
-        public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, string? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => Nope();
+        public Task<string> GetLocalSubscribersAsync(string accountId, string? search = null, string? status = null, string? profile = null, string? expiring = null, int? page = null, int? count = null, CancellationToken ct = default) => Nope();
         public Task<string> GetSubscribersSummaryAsync(string accountId, CancellationToken ct = default) => Nope();
         public Task<string> SubmitReportAsync(string accountId, string companyId, string ownerUserId, int declaredTotal, int declaredActive, string? note = null, string? submittedBy = null, CancellationToken ct = default) => Nope();
         public Task<string> ListReportsAsync(string accountId, CancellationToken ct = default) => Nope();
         public Task<string> GetReconciliationAsync(string accountId, string s, string u, string p, CancellationToken ct = default) => Nope();
+        public Task<string> DecryptPayloadsAsync(IEnumerable<string> items, CancellationToken ct = default) => Nope();
         public Task<string> GetTicketsStatsAsync(string companyId, string ownerUserId, CancellationToken ct = default) => Nope();
         public Task<string> GetTicketsListAsync(string companyId, string ownerUserId, string? status = null, string? category = null, string? search = null, int? page = null, int? count = null, CancellationToken ct = default) => Nope();
         public Task<string> GetTicketAsync(string companyId, string ownerUserId, string ticketId, CancellationToken ct = default) => Nope();
