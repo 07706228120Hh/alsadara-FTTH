@@ -16,6 +16,7 @@ import '../task/audit_dashboard_page.dart';
 import '../services/vps_auth_service.dart';
 import '../services/attendance_api_service.dart';
 import '../widgets/notification_bell.dart';
+import '../permissions/permission_manager.dart';
 class HrHubPage extends StatefulWidget {
   final String username;
   final String permissions;
@@ -99,123 +100,131 @@ class _HrHubPageState extends State<HrHubPage> {
   }
 
   List<Widget> _buildHrTiles(BuildContext context) {
-    return [
-      // 1) إدارة المستخدمين
-      SdMenuTile(
-        icon: Icons.people_rounded,
-        title: 'إدارة المستخدمين',
-        subtitle: 'إضافة وتعديل بيانات الموظفين',
-        onTap: () {
-          final companyId =
-              widget.tenantId ?? VpsAuthService.instance.currentCompanyId;
-          final companyCode =
-              widget.tenantCode ?? VpsAuthService.instance.currentCompanyCode;
-          final companyName = VpsAuthService.instance.currentCompanyName ?? 'الشركة';
-          Navigator.push(
+    final pm = PermissionManager.instance;
+    return <Widget?>[
+      // 1) إدارة المستخدمين — صلاحية hr.employees
+      if (pm.canView('hr.employees'))
+        SdMenuTile(
+          icon: Icons.people_rounded,
+          title: 'إدارة المستخدمين',
+          subtitle: 'إضافة وتعديل بيانات الموظفين',
+          onTap: () {
+            final companyId =
+                widget.tenantId ?? VpsAuthService.instance.currentCompanyId;
+            final companyCode =
+                widget.tenantCode ?? VpsAuthService.instance.currentCompanyCode;
+            final companyName =
+                VpsAuthService.instance.currentCompanyName ?? 'الشركة';
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => companyId != null && companyCode != null
+                    ? UsersPageVPS(
+                        companyId: companyId,
+                        companyName: companyName,
+                      )
+                    : companyId != null
+                        ? UsersPageFirebase(
+                            tenantId: companyId,
+                            permissions: widget.permissions,
+                          )
+                        : UsersPage(permissions: widget.permissions),
+              ),
+            );
+          },
+        ),
+
+      // 2) جداول الدوام — صلاحية hr.schedules
+      if (pm.canView('hr.schedules'))
+        SdMenuTile(
+          icon: Icons.schedule_rounded,
+          title: 'جداول الدوام',
+          subtitle: 'إدارة أوقات العمل والورديات',
+          onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => companyId != null && companyCode != null
-                  ? UsersPageVPS(
-                      companyId: companyId,
-                      companyName: companyName,
-                      permissions: {'users': true},
-                    )
-                  : companyId != null
-                      ? UsersPageFirebase(
-                          tenantId: companyId,
-                          permissions: widget.permissions,
-                        )
-                      : UsersPage(permissions: widget.permissions),
-            ),
-          );
-        },
-      ),
-
-      // 2) جداول الدوام
-      SdMenuTile(
-        icon: Icons.schedule_rounded,
-        title: 'جداول الدوام',
-        subtitle: 'إدارة أوقات العمل والورديات',
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const WorkSchedulesPage(),
-          ),
-        ),
-      ),
-
-      // 4) الإجازات
-      SdMenuTile(
-        icon: Icons.beach_access_rounded,
-        title: 'الإجازات',
-        subtitle: 'طلبات الإجازات والأرصدة',
-        badge: _pendingLeaves,
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const LeaveManagementPage(),
-          ),
-        ),
-      ),
-
-      // 5) الرواتب
-      SdMenuTile(
-        icon: Icons.payments_rounded,
-        title: 'الرواتب',
-        subtitle: 'مسيّر الرواتب والخصومات',
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const SalaryManagementPage(),
-          ),
-        ),
-      ),
-
-      // 6) الخصومات والمكافآت
-      SdMenuTile(
-        icon: Icons.receipt_long_rounded,
-        title: 'الخصومات والمكافآت',
-        subtitle: 'إدارة الخصومات والمكافآت والبدلات',
-        badge: _pendingWithdrawals,
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const DeductionsBonusesPage(),
-          ),
-        ),
-      ),
-
-      // 7) التقارير والإحصائيات
-      SdMenuTile(
-        icon: Icons.assessment_rounded,
-        title: 'التقارير والإحصائيات',
-        subtitle: 'تقارير شاملة مع تصدير CSV',
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const HrReportsPage(),
-          ),
-        ),
-      ),
-
-      // 8) داشبورد المتابعة
-      SdMenuTile(
-        icon: Icons.dashboard_rounded,
-        title: 'داشبورد المتابعة',
-        subtitle: 'إحصائيات وتحليلات الأداء',
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AuditDashboardPage(
-              username: widget.username,
-              permissions: widget.permissions,
-              department: widget.department,
-              center: widget.center,
+              builder: (context) => const WorkSchedulesPage(),
             ),
           ),
         ),
-      ),
-    ];
+
+      // 4) الإجازات — صلاحية hr.leaves
+      if (pm.canView('hr.leaves'))
+        SdMenuTile(
+          icon: Icons.beach_access_rounded,
+          title: 'الإجازات',
+          subtitle: 'طلبات الإجازات والأرصدة',
+          badge: _pendingLeaves,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const LeaveManagementPage(),
+            ),
+          ),
+        ),
+
+      // 5) الرواتب — صلاحية hr.salaries
+      if (pm.canView('hr.salaries'))
+        SdMenuTile(
+          icon: Icons.payments_rounded,
+          title: 'الرواتب',
+          subtitle: 'مسيّر الرواتب والخصومات',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const SalaryManagementPage(),
+            ),
+          ),
+        ),
+
+      // 6) الخصومات والمكافآت — صلاحية hr.deductions
+      if (pm.canView('hr.deductions'))
+        SdMenuTile(
+          icon: Icons.receipt_long_rounded,
+          title: 'الخصومات والمكافآت',
+          subtitle: 'إدارة الخصومات والمكافآت والبدلات',
+          badge: _pendingWithdrawals,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const DeductionsBonusesPage(),
+            ),
+          ),
+        ),
+
+      // 7) التقارير والإحصائيات — صلاحية hr.reports
+      if (pm.canView('hr.reports'))
+        SdMenuTile(
+          icon: Icons.assessment_rounded,
+          title: 'التقارير والإحصائيات',
+          subtitle: 'تقارير شاملة مع تصدير CSV',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const HrReportsPage(),
+            ),
+          ),
+        ),
+
+      // 8) داشبورد المتابعة — صلاحية audit_dashboard
+      if (pm.canView('audit_dashboard'))
+        SdMenuTile(
+          icon: Icons.dashboard_rounded,
+          title: 'داشبورد المتابعة',
+          subtitle: 'إحصائيات وتحليلات الأداء',
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AuditDashboardPage(
+                username: widget.username,
+                permissions: widget.permissions,
+                department: widget.department,
+                center: widget.center,
+              ),
+            ),
+          ),
+        ),
+    ].whereType<Widget>().toList();
   }
 
   Map<String, bool> _parsePermissions(String perms) {

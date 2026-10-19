@@ -2274,7 +2274,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         subtitle: 'تسجيل مشترك FTTH جديد',
         icon: Icons.person_add_alt_1_rounded,
         group: SdGroup.field,
-        permissionKey: '',
+        permissionKey: 'users',
         onTap: () => _navigateTo(CustomerHubPage(
           authToken: DualAuthService.instance.ftthToken ?? '',
         )),
