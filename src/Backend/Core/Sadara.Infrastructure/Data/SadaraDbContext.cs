@@ -1865,7 +1865,18 @@ public class SadaraDbContext : DbContext
     // (مثل قوالب الصلاحيات: قالب بلا شركة = قالب افتراضي مشترك).
     // - InternetPlan: CompanyId=null = "باقة عامة" ⇒ يُستثنى من الفلتر العام ويأخذ فلتراً خاصاً
     //   يشمل العامة (وإلا تختفي الباقات العامة عن مستخدمي الشركة عند التفعيل).
-    private static readonly HashSet<string> TenantFilterExclusions = new() { "PermissionTemplate", "InternetPlan" };
+    private static readonly HashSet<string> TenantFilterExclusions = new()
+    {
+        "PermissionTemplate",
+        "InternetPlan",
+        // مستثناة من فلتر العزل (قرار المالك 2026-10-19): جداول مرتبطة بتكامل n8n/واتساب تُقرأ/تُكتب
+        // عبر المفتاح الداخلي بلا سياق شركة (عابرة للشركات بالتصميم) + صفوف CompanyId=NULL مشروعة/يتيمة.
+        // الاستثناء يمنع اختفاءها عند تفعيل العزل. تنبيه: لا شبكة أمان DB لها ⇒ أي endpoint مستقبلي
+        // يقرأها بتوكن شركة يجب أن يفلتر CompanyId صراحةً (الحماية الحالية = المفتاح الداخلي فقط).
+        "EmployeeLocationLog",  // مواقع الموظفين (386 صفاً يتيماً؛ تتبّع مشترك عبر المفتاح الداخلي)
+        "WhatsAppBatchReport",  // تقارير إرسال n8n (137)
+        "WhatsAppConversation", // محادثات واتساب n8n (13)
+    };
 
     // مرجع دالة تطبيق فلتر العزل (تُستدعى عبر Reflection لكل كيان مستأجر).
     private static readonly MethodInfo SetTenantFilterMethod =
