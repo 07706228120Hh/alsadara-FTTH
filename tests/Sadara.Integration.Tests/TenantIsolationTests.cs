@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Infrastructure.Data;
@@ -23,22 +25,41 @@ public class TenantIsolationTests
     private static readonly Guid CompanyB = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
     /// <summary>مزوّد مستأجر قابل للضبط للاختبار.</summary>
+    /// <remarks>
+    /// <c>EnforceIsolation</c> افتراضه هنا <b>true</b> عمداً (بخلاف الإنتاج الذي افتراضه false):
+    /// هذا الملف غايته التحقّق من الفلتر المركزي للعزل عند تفعيله — وهو مُسوَّر بـ
+    /// <c>if(_tenant.EnforceIsolation)</c> في <see cref="SadaraDbContext"/>. بدون التفعيل لا يُضاف
+    /// أي فلتر عزل فلا تُمارَس التغطية. يُمكن لأي اختبار تجاوز الافتراض صراحةً عند الحاجة.
+    /// </remarks>
     private sealed class TestTenant : ICurrentTenant
     {
         public Guid? CompanyId { get; init; }
         public bool IsSuperAdmin { get; init; }
         public bool BypassTenantFilter { get; init; }
         public Guid? DefaultCompanyId { get; init; }
-        public bool EnforceIsolation { get; init; }
+        public bool EnforceIsolation { get; init; } = true;
     }
 
-    // سياق نظام يتجاوز الفلتر — يُستخدم للزرع والتحقّق المحايد.
+    // سياق نظام يتجاوز الفلتر — يُستخدم للزرع والتحقّق المحايد (العزل مُفعّل + تجاوز).
     private static ICurrentTenant SystemTenant =>
         new TestTenant { BypassTenantFilter = true, IsSuperAdmin = true };
 
+    // مُزوّد خدمات EF داخلي مُخصَّص لهذا الملف + جذر InMemory مشترك:
+    // كل سياقات هذا الملف تحمل EnforceIsolation=true، فيُبنى نموذج EF مع فلتر العزل مرّة واحدة
+    // ويُعاد استخدامه بثبات. العزل في مُزوّد خاص يمنع تلويث ذاكرة النموذج المشتركة من أصناف
+    // اختبار أخرى تبني سياقات InMemory بـ EnforceIsolation=false (مثل SasAgentIsolationTests).
+    // الجذر المشترك يضمن مشاركة مخزن البيانات بين الزرع والقراءة رغم المُزوّد الداخلي الموحّد.
+    private static readonly InMemoryDatabaseRoot DbRoot = new();
+
+    private static readonly IServiceProvider EfServiceProvider =
+        new ServiceCollection()
+            .AddEntityFrameworkInMemoryDatabase()
+            .BuildServiceProvider();
+
     private static SadaraDbContext NewContext(string dbName, ICurrentTenant tenant) =>
         new(new DbContextOptionsBuilder<SadaraDbContext>()
-                .UseInMemoryDatabase(dbName)
+                .UseInMemoryDatabase(dbName, DbRoot)
+                .UseInternalServiceProvider(EfServiceProvider)
                 .Options,
             tenant);
 
