@@ -2768,28 +2768,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       SdNavSection(
         title: 'العمليات الميدانية',
         items: [
-          SdNavItem(
-            id: 'ftth_tasks',
-            label: 'مهام التوصيل',
-            icon: IconsaxPlusBold.wifi,
-            group: SdGroup.field,
-            onTap: () => navigateToPage(const FtthTasksPage()),
-          ),
-          SdNavItem(
-            id: 'customer_search_connect',
-            label: 'بحث مشترك — توصيل',
-            icon: IconsaxPlusBold.user_search,
-            group: SdGroup.field,
-            onTap: () => navigateToPage(const CustomerSearchConnectPage()),
-          ),
-          SdNavItem(
-            id: 'customer_hub',
-            label: 'تسجيل مشترك جديد',
-            icon: IconsaxPlusBold.user_add,
-            group: SdGroup.field,
-            onTap: () =>
-                navigateToPage(CustomerHubPage(authToken: currentToken)),
-          ),
+          if (_hasPermission('tasks'))
+            SdNavItem(
+              id: 'ftth_tasks',
+              label: 'مهام التوصيل',
+              icon: IconsaxPlusBold.wifi,
+              group: SdGroup.field,
+              onTap: () => navigateToPage(const FtthTasksPage()),
+            ),
+          if (_hasPermission('users'))
+            SdNavItem(
+              id: 'customer_search_connect',
+              label: 'بحث مشترك — توصيل',
+              icon: IconsaxPlusBold.user_search,
+              group: SdGroup.field,
+              onTap: () => navigateToPage(const CustomerSearchConnectPage()),
+            ),
+          if (_hasPermission('users'))
+            SdNavItem(
+              id: 'customer_hub',
+              label: 'تسجيل مشترك جديد',
+              icon: IconsaxPlusBold.user_add,
+              group: SdGroup.field,
+              onTap: () =>
+                  navigateToPage(CustomerHubPage(authToken: currentToken)),
+            ),
           if (_hasPermission('quick_search'))
             SdNavItem(
               id: 'quick_search',
@@ -2825,16 +2828,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ),
           // إدارة راوترات المستخدمين (GenieACS)
-          SdNavItem(
-            id: 'routers',
-            label: 'إدارة الراوترات',
-            icon: IconsaxPlusBold.cpu,
-            group: SdGroup.field,
-            onTap: () => navigateToPage(PlatformWebView(
-              url: 'http://187.124.177.236:3000',
-              title: 'إدارة راوترات المستخدمين',
-            )),
-          ),
+          if (_hasPermission('routers'))
+            SdNavItem(
+              id: 'routers',
+              label: 'إدارة الراوترات',
+              icon: IconsaxPlusBold.cpu,
+              group: SdGroup.field,
+              onTap: () => navigateToPage(PlatformWebView(
+                url: 'http://187.124.177.236:3000',
+                title: 'إدارة راوترات المستخدمين',
+              )),
+            ),
         ],
       ),
       SdNavSection(
@@ -2848,13 +2852,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               group: SdGroup.field,
               onTap: () => navigateToPage(ZonesPage(authToken: currentToken)),
             ),
-          SdNavItem(
-            id: 'kml_zones_map',
-            label: 'خريطة الزونات',
-            icon: IconsaxPlusBold.map,
-            group: SdGroup.field,
-            onTap: () => navigateToPage(const KmlZonesMapPage()),
-          ),
+          if (_hasPermission('zones'))
+            SdNavItem(
+              id: 'kml_zones_map',
+              label: 'خريطة الزونات',
+              icon: IconsaxPlusBold.map,
+              group: SdGroup.field,
+              onTap: () => navigateToPage(const KmlZonesMapPage()),
+            ),
         ],
       ),
       SdNavSection(
@@ -2911,14 +2916,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 DashboardProjectPage(authToken: currentToken),
               ),
             ),
-          SdNavItem(
-            id: 'superset',
-            label: 'تحليلات Superset',
-            icon: IconsaxPlusBold.chart,
-            group: SdGroup.platform,
-            onTap: () => navigateToPage(
-                DashboardProjectPage(authToken: currentToken)),
-          ),
+          if (_hasPermission('dashboard_project'))
+            SdNavItem(
+              id: 'superset',
+              label: 'تحليلات Superset',
+              icon: IconsaxPlusBold.chart,
+              group: SdGroup.platform,
+              onTap: () => navigateToPage(
+                  DashboardProjectPage(authToken: currentToken)),
+            ),
         ],
       ),
       SdNavSection(
@@ -4473,14 +4479,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
 
     // صفحة الشركة - فتح لوحة تحكم FTTH في WebView
-    actions.add(
-      _buildQuickActionItem(
-        'صفحة الشركة',
-        IconsaxPlusBold.building_4,
-        SdGroup.admin.tone,
-        () => navigateToPage(const FtthCompanyPage()),
-      ),
-    );
+    if (_hasPermission('company_dashboard')) {
+      actions.add(
+        _buildQuickActionItem(
+          'صفحة الشركة',
+          IconsaxPlusBold.building_4,
+          SdGroup.admin.tone,
+          () => navigateToPage(const FtthCompanyPage()),
+        ),
+      );
+    }
 
     return actions;
   }

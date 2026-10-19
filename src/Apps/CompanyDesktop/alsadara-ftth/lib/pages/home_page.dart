@@ -2373,7 +2373,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         subtitle: 'لوحة تحكم الشركة',
         icon: Icons.business,
         group: SdGroup.admin,
-        permissionKey: '',
+        permissionKey: 'company_dashboard',
         onTap: () => _navigateTo(const FtthCompanyPage()),
       ),
     ].whereType<Widget>().toList();

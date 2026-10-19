@@ -1101,6 +1101,14 @@ class PermissionRegistry {
       icon: Icons.location_on_rounded,
       category: 'التشغيل',
     ),
+    PermissionEntry(
+      key: 'routers',
+      labelAr: 'إدارة الراوترات (GenieACS)',
+      description: 'الوصول لواجهة إدارة الراوترات الخارجية GenieACS',
+      icon: Icons.router_rounded,
+      category: 'التشغيل',
+      allowedActions: ['view'],
+    ),
 
     // ─── المالية ───
     PermissionEntry(
@@ -1187,6 +1195,14 @@ class PermissionRegistry {
       labelAr: 'مشروع Dashboard',
       description: 'لوحة بيانات الشارتات والمشاريع',
       icon: Icons.dashboard_customize_rounded,
+      category: 'التقارير',
+      allowedActions: ['view'],
+    ),
+    PermissionEntry(
+      key: 'company_dashboard',
+      labelAr: 'صفحة الشركة',
+      description: 'لوحة/صفحة الشركة الرئيسية',
+      icon: Icons.business_rounded,
       category: 'التقارير',
       allowedActions: ['view'],
     ),
