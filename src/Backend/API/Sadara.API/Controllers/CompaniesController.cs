@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
@@ -609,6 +610,7 @@ public class CompaniesController : ControllerBase
     /// </summary>
     [HttpGet("{id:guid}/employees")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("hr.employees", "view")]
     public async Task<IActionResult> GetEmployees(Guid id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var guard = GuardCompanyAccess(id);
@@ -652,6 +654,7 @@ public class CompaniesController : ControllerBase
     /// </summary>
     [HttpPost("{id:guid}/employees")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("hr.employees", "add")]
     public async Task<IActionResult> AddEmployee(Guid id, [FromBody] CreateEmployeeRequest request)
     {
         var guard = GuardCompanyAccess(id);
@@ -716,6 +719,7 @@ public class CompaniesController : ControllerBase
     /// </summary>
     [HttpGet("{id:guid}/employees/{employeeId:guid}")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("hr.employees", "view")]
     public async Task<IActionResult> GetEmployeeById(Guid id, Guid employeeId)
     {
         var guard = GuardCompanyAccess(id);
@@ -735,6 +739,7 @@ public class CompaniesController : ControllerBase
     /// </summary>
     [HttpPut("{id:guid}/employees/{employeeId:guid}")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("hr.employees", "edit")]
     public async Task<IActionResult> UpdateEmployee(Guid id, Guid employeeId, [FromBody] UpdateEmployeeRequest request)
     {
         var guard = GuardCompanyAccess(id);
@@ -783,6 +788,7 @@ public class CompaniesController : ControllerBase
     /// </summary>
     [HttpPatch("{id:guid}/employees/{employeeId:guid}/permissions")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("hr.permissions", "edit")]
     public async Task<IActionResult> UpdateEmployeePermissions(Guid id, Guid employeeId, [FromBody] UpdatePermissionsRequest request)
     {
         var guard = GuardCompanyAccess(id);
@@ -812,6 +818,7 @@ public class CompaniesController : ControllerBase
     /// </summary>
     [HttpPatch("{id:guid}/employees/{employeeId:guid}/permissions-v2")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("hr.permissions", "edit")]
     public async Task<IActionResult> UpdateEmployeePermissionsV2(Guid id, Guid employeeId, [FromBody] UpdatePermissionsV2Request request)
     {
         var guard = GuardCompanyAccess(id);
@@ -841,6 +848,7 @@ public class CompaniesController : ControllerBase
     /// </summary>
     [HttpDelete("{id:guid}/employees/{employeeId:guid}")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("hr.employees", "delete")]
     public async Task<IActionResult> DeleteEmployee(Guid id, Guid employeeId)
     {
         var guard = GuardCompanyAccess(id);
