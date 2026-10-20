@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sadara.API.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
@@ -39,6 +40,7 @@ public class CitizenPortalController : ControllerBase
     /// إحصائيات لوحة التحكم الرئيسية
     /// </summary>
     [HttpGet("dashboard/stats")]
+    [RequirePermission("citizen_portal", "view")]
     public async Task<IActionResult> GetDashboardStats()
     {
         try
@@ -131,6 +133,7 @@ public class CitizenPortalController : ControllerBase
     /// قائمة المواطنين مع فلترة وبحث
     /// </summary>
     [HttpGet("citizens")]
+    [RequirePermission("citizen_portal", "view")]
     public async Task<IActionResult> GetCitizens(
         [FromQuery] string? search = null,
         [FromQuery] string? city = null,
@@ -214,6 +217,7 @@ public class CitizenPortalController : ControllerBase
     /// تفاصيل مواطن معين
     /// </summary>
     [HttpGet("citizens/{id:guid}")]
+    [RequirePermission("citizen_portal", "view")]
     public async Task<IActionResult> GetCitizenDetails(Guid id)
     {
         try
@@ -280,6 +284,7 @@ public class CitizenPortalController : ControllerBase
     /// إضافة مواطن جديد
     /// </summary>
     [HttpPost("citizens")]
+    [RequirePermission("citizen_portal", "add")]
     public async Task<IActionResult> CreateCitizen([FromBody] CreateCitizenRequest request)
     {
         try
@@ -333,6 +338,7 @@ public class CitizenPortalController : ControllerBase
     /// تحديث بيانات مواطن
     /// </summary>
     [HttpPut("citizens/{id:guid}")]
+    [RequirePermission("citizen_portal", "edit")]
     public async Task<IActionResult> UpdateCitizen(Guid id, [FromBody] UpdateCitizenRequest request)
     {
         try
@@ -374,6 +380,7 @@ public class CitizenPortalController : ControllerBase
     /// قائمة الاشتراكات
     /// </summary>
     [HttpGet("subscriptions")]
+    [RequirePermission("citizen_portal", "view")]
     public async Task<IActionResult> GetSubscriptions(
         [FromQuery] CitizenSubscriptionStatus? status = null,
         [FromQuery] Guid? planId = null,
@@ -445,6 +452,7 @@ public class CitizenPortalController : ControllerBase
     /// إنشاء اشتراك جديد لمواطن
     /// </summary>
     [HttpPost("subscriptions")]
+    [RequirePermission("citizen_portal", "add")]
     public async Task<IActionResult> CreateSubscription([FromBody] CreateSubscriptionRequest request)
     {
         try
@@ -509,6 +517,7 @@ public class CitizenPortalController : ControllerBase
     /// تفعيل الاشتراك (بعد التركيب)
     /// </summary>
     [HttpPost("subscriptions/{id:guid}/activate")]
+    [RequirePermission("citizen_portal", "edit")]
     public async Task<IActionResult> ActivateSubscription(Guid id, [FromBody] ActivateSubscriptionRequest request)
     {
         try
@@ -554,6 +563,7 @@ public class CitizenPortalController : ControllerBase
     /// إلغاء اشتراك
     /// </summary>
     [HttpPost("subscriptions/{id:guid}/cancel")]
+    [RequirePermission("citizen_portal", "edit")]
     public async Task<IActionResult> CancelSubscription(Guid id, [FromBody] CancelSubscriptionRequest request)
     {
         try
@@ -593,6 +603,7 @@ public class CitizenPortalController : ControllerBase
     /// قائمة المدفوعات
     /// </summary>
     [HttpGet("payments")]
+    [RequirePermission("citizen_portal", "view")]
     public async Task<IActionResult> GetPayments(
         [FromQuery] PaymentStatus? status = null,
         [FromQuery] DateTime? fromDate = null,
@@ -671,6 +682,7 @@ public class CitizenPortalController : ControllerBase
     /// تسجيل دفعة جديدة
     /// </summary>
     [HttpPost("payments")]
+    [RequirePermission("citizen_portal", "add")]
     public async Task<IActionResult> RecordPayment([FromBody] RecordPaymentRequest request)
     {
         try
@@ -743,6 +755,7 @@ public class CitizenPortalController : ControllerBase
     /// قائمة باقات الاشتراك
     /// </summary>
     [HttpGet("plans")]
+    [RequirePermission("citizen_portal", "view")]
     public async Task<IActionResult> GetPlans()
     {
         try
@@ -783,6 +796,7 @@ public class CitizenPortalController : ControllerBase
     /// إضافة باقة جديدة
     /// </summary>
     [HttpPost("plans")]
+    [RequirePermission("citizen_portal", "add")]
     public async Task<IActionResult> CreatePlan([FromBody] CreatePlanRequest request)
     {
         try
@@ -827,6 +841,7 @@ public class CitizenPortalController : ControllerBase
     /// تحديث باقة
     /// </summary>
     [HttpPut("plans/{id:guid}")]
+    [RequirePermission("citizen_portal", "edit")]
     public async Task<IActionResult> UpdatePlan(Guid id, [FromBody] UpdatePlanRequest request)
     {
         try
@@ -871,6 +886,7 @@ public class CitizenPortalController : ControllerBase
     /// قائمة تذاكر الدعم
     /// </summary>
     [HttpGet("tickets")]
+    [RequirePermission("citizen_portal", "view")]
     public async Task<IActionResult> GetTickets(
         [FromQuery] TicketStatus? status = null,
         [FromQuery] int page = 1,
@@ -932,6 +948,7 @@ public class CitizenPortalController : ControllerBase
     /// الرد على تذكرة
     /// </summary>
     [HttpPost("tickets/{id:guid}/reply")]
+    [RequirePermission("citizen_portal", "edit")]
     public async Task<IActionResult> ReplyToTicket(Guid id, [FromBody] TicketReplyRequest request)
     {
         try
@@ -978,6 +995,7 @@ public class CitizenPortalController : ControllerBase
     /// إغلاق تذكرة
     /// </summary>
     [HttpPost("tickets/{id:guid}/close")]
+    [RequirePermission("citizen_portal", "edit")]
     public async Task<IActionResult> CloseTicket(Guid id, [FromBody] CloseTicketRequest request)
     {
         try

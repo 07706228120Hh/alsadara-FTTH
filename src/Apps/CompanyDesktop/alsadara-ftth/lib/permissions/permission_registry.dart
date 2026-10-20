@@ -1045,6 +1045,26 @@ class PermissionRegistry {
       category: 'واتساب',
       allowedActions: ['view'],
     ),
+
+    // ─── بوّابة موظفي المواطنين ───
+    PermissionEntry(
+      key: 'citizen_portal',
+      labelAr: 'بوّابة المواطنين',
+      description: 'إدارة المواطنين واشتراكاتهم ودفعاتهم وتذاكرهم (معزولة بالشركة)',
+      icon: Icons.groups_rounded,
+      category: 'المواطنون',
+      allowedActions: ['view', 'add', 'edit'],
+    ),
+
+    // ─── إعدادات النظام ───
+    PermissionEntry(
+      key: 'settings',
+      labelAr: 'إعدادات النظام',
+      description: 'إدارة إعدادات النظام العامة للشركة',
+      icon: Icons.settings_rounded,
+      category: 'الإدارة',
+      allowedActions: ['view', 'add', 'edit', 'delete'],
+    ),
   ];
 
   // ═══════════════════════════════════════

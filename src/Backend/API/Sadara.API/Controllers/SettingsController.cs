@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Domain.Interfaces;
 
 namespace Sadara.API.Controllers;
@@ -18,6 +19,7 @@ public class SettingsController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission("settings", "view")]
     public async Task<IActionResult> GetAll()
     {
         var settings = await _unitOfWork.Settings.AsQueryable()
@@ -66,6 +68,7 @@ public class SettingsController : ControllerBase
     }
 
     [HttpGet("category/{category}")]
+    [RequirePermission("settings", "view")]
     public async Task<IActionResult> GetByCategory(string category)
     {
         var settings = await _unitOfWork.Settings.AsQueryable()
@@ -76,6 +79,7 @@ public class SettingsController : ControllerBase
     }
 
     [HttpPost]
+    [RequirePermission("settings", "add")]
     public async Task<IActionResult> Create([FromBody] CreateSettingRequest request)
     {
         var exists = await _unitOfWork.Settings.AnyAsync(s => s.Key == request.Key);
@@ -98,6 +102,7 @@ public class SettingsController : ControllerBase
     }
 
     [HttpPut("{key}")]
+    [RequirePermission("settings", "edit")]
     public async Task<IActionResult> Update(string key, [FromBody] UpdateSettingRequest request)
     {
         var setting = await _unitOfWork.Settings.FirstOrDefaultAsync(s => s.Key == key);
@@ -116,6 +121,7 @@ public class SettingsController : ControllerBase
     }
 
     [HttpPut("bulk")]
+    [RequirePermission("settings", "edit")]
     public async Task<IActionResult> BulkUpdate([FromBody] Dictionary<string, string> settings)
     {
         foreach (var kvp in settings)
@@ -134,6 +140,7 @@ public class SettingsController : ControllerBase
     }
 
     [HttpDelete("{key}")]
+    [RequirePermission("settings", "delete")]
     public async Task<IActionResult> Delete(string key)
     {
         var setting = await _unitOfWork.Settings.FirstOrDefaultAsync(s => s.Key == key);
