@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 
@@ -16,6 +17,7 @@ public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork) : ControllerB
     /// <summary>جلب كل أجور الصيانة</summary>
     [HttpGet]
     [Authorize]
+    [RequirePermission("accounting.ftth_operators", "view")]
     public async Task<IActionResult> GetAll([FromQuery] Guid? companyId)
     {
         var query = _unitOfWork.ZoneMaintenanceFees.AsQueryable();
@@ -57,6 +59,7 @@ public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork) : ControllerB
     /// <summary>إنشاء أجور صيانة لزون</summary>
     [HttpPost]
     [Authorize]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> Create([FromBody] CreateZoneMaintenanceFeeDto dto)
     {
         // تحقق من عدم التكرار
@@ -85,6 +88,7 @@ public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork) : ControllerB
     /// <summary>إضافة أجور صيانة لعدة زونات دفعة واحدة</summary>
     [HttpPost("bulk")]
     [Authorize]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> BulkCreate([FromBody] BulkZoneMaintenanceFeeDto dto)
     {
         int added = 0, skipped = 0;
@@ -115,6 +119,7 @@ public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork) : ControllerB
     /// <summary>تعديل أجور صيانة</summary>
     [HttpPut("{id}")]
     [Authorize]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateZoneMaintenanceFeeDto dto)
     {
         var fee = await _unitOfWork.ZoneMaintenanceFees.GetByIdAsync(id);
@@ -135,6 +140,7 @@ public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork) : ControllerB
     /// <summary>حذف أجور صيانة</summary>
     [HttpDelete("{id}")]
     [Authorize]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var fee = await _unitOfWork.ZoneMaintenanceFees.GetByIdAsync(id);

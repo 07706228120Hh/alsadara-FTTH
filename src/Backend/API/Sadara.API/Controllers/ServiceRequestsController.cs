@@ -56,6 +56,7 @@ public class ServiceRequestsController : ControllerBase
     /// جميع الطلبات - حسب الصلاحية
     /// </summary>
     [HttpGet]
+    [RequirePermission("tasks", "view")]
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -237,6 +238,7 @@ public class ServiceRequestsController : ControllerBase
     /// <param name="department">فلتر القسم — يطابق Details.department عبر استخراج JSON — اختياري</param>
     /// <param name="assignee">فلتر المُسنَد إليه — يطابق Details.technician أو Details.createdByName عبر استخراج JSON — اختياري</param>
     [HttpGet("summary")]
+    [RequirePermission("tasks", "view")]
     public async Task<IActionResult> GetSummary(
         [FromQuery] DateTime? from = null,
         [FromQuery] DateTime? to = null,
@@ -559,6 +561,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// طلب بالمعرف
     /// </summary>
     [HttpGet("{id:guid}")]
+    [RequirePermission("tasks", "view")]
     public async Task<IActionResult> GetById(Guid id)
     {
         var request = await _unitOfWork.ServiceRequests.AsQueryable()
@@ -590,6 +593,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// طلب برقم الطلب
     /// </summary>
     [HttpGet("by-number/{requestNumber}")]
+    [RequirePermission("tasks", "view")]
     public async Task<IActionResult> GetByNumber(string requestNumber)
     {
         var request = await _unitOfWork.ServiceRequests.AsQueryable()
@@ -611,6 +615,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// إنشاء طلب جديد
     /// </summary>
     [HttpPost]
+    [RequirePermission("tasks", "add")]
     public async Task<IActionResult> Create([FromBody] CreateServiceRequestDto dto)
     {
         // عزل المستأجر (fail-closed): لا مستهلك مواطن/خارجي لهذا المسار — إنشاء بين موظفين فقط.
@@ -686,6 +691,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// تحديث حالة الطلب
     /// </summary>
     [HttpPatch("{id:guid}/status")]
+    [RequirePermission("tasks", "edit")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateStatusDto dto)
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
@@ -1203,6 +1209,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// تعيين موظف للطلب
     /// </summary>
     [HttpPatch("{id:guid}/assign")]
+    [RequirePermission("tasks.assign", "edit")]
     public async Task<IActionResult> AssignToEmployee(Guid id, [FromBody] AssignRequestDto dto)
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
@@ -1249,6 +1256,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// إضافة تعليق
     /// </summary>
     [HttpPost("{id:guid}/comments")]
+    [RequirePermission("tasks", "edit")]
     public async Task<IActionResult> AddComment(Guid id, [FromBody] AddCommentDto dto)
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
@@ -1279,6 +1287,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// تعليقات الطلب
     /// </summary>
     [HttpGet("{id:guid}/comments")]
+    [RequirePermission("tasks", "view")]
     public async Task<IActionResult> GetComments(Guid id)
     {
         // عزل المستأجر: تحقّق أن الطلب ضمن نطاق شركة المستخدم قبل كشف تعليقاته
@@ -1314,6 +1323,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// </summary>
     [HttpPost("{id:guid}/attachments")]
     [Consumes("multipart/form-data")]
+    [RequirePermission("tasks", "edit")]
     public async Task<IActionResult> AddAttachment(Guid id, IFormFile file, [FromForm] string? description = null)
     {
         try
@@ -1371,6 +1381,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// مرفقات الطلب
     /// </summary>
     [HttpGet("{id:guid}/attachments")]
+    [RequirePermission("tasks", "view")]
     public async Task<IActionResult> GetAttachments(Guid id)
     {
         // عزل المستأجر: تحقّق أن الطلب ضمن نطاق شركة المستخدم قبل كشف مرفقاته
@@ -1406,6 +1417,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// إحصائيات الطلبات
     /// </summary>
     [HttpGet("statistics")]
+    [RequirePermission("tasks", "view")]
     public async Task<IActionResult> GetStatistics(
         [FromQuery] Guid? companyId = null,
         [FromQuery] string? department = null,
@@ -1455,6 +1467,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// الطلبات المعينة لموظف
     /// </summary>
     [HttpGet("my-assigned")]
+    [RequirePermission("my_dashboard", "view")]
     public async Task<IActionResult> GetMyAssigned(
         [FromQuery] int page = 1, 
         [FromQuery] int pageSize = 20,
@@ -1606,6 +1619,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// </summary>
     [HttpDelete("{id:guid}")]
     [Authorize]
+    [RequirePermission("tasks", "delete")]
     public async Task<IActionResult> DeleteRequest(Guid id)
     {
         try
@@ -1679,6 +1693,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// </summary>
     [HttpPost("create-task")]
     [Authorize(Policy = "TechnicianOrAbove")]
+    [RequirePermission("tasks", "add")]
     public async Task<IActionResult> CreateTask([FromBody] CreateTaskDto dto)
     {
         try
@@ -1880,6 +1895,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// </summary>
     [HttpPatch("{id:guid}/assign-task")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("tasks.assign", "edit")]
     public async Task<IActionResult> AssignTask(Guid id, [FromBody] AssignTaskDto dto)
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
@@ -1983,6 +1999,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// </summary>
     [HttpPatch("{id:guid}/update-task")]
     [Authorize(Policy = "TechnicianOrAbove")]
+    [RequirePermission("tasks", "edit")]
     public async Task<IActionResult> UpdateTask(Guid id, [FromBody] UpdateTaskDto dto)
     {
         var request = await _unitOfWork.ServiceRequests.GetByIdAsync(id);
@@ -2058,6 +2075,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// </summary>
     [HttpGet("task-lookup")]
     [Authorize(Policy = "TechnicianOrAbove")]
+    [RequirePermission("tasks", "view")]
     public async Task<IActionResult> GetTaskLookupData()
     {
         // جلب companyId من التوكن
@@ -2201,6 +2219,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// </summary>
     [HttpGet("task-staff")]
     [Authorize(Policy = "TechnicianOrAbove")]
+    [RequirePermission("tasks", "view")]
     public async Task<IActionResult> GetTaskStaff([FromQuery] string? department = null)
     {
         try
@@ -2258,6 +2277,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// جلب أقسام المستخدم الحالي (للليدر/المدير الذي يشرف على أقسام متعددة)
     [HttpGet("my-departments")]
     [Authorize(Policy = "TechnicianOrAbove")]
+    [RequirePermission("my_dashboard", "view")]
     public async Task<IActionResult> GetMyDepartments()
     {
         try

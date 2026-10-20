@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.API.Authorization;
 using Sadara.API.Constants;
 
 namespace Sadara.API.Controllers;
@@ -44,6 +45,7 @@ public class SubscriptionLogsController : ControllerBase
     /// </summary>
     [HttpGet]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("subscriptions", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetAll(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
@@ -82,6 +84,7 @@ public class SubscriptionLogsController : ControllerBase
     /// </summary>
     [HttpGet("{id:long}")]
     [Authorize]
+    [RequirePermission("subscriptions", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetById(long id)
     {
         var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
@@ -96,6 +99,7 @@ public class SubscriptionLogsController : ControllerBase
     /// </summary>
     [HttpPost]
     [Authorize]
+    [RequirePermission("subscriptions", "add", PermissionSystem.Second)]
     public async Task<IActionResult> Create([FromBody] CreateSubscriptionLogRequest request)
     {
         var log = new SubscriptionLog
@@ -369,6 +373,7 @@ public class SubscriptionLogsController : ControllerBase
     /// </summary>
     [HttpPut("{id:long}")]
     [Authorize]
+    [RequirePermission("subscriptions", "edit", PermissionSystem.Second)]
     public async Task<IActionResult> Update(long id, [FromBody] UpdateSubscriptionLogRequest request)
     {
         var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
@@ -397,6 +402,7 @@ public class SubscriptionLogsController : ControllerBase
     /// </summary>
     [HttpDelete("{id:long}")]
     [Authorize(Policy = "SuperAdmin")]
+    [RequirePermission("subscriptions", "delete", PermissionSystem.Second)]
     public async Task<IActionResult> Delete(long id)
     {
         var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
@@ -499,6 +505,7 @@ public class SubscriptionLogsController : ControllerBase
     /// </summary>
     [HttpPost("repair-accounting")]
     [Authorize(Policy = "SuperAdmin")]
+    [RequirePermission("accounting.audit_trail", "edit")]
     public async Task<IActionResult> RepairAccounting()
     {
         var cutoff = new DateTime(2026, 6, 8, 0, 0, 0, DateTimeKind.Utc);
@@ -747,6 +754,7 @@ public class SubscriptionLogsController : ControllerBase
     /// </summary>
     [HttpGet("subscription/{subscriptionId}")]
     [Authorize]
+    [RequirePermission("subscriptions", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetBySubscription(string subscriptionId)
     {
         var logs = await _unitOfWork.SubscriptionLogs
@@ -760,6 +768,7 @@ public class SubscriptionLogsController : ControllerBase
     /// </summary>
     [HttpGet("stats")]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("accounting.statistics", "view")]
     public async Task<IActionResult> GetStats([FromQuery] DateTime? date = null)
     {
         var targetDate = date?.Date ?? DateTime.UtcNow.AddHours(3).Date;
@@ -784,6 +793,7 @@ public class SubscriptionLogsController : ControllerBase
     /// </summary>
     [HttpGet("connections")]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("accounting.ftth_operators", "view")]
     public async Task<IActionResult> GetConnections(
         [FromQuery] DateTime? fromDate = null,
         [FromQuery] DateTime? toDate = null,
@@ -851,6 +861,7 @@ public class SubscriptionLogsController : ControllerBase
     /// </summary>
     [HttpPatch("{id:long}/payment-status")]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> UpdatePaymentStatus(long id, [FromBody] UpdatePaymentStatusRequest request)
     {
         var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
@@ -870,6 +881,7 @@ public class SubscriptionLogsController : ControllerBase
     /// </summary>
     [HttpPatch("bulk-payment-status")]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> BulkUpdatePaymentStatus([FromBody] BulkUpdatePaymentStatusRequest request)
     {
         var logs = await _unitOfWork.SubscriptionLogs

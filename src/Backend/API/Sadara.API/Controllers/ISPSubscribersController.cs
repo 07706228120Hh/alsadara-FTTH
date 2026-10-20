@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 
@@ -15,6 +16,7 @@ public class ISPSubscribersController(IUnitOfWork unitOfWork) : ControllerBase
     /// <summary>جلب جميع المشتركين مع التصفية</summary>
     [HttpGet]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("users", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetAll(
         [FromQuery] string? region,
         [FromQuery] string? search,
@@ -43,6 +45,7 @@ public class ISPSubscribersController(IUnitOfWork unitOfWork) : ControllerBase
     /// <summary>جلب قائمة المناطق</summary>
     [HttpGet("regions")]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("users", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetRegions()
     {
         var regions = await _unitOfWork.ISPSubscribers.AsQueryable()
@@ -58,6 +61,7 @@ public class ISPSubscribersController(IUnitOfWork unitOfWork) : ControllerBase
     /// <summary>بحث القرابة (يدعم البحث الغامض)</summary>
     [HttpGet("kinship-search")]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("users", "view", PermissionSystem.Second)]
     public async Task<IActionResult> KinshipSearch(
         [FromQuery] string? name,
         [FromQuery] string? motherName,
@@ -94,6 +98,7 @@ public class ISPSubscribersController(IUnitOfWork unitOfWork) : ControllerBase
     /// <summary>جلب مشتركين حسب المنطقة</summary>
     [HttpGet("by-region/{region}")]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("users", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetByRegion(string region)
     {
         var subscribers = await _unitOfWork.ISPSubscribers.AsQueryable()
@@ -107,6 +112,7 @@ public class ISPSubscribersController(IUnitOfWork unitOfWork) : ControllerBase
     /// <summary>إضافة مشترك جديد</summary>
     [HttpPost]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("users", "add", PermissionSystem.Second)]
     public async Task<IActionResult> Create([FromBody] CreateISPSubscriberRequest request)
     {
         var subscriber = new ISPSubscriber
@@ -129,6 +135,7 @@ public class ISPSubscribersController(IUnitOfWork unitOfWork) : ControllerBase
     /// <summary>إضافة مشتركين بالجملة (استيراد)</summary>
     [HttpPost("bulk")]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("users", "add", PermissionSystem.Second)]
     public async Task<IActionResult> BulkCreate([FromBody] List<CreateISPSubscriberRequest> requests)
     {
         var subscribers = requests.Select(r => new ISPSubscriber
@@ -153,6 +160,7 @@ public class ISPSubscribersController(IUnitOfWork unitOfWork) : ControllerBase
     /// <summary>تحديث مشترك</summary>
     [HttpPut("{id}")]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("users", "edit", PermissionSystem.Second)]
     public async Task<IActionResult> Update(long id, [FromBody] CreateISPSubscriberRequest request)
     {
         var subscriber = await _unitOfWork.ISPSubscribers.GetByIdAsync(id);
@@ -175,6 +183,7 @@ public class ISPSubscribersController(IUnitOfWork unitOfWork) : ControllerBase
     /// <summary>حذف مشترك</summary>
     [HttpDelete("{id}")]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("users", "delete", PermissionSystem.Second)]
     public async Task<IActionResult> Delete(long id)
     {
         var subscriber = await _unitOfWork.ISPSubscribers.GetByIdAsync(id);

@@ -6,6 +6,7 @@ using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.API.Authorization;
 using Sadara.API.Constants;
 
 namespace Sadara.API.Controllers;
@@ -65,6 +66,7 @@ public class FtthAccountingController : ControllerBase
     /// يُستدعى من Flutter بعد كل تفعيل/تجديد
     /// </summary>
     [HttpPost("log-with-accounting")]
+    [RequirePermission("accounting.ftth_operators", "add")]
     public async Task<IActionResult> LogWithAccounting([FromBody] FtthLogWithAccountingDto dto)
     {
         try
@@ -507,6 +509,7 @@ public class FtthAccountingController : ControllerBase
     /// ملخص مالي لمشغل FTTH محدد
     /// </summary>
     [HttpGet("operator-summary/{userId}")]
+    [RequirePermission("accounting.ftth_operators", "view")]
     public async Task<IActionResult> GetOperatorSummary(
         Guid userId,
         [FromQuery] DateTime? from = null,
@@ -718,6 +721,7 @@ public class FtthAccountingController : ControllerBase
     /// ملخص كل المشغلين (للمدير)
     /// </summary>
     [HttpGet("operators-dashboard")]
+    [RequirePermission("accounting.ftth_operators", "view")]
     public async Task<IActionResult> GetOperatorsDashboard(
         [FromQuery] Guid? companyId = null,
         [FromQuery] DateTime? from = null,
@@ -1328,6 +1332,7 @@ public class FtthAccountingController : ControllerBase
     /// تسليم نقد من المشغل لصندوق الشركة
     /// </summary>
     [HttpPost("deliver-cash")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> DeliverCash([FromBody] OperatorCashDeliveryDto dto)
     {
         try
@@ -1412,6 +1417,7 @@ public class FtthAccountingController : ControllerBase
     /// جلب عملاء الآجل غير المسددين لمشغل معين
     /// </summary>
     [HttpGet("credit-customers/{operatorUserId}")]
+    [RequirePermission("accounting.ftth_operators", "view")]
     public async Task<IActionResult> GetCreditCustomers(Guid operatorUserId, [FromQuery] Guid? companyId = null)
     {
         try
@@ -1467,6 +1473,7 @@ public class FtthAccountingController : ControllerBase
     /// تحديد أو تعديل دورة التجديد المتكرر لسجل اشتراك
     /// </summary>
     [HttpPost("set-renewal-cycle")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> SetRenewalCycle([FromBody] SetRenewalCycleDto dto)
     {
         try
@@ -1517,6 +1524,7 @@ public class FtthAccountingController : ControllerBase
     /// تعديل بيانات سجل اشتراك FTTH (نوع التحصيل، الفني، الملاحظات)
     /// </summary>
     [HttpPut("update-subscription-log/{id}")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> UpdateSubscriptionLog(long id, [FromBody] JsonElement body)
     {
         try
@@ -1782,6 +1790,7 @@ public class FtthAccountingController : ControllerBase
     /// تحصيل شهر واحد من اشتراك مكرر (دفع جزئي)
     /// </summary>
     [HttpPost("collect-renewal-month")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> CollectRenewalMonth([FromBody] CollectRenewalMonthDto dto)
     {
         try
@@ -1880,6 +1889,7 @@ public class FtthAccountingController : ControllerBase
     /// تحصيل دين آجل من مشغل (العميل دفع لاحقاً)
     /// </summary>
     [HttpPost("collect-credit")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> CollectCredit([FromBody] OperatorCreditCollectionDto dto)
     {
         try
@@ -1948,6 +1958,7 @@ public class FtthAccountingController : ControllerBase
     /// حفظ/تحديث بيانات FTTH للمستخدم
     /// </summary>
     [HttpPost("link-ftth-account")]
+    [RequirePermission("hr.ftth_info", "edit")]
     public async Task<IActionResult> LinkFtthAccount([FromBody] LinkFtthAccountDto dto)
     {
         try
@@ -1974,6 +1985,7 @@ public class FtthAccountingController : ControllerBase
     /// جلب بيانات FTTH للمستخدم
     /// </summary>
     [HttpGet("ftth-credentials/{userId}")]
+    [RequirePermission("hr.ftth_info", "view")]
     public async Task<IActionResult> GetFtthCredentials(Guid userId)
     {
         try
@@ -2006,6 +2018,7 @@ public class FtthAccountingController : ControllerBase
     /// جلب قائمة الوكلاء النشطين (للدروبداون في واجهة التجديد)
     /// </summary>
     [HttpGet("agents-list")]
+    [RequirePermission("agents", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetAgentsList([FromQuery] Guid? companyId = null)
     {
         try
@@ -2038,6 +2051,7 @@ public class FtthAccountingController : ControllerBase
     /// جلب قائمة الفنيين النشطين (للدروبداون في واجهة التجديد)
     /// </summary>
     [HttpGet("technicians-list")]
+    [RequirePermission("technicians", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetTechniciansList([FromQuery] Guid? companyId = null)
     {
         try
@@ -2068,6 +2082,7 @@ public class FtthAccountingController : ControllerBase
     /// جلب كل المستخدمين الذين لديهم صلاحية تشغيل FTTH مع حالة الربط
     /// </summary>
     [HttpGet("operators-linking")]
+    [RequirePermission("accounting.ftth_operators", "view")]
     public async Task<IActionResult> GetOperatorsLinking([FromQuery] Guid? companyId = null)
     {
         try
@@ -2106,6 +2121,7 @@ public class FtthAccountingController : ControllerBase
     /// يرجع بصمات العمليات المحفوظة (FtthTransactionId + composite keys) لتحديد العمليات الناقصة
     /// </summary>
     [HttpGet("existing-ftth-ids")]
+    [RequirePermission("accounting.ftth_operators", "view")]
     public async Task<IActionResult> GetExistingFtthIds(
         [FromQuery] Guid? companyId = null,
         [FromQuery] DateTime? from = null,
@@ -2207,6 +2223,7 @@ public class FtthAccountingController : ControllerBase
     /// يتجاهل العمليات المحفوظة مسبقاً (بناءً على FtthTransactionId)
     /// </summary>
     [HttpPost("sync-ftth-transactions")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     [DisableRequestSizeLimit]
     public async Task<IActionResult> SyncFtthTransactions([FromBody] SyncFtthTransactionsDto? dto)
     {
@@ -2631,6 +2648,7 @@ public class FtthAccountingController : ControllerBase
     /// تصحيح BasePrice (المستقطع) لعدة سجلات دفعة واحدة حسب مبلغ FTTH الفعلي
     /// </summary>
     [HttpPost("fix-base-prices")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> FixBasePrices([FromBody] List<FixBasePriceItem> items)
     {
         if (items == null || items.Count == 0)
@@ -2670,6 +2688,7 @@ public class FtthAccountingController : ControllerBase
     /// </summary>
     [HttpPost("fix-journal-entry-dates")]
     [Authorize(Policy = "SuperAdmin")]
+    [RequirePermission("accounting.settings", "edit")]
     public async Task<IActionResult> FixJournalEntryDates(
         [FromQuery] Guid? companyId = null,
         [FromQuery] DateTime? from = null,
@@ -3162,6 +3181,7 @@ public class FtthAccountingController : ControllerBase
     /// ينقل FtthTransactionId و CustomerId والمنطقة من المُزامنة للأصلية ثم يحذف المُزامنة
     /// </summary>
     [HttpPost("merge-duplicate")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> MergeDuplicate([FromBody] MergeDuplicateDto dto)
     {
         try
@@ -3229,6 +3249,7 @@ public class FtthAccountingController : ControllerBase
     /// دمج مجموعة عمليات مكررة دفعة واحدة
     /// </summary>
     [HttpPost("merge-duplicates-batch")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> MergeDuplicatesBatch([FromBody] List<MergeDuplicateDto> items)
     {
         try
@@ -3308,6 +3329,7 @@ public class FtthAccountingController : ControllerBase
     /// تسليم نقد سريع - يستخدم userId مباشرة
     /// </summary>
     [HttpPost("quick-deliver")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> QuickDeliver([FromBody] QuickDeliverDto dto)
     {
         try
@@ -3372,6 +3394,7 @@ public class FtthAccountingController : ControllerBase
     /// تحصيل آجل سريع
     /// </summary>
     [HttpPost("quick-collect")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> QuickCollect([FromBody] QuickCollectDto dto)
     {
         try
@@ -3463,6 +3486,7 @@ public class FtthAccountingController : ControllerBase
     /// عرض أرصدة جميع الصناديق والذمم مع تفصيل لكل مشغل/وكيل/فني
     /// </summary>
     [HttpGet("funds-overview")]
+    [RequirePermission("accounting.funds_overview", "view")]
     public async Task<IActionResult> GetFundsOverview([FromQuery] Guid? companyId = null)
     {
         try
@@ -3584,6 +3608,7 @@ public class FtthAccountingController : ControllerBase
     /// </summary>
     [HttpPost("recalculate-balances")]
     [Authorize(Policy = "SuperAdmin")]
+    [RequirePermission("accounting.settings", "edit")]
     public async Task<IActionResult> RecalculateAccountBalances([FromQuery] Guid? companyId = null)
     {
         try
@@ -3646,6 +3671,7 @@ public class FtthAccountingController : ControllerBase
     /// </summary>
     [HttpPost("retry-missing-entries")]
     [Authorize(Policy = "SuperAdmin")]
+    [RequirePermission("accounting.settings", "edit")]
     public async Task<IActionResult> RetryMissingEntries([FromQuery] Guid? companyId = null)
     {
         try
@@ -3735,6 +3761,7 @@ public class FtthAccountingController : ControllerBase
     /// </summary>
     [HttpPost("fix-missing-userids")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("accounting.settings", "edit")]
     public async Task<IActionResult> FixMissingUserIds([FromQuery] Guid? companyId = null)
     {
         try
@@ -3819,6 +3846,7 @@ public class FtthAccountingController : ControllerBase
     /// </summary>
     [HttpPost("assign-unknown-records")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("accounting.settings", "edit")]
     public async Task<IActionResult> AssignUnknownRecords([FromQuery] Guid targetUserId, [FromQuery] Guid? companyId = null)
     {
         try
@@ -3864,6 +3892,7 @@ public class FtthAccountingController : ControllerBase
 
     [HttpPost("fix-missing-accounting")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("accounting.settings", "edit")]
     public async Task<IActionResult> FixMissingAccounting([FromQuery] Guid? companyId)
     {
         try
@@ -3931,6 +3960,7 @@ public class FtthAccountingController : ControllerBase
 
     [HttpPost("fix-orphan-records")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("accounting.settings", "edit")]
     public async Task<IActionResult> FixOrphanRecords([FromQuery] Guid? targetCompanyId = null)
     {
         try
@@ -4009,6 +4039,7 @@ public class FtthAccountingController : ControllerBase
     /// </summary>
     [HttpPost("fix-activated-by-names")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("accounting.settings", "edit")]
     public async Task<IActionResult> FixActivatedByNames([FromQuery] Guid? companyId = null)
     {
         try

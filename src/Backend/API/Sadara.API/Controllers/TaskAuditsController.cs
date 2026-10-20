@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,7 @@ public class TaskAuditsController : ControllerBase
     /// جلب جميع سجلات التدقيق
     /// </summary>
     [HttpGet]
+    [RequirePermission("tasks.audit", "view")]
     public async Task<IActionResult> GetAll()
     {
         try
@@ -49,6 +51,7 @@ public class TaskAuditsController : ControllerBase
     /// جلب تدقيق مهمة محددة بالـ RequestNumber
     /// </summary>
     [HttpGet("by-request/{requestNumber}")]
+    [RequirePermission("tasks.audit", "view")]
     public async Task<IActionResult> GetByRequestNumber(string requestNumber)
     {
         try
@@ -74,6 +77,7 @@ public class TaskAuditsController : ControllerBase
     /// للتحميل المجمع في Flutter
     /// </summary>
     [HttpGet("bulk")]
+    [RequirePermission("tasks.audit", "view")]
     public async Task<IActionResult> GetBulk()
     {
         try
@@ -107,6 +111,7 @@ public class TaskAuditsController : ControllerBase
     /// حفظ أو تحديث تدقيق مهمة
     /// </summary>
     [HttpPost]
+    [RequirePermission("tasks.audit", "edit")]
     public async Task<IActionResult> SaveAudit([FromBody] SaveTaskAuditDto dto)
     {
         try
@@ -161,6 +166,7 @@ public class TaskAuditsController : ControllerBase
     /// حفظ مجمع لعدة سجلات تدقيق
     /// </summary>
     [HttpPost("bulk")]
+    [RequirePermission("tasks.audit", "edit")]
     public async Task<IActionResult> SaveBulk([FromBody] List<SaveTaskAuditDto> dtos)
     {
         try

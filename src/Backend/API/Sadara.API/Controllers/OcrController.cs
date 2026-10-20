@@ -12,6 +12,9 @@ namespace Sadara.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+// ملاحظة حوكمة: OCR أداة مساعدة لتدفّق تسجيل المشترك (customer_onboarding) الذي يرسل للـ FTTH الخارجي.
+// تدفّق التسجيل غير محكوم بمفتاح صلاحية بعد ⇒ تُرك OCR بـ [Authorize] فقط لتفادي كسر المسح.
+// متبقٍّ (خارطة الطريق): مفتاح مخصّص قابل للمنح ftth.customer_onboarding يُحكَم به OCR + التسجيل معاً.
 [Authorize]
 public class OcrController : ControllerBase
 {

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
@@ -30,6 +31,7 @@ public class AnnouncementsController : ControllerBase
 
     /// <summary>الإعلانات الموجهة لي — مرتبة: مثبت أولاً ثم الأحدث</summary>
     [HttpGet("my")]
+    [RequirePermission("announcements", "view")]
     public async Task<IActionResult> GetMyAnnouncements([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var userId = GetUserId();
@@ -78,6 +80,7 @@ public class AnnouncementsController : ControllerBase
 
     /// <summary>تسجيل قراءة إعلان</summary>
     [HttpPatch("{id:long}/read")]
+    [RequirePermission("announcements", "view")]
     public async Task<IActionResult> MarkAsRead(long id)
     {
         var userId = GetUserId();
@@ -97,6 +100,7 @@ public class AnnouncementsController : ControllerBase
 
     /// <summary>عدد الإعلانات غير المقروءة</summary>
     [HttpGet("unread-count")]
+    [RequirePermission("announcements", "view")]
     public async Task<IActionResult> GetUnreadCount()
     {
         var userId = GetUserId();
@@ -122,6 +126,7 @@ public class AnnouncementsController : ControllerBase
 
     /// <summary>تقرير من قرأ ومن لم يقرأ إعلان معين</summary>
     [HttpGet("{id:long}/read-report")]
+    [RequirePermission("announcements.manage", "view")]
     public async Task<IActionResult> GetReadReport(long id)
     {
         var userId = GetUserId();
@@ -197,6 +202,7 @@ public class AnnouncementsController : ControllerBase
     // ═══════════════════════════════════════
 
     [HttpGet]
+    [RequirePermission("announcements.manage", "view")]
     public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var userId = GetUserId();
@@ -237,6 +243,7 @@ public class AnnouncementsController : ControllerBase
     }
 
     [HttpPost]
+    [RequirePermission("announcements.manage", "add")]
     public async Task<IActionResult> Create([FromBody] CreateAnnouncementDto dto)
     {
         var userId = GetUserId();
@@ -306,6 +313,7 @@ public class AnnouncementsController : ControllerBase
     }
 
     [HttpPut("{id:long}")]
+    [RequirePermission("announcements.manage", "edit")]
     public async Task<IActionResult> Update(long id, [FromBody] CreateAnnouncementDto dto)
     {
         var userId = GetUserId();
@@ -370,6 +378,7 @@ public class AnnouncementsController : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
+    [RequirePermission("announcements.manage", "delete")]
     public async Task<IActionResult> Delete(long id)
     {
         var userId = GetUserId();
@@ -390,6 +399,7 @@ public class AnnouncementsController : ControllerBase
 
     [HttpPost("upload-image")]
     [RequestSizeLimit(10 * 1024 * 1024)]
+    [RequirePermission("announcements.manage", "add")]
     public async Task<IActionResult> UploadImage(IFormFile file)
     {
         if (file == null || file.Length == 0)

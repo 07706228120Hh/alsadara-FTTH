@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 
@@ -22,6 +23,7 @@ public class NotificationsController : ControllerBase
     /// </summary>
     [HttpGet("me")]
     [Authorize]
+    [RequirePermission("notifications", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetMyNotifications([FromQuery] bool? unreadOnly, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var userId = GetCurrentUserId();
@@ -68,6 +70,7 @@ public class NotificationsController : ControllerBase
     /// </summary>
     [HttpGet("me/unread-count")]
     [Authorize]
+    [RequirePermission("notifications", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetMyUnreadCount()
     {
         var userId = GetCurrentUserId();
@@ -82,6 +85,7 @@ public class NotificationsController : ControllerBase
 
     [HttpGet("user/{userId:guid}")]
     [Authorize]
+    [RequirePermission("notifications", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetByUser(Guid userId, [FromQuery] bool? unreadOnly, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         if (!CanAccessUser(userId))
@@ -105,6 +109,7 @@ public class NotificationsController : ControllerBase
 
     [HttpGet("unread-count/{userId:guid}")]
     [Authorize]
+    [RequirePermission("notifications", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetUnreadCount(Guid userId)
     {
         if (!CanAccessUser(userId))
@@ -121,6 +126,10 @@ public class NotificationsController : ControllerBase
         var notification = await _unitOfWork.Notifications.GetByIdAsync(id);
         if (notification == null)
             return NotFound(new { success = false, message = "Notification not found" });
+
+        // منع IDOR عابر للمستأجر: لا يُعدّل حالة قراءة إشعار إلا صاحبه أو دور إداري
+        if (!CanAccessUser(notification.UserId))
+            return StatusCode(StatusCodes.Status403Forbidden, new { success = false, message = "غير مصرح بالوصول لهذا الإشعار" });
 
         notification.IsRead = true;
         notification.ReadAt = DateTime.UtcNow;
@@ -153,6 +162,7 @@ public class NotificationsController : ControllerBase
 
     [HttpPost("send")]
     [Authorize(Policy = "Admin")]
+    [RequirePermission("notifications", "add", PermissionSystem.Second)]
     public async Task<IActionResult> Send([FromBody] SendNotificationRequest request)
     {
         var notification = new Notification
@@ -184,6 +194,10 @@ public class NotificationsController : ControllerBase
         var notification = await _unitOfWork.Notifications.GetByIdAsync(id);
         if (notification == null)
             return NotFound(new { success = false, message = "Notification not found" });
+
+        // منع IDOR عابر للمستأجر: لا يحذف الإشعار إلا صاحبه أو دور إداري (الكيان غير ITenantScoped)
+        if (!CanAccessUser(notification.UserId))
+            return StatusCode(StatusCodes.Status403Forbidden, new { success = false, message = "غير مصرح بالوصول لهذا الإشعار" });
 
         _unitOfWork.Notifications.Delete(notification);
         await _unitOfWork.SaveChangesAsync();

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.API.Hubs;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
@@ -45,6 +46,7 @@ public class ChatController : ControllerBase
 
     /// <summary>قائمة محادثاتي (مرتبة بآخر رسالة)</summary>
     [HttpGet("rooms")]
+    [RequirePermission("chat", "view")]
     public async Task<IActionResult> GetMyRooms()
     {
         var userId = GetUserId();
@@ -125,6 +127,7 @@ public class ChatController : ControllerBase
 
     /// <summary>جميع محادثات الشركة (مدير الشركة فقط)</summary>
     [HttpGet("rooms/all")]
+    [RequirePermission("chat", "view")]
     public async Task<IActionResult> GetAllCompanyRooms()
     {
         var userId = GetUserId();
@@ -165,6 +168,7 @@ public class ChatController : ControllerBase
 
     /// <summary>إنشاء غرفة محادثة جديدة</summary>
     [HttpPost("rooms")]
+    [RequirePermission("chat.create_group", "add")]
     public async Task<IActionResult> CreateRoom([FromBody] CreateRoomDto dto)
     {
         try
@@ -297,6 +301,7 @@ public class ChatController : ControllerBase
 
     /// <summary>أعضاء الغرفة</summary>
     [HttpGet("rooms/{roomId}/members")]
+    [RequirePermission("chat", "view")]
     public async Task<IActionResult> GetRoomMembers(Guid roomId)
     {
         var userId = GetUserId();
@@ -335,6 +340,7 @@ public class ChatController : ControllerBase
 
     /// <summary>رسائل غرفة (مع pagination)</summary>
     [HttpGet("rooms/{roomId}/messages")]
+    [RequirePermission("chat", "view")]
     public async Task<IActionResult> GetMessages(Guid roomId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50, [FromQuery] string? before = null)
     {
         var userId = GetUserId();
@@ -405,6 +411,7 @@ public class ChatController : ControllerBase
 
     /// <summary>حذف محادثة كاملة (مدير الشركة فقط)</summary>
     [HttpDelete("rooms/{roomId}")]
+    [RequirePermission("chat.manage_members", "delete")]
     public async Task<IActionResult> DeleteRoom(Guid roomId)
     {
         try
@@ -455,6 +462,7 @@ public class ChatController : ControllerBase
 
     /// <summary>حذف رسالة (soft delete)</summary>
     [HttpDelete("messages/{messageId}")]
+    [RequirePermission("chat.delete_messages", "delete")]
     public async Task<IActionResult> DeleteMessage(Guid messageId)
     {
         var userId = GetUserId();
@@ -482,6 +490,7 @@ public class ChatController : ControllerBase
 
     /// <summary>إرسال رسالة عبر REST API (بديل عن SignalR)</summary>
     [HttpPost("rooms/{roomId}/messages")]
+    [RequirePermission("chat.send_text", "send")]
     public async Task<IActionResult> SendMessage(Guid roomId, [FromBody] SendMessageDto dto)
     {
         try
@@ -602,6 +611,7 @@ public class ChatController : ControllerBase
     /// <summary>رفع مرفق (صورة/صوت/ملف)</summary>
     [HttpPost("rooms/{roomId}/attachments")]
     [RequestSizeLimit(50 * 1024 * 1024)] // 50 MB
+    [RequirePermission("chat.send_file", "send")]
     public async Task<IActionResult> UploadAttachment(Guid roomId, IFormFile file)
     {
         var userId = GetUserId();
@@ -654,6 +664,7 @@ public class ChatController : ControllerBase
 
     /// <summary>تنزيل/عرض مرفق</summary>
     [HttpGet("attachments/{**filePath}")]
+    [RequirePermission("chat", "view")]
     public IActionResult GetAttachment(string filePath)
     {
         var fullPath = Path.Combine(_env.ContentRootPath, filePath);
@@ -679,6 +690,7 @@ public class ChatController : ControllerBase
 
     /// <summary>عدد الرسائل غير المقروءة الكلي</summary>
     [HttpGet("unread-count")]
+    [RequirePermission("chat", "view")]
     public async Task<IActionResult> GetUnreadCount()
     {
         var userId = GetUserId();
@@ -693,6 +705,7 @@ public class ChatController : ControllerBase
 
     /// <summary>بحث في الرسائل</summary>
     [HttpGet("search")]
+    [RequirePermission("chat.search", "view")]
     public async Task<IActionResult> SearchMessages([FromQuery] string q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var userId = GetUserId();
@@ -729,6 +742,7 @@ public class ChatController : ControllerBase
 
     /// <summary>بطاقة تعريف الموظف</summary>
     [HttpGet("users/{targetUserId}/profile-card")]
+    [RequirePermission("chat.view_profile", "view")]
     public async Task<IActionResult> GetProfileCard(Guid targetUserId)
     {
         var user = await _uow.Users.GetByIdAsync(targetUserId);
@@ -761,6 +775,7 @@ public class ChatController : ControllerBase
 
     /// <summary>قائمة الموظفين المتاحين لبدء محادثة</summary>
     [HttpGet("available-users")]
+    [RequirePermission("chat", "view")]
     public async Task<IActionResult> GetAvailableUsers([FromQuery] string? search)
     {
         var userId = GetUserId();
@@ -797,6 +812,7 @@ public class ChatController : ControllerBase
 
     /// <summary>قائمة الأقسام لإنشاء محادثة قسم</summary>
     [HttpGet("available-departments")]
+    [RequirePermission("chat", "view")]
     public async Task<IActionResult> GetAvailableDepartments()
     {
         var userId = GetUserId();
@@ -821,6 +837,7 @@ public class ChatController : ControllerBase
     /// <summary>كتم/إلغاء كتم إشعارات غرفة</summary>
     /// <summary>تحديث حالة القراءة عبر REST</summary>
     [HttpPut("rooms/{roomId}/mark-read")]
+    [RequirePermission("chat", "view")]
     public async Task<IActionResult> MarkAsRead(Guid roomId)
     {
         var userId = GetUserId();
@@ -836,6 +853,7 @@ public class ChatController : ControllerBase
 
     /// <summary>إضافة/تبديل تفاعل (Reaction) على رسالة</summary>
     [HttpPost("messages/{messageId}/reactions")]
+    [RequirePermission("chat.send_text", "send")]
     public async Task<IActionResult> ToggleReaction(Guid messageId, [FromBody] ReactionDto dto)
     {
         var userId = GetUserId();
@@ -888,6 +906,7 @@ public class ChatController : ControllerBase
 
     /// <summary>جلب reactions لرسالة</summary>
     [HttpGet("messages/{messageId}/reactions")]
+    [RequirePermission("chat", "view")]
     public async Task<IActionResult> GetReactions(Guid messageId)
     {
         var reactions = await _uow.ChatReactions.AsQueryable()
@@ -902,6 +921,7 @@ public class ChatController : ControllerBase
     /// <summary>تثبيت/إلغاء تثبيت محادثة</summary>
     /// <summary>مغادرة المجموعة</summary>
     [HttpPost("rooms/{roomId}/leave")]
+    [RequirePermission("chat", "view")]
     public async Task<IActionResult> LeaveRoom(Guid roomId)
     {
         var userId = GetUserId();
@@ -918,6 +938,7 @@ public class ChatController : ControllerBase
 
     /// <summary>تعديل اسم المجموعة</summary>
     [HttpPut("rooms/{roomId}/name")]
+    [RequirePermission("chat.manage_members", "edit")]
     public async Task<IActionResult> UpdateRoomName(Guid roomId, [FromBody] UpdateRoomNameDto dto)
     {
         var userId = GetUserId();
@@ -939,6 +960,7 @@ public class ChatController : ControllerBase
     }
 
     [HttpPut("rooms/{roomId}/pin")]
+    [RequirePermission("chat", "view")]
     public async Task<IActionResult> TogglePin(Guid roomId, [FromBody] TogglePinDto dto)
     {
         var userId = GetUserId();
@@ -953,6 +975,7 @@ public class ChatController : ControllerBase
     }
 
     [HttpPut("rooms/{roomId}/mute")]
+    [RequirePermission("chat", "view")]
     public async Task<IActionResult> ToggleMute(Guid roomId, [FromBody] ToggleMuteDto dto)
     {
         var userId = GetUserId();
@@ -970,6 +993,7 @@ public class ChatController : ControllerBase
 
     /// <summary>إضافة أعضاء لمجموعة</summary>
     [HttpPost("rooms/{roomId}/members")]
+    [RequirePermission("chat.manage_members", "add")]
     public async Task<IActionResult> AddMembers(Guid roomId, [FromBody] AddMembersDto dto)
     {
         var userId = GetUserId();
@@ -1005,6 +1029,7 @@ public class ChatController : ControllerBase
 
     /// <summary>إزالة عضو من مجموعة</summary>
     [HttpDelete("rooms/{roomId}/members/{memberId}")]
+    [RequirePermission("chat.manage_members", "delete")]
     public async Task<IActionResult> RemoveMember(Guid roomId, Guid memberId)
     {
         var userId = GetUserId();
