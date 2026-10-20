@@ -55,7 +55,11 @@
 
 **إصلاحات أمنية ضمن دفعة 1** (من المراجعة): حارس ملكية `CanAccessUser` على `Notifications.Delete/MarkAsRead` (سدّ IDOR عابر للمستأجر — الكيان غير ITenantScoped)؛ فعل `ZoneMaintenanceFees.Delete` من `delete`→`edit` (منع إقفال عند النشر)؛ إرجاع `OcrController` إلى `[Authorize]` فقط (تدفّق تسجيل المشترك غير محكوم بمفتاح بعد).
 
-**ديون عزل قائمة رُصدت أثناء الدفعتين** (خارج نطاق إضافة السمات، للمعالجة لاحقاً بموافقة): `DashboardController` يحسب كل الإحصاءات عبر كل الشركات بلا فلتر CompanyId ⚠️؛ `Leave`/`Withdrawal`/`TechnicianTransactions` تقبل `companyId` من العميل في بعض القراءات/التعديلات.
+**«ديون العزل» المُبلَّغة أثناء الدفعات — بعد التحقّق (تصحيح تصنيف):**
+- `DashboardController`: **ليست ثغرة عزل شركات.** كياناته (Order/Merchant/Customer/Product/OrderItem) نطاق **MerchantId لا CompanyId** (لا تملك عمود CompanyId)؛ هي لوحة **المتجر/المنصّة** وتجميعها عبر كل التجّار سلوك صحيح لمشغّل المنصّة. أي محاولة فلترة بـ CompanyId تكسر البناء. مسألة «هل يرى أدمن الشركة إحصاءات المتجر» = قرار منتج لوحدة التجارة، لا إصلاح كود عزل.
+- `Leave`/`LeaveBalance`/`WithdrawalRequest`/`TechnicianTransaction`: **مُغطّاة أصلاً بالفلتر المركزي الحيّ.** كلها تملك `CompanyId` (Guid) وليست ضمن `TenantFilterExclusions` ⇒ الفلتر العام (`EnforceIsolation=true` حيّ على الإنتاج) يفرض `CompanyId=التوكن` على القراءات و`ApplyTenantAndAudit` يختمه على الكتابات؛ أي `companyId` يرسله العميل **لا يوسّع الوصول**. لا إصلاح عاجل.
+
+> خلاصة: لا يوجد إصلاح عزل متبقٍّ آمنٌ وضروريٌّ على الباكند بعد الفلتر المركزي؛ ما بقي يخصّ نطاق المتجر (قرار منتج) ومسار internal-key (تدوير المفتاح/البوّابة).
 
 **لم يُطبَّق (يتطلّب مفاتيح سجل جديدة + إصدار تطبيق + منح — بوّابة مالك)**: needs-new-key (store.*, merchants, citizen_portal, reviews, settings, cities ≈ 104 نقطة).
 **مُستبعَد عمداً**: SuperAdminController/ServerController (policy:SuperAdmin أصلاً + SuperAdmin يتجاوز RequirePermission كلياً + تتضمّن تنفيذ أوامر — لا فائدة تنفيذية من السمة).
