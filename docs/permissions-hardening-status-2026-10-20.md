@@ -35,8 +35,23 @@
 | بنية `Authz:FailClosed` (deny-by-default خلف علَم، محايد OFF) | 341b280 |
 | تغطية RequirePermission — دفعة 1: 10 متحكّمات authorize-only + 3 إصلاحات مراجعة | 13549e5 |
 | تغطية RequirePermission — دفعة 2: 6 متحكّمات policy بمفاتيح موجودة (46 سمة) | 49b3ef9 |
+| تغطية RequirePermission — دفعة 3: CitizenPortal + Settings بمفتاحين جديدين (23 سمة) | 37519ab |
+| تغطية RequirePermission — دفعة 4: إدارة موظفي CompaniesController (7 سمات، hr.*) | b90bf58 |
 
-**تغطية الباكند بعد الدفعتين**: غُطّيت كل الفئة `authorize-only` الأخطر (ISPSubscribers, SubscriptionLogs, FtthAccounting, Chat, Announcements, Notifications, TaskAudits, ServiceRequests, ZoneMaintenanceFees) + فئة `policy→مفتاح موجود` (Leave, Departments, CompanyCenters, WithdrawalRequest, TechnicianTransactions, Dashboard). كلها إضافية (لا استبدال لأي [Authorize])، مُراجَعة مزدوجاً (لا P0)، بناء 0 أخطاء، على الفرع فقط.
+**تغطية الباكند بعد الدفعات الأربع**: غُطّيت **كل متحكّمات توكن الموظف القابلة للحوكمة بأمان**:
+- `authorize-only` (الأخطر): ISPSubscribers, SubscriptionLogs, FtthAccounting, Chat, Announcements, Notifications, TaskAudits, ServiceRequests, ZoneMaintenanceFees.
+- `policy→مفتاح موجود`: Leave, Departments, CompanyCenters, WithdrawalRequest, TechnicianTransactions, Dashboard.
+- `needs-new-key` (موظف): CitizenPortal (مفتاح `citizen_portal`)، Settings (مفتاح `settings`) — مفتاحان جديدان أُضيفا للسجل.
+- إدارة الموظفين: CompaniesController (hr.employees/hr.permissions)؛ نقاط الشركات CRUD تُركت (SuperAdmin يتجاوز الفحص).
+
+كلها إضافية (لا استبدال لأي [Authorize])، مُراجَعة (دفعة 1 مزدوجاً لا P0؛ 2–4 تحقّق آلي additive-only + بناء 0 أخطاء + تطابق نظام First/Second)، على الفرع فقط.
+
+**خارج نطاق صلاحيات الموظف بحق (توكن مختلف — لا تُحكَم بـ RequirePermission):**
+- نطاق المتجر/التجارة: Customers, Orders, Products, Coupons, Merchants, Reviews, Payments, Categories (توكن تاجر `MerchantId` / مواطن / كتالوج عام) — معزولة أصلاً بـ`MerchantId`/`CitizenId`؛ حوكمتها بتوكن موظف تكسرها. قرار منتج مستقل: هل التجارة مُفعّلة ومن يديرها.
+- مرجع جغرافي عام: Cities/Areas (بيانات عامة بلا CompanyId؛ طفراتها Policy=Admin).
+- مسار `internal-key` (141 نقطة: InternalData/DatabaseAdmin/CompanyFtthSettings/WhatsApp/EmployeeLocation/ZoneStatistics/Reminder/Iptv/SubscriberCache): خادم-لخادم بـX-Api-Key — تُحكَم بالبوّابة/تدوير المفتاح لا بصلاحية موظف.
+
+**بنود reconcile قائمة (توثيق، لم تُغيَّر تفادياً للكسر):** `AgentsController` معاملاته محكومة بـ`accounting.agent_transactions` لكن كل الأفعال `view` (حتى الكتابات charge/update) ⇒ تضييق مُستحسَن لـ edit عند النشر؛ `UsersController.ChangePassword` خدمة ذاتية (لا تُحكَم)؛ `accounting.audit_trail.edit` رمزي (SuperAdmin)؛ مفتاح `tasks` First vs Second.
 
 **إصلاحات أمنية ضمن دفعة 1** (من المراجعة): حارس ملكية `CanAccessUser` على `Notifications.Delete/MarkAsRead` (سدّ IDOR عابر للمستأجر — الكيان غير ITenantScoped)؛ فعل `ZoneMaintenanceFees.Delete` من `delete`→`edit` (منع إقفال عند النشر)؛ إرجاع `OcrController` إلى `[Authorize]` فقط (تدفّق تسجيل المشترك غير محكوم بمفتاح بعد).
 
