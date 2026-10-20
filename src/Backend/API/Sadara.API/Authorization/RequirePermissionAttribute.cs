@@ -101,7 +101,19 @@ public class RequirePermissionAttribute : Attribute, IAsyncAuthorizationFilter
             ? dbUser.FirstSystemPermissionsV2
             : dbUser.SecondSystemPermissionsV2;
 
-        if (HasPermission(permJson, _permissionKey, _action, _failClosed))
+        // علَم إنتاجي عام "Authz:FailClosed" (bool، افتراضي false) يحوّل كل فحوص
+        // RequirePermission إلى deny-by-default: عند رفعه ⇒ فراغ صلاحيات V2 يعني رفضاً.
+        // هذا العلَم بوّابة إنتاجية لا يُرفَع إلا بعد ختم V2 الكامل، ومرحلة تسجيل-فقط،
+        // وموافقة صريحة؛ OFF (الافتراضي) ⇒ صفر أثر تشغيلي والسلوك يبقى كما هو تماماً.
+        var configuration = context.HttpContext.RequestServices
+            .GetService<Microsoft.Extensions.Configuration.IConfiguration>();
+        var globalFailClosed = configuration?.GetValue<bool>("Authz:FailClosed") ?? false;
+
+        // failClosed الفعّال = الخاص بالـattribute أو العلَم العام. عند OFF يبقى
+        // السلوك الحالي كما هو (fail-open ما لم يكن الـattribute نفسه failClosed:true).
+        var effectiveFailClosed = _failClosed || globalFailClosed;
+
+        if (HasPermission(permJson, _permissionKey, _action, effectiveFailClosed))
         {
             return; // مسموح
         }
