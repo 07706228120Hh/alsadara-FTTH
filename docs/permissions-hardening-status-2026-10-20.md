@@ -2,6 +2,8 @@
 
 > مرجع موحّد (2026-10-18 → 2026-10-20). العمل على فرع `security/expose-endpoints-hardening`. الذاكرة التشغيلية في `.claude/memory/permissions-isolation-audit-2026-10-18.md` و`RISKS.md`.
 
+> **🚀 نُشر على الإنتاج 2026-10-20:** منح V2 مسبق لكل المفاتيح على 60 مستخدماً (0 محجوب) → نشر الباكند (65 DLL، health=200، تغطية RequirePermission حيّة) → إصدار التطبيق **v2.4.11+326** (GitHub release، auto-update لكل الأجهزة، يشمل توحيد مضيف FTTH/Cloudflare لصفحة التجديد). علَم `Authz:FailClosed` يبقى **OFF**. نسخ احتياطية: `/root/backups/db_pre_grant_deploy_20261020_091422.sql.gz` + `db_20261020_121837.sql.gz` (+ محلي/خارجي). تراجع الباكند: `cp /root/backups/dll_20261020_121837/*.dll /var/www/sadara-api/ && systemctl restart sadara-api`.
+
 ---
 
 ## 1. ما هو حيّ على الإنتاج (منشور ومتحقَّق)
