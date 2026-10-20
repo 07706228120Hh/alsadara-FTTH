@@ -3,9 +3,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ftth_cloudflare_gateway.dart';
+import 'ftth_api_config.dart';
+import '../ftth/auth/cloudflare_gate_dialog.dart';
+import '../widgets/window_close_handler_fixed.dart' show navigatorKey;
 
 class AuthService {
-  static const String _baseUrl = 'https://admin.ftth.iq/api/auth/Contractor';
+  static const String _baseUrl = '${FtthApi.api}/auth/Contractor';
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _tokenExpiryKey = 'token_expiry';
@@ -518,6 +521,16 @@ class AuthService {
       // 403: نحاول تجديد التوكن مرة واحدة فقط (بعض سيرفرات FTTH ترسل 403 بدل 401)
       // لكن إذا بقي 403 بعد التجديد = مشكلة صلاحيات حقيقية → نُعيده بدون logout
       if (response.statusCode == 403) {
+        // (أ) تحدّي Cloudflare (403 + صفحة تحقّق): إعادة حلّ يدوي مركزي عبر
+        //     البوّابة ثم إعادة المحاولة مرة واحدة — لا علاقة له بالتوكن.
+        if (_looksLikeCfChallenge(response.body)) {
+          final solved = await _ensureCloudflareCleared();
+          if (solved) {
+            return await _send(method, url, headers: allHeaders, body: body)
+                .timeout(requestTimeout);
+          }
+          return response;
+        }
         final refreshed = await _singleFlightRefresh();
         if (refreshed) {
           final newAuthHeaders = await getAuthHeaders();
@@ -568,6 +581,47 @@ class AuthService {
         rethrow;
       }
       throw Exception('خطأ في الطلب');
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // معالجة تحدّي Cloudflare (403 + صفحة تحقّق) مركزياً
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// نافذة حلّ واحدة مشتركة لكل الطلبات المتزامنة (single-flight).
+  Future<bool>? _cfSolveFuture;
+
+  /// هل جسم الرد صفحة تحدّي Cloudflare (وليس 403 صلاحيات حقيقي بصيغة JSON)؟
+  static bool _looksLikeCfChallenge(String body) {
+    if (body.isEmpty) return false;
+    final b = body.toLowerCase();
+    return b.contains('challenge-platform') ||
+        b.contains('cf-chl') ||
+        b.contains('cf_chl') ||
+        b.contains('just a moment') ||
+        b.contains('turnstile') ||
+        b.contains('attention required') ||
+        b.contains('إجراء التحقق من الأمان');
+  }
+
+  /// إعادة حلّ تحدّي Cloudflare عبر البوّابة. تُجمّع الطلبات المتزامنة على
+  /// نافذة واحدة فيحلّ المشغّل التحدّي مرة واحدة فقط.
+  Future<bool> _ensureCloudflareCleared() {
+    final existing = _cfSolveFuture;
+    if (existing != null) return existing;
+    final f = _doEnsureCloudflareCleared();
+    _cfSolveFuture = f;
+    f.whenComplete(() => _cfSolveFuture = null);
+    return f;
+  }
+
+  Future<bool> _doEnsureCloudflareCleared() async {
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null) return false;
+    try {
+      return await CloudflareGateDialog.ensure(ctx);
+    } catch (_) {
+      return false;
     }
   }
 

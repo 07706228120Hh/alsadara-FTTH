@@ -16,6 +16,7 @@ import '../../services/whatsapp_template_storage.dart';
 import '../../services/subscription_logs_service.dart';
 import '../../services/api/api_config.dart';
 import '../../services/auth_service.dart';
+import '../../services/ftth_api_config.dart';
 import '../../services/vps_auth_service.dart';
 import '../../permissions/permission_manager.dart';
 import '../../services/dual_auth_service.dart';
@@ -1457,7 +1458,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         final response = await AuthService.instance
             .authenticatedRequest(
               'GET',
-              'https://api.ftth.iq/api/customers/subscriptions?customerId=${widget.userId}',
+              '${FtthApi.api}/customers/subscriptions?customerId=${widget.userId}',
             )
             .timeout(const Duration(seconds: 15));
 
@@ -1598,7 +1599,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
     final response = await AuthService.instance
         .authenticatedRequest(
           'GET',
-          'https://api.ftth.iq/api/customers/subscriptions?customerId=${widget.userId}',
+          '${FtthApi.api}/customers/subscriptions?customerId=${widget.userId}',
         )
         .timeout(const Duration(seconds: 15));
 
@@ -1643,7 +1644,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         final response = await AuthService.instance
             .authenticatedRequest(
               'GET',
-              'https://api.ftth.iq/api/partners/${subscriptionInfo!.partnerId}/wallets/balance',
+              '${FtthApi.api}/partners/${subscriptionInfo!.partnerId}/wallets/balance',
             )
             .timeout(const Duration(seconds: 8));
 
