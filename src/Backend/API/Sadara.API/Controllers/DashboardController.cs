@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Domain.Interfaces;
 
 namespace Sadara.API.Controllers;
@@ -18,6 +19,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("stats")]
+    [RequirePermission("dashboard_project", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetStats()
     {
         var totalUsers = await _unitOfWork.Users.CountAsync();
@@ -46,6 +48,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("orders/chart")]
+    [RequirePermission("dashboard_project", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetOrdersChart([FromQuery] int days = 30)
     {
         var startDate = DateTime.UtcNow.AddDays(-days);
@@ -66,6 +69,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("revenue/chart")]
+    [RequirePermission("dashboard_project", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetRevenueChart([FromQuery] int months = 12)
     {
         var startDate = DateTime.UtcNow.AddMonths(-months);
@@ -88,6 +92,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("merchants/top")]
+    [RequirePermission("dashboard_project", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetTopMerchants([FromQuery] int count = 10)
     {
         var topMerchants = await _unitOfWork.Orders.AsQueryable()
@@ -106,6 +111,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("products/top")]
+    [RequirePermission("dashboard_project", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetTopProducts([FromQuery] int count = 10)
     {
         var topProducts = await _unitOfWork.OrderItems.AsQueryable()
@@ -124,6 +130,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("recent-orders")]
+    [RequirePermission("dashboard_project", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetRecentOrders([FromQuery] int count = 10)
     {
         var recentOrders = await _unitOfWork.Orders.AsQueryable()
@@ -143,6 +150,7 @@ public class DashboardController : ControllerBase
     }
 
     [HttpGet("recent-users")]
+    [RequirePermission("dashboard_project", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetRecentUsers([FromQuery] int count = 10)
     {
         var recentUsers = await _unitOfWork.Users.AsQueryable()

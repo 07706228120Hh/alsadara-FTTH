@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
@@ -51,6 +52,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork, ICurrentTenant tenant
     /// جلب جميع أقسام الشركة مع مهامها
     /// </summary>
     [HttpGet]
+    [RequirePermission("hr.departments", "view")]
     public async Task<IActionResult> GetAll(Guid companyId)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
@@ -93,6 +95,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork, ICurrentTenant tenant
     /// إضافة قسم جديد
     /// </summary>
     [HttpPost]
+    [RequirePermission("hr.departments", "add")]
     public async Task<IActionResult> Create(Guid companyId, [FromBody] CreateDepartmentRequest request)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
@@ -148,6 +151,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork, ICurrentTenant tenant
     /// تعديل قسم
     /// </summary>
     [HttpPut("{departmentId:int}")]
+    [RequirePermission("hr.departments", "edit")]
     public async Task<IActionResult> Update(Guid companyId, int departmentId, [FromBody] UpdateDepartmentRequest request)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
@@ -183,6 +187,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork, ICurrentTenant tenant
     /// حذف قسم (حذف ناعم)
     /// </summary>
     [HttpDelete("{departmentId:int}")]
+    [RequirePermission("hr.departments", "delete")]
     public async Task<IActionResult> Delete(Guid companyId, int departmentId)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
@@ -219,6 +224,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork, ICurrentTenant tenant
     /// إضافة مهمة جديدة لقسم
     /// </summary>
     [HttpPost("{departmentId:int}/tasks")]
+    [RequirePermission("hr.departments", "edit")]
     public async Task<IActionResult> CreateTask(Guid companyId, int departmentId, [FromBody] CreateDepartmentTaskRequest request)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
@@ -276,6 +282,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork, ICurrentTenant tenant
     /// تعديل مهمة
     /// </summary>
     [HttpPut("{departmentId:int}/tasks/{taskId:int}")]
+    [RequirePermission("hr.departments", "edit")]
     public async Task<IActionResult> UpdateTask(Guid companyId, int departmentId, int taskId, [FromBody] UpdateDepartmentTaskRequest request)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
@@ -317,6 +324,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork, ICurrentTenant tenant
     /// حذف مهمة (حذف ناعم)
     /// </summary>
     [HttpDelete("{departmentId:int}/tasks/{taskId:int}")]
+    [RequirePermission("hr.departments", "edit")]
     public async Task<IActionResult> DeleteTask(Guid companyId, int departmentId, int taskId)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
@@ -349,6 +357,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork, ICurrentTenant tenant
     /// تهيئة الأقسام الافتراضية للشركة (تُستخدم مرة واحدة أو عند الحاجة)
     /// </summary>
     [HttpPost("seed-defaults")]
+    [RequirePermission("hr.departments", "add")]
     public async Task<IActionResult> SeedDefaults(Guid companyId)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
@@ -413,6 +422,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork, ICurrentTenant tenant
     /// جلب أقسام موظف معين
     /// </summary>
     [HttpGet("~/api/companies/{companyId:guid}/users/{userId:guid}/departments")]
+    [RequirePermission("hr.departments", "view")]
     public async Task<IActionResult> GetUserDepartments(Guid companyId, Guid userId)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
@@ -441,6 +451,7 @@ public class DepartmentsController(IUnitOfWork unitOfWork, ICurrentTenant tenant
     /// تعيين أقسام للموظف (استبدال كامل)
     /// </summary>
     [HttpPut("~/api/companies/{companyId:guid}/users/{userId:guid}/departments")]
+    [RequirePermission("hr.departments", "edit")]
     public async Task<IActionResult> SetUserDepartments(Guid companyId, Guid userId, [FromBody] SetUserDepartmentsRequest request)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))

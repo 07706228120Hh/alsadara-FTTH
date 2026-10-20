@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sadara.API.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
@@ -49,6 +50,7 @@ public class CompanyCentersController(IUnitOfWork unitOfWork, ICurrentTenant ten
     /// جلب جميع مراكز الشركة
     /// </summary>
     [HttpGet]
+    [RequirePermission("attendance", "view")]
     public async Task<IActionResult> GetAll(Guid companyId)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
@@ -77,6 +79,7 @@ public class CompanyCentersController(IUnitOfWork unitOfWork, ICurrentTenant ten
     /// إضافة مركز جديد
     /// </summary>
     [HttpPost]
+    [RequirePermission("attendance", "add")]
     public async Task<IActionResult> Create(Guid companyId, [FromBody] CreateCenterRequest request)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
@@ -131,6 +134,7 @@ public class CompanyCentersController(IUnitOfWork unitOfWork, ICurrentTenant ten
     /// تعديل مركز
     /// </summary>
     [HttpPut("{centerId:int}")]
+    [RequirePermission("attendance", "edit")]
     public async Task<IActionResult> Update(Guid companyId, int centerId, [FromBody] UpdateCenterRequest request)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))
@@ -174,6 +178,7 @@ public class CompanyCentersController(IUnitOfWork unitOfWork, ICurrentTenant ten
     /// حذف مركز (soft delete)
     /// </summary>
     [HttpDelete("{centerId:int}")]
+    [RequirePermission("attendance", "delete")]
     public async Task<IActionResult> Delete(Guid companyId, int centerId)
     {
         if (!TryScopeCompanyId(companyId, out companyId, out var scopeError))

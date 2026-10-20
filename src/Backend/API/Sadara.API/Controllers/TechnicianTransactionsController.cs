@@ -5,6 +5,7 @@ using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 using Sadara.API.Constants;
+using Sadara.API.Authorization;
 
 namespace Sadara.API.Controllers;
 
@@ -24,6 +25,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     /// </summary>
     [HttpGet("my-transactions")]
     [Authorize(Policy = "TechnicianOrAbove")]
+    [RequirePermission("technicians", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetMyTransactions(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
@@ -214,6 +216,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     /// </summary>
     [HttpGet("by-technician/{technicianId:guid}")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("technicians", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetByTechnician(
         Guid technicianId,
         [FromQuery] int page = 1,
@@ -413,6 +416,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     /// </summary>
     [HttpGet("all-dues")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("technicians", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetAllTechnicianDues([FromQuery] DateTime? from, [FromQuery] DateTime? to)
     {
         try
@@ -533,6 +537,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     /// </summary>
     [HttpPost("record-payment")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("technicians", "edit", PermissionSystem.Second)]
     public async Task<IActionResult> RecordPayment([FromBody] TechPaymentRequest request)
     {
         try
@@ -639,6 +644,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     /// </summary>
     [HttpPut("{id}")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("technicians", "edit", PermissionSystem.Second)]
     public async Task<IActionResult> UpdateTransaction(long id, [FromBody] UpdateTechTransactionRequest request)
     {
         try
@@ -714,6 +720,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     /// </summary>
     [HttpDelete("{id}")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("technicians", "edit", PermissionSystem.Second)]
     public async Task<IActionResult> DeleteTransaction(long id)
     {
         try
@@ -777,6 +784,7 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     /// </summary>
     [HttpPost("recalculate-balances")]
     [Authorize(Policy = "CompanyAdminOrAbove")]
+    [RequirePermission("technicians", "edit", PermissionSystem.Second)]
     public async Task<IActionResult> RecalculateAllBalances()
     {
         try

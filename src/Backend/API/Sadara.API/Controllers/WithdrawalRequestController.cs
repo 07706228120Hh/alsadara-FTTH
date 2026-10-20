@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.API.Constants;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
@@ -30,6 +31,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
 
     /// <summary>تقديم طلب سحب أموال</summary>
     [HttpPost("requests")]
+    [RequirePermission("accounting.withdrawals", "add")]
     public async Task<IActionResult> SubmitWithdrawalRequest([FromBody] SubmitWithdrawalDto request)
     {
         var tokenUserId = GetAuthenticatedUserId();
@@ -67,6 +69,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
 
     /// <summary>جلب طلبات سحب الأموال (مع فلترة)</summary>
     [HttpGet("requests")]
+    [RequirePermission("accounting.withdrawals", "view")]
     public async Task<IActionResult> GetWithdrawalRequests(
         [FromQuery] string? userId = null,
         [FromQuery] int? status = null,
@@ -136,6 +139,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
 
     /// <summary>جلب طلبات سحب الأموال للموظف الحالي</summary>
     [HttpGet("my-requests")]
+    [RequirePermission("accounting.withdrawals", "view")]
     public async Task<IActionResult> GetMyWithdrawalRequests(
         [FromQuery] int? status = null,
         [FromQuery] int page = 1,
@@ -189,6 +193,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
 
     /// <summary>الموافقة على طلب سحب أموال (موافقة فقط بدون صرف)</summary>
     [HttpPost("requests/{id}/approve")]
+    [RequirePermission("accounting.withdrawals", "edit")]
     public async Task<IActionResult> ApproveWithdrawalRequest(long id, [FromBody] ReviewWithdrawalDto? review = null)
     {
         var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);
@@ -221,6 +226,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
     /// <summary>صرف طلب سحب أموال (موافقة + صرف + إنشاء قيد على الموظف)</summary>
     /// <summary>حساب أقصى مبلغ سحب متاح للموظف بناءً على أيام الحضور</summary>
     [HttpGet("max-withdrawal/{userId}")]
+    [RequirePermission("accounting.withdrawals", "view")]
     public async Task<IActionResult> GetMaxWithdrawal(Guid userId, [FromQuery] int? month = null, [FromQuery] int? year = null)
     {
         var targetMonth = month ?? DateTime.UtcNow.Month;
@@ -292,6 +298,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
     }
 
     [HttpPost("requests/{id}/pay")]
+    [RequirePermission("accounting.withdrawals", "edit")]
     public async Task<IActionResult> PayWithdrawalRequest(long id, [FromBody] PayWithdrawalDto? review = null)
     {
         try
@@ -408,6 +415,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
 
     /// <summary>رفض طلب سحب أموال</summary>
     [HttpPost("requests/{id}/reject")]
+    [RequirePermission("accounting.withdrawals", "edit")]
     public async Task<IActionResult> RejectWithdrawalRequest(long id, [FromBody] ReviewWithdrawalDto? review = null)
     {
         var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);
@@ -438,6 +446,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
 
     /// <summary>إلغاء طلب سحب أموال (من قبل الموظف)</summary>
     [HttpPost("requests/{id}/cancel")]
+    [RequirePermission("accounting.withdrawals", "edit")]
     public async Task<IActionResult> CancelWithdrawalRequest(long id)
     {
         var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);

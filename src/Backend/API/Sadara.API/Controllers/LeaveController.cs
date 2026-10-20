@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 using System.Security.Claims;
@@ -28,6 +29,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
 
     /// <summary>تقديم طلب إجازة</summary>
     [HttpPost("requests")]
+    [RequirePermission("hr.leaves", "add")]
     public async Task<IActionResult> SubmitLeaveRequest([FromBody] SubmitLeaveRequest request)
     {
         var tokenUserId = GetAuthenticatedUserId();
@@ -97,6 +99,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
 
     /// <summary>جلب طلبات الإجازة (مع فلترة)</summary>
     [HttpGet("requests")]
+    [RequirePermission("hr.leaves", "view")]
     public async Task<IActionResult> GetLeaveRequests(
         [FromQuery] Guid? userId,
         [FromQuery] int? status,
@@ -160,6 +163,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
 
     /// <summary>جلب طلب إجازة واحد</summary>
     [HttpGet("requests/{id}")]
+    [RequirePermission("hr.leaves", "view")]
     public async Task<IActionResult> GetLeaveRequest(long id)
     {
         var lr = await _unitOfWork.LeaveRequests.GetByIdAsync(id);
@@ -169,6 +173,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
 
     /// <summary>إلغاء طلب إجازة (بواسطة الموظف)</summary>
     [HttpPost("requests/{id}/cancel")]
+    [RequirePermission("hr.leaves", "edit")]
     public async Task<IActionResult> CancelLeaveRequest(long id)
     {
         var lr = await _unitOfWork.LeaveRequests.GetByIdAsync(id);
@@ -191,6 +196,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
 
     /// <summary>الموافقة على طلب إجازة</summary>
     [HttpPost("requests/{id}/approve")]
+    [RequirePermission("hr.leaves", "edit")]
     public async Task<IActionResult> ApproveLeaveRequest(long id, [FromBody] ReviewLeaveDto? review = null)
     {
         var lr = await _unitOfWork.LeaveRequests.GetByIdAsync(id);
@@ -237,6 +243,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
 
     /// <summary>رفض طلب إجازة</summary>
     [HttpPost("requests/{id}/reject")]
+    [RequirePermission("hr.leaves", "edit")]
     public async Task<IActionResult> RejectLeaveRequest(long id, [FromBody] ReviewLeaveDto? review = null)
     {
         var lr = await _unitOfWork.LeaveRequests.GetByIdAsync(id);
@@ -272,6 +279,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
 
     /// <summary>جلب رصيد إجازات موظف</summary>
     [HttpGet("balances/{userId}")]
+    [RequirePermission("hr.leaves", "view")]
     public async Task<IActionResult> GetLeaveBalances(Guid userId, [FromQuery] int? year)
     {
         var targetYear = year ?? DateTime.UtcNow.Year;
@@ -297,6 +305,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
 
     /// <summary>تعيين أو تحديث رصيد إجازات</summary>
     [HttpPost("balances")]
+    [RequirePermission("hr.leaves", "edit")]
     public async Task<IActionResult> SetLeaveBalance([FromBody] SetLeaveBalanceRequest request)
     {
         var existing = await _unitOfWork.LeaveBalances.FirstOrDefaultAsync(b =>
@@ -331,6 +340,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
 
     /// <summary>تعيين رصيد إجازات لجميع موظفي الشركة (دفعة واحدة)</summary>
     [HttpPost("balances/bulk")]
+    [RequirePermission("hr.leaves", "edit")]
     public async Task<IActionResult> BulkSetLeaveBalances([FromBody] BulkSetBalanceRequest request)
     {
         var companyUsers = await _unitOfWork.Users.AsQueryable()
@@ -378,6 +388,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
 
     /// <summary>ملخص إحصائيات الإجازات (للوحة التحكم)</summary>
     [HttpGet("summary")]
+    [RequirePermission("hr.leaves", "view")]
     public async Task<IActionResult> GetLeaveSummary([FromQuery] Guid? companyId, [FromQuery] int? year)
     {
         var targetYear = year ?? DateTime.UtcNow.Year;
