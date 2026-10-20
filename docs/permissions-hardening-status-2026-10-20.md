@@ -33,6 +33,17 @@
 | إضافة المفاتيح الناقصة للسجل | 92ec096 |
 | ربط الشاشات بالمفاتيح (GenieACS/صفحة الشركة/محاسبة/FTTH) | 609def8 |
 | بنية `Authz:FailClosed` (deny-by-default خلف علَم، محايد OFF) | 341b280 |
+| تغطية RequirePermission — دفعة 1: 10 متحكّمات authorize-only + 3 إصلاحات مراجعة | 13549e5 |
+| تغطية RequirePermission — دفعة 2: 6 متحكّمات policy بمفاتيح موجودة (46 سمة) | 49b3ef9 |
+
+**تغطية الباكند بعد الدفعتين**: غُطّيت كل الفئة `authorize-only` الأخطر (ISPSubscribers, SubscriptionLogs, FtthAccounting, Chat, Announcements, Notifications, TaskAudits, ServiceRequests, ZoneMaintenanceFees) + فئة `policy→مفتاح موجود` (Leave, Departments, CompanyCenters, WithdrawalRequest, TechnicianTransactions, Dashboard). كلها إضافية (لا استبدال لأي [Authorize])، مُراجَعة مزدوجاً (لا P0)، بناء 0 أخطاء، على الفرع فقط.
+
+**إصلاحات أمنية ضمن دفعة 1** (من المراجعة): حارس ملكية `CanAccessUser` على `Notifications.Delete/MarkAsRead` (سدّ IDOR عابر للمستأجر — الكيان غير ITenantScoped)؛ فعل `ZoneMaintenanceFees.Delete` من `delete`→`edit` (منع إقفال عند النشر)؛ إرجاع `OcrController` إلى `[Authorize]` فقط (تدفّق تسجيل المشترك غير محكوم بمفتاح بعد).
+
+**ديون عزل قائمة رُصدت أثناء الدفعتين** (خارج نطاق إضافة السمات، للمعالجة لاحقاً بموافقة): `DashboardController` يحسب كل الإحصاءات عبر كل الشركات بلا فلتر CompanyId ⚠️؛ `Leave`/`Withdrawal`/`TechnicianTransactions` تقبل `companyId` من العميل في بعض القراءات/التعديلات.
+
+**لم يُطبَّق (يتطلّب مفاتيح سجل جديدة + إصدار تطبيق + منح — بوّابة مالك)**: needs-new-key (store.*, merchants, citizen_portal, reviews, settings, cities ≈ 104 نقطة).
+**مُستبعَد عمداً**: SuperAdminController/ServerController (policy:SuperAdmin أصلاً + SuperAdmin يتجاوز RequirePermission كلياً + تتضمّن تنفيذ أوامر — لا فائدة تنفيذية من السمة).
 
 **معلّق**: 4 ملفات محاسبة مختلطة (تعديلات المستخدم + الحجب): `budget_page` · `chart_of_accounts_page` · `collections_page` · `compound_journal_entry_page`.
 
