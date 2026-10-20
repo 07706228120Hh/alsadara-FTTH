@@ -9205,10 +9205,11 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     final plan = selectedPlan?.toString().trim() ?? '';
     if (plan.isNotEmpty) services.add({'value': plan, 'type': 'Base'});
     if (includeVas) {
-      final vas = _vasServiceIds.isNotEmpty
-          ? _vasServiceIds
-          : const ['IPTV', 'PARENTAL_CONTROL'];
-      for (final v in vas) {
+      // VAS تُرسَل فقط إن كانت مُلتقطة فعلاً من الحزمة (variants[type=Vas]).
+      // باقات FTTH الجديدة (BASIC/PLUS/TURBO/PRO MAX) بلا VAS؛ وإرسال قيم ثابتة
+      // مثل IPTV/PARENTAL_CONTROL يجعل الخادم يرفض calculate-price/change/purchase
+      // ⇒ «فشل حساب السعر». البوّابة الرسمية ترسل خدمة Base فقط في هذه الحالة.
+      for (final v in _vasServiceIds) {
         services.add({'value': v, 'type': 'Vas'});
       }
     }
