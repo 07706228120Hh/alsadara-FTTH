@@ -3097,6 +3097,43 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.ToTable("FixedExpensePayments");
                 });
 
+            modelBuilder.Entity("Sadara.Domain.Entities.ForceLogoutAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AffectedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExecutedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "RequestedByUserId");
+
+                    b.ToTable("ForceLogoutAudits");
+                });
+
             modelBuilder.Entity("Sadara.Domain.Entities.FtthAccount", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8416,6 +8453,9 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<string>("SecondSystemPermissionsV2")
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("SessionsRevokedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<decimal>("TechNetBalance")
                         .HasColumnType("numeric");
 
@@ -9973,6 +10013,17 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Navigation("FixedExpense");
 
                     b.Navigation("JournalEntry");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.ForceLogoutAudit", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Company");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.FtthAccount", b =>

@@ -165,6 +165,7 @@ public class SadaraDbContext : DbContext
 
     // ==================== Credential Reveal Audit (تدقيق كشف الاعتماد المُعمَّر) ====================
     public DbSet<CredentialRevealAudit> CredentialRevealAudits => Set<CredentialRevealAudit>();
+    public DbSet<ForceLogoutAudit> ForceLogoutAudits => Set<ForceLogoutAudit>();
 
     // ==================== SAS Agent (وحدة وكيل SAS) ====================
     public DbSet<SasAccount> SasAccounts => Set<SasAccount>();
@@ -476,6 +477,13 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<CredentialRevealAudit>()
             .HasIndex(x => new { x.CompanyId, x.AccountId });
         modelBuilder.Entity<CredentialRevealAudit>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+
+        // تدقيق «الإخراج الإجباري» — نفس نمط CredentialRevealAudit (عزل بالشركة + Cascade + فهرس).
+        modelBuilder.Entity<ForceLogoutAudit>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<ForceLogoutAudit>()
+            .HasIndex(x => new { x.CompanyId, x.RequestedByUserId });
+        modelBuilder.Entity<ForceLogoutAudit>()
             .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
 
         // ==================== سجل العقارات المستقل (Property Registry) ====================

@@ -27,6 +27,7 @@ import 'aria_page.dart';
 import '../utils/responsive_helper.dart';
 import '../widgets/maintenance_messages_dialog.dart'; // إضافة حوار إعدادات الرسائل
 import '../services/vps_auth_service.dart'; // ✅ خدمة VPS لتسجيل الخروج
+import '../services/force_logout_service.dart'; // 🚪 مراقبة الإخراج الإجباري من مدير الشركة
 import '../services/api/api_client.dart'; // ✅ ApiClient للتحقق من التوكن
 import 'login/premium_login_page.dart'; // ✨ صفحة تسجيل الدخول الفخمة
 import '../ftth/whatsapp/whatsapp_bottom_window.dart'; // WhatsApp floating button
@@ -141,6 +142,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _initChat();
     _initNotificationsPolling();
     _loadUserDepartments();
+    // مراقبة الإخراج الإجباري من مدير الشركة (SignalR) طوال الجلسة.
+    ForceLogoutService.instance.start();
   }
 
   /// جلب أقسام الليدر المتعددة من API
@@ -744,6 +747,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     } catch (e) {
       debugPrint('⚠️ خطأ في إلغاء FCM token');
     }
+    // إيقاف مراقبة الإخراج الإجباري
+    ForceLogoutService.instance.stop();
     // تسجيل الخروج من كلا النظامين (VPS + FTTH)
     try {
       await DualAuthService.instance.logoutAll();

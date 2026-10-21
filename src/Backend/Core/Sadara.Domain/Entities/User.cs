@@ -114,6 +114,13 @@ public class User : BaseEntity<Guid>
     
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiryTime { get; set; }
+
+    /// <summary>
+    /// ختم إبطال الجلسات (UTC): أي access token صادر قبل هذا الوقت يُرفض في <c>OnTokenValidated</c>.
+    /// يُضبط عند «الإخراج الإجباري» من مدير الشركة ليقطع توكنات الوصول الحالية فوراً (لا ينتظر انتهاءها).
+    /// null = لا إبطال.
+    /// </summary>
+    public DateTime? SessionsRevokedAtUtc { get; set; }
     public string? VerificationCode { get; set; }
     public DateTime? VerificationCodeExpiresAt { get; set; }
     public int FailedLoginAttempts { get; set; } = 0;

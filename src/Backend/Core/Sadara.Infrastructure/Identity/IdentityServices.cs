@@ -58,6 +58,9 @@ public class JwtService : IJwtService
             issuer: _issuer,
             audience: _audience,
             claims: claims,
+            // notBefore يضبط nbf = لحظة الإصدار؛ يُقرأ في OnTokenValidated لمقارنة وقت الإصدار بختم
+            // إبطال الجلسات (SessionsRevokedAtUtc) ⇒ رفض التوكنات الصادرة قبل الإخراج الإجباري.
+            notBefore: DateTime.UtcNow,
             expires: DateTime.UtcNow.AddMinutes(_expiryMinutes),
             signingCredentials: credentials
         );

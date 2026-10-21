@@ -16,14 +16,17 @@ public class TaskHub : Hub
         _logger = logger;
     }
 
+    /// <summary>اسم مجموعة SignalR لشركة — مصدر واحد موحّد يستخدمه الـHub والمتحكّمات (IHubContext).</summary>
+    public static string CompanyGroup(string companyId) => $"company_{companyId}";
+
     public override async Task OnConnectedAsync()
     {
         // إضافة المستخدم إلى مجموعة الشركة
         var companyId = Context.User?.FindFirst("company_id")?.Value;
         if (!string.IsNullOrEmpty(companyId))
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"company_{companyId}");
-            _logger.LogInformation("SignalR: {User} connected to company_{CompanyId}", Context.UserIdentifier, companyId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, CompanyGroup(companyId));
+            _logger.LogInformation("SignalR: {User} connected to {Group}", Context.UserIdentifier, CompanyGroup(companyId));
         }
         await base.OnConnectedAsync();
     }
@@ -33,7 +36,7 @@ public class TaskHub : Hub
         var companyId = Context.User?.FindFirst("company_id")?.Value;
         if (!string.IsNullOrEmpty(companyId))
         {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"company_{companyId}");
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, CompanyGroup(companyId));
         }
         await base.OnDisconnectedAsync(exception);
     }

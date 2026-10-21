@@ -29,6 +29,12 @@ class TaskSignalRService {
   final _anyChangeController = StreamController<String>.broadcast();
   Stream<String> get onAnyChange => _anyChangeController.stream;
 
+  /// إخراج إجباري من الخادم (يبثّه مدير الشركة) — الحمولة تحمل exceptUserId
+  final _forceLogoutController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get onForceLogout =>
+      _forceLogoutController.stream;
+
   /// الاتصال بـ TaskHub
   Future<void> connect() async {
     if (_isConnected) return;
@@ -54,6 +60,7 @@ class TaskSignalRService {
     _hubConnection!.on('TaskUpdated', _onTaskUpdated);
     _hubConnection!.on('TaskAssigned', _onTaskAssigned);
     _hubConnection!.on('TaskDeleted', _onTaskDeleted);
+    _hubConnection!.on('ForceLogout', _onForceLogout);
 
     _hubConnection!.onclose(({error}) {
       _isConnected = false;
@@ -120,6 +127,11 @@ class TaskSignalRService {
     }
   }
 
+  void _onForceLogout(List<Object?>? args) {
+    final data = (args != null && args.isNotEmpty) ? _parseArg(args[0]) : null;
+    _forceLogoutController.add(data ?? <String, dynamic>{});
+  }
+
   Map<String, dynamic>? _parseArg(Object? arg) {
     if (arg is Map) return Map<String, dynamic>.from(arg);
     return null;
@@ -133,5 +145,6 @@ class TaskSignalRService {
     _taskAssignedController.close();
     _taskDeletedController.close();
     _anyChangeController.close();
+    _forceLogoutController.close();
   }
 }

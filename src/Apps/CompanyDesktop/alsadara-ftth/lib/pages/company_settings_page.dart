@@ -327,6 +327,10 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
                     _buildQuickSettingsSection(),
                     const SizedBox(height: 20),
                     _buildSystemInfoCard(),
+                    if (_isCompanyAdminRole) ...[
+                      const SizedBox(height: 20),
+                      _buildDangerZoneCard(),
+                    ],
                   ],
                 ),
               ),
@@ -352,6 +356,133 @@ class _CompanySettingsPageState extends State<CompanySettingsPage>
         ),
       ],
     );
+  }
+
+  /// هل المستخدم الحالي مدير شركة؟ (الباكند يفرض CompanyAdmin/SuperAdmin فعلياً)
+  bool get _isCompanyAdminRole {
+    final r = widget.currentUserRole.trim().toLowerCase();
+    return r.contains('مدير') || r.contains('admin') || r.contains('ادمن');
+  }
+
+  /// بطاقة «منطقة الخطر» — إجراءات حسّاسة على مستوى الشركة.
+  Widget _buildDangerZoneCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: _bgCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: SdColors.danger.withOpacity(0.4), width: 1),
+        boxShadow: const [
+          BoxShadow(color: _shadowColor, blurRadius: 10, offset: Offset(0, 2)),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning_amber_rounded,
+                  color: SdColors.danger, size: 22),
+              const SizedBox(width: 8),
+              Text('منطقة الخطر',
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: SdColors.danger)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'إخراج إجباري لكل موظفي الشركة من التطبيق فوراً (عدا حسابك). '
+            'يُفيد عند الاشتباه بوصول غير مصرّح أو لفرض إعادة الدخول بعد تغيير الصلاحيات.',
+            style: TextStyle(
+                fontFamily: 'Cairo', fontSize: 13, color: _textSubtle),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _forceLogoutCompany,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: SdColors.danger,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.logout_rounded, size: 20),
+              label: const Text('إخراج كل الموظفين الآن',
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// تأكيد ثم استدعاء الباكند لإخراج كل موظفي الشركة إجبارياً.
+  Future<void> _forceLogoutCompany() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: _bgCard,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: SdColors.danger),
+              const SizedBox(width: 8),
+              Text('تأكيد الإخراج الإجباري',
+                  style:
+                      TextStyle(fontFamily: 'Cairo', color: _textDark)),
+            ],
+          ),
+          content: Text(
+            'سيتم إخراج جميع موظفي الشركة من التطبيق فوراً (عدا حسابك)، '
+            'وسيحتاجون لإعادة تسجيل الدخول. هل تريد المتابعة؟',
+            style: TextStyle(fontFamily: 'Cairo', color: _textSubtle),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('إلغاء',
+                  style: TextStyle(fontFamily: 'Cairo', color: _textGray)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: SdColors.danger,
+                  foregroundColor: Colors.white),
+              child: const Text('نعم، أخرِج الجميع',
+                  style: TextStyle(fontFamily: 'Cairo')),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final response = await SadaraApiService.instance
+          .post('/session/force-logout-company');
+      if (response['success'] == true) {
+        final affected = response['data']?['affected'];
+        _showSnack(response['message']?.toString() ??
+            'تم إخراج ${affected ?? ''} مستخدماً');
+      } else {
+        _showSnack(response['message']?.toString() ?? 'فشل تنفيذ الإخراج',
+            isError: true);
+      }
+    } catch (e) {
+      _showSnack('خطأ في الاتصال بالخادم', isError: true);
+    }
   }
 
   Widget _buildCompanyProfileCard() {

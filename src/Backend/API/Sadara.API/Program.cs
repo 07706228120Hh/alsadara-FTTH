@@ -18,6 +18,8 @@ using Sadara.Infrastructure.Services.Server;
 using Serilog;
 using System.Text;
 using System.Threading.RateLimiting;
+using Microsoft.Extensions.Caching.Memory;
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.ResponseCompression;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -118,6 +120,8 @@ builder.Services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
 var jwtSecret = builder.Configuration["Jwt:Secret"] ?? throw new InvalidOperationException("Jwt:Secret غير مضبوط — fail-closed.");
 var key = Encoding.ASCII.GetBytes(jwtSecret);
 
+builder.Services.AddMemoryCache();
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -159,6 +163,39 @@ builder.Services.AddAuthentication(options =>
         {
             var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
             if (identity == null) return;
+
+            // ── إبطال الجلسات (الإخراج الإجباري): رفض أي access token صادر قبل ختم الإبطال ──
+            // يسري على كل توكن (لا يُستثنى من يحمل company_id). مع تخزين مؤقت 30 ثانية لكل مستخدم
+            // لتفادي قراءة قاعدة بيانات لكل طلب. التوكنات الأقدم (بلا nbf) تُترك للمسار الاعتيادي
+            // (مسح RefreshToken) لأنها ستنتهي ولا تُجدَّد.
+            var revUidStr = identity.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                         ?? identity.FindFirst("sub")?.Value;
+            if (Guid.TryParse(revUidStr, out var revUid) && revUid != Guid.Empty)
+            {
+                var issuedAt = (context.SecurityToken as JwtSecurityToken)?.ValidFrom;
+                if (issuedAt.HasValue && issuedAt.Value != DateTime.MinValue)
+                {
+                    var cache = context.HttpContext.RequestServices.GetService<IMemoryCache>();
+                    var cacheKey = "revoked:" + revUid;
+                    if (cache == null || !cache.TryGetValue(cacheKey, out DateTime? revokedAt))
+                    {
+                        var revDb = context.HttpContext.RequestServices.GetService<SadaraDbContext>();
+                        revokedAt = revDb == null
+                            ? null
+                            : await revDb.Users.IgnoreQueryFilters()
+                                .Where(u => u.Id == revUid)
+                                .Select(u => u.SessionsRevokedAtUtc)
+                                .FirstOrDefaultAsync();
+                        cache?.Set(cacheKey, revokedAt, TimeSpan.FromSeconds(30));
+                    }
+
+                    if (revokedAt.HasValue && issuedAt.Value.ToUniversalTime() < revokedAt.Value)
+                    {
+                        context.Fail("session_revoked");
+                        return;
+                    }
+                }
+            }
 
             if (identity.FindFirst("company_id") != null || identity.FindFirst("companyId") != null)
                 return;
@@ -257,6 +294,26 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
+
+    // سياسة مشدّدة لإجراء «الإخراج الإجباري لكل الشركة» — حسّاس وواسع الأثر.
+    // 5 طلبات/دقيقة لكل مستخدم، بلا طابور ⇒ رفض فوري 429 لما يزيد.
+    options.AddPolicy("force-logout", context =>
+    {
+        var userKey = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? context.User?.FindFirst("sub")?.Value
+            ?? context.Connection.RemoteIpAddress?.ToString()
+            ?? "anonymous";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"force-logout:{userKey}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
                 Window = TimeSpan.FromMinutes(1),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0
