@@ -760,7 +760,8 @@ public class CompaniesController : ControllerBase
         }
 
         employee.FullName = request.FullName ?? employee.FullName;
-        employee.Username = request.FullName ?? employee.Username;
+        // لا نغيّر Username عند التعديل: هو معرّف الدخول الثابت. ربطه سابقاً بـ FullName كان يكسر
+        // الدخول باسم المستخدم القديم بعد أي تعديل (ومنه تغيير كلمة المرور). التعديل عبر FullName فقط.
         employee.Email = request.Email ?? employee.Email;
         employee.Department = request.Department ?? employee.Department;
         employee.Center = request.Center ?? employee.Center;

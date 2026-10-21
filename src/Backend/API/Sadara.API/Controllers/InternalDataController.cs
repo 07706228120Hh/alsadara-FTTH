@@ -871,10 +871,12 @@ public class InternalDataController : ControllerBase
             return NotFound(new { success = false, message = "الموظف غير موجود" });
 
         // تحديث البيانات
+        // ملاحظة: لا نغيّر Username هنا. كان يُربط بـ FullName فيُستبدَل اسم المستخدم (معرّف الدخول)
+        // عند أي تعديل للموظف — ومنه تغيير كلمة المرور — فيفشل الدخول باسم المستخدم القديم رغم
+        // حفظ كلمة المرور بشكل صحيح. Username يبقى ثابتاً؛ يُضبط عند إنشاء الموظف فقط.
         if (!string.IsNullOrEmpty(request.FullName))
         {
             employee.FullName = request.FullName;
-            employee.Username = request.FullName;
         }
         if (!string.IsNullOrEmpty(request.PhoneNumber))
             employee.PhoneNumber = request.PhoneNumber;
