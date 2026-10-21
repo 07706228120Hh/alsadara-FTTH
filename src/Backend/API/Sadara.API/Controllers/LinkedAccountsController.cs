@@ -261,7 +261,9 @@ public class LinkedAccountsController : ControllerBase
     /// بلا أي كلمة مرور. (linked_accounts.view) — إدارة حسابات موظّف آخر تتطلب أدمن شركة + نفس الشركة.
     /// </summary>
     [HttpGet]
-    [RequirePermission("linked_accounts", "view", PermissionSystem.Second, failClosed: true)]
+    // لا نشترط صلاحية linked_accounts هنا: عرض حسابات المستخدم نفسه مسموح دائماً (بلا كلمة مرور)،
+    // والعزل مضمون عبر ResolveTargetUserAsync (عرض حسابات موظّف آخر يتطلب أدمن شركة + نفس الشركة).
+    // بهذا يعمل الدخول الصامت لـFTTH لأي موظف يملك حساباً مرتبطاً دون منح صلاحية يدوي.
     public async Task<IActionResult> GetLinkedAccounts([FromQuery] Guid? userId, CancellationToken ct)
     {
         if (!TryResolveScope(out var companyId, out var currentUserId, out var denied))
@@ -791,7 +793,8 @@ public class LinkedAccountsController : ControllerBase
     /// يعيد التوكن فقط (access_token + refresh_token إن توفّر) ولا يعيد كلمة المرور. (linked_accounts.view)
     /// </summary>
     [HttpPost("ftth/{id}/login")]
-    [RequirePermission("linked_accounts", "view", PermissionSystem.Second, failClosed: true)]
+    // لا نشترط صلاحية linked_accounts: الدخول الخادمي لحساب المستخدم نفسه مسموح (العزل عبر
+    // GetAccessibleAccountAsync: حساب الغير يتطلب أدمن شركة). لا يُعاد سرّ، محدود المعدّل، ومُدقّق.
     [EnableRateLimiting("credential-reveal")]
     public async Task<IActionResult> LoginFtth(Guid id, CancellationToken ct)
     {
