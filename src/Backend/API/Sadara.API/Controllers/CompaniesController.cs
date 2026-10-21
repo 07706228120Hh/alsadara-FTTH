@@ -112,13 +112,14 @@ public class CompaniesController : ControllerBase
                 return Unauthorized(new { success = false, message = "الحساب معطل" });
             }
 
-            // التحقق من القفل
-            if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
+            // التحقق من القفل (يُعطَّل عبر Auth:DisableLockout لتسهيل توزيع كلمات المرور الجديدة)
+            var lockoutDisabled = bool.TryParse(_configuration["Auth:DisableLockout"], out var _dl) && _dl;
+            if (!lockoutDisabled && user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
             {
                 var remainingTime = user.LockoutEnd.Value - DateTime.UtcNow;
-                return Unauthorized(new { 
-                    success = false, 
-                    message = $"الحساب مقفل. حاول بعد {remainingTime.Minutes} دقيقة" 
+                return Unauthorized(new {
+                    success = false,
+                    message = $"الحساب مقفل. حاول بعد {remainingTime.Minutes} دقيقة"
                 });
             }
 
@@ -126,8 +127,8 @@ public class CompaniesController : ControllerBase
             if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
                 user.FailedLoginAttempts++;
-                
-                if (user.FailedLoginAttempts >= 5)
+
+                if (!lockoutDisabled && user.FailedLoginAttempts >= 5)
                 {
                     user.LockoutEnd = DateTime.UtcNow.AddMinutes(30);
                     user.FailedLoginAttempts = 0;

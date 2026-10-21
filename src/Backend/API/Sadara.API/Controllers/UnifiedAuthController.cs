@@ -180,8 +180,9 @@ public class UnifiedAuthController : ControllerBase
                 });
             }
 
-            // التحقق من القفل
-            if (user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
+            // التحقق من القفل (يُعطَّل عبر Auth:DisableLockout)
+            var lockoutDisabled = bool.TryParse(_configuration["Auth:DisableLockout"], out var _dl) && _dl;
+            if (!lockoutDisabled && user.LockoutEnd.HasValue && user.LockoutEnd > DateTime.UtcNow)
             {
                 var remainingTime = user.LockoutEnd.Value - DateTime.UtcNow;
                 return Unauthorized(new UnifiedApiResponse<object>
@@ -197,8 +198,8 @@ public class UnifiedAuthController : ControllerBase
             if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
                 user.FailedLoginAttempts++;
-                
-                if (user.FailedLoginAttempts >= 5)
+
+                if (!lockoutDisabled && user.FailedLoginAttempts >= 5)
                 {
                     user.LockoutEnd = DateTime.UtcNow.AddMinutes(30);
                     user.FailedLoginAttempts = 0;
