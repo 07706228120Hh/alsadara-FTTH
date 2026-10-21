@@ -65,6 +65,11 @@ public class CompaniesController : ControllerBase
                 return BadRequest(new { success = false, message = "جميع الحقول مطلوبة" });
             }
 
+            // تطبيع المدخلات: إزالة الفراغات المحيطة. نسخ/لصق كلمة المرور من Excel قد يُلحق مسافة أو
+            // سطراً جديداً (\n) فيفشل التحقق رغم صحّتها. الكلمات المُولَّدة لا تحوي فراغات محيطة أصلاً.
+            var username = request.Username.Trim();
+            var password = request.Password.Trim();
+
             // البحث عن الشركة
             var company = await _unitOfWork.Companies.AsQueryable()
                 .FirstOrDefaultAsync(c => c.Code == request.CompanyCode && !c.IsDeleted);
@@ -90,7 +95,7 @@ public class CompaniesController : ControllerBase
             var user = await _unitOfWork.Users.AsQueryable()
                 .FirstOrDefaultAsync(u => 
                     u.CompanyId == company.Id &&
-                    (u.Username == request.Username || u.PhoneNumber == request.Username || u.Email == request.Username || u.EmployeeCode == request.Username || u.FullName == request.Username) &&
+                    (u.Username == username || u.PhoneNumber == username || u.Email == username || u.EmployeeCode == username || u.FullName == username) &&
                     u.Role >= UserRole.Employee &&
                     !u.IsDeleted);
 
@@ -118,7 +123,7 @@ public class CompaniesController : ControllerBase
             }
 
             // التحقق من كلمة المرور
-            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
             {
                 user.FailedLoginAttempts++;
                 
