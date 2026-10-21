@@ -53,7 +53,7 @@ class SdColors {
 
   /// الإطار الموحّد حول الحقول والبطاقات والأزرار: كحلي رمادي داكن ناعم
   /// (بدل الأسود الصريح — 17-10-2026). غيّر هنا فقط ليتغيّر في كل التطبيق.
-  static const outline = Color(0xFFE3E8F1);
+  static const outline = Color(0xFFC9D4E8); // إطار موحّد بارز قليلاً للبطاقات/الأزرار (كان E3E8F1)
   static const outlineDisabled = Color(0x80E3E8F1);
 
   // ── الدلالية ──

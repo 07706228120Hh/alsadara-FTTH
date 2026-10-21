@@ -3,7 +3,6 @@ import '../../frontend/frontend.dart'; // نظام تصميم الصدارة ا�
 import '../../services/period_closing_service.dart';
 import '../../services/audit_trail_service.dart';
 import '../../services/vps_auth_service.dart';
-import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة إقفال الفترات المحاسبية
 /// فقط CompanyAdmin يمكنه الوصول لهذه الصفحة
@@ -238,7 +237,9 @@ class _PeriodClosingPageState extends State<PeriodClosingPage> {
       decoration: BoxDecoration(
         color: tone.tint,
         borderRadius: BorderRadius.circular(SdRadius.pill),
-        boxShadow: [BoxShadow(color: tone.tintEdge, offset: const Offset(0, SdDepth.chip))],
+        boxShadow: [
+          BoxShadow(color: tone.tintEdge, offset: const Offset(0, SdDepth.chip))
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

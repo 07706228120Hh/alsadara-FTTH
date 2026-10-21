@@ -11,7 +11,6 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../config/app_secrets.dart';
 import '../../services/api/api_config.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_dash_kit.dart';
 
 class VpsDataManagerPage extends StatefulWidget {
   const VpsDataManagerPage({super.key});
@@ -168,7 +167,8 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       if (response.statusCode == 200 || response.statusCode == 204) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('تم الحذف بنجاح'), backgroundColor: SdColors.success),
+              content: Text('تم الحذف بنجاح'),
+              backgroundColor: SdColors.success),
         );
         _fetchData(endpoint);
       } else {
@@ -205,7 +205,8 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('تم التحديث بنجاح'), backgroundColor: SdColors.success),
+              content: Text('تم التحديث بنجاح'),
+              backgroundColor: SdColors.success),
         );
         _fetchData(endpoint);
       } else {
@@ -264,280 +265,278 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
   Widget build(BuildContext context) {
     return SdTheme.scope(
       child: Scaffold(
-      backgroundColor: SdColors.ground,
-      appBar: AppBar(
-        backgroundColor: SdColors.surface,
-        elevation: 0,
-        scrolledUnderElevation: 1,
-        surfaceTintColor: Colors.transparent,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [SdColors.info, SdColors.primaryLight],
+        backgroundColor: SdColors.ground,
+        appBar: AppBar(
+          backgroundColor: SdColors.surface,
+          elevation: 0,
+          scrolledUnderElevation: 1,
+          surfaceTintColor: Colors.transparent,
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [SdColors.info, SdColors.primaryLight],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow:
+                      SdDashKit.glowShadow(SdColors.info.withOpacity(0.3)),
                 ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: SdDashKit.glowShadow(
-                    SdColors.info.withOpacity(0.3)),
+                child: const Icon(Icons.dns_rounded,
+                    color: Colors.white, size: 22),
               ),
-              child:
-                  const Icon(Icons.dns_rounded, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'إدارة بيانات VPS',
-                  style: TextStyle(
-                    color: SdColors.ink,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
+              const SizedBox(width: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'إدارة بيانات VPS',
+                    style: TextStyle(
+                      color: SdColors.ink,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
                   ),
-                ),
-                Text(
-                  'عرض وتعديل بيانات الخادم',
-                  style: TextStyle(
-                    color: SdColors.muted,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        iconTheme: IconThemeData(color: SdColors.ink),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: SdColors.divider),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: _tables.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final t = entry.value;
-                      final isSelected = _selectedTableIndex == index;
-                      return GestureDetector(
-                        onTap: () {
-                          _tabController.animateTo(index);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? SdColors.info
-                                    .withOpacity(0.1)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: isSelected
-                                  ? SdColors.info
-                                      .withOpacity(0.3)
-                                  : SdColors.divider,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(t.icon,
-                                  size: 14,
-                                  color: isSelected
-                                      ? SdColors.info
-                                      : SdColors.faint),
-                              const SizedBox(width: 4),
-                              Text(
-                                t.displayName
-                                    .replaceAll(
-                                        RegExp(r'[^\w\s\u0600-\u06FF]'), '')
-                                    .trim(),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                  color: isSelected
-                                      ? SdColors.info
-                                      : SdColors.ink,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          // حالة الاتصال
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              color: _errorMessage == null && !_isLoading
-                  ? SdColors.success.withOpacity(0.1)
-                  : SdColors.warning.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: _errorMessage == null && !_isLoading
-                    ? SdColors.success.withOpacity(0.3)
-                    : SdColors.warning.withOpacity(0.3),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: _errorMessage == null && !_isLoading
-                        ? SdColors.success
-                        : SdColors.warning,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _errorMessage == null && !_isLoading ? 'متصل' : 'غير متصل',
-                  style: TextStyle(
-                    color: _errorMessage == null && !_isLoading
-                        ? SdColors.success
-                        : SdColors.warning,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: SdColors.info.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.refresh,
-                  color: SdColors.info, size: 20),
-            ),
-            onPressed: () => _fetchData(_tables[_selectedTableIndex].endpoint),
-            tooltip: 'تحديث',
-          ),
-          const SizedBox(width: 8),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: ElevatedButton.icon(
-              onPressed: () => _showAddDialog(),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('إضافة جديد'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: SdColors.success,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Row(
-        children: [
-          // القائمة الرئيسية
-          Expanded(
-            flex: 2,
-            child: Column(
-              children: [
-                // شريط البحث
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  child: SdDashKit.buildSearchBar(
-                    hint:
-                        'البحث في ${_tables[_selectedTableIndex].displayName}...',
-                    onChanged: (value) =>
-                        setState(() => _searchQuery = value.toLowerCase()),
-                  ),
-                ),
-                // إحصائيات
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: SdDashKit.buildStatCard(
-                          title: 'إجمالي السجلات',
-                          value: _currentData.length.toString(),
-                          icon: Icons.storage,
-                          color: SdColors.info,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: SdDashKit.buildStatCard(
-                          title: 'الجدول الحالي',
-                          value: _tables[_selectedTableIndex].displayName,
-                          icon: Icons.table_chart,
-                          color: SdColors.info,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // قائمة البيانات
-                Expanded(
-                  child: _buildDataList(),
-                ),
-              ],
-            ),
-          ),
-          // لوحة التفاصيل
-          if (_selectedItem != null)
-            Container(
-              width: 420,
-              decoration: BoxDecoration(
-                color: SdColors.surface,
-                border: Border(
-                  left: BorderSide(color: SdColors.divider),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 10,
-                    offset: const Offset(-4, 0),
+                  Text(
+                    'عرض وتعديل بيانات الخادم',
+                    style: TextStyle(
+                      color: SdColors.muted,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
-              child: _buildDetailPanel(),
+            ],
+          ),
+          iconTheme: IconThemeData(color: SdColors.ink),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(56),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: SdColors.divider),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: _tables.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final t = entry.value;
+                        final isSelected = _selectedTableIndex == index;
+                        return GestureDetector(
+                          onTap: () {
+                            _tabController.animateTo(index);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? SdColors.info.withOpacity(0.1)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isSelected
+                                    ? SdColors.info.withOpacity(0.3)
+                                    : SdColors.divider,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(t.icon,
+                                    size: 14,
+                                    color: isSelected
+                                        ? SdColors.info
+                                        : SdColors.faint),
+                                const SizedBox(width: 4),
+                                Text(
+                                  t.displayName
+                                      .replaceAll(
+                                          RegExp(r'[^\w\s\u0600-\u06FF]'), '')
+                                      .trim(),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? SdColors.info
+                                        : SdColors.ink,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ),
             ),
-        ],
+          ),
+          actions: [
+            // حالة الاتصال
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: _errorMessage == null && !_isLoading
+                    ? SdColors.success.withOpacity(0.1)
+                    : SdColors.warning.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _errorMessage == null && !_isLoading
+                      ? SdColors.success.withOpacity(0.3)
+                      : SdColors.warning.withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: _errorMessage == null && !_isLoading
+                          ? SdColors.success
+                          : SdColors.warning,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _errorMessage == null && !_isLoading ? 'متصل' : 'غير متصل',
+                    style: TextStyle(
+                      color: _errorMessage == null && !_isLoading
+                          ? SdColors.success
+                          : SdColors.warning,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: SdColors.info.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child:
+                    const Icon(Icons.refresh, color: SdColors.info, size: 20),
+              ),
+              onPressed: () =>
+                  _fetchData(_tables[_selectedTableIndex].endpoint),
+              tooltip: 'تحديث',
+            ),
+            const SizedBox(width: 8),
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: ElevatedButton.icon(
+                onPressed: () => _showAddDialog(),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('إضافة جديد'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: SdColors.success,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: Row(
+          children: [
+            // القائمة الرئيسية
+            Expanded(
+              flex: 2,
+              child: Column(
+                children: [
+                  // شريط البحث
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    child: SdDashKit.buildSearchBar(
+                      hint:
+                          'البحث في ${_tables[_selectedTableIndex].displayName}...',
+                      onChanged: (value) =>
+                          setState(() => _searchQuery = value.toLowerCase()),
+                    ),
+                  ),
+                  // إحصائيات
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: SdDashKit.buildStatCard(
+                            title: 'إجمالي السجلات',
+                            value: _currentData.length.toString(),
+                            icon: Icons.storage,
+                            color: SdColors.info,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: SdDashKit.buildStatCard(
+                            title: 'الجدول الحالي',
+                            value: _tables[_selectedTableIndex].displayName,
+                            icon: Icons.table_chart,
+                            color: SdColors.info,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // قائمة البيانات
+                  Expanded(
+                    child: _buildDataList(),
+                  ),
+                ],
+              ),
+            ),
+            // لوحة التفاصيل
+            if (_selectedItem != null)
+              Container(
+                width: 420,
+                decoration: BoxDecoration(
+                  color: SdColors.surface,
+                  border: Border(
+                    left: BorderSide(color: SdColors.divider),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(-4, 0),
+                    ),
+                  ],
+                ),
+                child: _buildDetailPanel(),
+              ),
+          ],
+        ),
       ),
-    ),
     );
   }
 
   Widget _buildDataList() {
     if (_isLoading) {
-      return SdDashKit.buildLoadingIndicator(
-          message: 'جاري تحميل البيانات...');
+      return SdDashKit.buildLoadingIndicator(message: 'جاري تحميل البيانات...');
     }
 
     if (_errorMessage != null) {
@@ -565,8 +564,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                 color: SdColors.info.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(50),
               ),
-              child: Icon(Icons.inbox_outlined,
-                  size: 48, color: SdColors.info),
+              child: Icon(Icons.inbox_outlined, size: 48, color: SdColors.info),
             ),
             const SizedBox(height: 20),
             Text(
@@ -603,15 +601,11 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isSelected
-            ? SdColors.info.withOpacity(0.15)
-            : SdColors.surface,
+        color: isSelected ? SdColors.info.withOpacity(0.15) : SdColors.surface,
         borderRadius: BorderRadius.circular(12),
         boxShadow: SdDashKit.cardShadow,
         border: Border.all(
-          color: isSelected
-              ? SdColors.info
-              : SdColors.divider,
+          color: isSelected ? SdColors.info : SdColors.divider,
           width: isSelected ? 2 : 1,
         ),
       ),
@@ -639,8 +633,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
           padding: const EdgeInsets.only(top: 4),
           child: Text(
             'ID: $id',
-            style: const TextStyle(
-                color: SdColors.faint, fontSize: 12),
+            style: const TextStyle(color: SdColors.faint, fontSize: 12),
           ),
         ),
         trailing: Row(
@@ -659,7 +652,9 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                 child: Text(
                   item['isActive'] == true ? 'نشط' : 'معطل',
                   style: TextStyle(
-                    color: item['isActive'] == true ? SdColors.success : SdColors.danger,
+                    color: item['isActive'] == true
+                        ? SdColors.success
+                        : SdColors.danger,
                     fontSize: 10,
                   ),
                 ),
@@ -690,8 +685,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            border: Border(
-                bottom: BorderSide(color: SdColors.divider)),
+            border: Border(bottom: BorderSide(color: SdColors.divider)),
           ),
           child: Row(
             children: [
@@ -714,8 +708,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.close,
-                    color: SdColors.faint),
+                icon: const Icon(Icons.close, color: SdColors.faint),
                 onPressed: () => setState(() => _selectedItem = null),
               ),
             ],
@@ -737,8 +730,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            border: Border(
-                top: BorderSide(color: SdColors.divider)),
+            border: Border(top: BorderSide(color: SdColors.divider)),
           ),
           child: Row(
             children: [
@@ -814,8 +806,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.copy,
-                    size: 16, color: SdColors.faint),
+                icon: const Icon(Icons.copy, size: 16, color: SdColors.faint),
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: displayValue));
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -921,9 +912,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
       readOnly: readOnly,
       obscureText: obscureText,
       style: TextStyle(
-        color: readOnly
-            ? SdColors.faint
-            : SdColors.ink,
+        color: readOnly ? SdColors.faint : SdColors.ink,
         fontSize: 15,
       ),
       decoration: InputDecoration(
@@ -944,8 +933,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(
-              color: SdColors.divider, width: 1.5),
+          borderSide: const BorderSide(color: SdColors.divider, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -1046,8 +1034,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء',
-                style: TextStyle(color: SdColors.faint)),
+            child: const Text('إلغاء', style: TextStyle(color: SdColors.faint)),
           ),
           ElevatedButton.icon(
             onPressed: () {
@@ -1116,8 +1103,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
                 color: SdColors.info.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.edit,
-                  color: SdColors.info, size: 22),
+              child: const Icon(Icons.edit, color: SdColors.info, size: 22),
             ),
             const SizedBox(width: 12),
             const Text('تعديل العنصر',
@@ -1153,8 +1139,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء',
-                style: TextStyle(color: SdColors.faint)),
+            child: const Text('إلغاء', style: TextStyle(color: SdColors.faint)),
           ),
           ElevatedButton.icon(
             onPressed: () {
@@ -1220,19 +1205,16 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
           decoration: BoxDecoration(
             color: SdColors.danger.withOpacity(0.15),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-                color: SdColors.danger.withOpacity(0.2)),
+            border: Border.all(color: SdColors.danger.withOpacity(0.2)),
           ),
           child: Row(
             children: [
-              Icon(Icons.info_outline,
-                  color: SdColors.danger.withOpacity(0.7)),
+              Icon(Icons.info_outline, color: SdColors.danger.withOpacity(0.7)),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
                   'هل أنت متأكد من حذف هذا العنصر؟\nهذا الإجراء لا يمكن التراجع عنه.',
-                  style: TextStyle(
-                      color: SdColors.ink, fontSize: 14),
+                  style: TextStyle(color: SdColors.ink, fontSize: 14),
                 ),
               ),
             ],
@@ -1241,8 +1223,7 @@ class _VpsDataManagerPageState extends State<VpsDataManagerPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء',
-                style: TextStyle(color: SdColors.faint)),
+            child: const Text('إلغاء', style: TextStyle(color: SdColors.faint)),
           ),
           ElevatedButton.icon(
             onPressed: () {

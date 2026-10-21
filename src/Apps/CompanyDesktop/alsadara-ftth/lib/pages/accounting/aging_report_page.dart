@@ -5,7 +5,6 @@ import '../../services/accounting_export_service.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة تقرير أعمار الديون - Aging Report
 /// تعرض تحصيلات الفنيين غير المسلّمة مصنّفة حسب العمر الزمني
@@ -79,7 +78,8 @@ class _AgingReportPageState extends State<AgingReportPage> {
       if (result['success'] != true) {
         if (!mounted) return;
         setState(() {
-          _errorMessage = result['message']?.toString() ?? 'خطأ في جلب البيانات';
+          _errorMessage =
+              result['message']?.toString() ?? 'خطأ في جلب البيانات';
           _isLoading = false;
         });
         return;
@@ -167,9 +167,8 @@ class _AgingReportPageState extends State<AgingReportPage> {
   double get _totalDebt =>
       _filteredDebts.fold(0.0, (sum, d) => sum + (d['amount'] as double));
 
-  int _categoryCount(int index) => _filteredDebts
-      .where((d) => d['categoryIndex'] == index)
-      .length;
+  int _categoryCount(int index) =>
+      _filteredDebts.where((d) => d['categoryIndex'] == index).length;
 
   double _categoryAmount(int index) => _filteredDebts
       .where((d) => d['categoryIndex'] == index)
@@ -490,12 +489,15 @@ class _AgingReportPageState extends State<AgingReportPage> {
         scrollDirection: Axis.horizontal,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            minWidth: context.responsive.isMobile ? 550 : MediaQuery.of(context).size.width - ar.paddingH * 2,
+            minWidth: context.responsive.isMobile
+                ? 550
+                : MediaQuery.of(context).size.width - ar.paddingH * 2,
           ),
           child: Column(
             children: [
               _buildTableHeader(),
-              ...List.generate(debts.length, (i) => _buildTableRow(debts[i], i)),
+              ...List.generate(
+                  debts.length, (i) => _buildTableRow(debts[i], i)),
               _buildTableFooter(),
             ],
           ),
@@ -568,9 +570,7 @@ class _AgingReportPageState extends State<AgingReportPage> {
         vertical: ar.tableCellPadV,
       ),
       decoration: BoxDecoration(
-        color: isEven
-            ? color.withOpacity(0.04)
-            : SdColors.surface,
+        color: isEven ? color.withOpacity(0.04) : SdColors.surface,
         border: const Border(
           bottom: BorderSide(color: SdColors.divider, width: 0.5),
         ),

@@ -6,7 +6,7 @@ import '../../services/period_closing_service.dart';
 import '../../services/audit_trail_service.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
+import '../../permissions/permissions.dart';
 
 /// صفحة تحصيلات الفنيين - عرض موحّد للمستحقات مع إمكانية إضافة تحصيل وتسديد
 class CollectionsPage extends StatefulWidget {
@@ -88,11 +88,12 @@ class _CollectionsPageState extends State<CollectionsPage> {
               label: 'تحديث',
               onPressed: _loadDues,
             ),
-            SdAppBarAction(
-              icon: Icons.add,
-              label: 'إضافة تحصيل',
-              onPressed: _showAddDialog,
-            ),
+            if (PermissionManager.instance.canAdd('accounting.collections'))
+              SdAppBarAction(
+                icon: Icons.add,
+                label: 'إضافة تحصيل',
+                onPressed: _showAddDialog,
+              ),
           ],
         ),
         body: SafeArea(top: false, child: _buildBody()),
@@ -177,25 +178,23 @@ class _CollectionsPageState extends State<CollectionsPage> {
                         : null,
                     filled: true,
                     fillColor: SdColors.surface,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 0),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                          context.accR.isMobile ? 8 : 10),
-                      borderSide:
-                          const BorderSide(color: SdColors.divider),
+                      borderRadius:
+                          BorderRadius.circular(context.accR.isMobile ? 8 : 10),
+                      borderSide: const BorderSide(color: SdColors.divider),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                          context.accR.isMobile ? 8 : 10),
-                      borderSide:
-                          const BorderSide(color: SdColors.divider),
+                      borderRadius:
+                          BorderRadius.circular(context.accR.isMobile ? 8 : 10),
+                      borderSide: const BorderSide(color: SdColors.divider),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                          context.accR.isMobile ? 8 : 10),
-                      borderSide: const BorderSide(
-                          color: SdColors.primary, width: 1.5),
+                      borderRadius:
+                          BorderRadius.circular(context.accR.isMobile ? 8 : 10),
+                      borderSide:
+                          const BorderSide(color: SdColors.primary, width: 1.5),
                     ),
                   ),
                 ),
@@ -205,8 +204,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
         ),
         // أزرار الترتيب
         Container(
-          padding: EdgeInsets.symmetric(
-              horizontal: context.accR.paddingH),
+          padding: EdgeInsets.symmetric(horizontal: context.accR.paddingH),
           child: Row(
             children: [
               Text('ترتيب حسب:',
@@ -279,10 +277,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
           selected: isActive,
           selectedColor: SdColors.primary,
           backgroundColor: SdColors.surface,
-          side: BorderSide(
-              color: isActive
-                  ? SdColors.primary
-                  : SdColors.divider),
+          side:
+              BorderSide(color: isActive ? SdColors.primary : SdColors.divider),
           padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 10),
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           visualDensity: VisualDensity.compact,
@@ -313,9 +309,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
           ActionChip(
             avatar: Icon(Icons.date_range,
                 size: isMobile ? 14 : 18,
-                color: _dateLabel == 'مخصص'
-                    ? Colors.white
-                    : SdColors.faint),
+                color: _dateLabel == 'مخصص' ? Colors.white : SdColors.faint),
             label: Text(
                 _dateLabel == 'مخصص' && _dateFrom != null && _dateTo != null
                     ? '${fmt.format(_dateFrom!)} — ${fmt.format(_dateTo!)}'
@@ -323,18 +317,15 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 style: TextStyle(
                     fontFamily: 'Cairo',
                     fontSize: isMobile ? 11 : 13,
-                    fontWeight:
-                        _dateLabel == 'مخصص' ? FontWeight.bold : FontWeight.w500,
-                    color: _dateLabel == 'مخصص'
-                        ? Colors.white
-                        : SdColors.ink)),
-            backgroundColor: _dateLabel == 'مخصص'
-                ? SdColors.primary
-                : SdColors.surface,
+                    fontWeight: _dateLabel == 'مخصص'
+                        ? FontWeight.bold
+                        : FontWeight.w500,
+                    color: _dateLabel == 'مخصص' ? Colors.white : SdColors.ink)),
+            backgroundColor:
+                _dateLabel == 'مخصص' ? SdColors.primary : SdColors.surface,
             side: BorderSide(
-                color: _dateLabel == 'مخصص'
-                    ? SdColors.primary
-                    : SdColors.divider),
+                color:
+                    _dateLabel == 'مخصص' ? SdColors.primary : SdColors.divider),
             padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 10),
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             visualDensity: VisualDensity.compact,
@@ -418,9 +409,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                         child: _statCompact(
                             'صافي المستحقات',
                             '${_fmt(totalNet.abs())} د.ع',
-                            totalNet < 0
-                                ? SdColors.danger
-                                : SdColors.success,
+                            totalNet < 0 ? SdColors.danger : SdColors.success,
                             Icons.account_balance_wallet)),
                   ],
                 ),
@@ -440,18 +429,16 @@ class _CollectionsPageState extends State<CollectionsPage> {
             )
           : Row(
               children: [
-                _stat('إجمالي الأجور', _fmt(totalCharges),
-                    SdColors.danger, Icons.receipt_long),
+                _stat('إجمالي الأجور', _fmt(totalCharges), SdColors.danger,
+                    Icons.receipt_long),
                 SizedBox(width: ar.spaceL),
-                _stat('إجمالي التسديدات', _fmt(totalPayments),
-                    SdColors.success, Icons.payments),
+                _stat('إجمالي التسديدات', _fmt(totalPayments), SdColors.success,
+                    Icons.payments),
                 SizedBox(width: ar.spaceL),
                 _stat(
                     'صافي المستحقات',
                     '${_fmt(totalNet.abs())} د.ع',
-                    totalNet < 0
-                        ? SdColors.danger
-                        : SdColors.success,
+                    totalNet < 0 ? SdColors.danger : SdColors.success,
                     Icons.account_balance_wallet),
                 const Spacer(),
                 _chip('فنيين', '$techCount', SdColors.primary),
@@ -478,8 +465,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: TextStyle(
-                        color: SdColors.faint, fontSize: 9),
+                    style: TextStyle(color: SdColors.faint, fontSize: 9),
                     overflow: TextOverflow.ellipsis),
                 Text(value,
                     style: TextStyle(
@@ -513,8 +499,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(label,
-                style: TextStyle(
-                    color: SdColors.faint, fontSize: ar.caption)),
+                style: TextStyle(color: SdColors.faint, fontSize: ar.caption)),
             Text(value,
                 style: TextStyle(
                     color: color,
@@ -550,16 +535,25 @@ class _CollectionsPageState extends State<CollectionsPage> {
       int cmp;
       switch (_sortBy) {
         case 'name':
-          cmp = (a['name'] ?? '').toString().compareTo((b['name'] ?? '').toString());
+          cmp = (a['name'] ?? '')
+              .toString()
+              .compareTo((b['name'] ?? '').toString());
           break;
         case 'charges':
-          cmp = (a['totalCharges'] ?? 0).toDouble().compareTo((b['totalCharges'] ?? 0).toDouble());
+          cmp = (a['totalCharges'] ?? 0)
+              .toDouble()
+              .compareTo((b['totalCharges'] ?? 0).toDouble());
           break;
         case 'payments':
-          cmp = (a['totalPayments'] ?? 0).toDouble().compareTo((b['totalPayments'] ?? 0).toDouble());
+          cmp = (a['totalPayments'] ?? 0)
+              .toDouble()
+              .compareTo((b['totalPayments'] ?? 0).toDouble());
           break;
         default: // 'net'
-          cmp = (a['netBalance'] ?? 0).toDouble().abs().compareTo((b['netBalance'] ?? 0).toDouble().abs());
+          cmp = (a['netBalance'] ?? 0)
+              .toDouble()
+              .abs()
+              .compareTo((b['netBalance'] ?? 0).toDouble().abs());
       }
       return _sortAsc ? cmp : -cmp;
     });
@@ -707,176 +701,178 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 ),
               ),
             ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(ar.cardRadius),
-              onTap: () => _showTechnicianDetails(tech),
-              child: Padding(
-                padding: isMobile
-                    ? const EdgeInsets.symmetric(horizontal: 8, vertical: 8)
-                    : ar.cardPadding,
-                child: isMobile
-                    ? _buildTechCardMobile(
-                        name: name,
-                        phone: phone,
-                        totalCharges: totalCharges,
-                        totalPayments: totalPayments,
-                        netBalance: netBalance,
-                        txCount: txCount,
-                        lastDate: lastDate,
-                        isDebtor: isDebtor,
-                        tech: tech,
-                      )
-                    : Row(
-                        children: [
-                          Container(
-                            width: ar.iconXL,
-                            height: ar.iconXL,
-                            decoration: BoxDecoration(
-                              color: (isDebtor
-                                      ? SdColors.danger
-                                      : SdColors.success)
-                                  .withValues(alpha: 0.1),
-                              borderRadius:
-                                  BorderRadius.circular(ar.cardRadius),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(ar.cardRadius),
+                onTap: () => _showTechnicianDetails(tech),
+                child: Padding(
+                  padding: isMobile
+                      ? const EdgeInsets.symmetric(horizontal: 8, vertical: 8)
+                      : ar.cardPadding,
+                  child: isMobile
+                      ? _buildTechCardMobile(
+                          name: name,
+                          phone: phone,
+                          totalCharges: totalCharges,
+                          totalPayments: totalPayments,
+                          netBalance: netBalance,
+                          txCount: txCount,
+                          lastDate: lastDate,
+                          isDebtor: isDebtor,
+                          tech: tech,
+                        )
+                      : Row(
+                          children: [
+                            Container(
+                              width: ar.iconXL,
+                              height: ar.iconXL,
+                              decoration: BoxDecoration(
+                                color: (isDebtor
+                                        ? SdColors.danger
+                                        : SdColors.success)
+                                    .withValues(alpha: 0.1),
+                                borderRadius:
+                                    BorderRadius.circular(ar.cardRadius),
+                              ),
+                              child: Icon(
+                                isDebtor
+                                    ? Icons.warning_amber_rounded
+                                    : Icons.check_circle_outline,
+                                color: isDebtor
+                                    ? SdColors.danger
+                                    : SdColors.success,
+                                size: ar.iconM,
+                              ),
                             ),
-                            child: Icon(
-                              isDebtor
-                                  ? Icons.warning_amber_rounded
-                                  : Icons.check_circle_outline,
-                              color: isDebtor
-                                  ? SdColors.danger
-                                  : SdColors.success,
-                              size: ar.iconM,
-                            ),
-                          ),
-                          SizedBox(width: ar.spaceL),
-                          Expanded(
-                            flex: 3,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(name,
-                                    style: TextStyle(
-                                        fontFamily: 'Cairo',
-                                        fontSize: ar.body,
-                                        fontWeight: FontWeight.bold,
-                                        color: SdColors.ink)),
-                                if (phone.isNotEmpty)
-                                  Text(phone,
+                            SizedBox(width: ar.spaceL),
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(name,
                                       style: TextStyle(
-                                          color: SdColors.faint,
-                                          fontSize: ar.small)),
-                              ],
+                                          fontFamily: 'Cairo',
+                                          fontSize: ar.body,
+                                          fontWeight: FontWeight.bold,
+                                          color: SdColors.ink)),
+                                  if (phone.isNotEmpty)
+                                    Text(phone,
+                                        style: TextStyle(
+                                            color: SdColors.faint,
+                                            fontSize: ar.small)),
+                                ],
+                              ),
                             ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              children: [
-                                Text('الأجور',
-                                    style: TextStyle(
-                                        color: SdColors.faint,
-                                        fontSize: ar.caption)),
-                                Text('${_fmt(totalCharges)} د.ع',
-                                    style: TextStyle(
-                                        color: SdColors.danger,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: ar.financialSmall)),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              children: [
-                                Text('التسديدات',
-                                    style: TextStyle(
-                                        color: SdColors.faint,
-                                        fontSize: ar.caption)),
-                                Text('${_fmt(totalPayments)} د.ع',
-                                    style: TextStyle(
-                                        color: SdColors.success,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: ar.financialSmall)),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              children: [
-                                Text('المستحق',
-                                    style: TextStyle(
-                                        color: SdColors.faint,
-                                        fontSize: ar.caption)),
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: ar.spaceS,
-                                      vertical: ar.spaceXS),
-                                  decoration: BoxDecoration(
-                                    color: (isDebtor
-                                            ? SdColors.danger
-                                            : SdColors.success)
-                                        .withValues(alpha: 0.12),
-                                    borderRadius:
-                                        BorderRadius.circular(ar.btnRadius),
-                                  ),
-                                  child: Text(
-                                    '${_fmt(netBalance.abs())} د.ع',
-                                    style: TextStyle(
-                                        color: isDebtor
-                                            ? SdColors.danger
-                                            : SdColors.success,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: ar.financialSmall),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(
-                            width: ar.colStatusW,
-                            child: Column(
-                              children: [
-                                Text('$txCount معاملة',
-                                    style: TextStyle(
-                                        color: SdColors.muted,
-                                        fontSize: ar.caption)),
-                                if (lastDate != null)
-                                  Text(_formatDate(lastDate),
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                children: [
+                                  Text('الأجور',
                                       style: TextStyle(
                                           color: SdColors.faint,
                                           fontSize: ar.caption)),
-                              ],
-                            ),
-                          ),
-                          SizedBox(width: ar.spaceS),
-                          if (isDebtor)
-                            ElevatedButton.icon(
-                              onPressed: () => _showRecordPaymentDialog(tech),
-                              icon: Icon(Icons.payments, size: ar.iconXS),
-                              label: Text('تسديد',
-                                  style: TextStyle(fontSize: ar.caption)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: SdColors.success
-                                    .withValues(alpha: 0.15),
-                                foregroundColor: SdColors.success,
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: ar.spaceM,
-                                    vertical: ar.spaceXS),
-                                elevation: 0,
+                                  Text('${_fmt(totalCharges)} د.ع',
+                                      style: TextStyle(
+                                          color: SdColors.danger,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: ar.financialSmall)),
+                                ],
                               ),
                             ),
-                          SizedBox(width: context.accR.spaceXS),
-                          Icon(Icons.chevron_left,
-                              color: SdColors.faint, size: ar.iconM),
-                        ],
-                      ),
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                children: [
+                                  Text('التسديدات',
+                                      style: TextStyle(
+                                          color: SdColors.faint,
+                                          fontSize: ar.caption)),
+                                  Text('${_fmt(totalPayments)} د.ع',
+                                      style: TextStyle(
+                                          color: SdColors.success,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: ar.financialSmall)),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                children: [
+                                  Text('المستحق',
+                                      style: TextStyle(
+                                          color: SdColors.faint,
+                                          fontSize: ar.caption)),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: ar.spaceS,
+                                        vertical: ar.spaceXS),
+                                    decoration: BoxDecoration(
+                                      color: (isDebtor
+                                              ? SdColors.danger
+                                              : SdColors.success)
+                                          .withValues(alpha: 0.12),
+                                      borderRadius:
+                                          BorderRadius.circular(ar.btnRadius),
+                                    ),
+                                    child: Text(
+                                      '${_fmt(netBalance.abs())} د.ع',
+                                      style: TextStyle(
+                                          color: isDebtor
+                                              ? SdColors.danger
+                                              : SdColors.success,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: ar.financialSmall),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(
+                              width: ar.colStatusW,
+                              child: Column(
+                                children: [
+                                  Text('$txCount معاملة',
+                                      style: TextStyle(
+                                          color: SdColors.muted,
+                                          fontSize: ar.caption)),
+                                  if (lastDate != null)
+                                    Text(_formatDate(lastDate),
+                                        style: TextStyle(
+                                            color: SdColors.faint,
+                                            fontSize: ar.caption)),
+                                ],
+                              ),
+                            ),
+                            SizedBox(width: ar.spaceS),
+                            if (isDebtor &&
+                                PermissionManager.instance
+                                    .canAdd('accounting.collections'))
+                              ElevatedButton.icon(
+                                onPressed: () => _showRecordPaymentDialog(tech),
+                                icon: Icon(Icons.payments, size: ar.iconXS),
+                                label: Text('تسديد',
+                                    style: TextStyle(fontSize: ar.caption)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      SdColors.success.withValues(alpha: 0.15),
+                                  foregroundColor: SdColors.success,
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: ar.spaceM,
+                                      vertical: ar.spaceXS),
+                                  elevation: 0,
+                                ),
+                              ),
+                            SizedBox(width: context.accR.spaceXS),
+                            Icon(Icons.chevron_left,
+                                color: SdColors.faint, size: ar.iconM),
+                          ],
+                        ),
+                ),
               ),
             ),
-          ),
           ),
         );
       },
@@ -907,9 +903,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: (isDebtor
-                        ? SdColors.danger
-                        : SdColors.success)
+                color: (isDebtor ? SdColors.danger : SdColors.success)
                     .withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -917,8 +911,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 isDebtor
                     ? Icons.warning_amber_rounded
                     : Icons.check_circle_outline,
-                color:
-                    isDebtor ? SdColors.danger : SdColors.success,
+                color: isDebtor ? SdColors.danger : SdColors.success,
                 size: 18,
               ),
             ),
@@ -941,14 +934,14 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 ],
               ),
             ),
-            if (isDebtor)
+            if (isDebtor &&
+                PermissionManager.instance.canAdd('accounting.collections'))
               ElevatedButton.icon(
                 onPressed: () => _showRecordPaymentDialog(tech),
                 icon: const Icon(Icons.payments, size: 14),
                 label: const Text('تسديد', style: TextStyle(fontSize: 10)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      SdColors.success.withValues(alpha: 0.15),
+                  backgroundColor: SdColors.success.withValues(alpha: 0.15),
                   foregroundColor: SdColors.success,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -957,8 +950,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 ),
               ),
             const SizedBox(width: 4),
-            Icon(Icons.chevron_left,
-                color: SdColors.faint, size: 18),
+            Icon(Icons.chevron_left, color: SdColors.faint, size: 18),
           ],
         ),
         const SizedBox(height: 8),
@@ -966,35 +958,31 @@ class _CollectionsPageState extends State<CollectionsPage> {
         Row(
           children: [
             Expanded(
-              child: _miniStat('الأجور', '${_fmt(totalCharges)} د.ع',
-                  SdColors.danger),
+              child: _miniStat(
+                  'الأجور', '${_fmt(totalCharges)} د.ع', SdColors.danger),
             ),
             const SizedBox(width: 6),
             Expanded(
-              child: _miniStat('التسديدات', '${_fmt(totalPayments)} د.ع',
-                  SdColors.success),
+              child: _miniStat(
+                  'التسديدات', '${_fmt(totalPayments)} د.ع', SdColors.success),
             ),
             const SizedBox(width: 6),
             Expanded(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 decoration: BoxDecoration(
-                  color: (isDebtor
-                          ? SdColors.danger
-                          : SdColors.success)
+                  color: (isDebtor ? SdColors.danger : SdColors.success)
                       .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Column(
                   children: [
                     const Text('المستحق',
-                        style: TextStyle(
-                            color: SdColors.faint, fontSize: 9)),
+                        style: TextStyle(color: SdColors.faint, fontSize: 9)),
                     Text('${_fmt(netBalance.abs())} د.ع',
                         style: TextStyle(
-                            color: isDebtor
-                                ? SdColors.danger
-                                : SdColors.success,
+                            color:
+                                isDebtor ? SdColors.danger : SdColors.success,
                             fontWeight: FontWeight.bold,
                             fontSize: 11),
                         overflow: TextOverflow.ellipsis),
@@ -1006,12 +994,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
             Column(
               children: [
                 Text('$txCount معاملة',
-                    style: const TextStyle(
-                        color: SdColors.muted, fontSize: 9)),
+                    style: const TextStyle(color: SdColors.muted, fontSize: 9)),
                 if (lastDate != null)
                   Text(_formatDate(lastDate),
-                      style: const TextStyle(
-                          color: SdColors.faint, fontSize: 9)),
+                      style:
+                          const TextStyle(color: SdColors.faint, fontSize: 9)),
               ],
             ),
           ],
@@ -1023,9 +1010,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
   Widget _miniStat(String label, String value, Color color) {
     return Column(
       children: [
-        Text(label,
-            style:
-                const TextStyle(color: SdColors.faint, fontSize: 9)),
+        Text(label, style: const TextStyle(color: SdColors.faint, fontSize: 9)),
         Text(value,
             style: TextStyle(
                 color: color, fontWeight: FontWeight.bold, fontSize: 11),
@@ -1120,8 +1105,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                     child: Row(
                       children: [
                         Icon(Icons.info_outline,
-                            color: SdColors.danger,
-                            size: context.accR.iconM),
+                            color: SdColors.danger, size: context.accR.iconM),
                         SizedBox(width: context.accR.spaceS),
                         Text('المبلغ المستحق: ${_fmt(netBalance.abs())} د.ع',
                             style: const TextStyle(
@@ -1148,16 +1132,19 @@ class _CollectionsPageState extends State<CollectionsPage> {
                       }
                     },
                     child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       decoration: BoxDecoration(
                         border: Border.all(color: SdColors.faint),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.calendar_today, color: SdColors.success, size: 18),
+                          Icon(Icons.calendar_today,
+                              color: SdColors.success, size: 18),
                           SizedBox(width: 8),
-                          Text('التاريخ: ${selectedDate.year}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.day.toString().padLeft(2, '0')}',
+                          Text(
+                              'التاريخ: ${selectedDate.year}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.day.toString().padLeft(2, '0')}',
                               style: TextStyle(fontSize: 14)),
                           const Spacer(),
                           Icon(Icons.edit, color: SdColors.faint, size: 16),
@@ -1173,8 +1160,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('إلغاء',
-                    style: TextStyle(color: SdColors.faint)),
+                child: Text('إلغاء', style: TextStyle(color: SdColors.faint)),
               ),
               ElevatedButton.icon(
                 icon: Icon(Icons.check, size: context.accR.iconM),
@@ -1192,7 +1178,9 @@ class _CollectionsPageState extends State<CollectionsPage> {
                   Navigator.pop(ctx);
                   // فحص الفترة المحاسبية
                   final payOk = await PeriodClosingService.checkAndWarnIfClosed(
-                    context, date: selectedDate, companyId: widget.companyId ?? '',
+                    context,
+                    date: selectedDate,
+                    companyId: widget.companyId ?? '',
                   );
                   if (!payOk) return;
                   final result =
@@ -1309,12 +1297,10 @@ class _CollectionsPageState extends State<CollectionsPage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
-                            color: SdColors.primary
-                                .withValues(alpha: 0.08),
+                            color: SdColors.primary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                                color: SdColors.primary
-                                    .withValues(alpha: 0.3)),
+                                color: SdColors.primary.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             children: [
@@ -1367,13 +1353,11 @@ class _CollectionsPageState extends State<CollectionsPage> {
                       else ...[
                         TextField(
                           controller: searchCtrl,
-                          style: const TextStyle(
-                              color: SdColors.ink),
+                          style: const TextStyle(color: SdColors.ink),
                           decoration: InputDecoration(
                             hintText: 'ابحث عن الفني بالاسم...',
                             hintStyle: TextStyle(
-                                color: SdColors.faint
-                                    .withValues(alpha: 0.6)),
+                                color: SdColors.faint.withValues(alpha: 0.6)),
                             prefixIcon: const Icon(Icons.search,
                                 color: SdColors.primary),
                             filled: true,
@@ -1420,8 +1404,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                 ? const Padding(
                                     padding: EdgeInsets.all(12),
                                     child: Text('لا توجد نتائج',
-                                        style: TextStyle(
-                                            color: SdColors.faint)),
+                                        style:
+                                            TextStyle(color: SdColors.faint)),
                                   )
                                 : ListView.builder(
                                     shrinkWrap: true,
@@ -1432,8 +1416,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                         dense: true,
                                         leading: CircleAvatar(
                                           radius: 14,
-                                          backgroundColor: SdUiKit
-                                              .neonBlue
+                                          backgroundColor: SdUiKit.neonBlue
                                               .withValues(alpha: 0.15),
                                           child: Text(
                                             (emp['FullName'] ?? '?')
@@ -1448,8 +1431,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                                         title: Text(
                                           emp['FullName'] ?? '',
                                           style: TextStyle(
-                                              color:
-                                                  SdColors.ink,
+                                              color: SdColors.ink,
                                               fontSize:
                                                   context.accR.financialSmall),
                                         ),
@@ -1513,8 +1495,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
               actions: [
                 TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: Text('إلغاء',
-                        style: TextStyle(color: SdColors.faint))),
+                    child:
+                        Text('إلغاء', style: TextStyle(color: SdColors.faint))),
                 ElevatedButton.icon(
                   icon: Icon(Icons.check, size: context.accR.iconM),
                   label: const Text('إضافة'),
@@ -1527,14 +1509,16 @@ class _CollectionsPageState extends State<CollectionsPage> {
                       return;
                     }
                     if (amountCtrl.text.isEmpty || descCtrl.text.isEmpty) {
-                      _snack('الرجاء ملء الحقول المطلوبة',
-                          SdColors.warning);
+                      _snack('الرجاء ملء الحقول المطلوبة', SdColors.warning);
                       return;
                     }
                     Navigator.pop(ctx);
                     // فحص الفترة المحاسبية
-                    final createOk = await PeriodClosingService.checkAndWarnIfClosed(
-                      context, date: DateTime.now(), companyId: widget.companyId ?? '',
+                    final createOk =
+                        await PeriodClosingService.checkAndWarnIfClosed(
+                      context,
+                      date: DateTime.now(),
+                      companyId: widget.companyId ?? '',
                     );
                     if (!createOk) return;
                     final result =
@@ -1560,8 +1544,7 @@ class _CollectionsPageState extends State<CollectionsPage> {
                       );
                       _loadDues();
                     } else {
-                      _snack(
-                          result['message'] ?? 'خطأ', SdColors.danger);
+                      _snack(result['message'] ?? 'خطأ', SdColors.danger);
                     }
                   },
                 ),
@@ -1739,17 +1722,13 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
               Container(
                 padding: EdgeInsets.all(context.accR.spaceS),
                 decoration: BoxDecoration(
-                  color: (isCharge
-                          ? SdColors.danger
-                          : SdColors.success)
+                  color: (isCharge ? SdColors.danger : SdColors.success)
                       .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                     isCharge ? Icons.arrow_downward : Icons.arrow_upward,
-                    color: isCharge
-                        ? SdColors.danger
-                        : SdColors.success,
+                    color: isCharge ? SdColors.danger : SdColors.success,
                     size: context.accR.iconM),
               ),
               SizedBox(width: context.accR.spaceM),
@@ -1793,9 +1772,8 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                         Text(
                           '${isCharge ? "-" : "+"}${_fmt(amount)} د.ع',
                           style: TextStyle(
-                              color: isCharge
-                                  ? SdColors.danger
-                                  : SdColors.success,
+                              color:
+                                  isCharge ? SdColors.danger : SdColors.success,
                               fontWeight: FontWeight.bold,
                               fontSize: context.accR.financialLarge),
                         ),
@@ -1849,8 +1827,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
               },
               icon: Icon(Icons.edit_outlined, size: context.accR.iconS),
               label: const Text('تعديل'),
-              style: TextButton.styleFrom(
-                  foregroundColor: SdColors.primary),
+              style: TextButton.styleFrom(foregroundColor: SdColors.primary),
             ),
             TextButton.icon(
               onPressed: () {
@@ -1859,8 +1836,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
               },
               icon: Icon(Icons.delete_outline, size: context.accR.iconS),
               label: const Text('حذف'),
-              style:
-                  TextButton.styleFrom(foregroundColor: SdColors.danger),
+              style: TextButton.styleFrom(foregroundColor: SdColors.danger),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx),
@@ -1886,8 +1862,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
             width: 130,
             child: Text(label,
                 style: TextStyle(
-                    color: SdColors.faint,
-                    fontSize: context.accR.small)),
+                    color: SdColors.faint, fontSize: context.accR.small)),
           ),
           Expanded(
             child: Text(value,
@@ -1996,16 +1971,19 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                         }
                       },
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                         decoration: BoxDecoration(
                           border: Border.all(color: SdColors.faint),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.calendar_today, color: SdColors.success, size: 18),
+                            Icon(Icons.calendar_today,
+                                color: SdColors.success, size: 18),
                             SizedBox(width: 8),
-                            Text('التاريخ: ${txDate.year}/${txDate.month.toString().padLeft(2, '0')}/${txDate.day.toString().padLeft(2, '0')}',
+                            Text(
+                                'التاريخ: ${txDate.year}/${txDate.month.toString().padLeft(2, '0')}/${txDate.day.toString().padLeft(2, '0')}',
                                 style: TextStyle(fontSize: 14)),
                             const Spacer(),
                             Icon(Icons.edit, color: SdColors.faint, size: 16),
@@ -2053,8 +2031,8 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: Text('إلغاء',
-                      style: TextStyle(color: SdColors.faint))),
+                  child:
+                      Text('إلغاء', style: TextStyle(color: SdColors.faint))),
               ElevatedButton.icon(
                 icon: Icon(Icons.check, size: context.accR.iconM),
                 label: const Text('حفظ التعديل'),
@@ -2073,8 +2051,11 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                   }
                   Navigator.pop(ctx);
                   // فحص الفترة المحاسبية
-                  final editOk = await PeriodClosingService.checkAndWarnIfClosed(
-                    context, date: txDate, companyId: VpsAuthService.instance.currentCompanyId ?? '',
+                  final editOk =
+                      await PeriodClosingService.checkAndWarnIfClosed(
+                    context,
+                    date: txDate,
+                    companyId: VpsAuthService.instance.currentCompanyId ?? '',
                   );
                   if (!editOk) return;
                   final result = await AccountingService.instance
@@ -2083,8 +2064,9 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                     amount: amount,
                     description: descCtrl.text,
                     notes: notesCtrl.text,
-                    receivedBy:
-                        receivedByCtrl.text.isEmpty ? null : receivedByCtrl.text,
+                    receivedBy: receivedByCtrl.text.isEmpty
+                        ? null
+                        : receivedByCtrl.text,
                     transactionDate: txDate,
                   );
                   if (result['success'] == true) {
@@ -2148,8 +2130,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
             children: [
               Text('هل تريد حذف هذه المعاملة؟',
                   style: TextStyle(
-                      color: SdColors.ink,
-                      fontSize: context.accR.body)),
+                      color: SdColors.ink, fontSize: context.accR.body)),
               SizedBox(height: context.accR.spaceM),
               Container(
                 padding: EdgeInsets.all(context.accR.spaceM),
@@ -2162,8 +2143,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                   children: [
                     Text(desc,
                         style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: SdColors.ink)),
+                            fontWeight: FontWeight.w600, color: SdColors.ink)),
                     Text('${_fmt(amount)} د.ع',
                         style: const TextStyle(
                             color: SdColors.danger,
@@ -2174,15 +2154,13 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
               SizedBox(height: context.accR.spaceS),
               Text('سيتم عكس تأثير المعاملة على رصيد الفني',
                   style: TextStyle(
-                      color: SdColors.warning,
-                      fontSize: context.accR.small)),
+                      color: SdColors.warning, fontSize: context.accR.small)),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('إلغاء',
-                  style: TextStyle(color: SdColors.faint)),
+              child: Text('إلغاء', style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton.icon(
               icon: Icon(Icons.delete, size: context.accR.iconM),
@@ -2194,10 +2172,13 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
               onPressed: () async {
                 Navigator.pop(ctx);
                 // فحص الفترة المحاسبية
-                final delDate = DateTime.tryParse(tx['createdAt']?.toString() ?? '');
+                final delDate =
+                    DateTime.tryParse(tx['createdAt']?.toString() ?? '');
                 if (delDate != null) {
                   final delOk = await PeriodClosingService.checkAndWarnIfClosed(
-                    context, date: delDate, companyId: VpsAuthService.instance.currentCompanyId ?? '',
+                    context,
+                    date: delDate,
+                    companyId: VpsAuthService.instance.currentCompanyId ?? '',
                   );
                   if (!delOk) return;
                 }
@@ -2260,8 +2241,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
             decoration: const BoxDecoration(
               color: SdColors.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-              border: Border(
-                  bottom: BorderSide(color: SdColors.divider)),
+              border: Border(bottom: BorderSide(color: SdColors.divider)),
             ),
             child: Row(
               children: [
@@ -2272,8 +2252,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(Icons.receipt_long,
-                      color: SdColors.primary,
-                      size: context.accR.iconM),
+                      color: SdColors.primary, size: context.accR.iconM),
                 ),
                 SizedBox(width: context.accR.spaceM),
                 Expanded(
@@ -2288,14 +2267,12 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                   onPressed: _loadTransactions,
                   icon: Icon(Icons.refresh, size: context.accR.iconM),
                   tooltip: 'تحديث',
-                  style: IconButton.styleFrom(
-                      foregroundColor: SdColors.muted),
+                  style: IconButton.styleFrom(foregroundColor: SdColors.muted),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
                   icon: Icon(Icons.close, size: context.accR.iconM),
-                  style: IconButton.styleFrom(
-                      foregroundColor: SdColors.faint),
+                  style: IconButton.styleFrom(foregroundColor: SdColors.faint),
                 ),
               ],
             ),
@@ -2320,18 +2297,15 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
           Expanded(
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(
-                        color: SdColors.primary))
+                    child: CircularProgressIndicator(color: SdColors.primary))
                 : _error != null
                     ? Center(
                         child: Text(_error!,
-                            style:
-                                const TextStyle(color: SdColors.danger)))
+                            style: const TextStyle(color: SdColors.danger)))
                     : _transactions.isEmpty
                         ? const Center(
                             child: Text('لا توجد معاملات',
-                                style: TextStyle(
-                                    color: SdColors.faint)))
+                                style: TextStyle(color: SdColors.faint)))
                         : ListView.builder(
                             padding: EdgeInsets.all(context.accR.spaceM),
                             itemCount: _filteredTransactions.length,
@@ -2400,8 +2374,8 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                             children: [
                                               Text(desc,
                                                   style: TextStyle(
-                                                      color: SdUiKit
-                                                          .textPrimary,
+                                                      color:
+                                                          SdUiKit.textPrimary,
                                                       fontWeight:
                                                           FontWeight.w600,
                                                       fontSize: context.accR
@@ -2409,15 +2383,15 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                               if (customerName.isNotEmpty)
                                                 Text('العميل: $customerName',
                                                     style: TextStyle(
-                                                        color: SdUiKit
-                                                            .textMuted,
+                                                        color:
+                                                            SdUiKit.textMuted,
                                                         fontSize: context
                                                             .accR.small)),
                                               if (taskType.isNotEmpty)
                                                 Text('النوع: $taskType',
                                                     style: TextStyle(
-                                                        color: SdUiKit
-                                                            .textMuted,
+                                                        color:
+                                                            SdUiKit.textMuted,
                                                         fontSize: context
                                                             .accR.small)),
                                             ],
@@ -2435,8 +2409,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                         SizedBox(width: context.accR.spaceM),
                                         Text(_formatDate(date),
                                             style: TextStyle(
-                                                color:
-                                                    SdColors.faint,
+                                                color: SdColors.faint,
                                                 fontSize:
                                                     context.accR.caption)),
                                         SizedBox(width: context.accR.spaceXS),
@@ -2447,8 +2420,7 @@ class _TechnicianDetailsDialogState extends State<_TechnicianDetailsDialog> {
                                             padding: EdgeInsets.all(4),
                                             child: Icon(Icons.edit_outlined,
                                                 size: context.accR.iconS,
-                                                color:
-                                                    SdColors.primary),
+                                                color: SdColors.primary),
                                           ),
                                         ),
                                         InkWell(

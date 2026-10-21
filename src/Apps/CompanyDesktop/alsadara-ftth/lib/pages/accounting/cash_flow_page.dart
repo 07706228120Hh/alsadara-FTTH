@@ -5,7 +5,6 @@ import '../../services/accounting_export_service.dart';
 import '../../services/accounting_pdf_export_service.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة التدفقات النقدية - Cash Flow Statement
 class CashFlowPage extends StatefulWidget {
@@ -223,8 +222,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
           Expanded(
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(
-                        color: SdColors.success))
+                    child: CircularProgressIndicator(color: SdColors.success))
                 : _errorMessage != null
                     ? SdUiKit.errorView(_errorMessage!, _loadData)
                     : _buildContent(ar),
@@ -327,8 +325,8 @@ class _CashFlowPageState extends State<CashFlowPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('تم التصدير: $path', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+          content: Text('تم التصدير: $path',
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
           backgroundColor: SdColors.success,
           duration: const Duration(seconds: 4),
         ),
@@ -337,8 +335,8 @@ class _CashFlowPageState extends State<CashFlowPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('خطأ في التصدير', style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+          content: Text('خطأ في التصدير',
+              style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
           backgroundColor: SdColors.danger,
         ),
       );
@@ -415,9 +413,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
         borderRadius: BorderRadius.circular(ar.cardRadius + 4),
         boxShadow: [
           BoxShadow(
-            color: (_isPositive
-                    ? SdColors.success
-                    : SdColors.danger)
+            color: (_isPositive ? SdColors.success : SdColors.danger)
                 .withOpacity(0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
@@ -578,8 +574,7 @@ class _CashFlowPageState extends State<CashFlowPage> {
               final refType = item['referenceType']?.toString() ?? '';
 
               return Container(
-                color:
-                    i.isEven ? Colors.transparent : SdColors.surfaceAlt,
+                color: i.isEven ? Colors.transparent : SdColors.surfaceAlt,
                 padding: EdgeInsets.symmetric(
                     horizontal: isMob ? 10 : ar.spaceL,
                     vertical: isMob ? 6 : ar.spaceS),

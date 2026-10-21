@@ -6,7 +6,6 @@ import '../../services/accounting_service.dart';
 import '../../services/accounting_cache_service.dart';
 import '../../frontend/frontend.dart';
 import 'chart_of_accounts_page.dart';
-import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة الإحصائيات - داشبورد محاسبي بمخططات بيانية (شاشة واحدة بدون تمرير)
 class StatisticsPage extends StatefulWidget {
@@ -78,8 +77,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         final data = dashResult['data'] is Map<String, dynamic>
             ? dashResult['data']
             : <String, dynamic>{};
-        final balances =
-            data['AccountBalances'] as Map<String, dynamic>? ?? {};
+        final balances = data['AccountBalances'] as Map<String, dynamic>? ?? {};
         if (balances['CashRegisterBalance'] == null &&
             accountsResult['success'] == true) {
           final accounts = accountsResult['data'] as List? ?? [];
@@ -148,8 +146,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
           top: false,
           child: _isLoading
               ? const Center(
-                  child: CircularProgressIndicator(
-                      color: SdColors.primary))
+                  child: CircularProgressIndicator(color: SdColors.primary))
               : _errorMessage != null
                   ? _buildErrorView()
                   : _buildDashboard(),
@@ -371,14 +368,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   List<Widget> _buildKpiList(Map<String, dynamic> balances) {
     return [
-      _kpi('القاصة', balances['CashRegisterBalance'],
-          SdColors.primary, Icons.point_of_sale_rounded),
+      _kpi('القاصة', balances['CashRegisterBalance'], SdColors.primary,
+          Icons.point_of_sale_rounded),
       _kpi('الصندوق الرئيسي', balances['MainCashBoxBalance'],
           SdColors.accentEdge, Icons.account_balance_rounded),
       _kpi('رصيد الصفحة', balances['PageBalance'], SdColors.info,
           Icons.account_balance_wallet_rounded),
-      _kpi('الصندوق النقدي', balances['CashAccountBalance'],
-          SdColors.success, Icons.savings_rounded),
+      _kpi('الصندوق النقدي', balances['CashAccountBalance'], SdColors.success,
+          Icons.savings_rounded),
       _kpiHighlight('صافي الدخل', balances['NetIncome']),
       _kpi('مستحقات المشغلين', balances['OperatorReceivables'],
           SdColors.platformBase, Icons.people_rounded),
@@ -598,26 +595,22 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 PieChartData(
                   sectionsSpace: 3,
                   centerSpaceRadius: 36,
-                  sections: items
-                      .map((e) {
-                        final pct = total > 0
-                            ? (e.value.abs() / total * 100)
-                            : 0.0;
-                        return PieChartSectionData(
-                          value: e.value.abs(),
-                          color: e.color,
-                          radius: 34,
-                          title: pct >= 5 ? '${pct.toStringAsFixed(0)}%' : '',
-                          titleStyle: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                          titlePositionPercentageOffset: 0.55,
-                        );
-                      })
-                      .toList(),
+                  sections: items.map((e) {
+                    final pct = total > 0 ? (e.value.abs() / total * 100) : 0.0;
+                    return PieChartSectionData(
+                      value: e.value.abs(),
+                      color: e.color,
+                      radius: 34,
+                      title: pct >= 5 ? '${pct.toStringAsFixed(0)}%' : '',
+                      titleStyle: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      titlePositionPercentageOffset: 0.55,
+                    );
+                  }).toList(),
                 ),
               ),
               // Center total
@@ -627,7 +620,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   Text('الإجمالي',
                       style: TextStyle(
                           fontFamily: 'Cairo',
-                          fontSize: 7, color: SdColors.faint)),
+                          fontSize: 7,
+                          color: SdColors.faint)),
                   Text(_fmtShort(total),
                       style: TextStyle(
                           fontFamily: 'Cairo',
@@ -646,8 +640,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: items.map((e) {
-              final pct =
-                  total > 0 ? (e.value.abs() / total * 100) : 0.0;
+              final pct = total > 0 ? (e.value.abs() / total * 100) : 0.0;
               return _legendRow(e.label, e.value, e.color, pct);
             }).toList(),
           ),
@@ -680,7 +673,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 Text(label,
                     style: TextStyle(
                         fontFamily: 'Cairo',
-                        fontSize: 9, color: SdColors.faint),
+                        fontSize: 9,
+                        color: SdColors.faint),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 Text(_fmtShort(value),
@@ -715,8 +709,12 @@ class _StatisticsPageState extends State<StatisticsPage> {
     final monthCollections = _num(collections['MonthlyTotal']);
     final monthExpenses = _num(expenses['MonthlyTotal']);
 
-    final maxVal = [totalRevenue, totalExpenses, monthCollections, monthExpenses]
-        .fold<double>(0, (a, b) => b.abs() > a ? b.abs() : a);
+    final maxVal = [
+      totalRevenue,
+      totalExpenses,
+      monthCollections,
+      monthExpenses
+    ].fold<double>(0, (a, b) => b.abs() > a ? b.abs() : a);
 
     return Column(
       children: [
@@ -787,10 +785,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     interval: maxVal > 0 ? maxVal / 3 : 1,
                   ),
                 ),
-                rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false)),
-                topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false)),
+                rightTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
@@ -856,23 +854,28 @@ class _StatisticsPageState extends State<StatisticsPage> {
   }
 
   Widget _summaryChip(String label, double value, Color? overrideColor) {
-    final color = overrideColor ??
-        (value >= 0 ? SdColors.success : SdColors.danger);
+    final color =
+        overrideColor ?? (value >= 0 ? SdColors.success : SdColors.danger);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(value >= 0 ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-            size: 12, color: color),
+        Icon(
+            value >= 0
+                ? Icons.arrow_upward_rounded
+                : Icons.arrow_downward_rounded,
+            size: 12,
+            color: color),
         const SizedBox(width: 3),
         Text(label,
             style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 9, color: SdColors.faint)),
+                fontFamily: 'Cairo', fontSize: 9, color: SdColors.faint)),
         const SizedBox(width: 4),
         Text(_fmtShort(value.abs()),
             style: TextStyle(
                 fontFamily: 'Cairo',
-                fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: color)),
       ],
     );
   }
@@ -884,13 +887,13 @@ class _StatisticsPageState extends State<StatisticsPage> {
         Container(
           width: 8,
           height: 8,
-          decoration:
-              BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+          decoration: BoxDecoration(
+              color: color, borderRadius: BorderRadius.circular(2)),
         ),
         const SizedBox(width: 3),
         Text(label,
-            style:
-                TextStyle(fontFamily: 'Cairo', fontSize: 8, color: SdColors.faint)),
+            style: TextStyle(
+                fontFamily: 'Cairo', fontSize: 8, color: SdColors.faint)),
       ],
     );
   }
@@ -935,15 +938,16 @@ class _StatisticsPageState extends State<StatisticsPage> {
     final sCount = salaries['MonthlyCount'] ?? 0;
 
     final items = [
-      _MonthlyItem('تحصيلات', c, cCount, SdColors.accent,
-          Icons.arrow_downward_rounded),
-      _MonthlyItem('مصروفات', e, eCount, SdColors.warning,
-          Icons.arrow_upward_rounded),
-      _MonthlyItem('رواتب', s, sCount, SdColors.platformLight,
-          Icons.people_rounded),
+      _MonthlyItem(
+          'تحصيلات', c, cCount, SdColors.accent, Icons.arrow_downward_rounded),
+      _MonthlyItem(
+          'مصروفات', e, eCount, SdColors.warning, Icons.arrow_upward_rounded),
+      _MonthlyItem(
+          'رواتب', s, sCount, SdColors.platformLight, Icons.people_rounded),
     ];
 
-    final maxVal = [c, e, s].fold<double>(0, (a, b) => b.abs() > a ? b.abs() : a);
+    final maxVal =
+        [c, e, s].fold<double>(0, (a, b) => b.abs() > a ? b.abs() : a);
 
     return Column(
       children: [
@@ -952,8 +956,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: (n >= 0 ? SdColors.success : SdColors.danger)
-                .withOpacity(0.08),
+            color:
+                (n >= 0 ? SdColors.success : SdColors.danger).withOpacity(0.08),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: (n >= 0 ? SdColors.success : SdColors.danger)
@@ -968,23 +972,20 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       ? Icons.trending_up_rounded
                       : Icons.trending_down_rounded,
                   size: 16,
-                  color: n >= 0
-                      ? SdColors.success
-                      : SdColors.danger),
+                  color: n >= 0 ? SdColors.success : SdColors.danger),
               const SizedBox(width: 6),
               Text('صافي الشهر',
                   style: TextStyle(
                       fontFamily: 'Cairo',
-                      fontSize: 10, color: SdColors.muted)),
+                      fontSize: 10,
+                      color: SdColors.muted)),
               const SizedBox(width: 8),
               Text(_fmt(n),
                   style: TextStyle(
                       fontFamily: 'Cairo',
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: n >= 0
-                          ? SdColors.success
-                          : SdColors.danger)),
+                      color: n >= 0 ? SdColors.success : SdColors.danger)),
             ],
           ),
         ),
@@ -1015,8 +1016,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                             color: item.color.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(5),
                           ),
-                          child: Icon(item.icon,
-                              size: 12, color: item.color),
+                          child: Icon(item.icon, size: 12, color: item.color),
                         ),
                         const SizedBox(width: 6),
                         Text(item.label,
@@ -1057,8 +1057,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                         value: pct,
                         minHeight: 5,
                         backgroundColor: item.color.withOpacity(0.08),
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(item.color),
+                        valueColor: AlwaysStoppedAnimation<Color>(item.color),
                       ),
                     ),
                   ],
@@ -1177,7 +1176,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
     final totalCollected = _num(collections['TotalCollected']);
     final totalExpenses = _num(expenses['TotalExpenses']);
     final totalSalaries = _num(salaries['TotalSalaries']);
-    final grandTotal = totalCollected.abs() + totalExpenses.abs() + totalSalaries.abs();
+    final grandTotal =
+        totalCollected.abs() + totalExpenses.abs() + totalSalaries.abs();
 
     final items = [
       _TotalItem(
@@ -1232,8 +1232,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     bgColor: item.color.withOpacity(0.12),
                   ),
                   child: Center(
-                    child: Icon(item.icon,
-                        color: item.color, size: 13),
+                    child: Icon(item.icon, color: item.color, size: 13),
                   ),
                 ),
               ),
@@ -1366,18 +1365,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
             separatorBuilder: (_, __) => const SizedBox(height: 4),
             itemBuilder: (_, i) {
               final b = boxes[i];
-              final maxBal = boxes
-                  .fold<double>(0, (a, x) => x.balance.abs() > a ? x.balance.abs() : a);
-              final pct = maxBal > 0
-                  ? (b.balance.abs() / maxBal).clamp(0.0, 1.0)
-                  : 0.0;
+              final maxBal = boxes.fold<double>(
+                  0, (a, x) => x.balance.abs() > a ? x.balance.abs() : a);
+              final pct =
+                  maxBal > 0 ? (b.balance.abs() / maxBal).clamp(0.0, 1.0) : 0.0;
               return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(
-                  color: (b.balance >= 0
-                          ? SdColors.success
-                          : SdColors.danger)
+                  color: (b.balance >= 0 ? SdColors.success : SdColors.danger)
                       .withOpacity(0.04),
                   borderRadius: BorderRadius.circular(6),
                 ),
@@ -1414,10 +1409,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
                         value: pct,
                         minHeight: 3,
                         backgroundColor: SdColors.divider,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            b.balance >= 0
-                                ? SdColors.success
-                                : SdColors.danger),
+                        valueColor: AlwaysStoppedAnimation<Color>(b.balance >= 0
+                            ? SdColors.success
+                            : SdColors.danger),
                       ),
                     ),
                   ],

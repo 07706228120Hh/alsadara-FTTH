@@ -6,7 +6,7 @@ import '../../services/accounting_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
+import '../../permissions/permissions.dart';
 
 /// صفحة إدخال قيد مركب - Compound Journal Entry
 class CompoundJournalEntryPage extends StatefulWidget {
@@ -90,12 +90,15 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
         final lines = (data['Lines'] as List?) ?? [];
 
         // مسح الأسطر الحالية
-        for (final l in _lines) { l.dispose(); }
+        for (final l in _lines) {
+          l.dispose();
+        }
         _lines.clear();
 
         _descCtrl.text = data['Description'] ?? '';
         _notesCtrl.text = data['Notes'] ?? '';
-        _entryDate = DateTime.tryParse(data['EntryDate']?.toString() ?? '') ?? DateTime.now();
+        _entryDate = DateTime.tryParse(data['EntryDate']?.toString() ?? '') ??
+            DateTime.now();
 
         for (final l in lines) {
           final line = _JournalLine();
@@ -109,7 +112,9 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           _lines.add(line);
         }
         // إضافة سطر فارغ إذا أقل من 2
-        while (_lines.length < 2) { _lines.add(_JournalLine()); }
+        while (_lines.length < 2) {
+          _lines.add(_JournalLine());
+        }
 
         _currentEntryIndex = index;
         _viewingEntryId = entryId;
@@ -121,11 +126,15 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
 
   /// قيد جديد (مسح الفورم)
   void _newEntry() {
-    for (final l in _lines) { l.dispose(); }
+    for (final l in _lines) {
+      l.dispose();
+    }
     _lines.clear();
     _descCtrl.clear();
     _notesCtrl.clear();
-    for (int i = 0; i < 5; i++) { _lines.add(_JournalLine()); }
+    for (int i = 0; i < 5; i++) {
+      _lines.add(_JournalLine());
+    }
     setState(() {
       _currentEntryIndex = -1;
       _viewingEntryId = null;
@@ -163,8 +172,9 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
   /// تنسيق رقم بفواصل الآلاف
   String _fmtNum(double n) {
     if (n == 0) return '';
-    return n.toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+    return n
+        .toStringAsFixed(0)
+        .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
   }
 
   /// تحليل رقم منسق (إزالة الفواصل)
@@ -176,8 +186,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
   Map<String, dynamic>? _getAccountInfo(String? accountId) {
     if (accountId == null) return null;
     try {
-      return _accounts.firstWhere(
-          (a) => a['Id']?.toString() == accountId) as Map<String, dynamic>;
+      return _accounts.firstWhere((a) => a['Id']?.toString() == accountId)
+          as Map<String, dynamic>;
     } catch (_) {
       return null;
     }
@@ -195,6 +205,10 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
   @override
   Widget build(BuildContext context) {
     final isMob = context.accR.isMobile;
+    // حفظ قيد مركب جديد = add · تعديل قيد موجود = edit (مفتاح موجود)
+    final canWrite = _viewingEntryId != null
+        ? PermissionManager.instance.canEdit('accounting.compound_journals')
+        : PermissionManager.instance.canAdd('accounting.compound_journals');
     return SdPage(
       scrollable: false,
       padding: EdgeInsets.zero,
@@ -217,8 +231,9 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                     // ← الأقدم (index أكبر)
                     IconButton(
                       onPressed: _currentEntryIndex < _allEntries.length - 1
-                          ? () => _loadEntry(
-                              _currentEntryIndex == -1 ? 0 : _currentEntryIndex + 1)
+                          ? () => _loadEntry(_currentEntryIndex == -1
+                              ? 0
+                              : _currentEntryIndex + 1)
                           : null,
                       icon: const Icon(Icons.chevron_right,
                           size: 20, color: SdColors.muted),
@@ -282,24 +297,25 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
             label: 'حفظ كقالب',
             onPressed: _saveAsTemplate,
           ),
-          SdAppBarAction(
-            icon: Icons.save_outlined,
-            label: 'حفظ مسودة',
-            onPressed:
-                _isBalanced && !_isSaving ? () => _save(post: false) : null,
-          ),
-          SdAppBarAction(
-            icon: Icons.check_circle,
-            label: 'حفظ وترحيل',
-            onPressed:
-                _isBalanced && !_isSaving ? () => _save(post: true) : null,
-          ),
+          if (canWrite)
+            SdAppBarAction(
+              icon: Icons.save_outlined,
+              label: 'حفظ مسودة',
+              onPressed:
+                  _isBalanced && !_isSaving ? () => _save(post: false) : null,
+            ),
+          if (canWrite)
+            SdAppBarAction(
+              icon: Icons.check_circle,
+              label: 'حفظ وترحيل',
+              onPressed:
+                  _isBalanced && !_isSaving ? () => _save(post: true) : null,
+            ),
         ],
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(
-                  color: SdColors.success))
+              child: CircularProgressIndicator(color: SdColors.success))
           : _buildBody(),
     );
   }
@@ -369,11 +385,14 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                   _formatDate(_entryDate),
                   style: TextStyle(
                       fontFamily: 'Cairo',
-                      color: Colors.black, fontSize: 12, fontWeight: FontWeight.w600),
+                      color: Colors.black,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600),
                 ),
                 if (!_isReadOnly) ...[
                   const SizedBox(width: 3),
-                  Icon(Icons.edit, size: 12, color: SdColors.info.withValues(alpha: 0.6)),
+                  Icon(Icons.edit,
+                      size: 12, color: SdColors.info.withValues(alpha: 0.6)),
                 ],
               ],
             ),
@@ -405,9 +424,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
               ),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: (balanced
-                        ? SdColors.success
-                        : SdColors.warningEdge)
+                color: (balanced ? SdColors.success : SdColors.warningEdge)
                     .withValues(alpha: 0.35),
                 width: 1,
               ),
@@ -419,9 +436,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                   balanced
                       ? Icons.check_circle_rounded
                       : Icons.warning_amber_rounded,
-                  color: balanced
-                      ? SdColors.success
-                      : SdColors.danger,
+                  color: balanced ? SdColors.success : SdColors.danger,
                   size: 14,
                 ),
                 const SizedBox(width: 4),
@@ -429,9 +444,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                   balanced ? 'متوازن ✓' : 'الفرق: ${_fmt(diff)}',
                   style: TextStyle(
                     fontFamily: 'Cairo',
-                    color: balanced
-                        ? SdColors.success
-                        : SdColors.danger,
+                    color: balanced ? SdColors.success : SdColors.danger,
                     fontWeight: FontWeight.bold,
                     fontSize: 10,
                   ),
@@ -452,8 +465,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.add_rounded,
-                        size: 13, color: SdColors.success),
+                    Icon(Icons.add_rounded, size: 13, color: SdColors.success),
                     const SizedBox(width: 3),
                     Text('سطر',
                         style: TextStyle(
@@ -487,16 +499,15 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           fillColor: Colors.white,
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(
-                  color: SdColors.info.withValues(alpha: 0.2))),
+              borderSide:
+                  BorderSide(color: SdColors.info.withValues(alpha: 0.2))),
           enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(
-                  color: SdColors.info.withValues(alpha: 0.2))),
+              borderSide:
+                  BorderSide(color: SdColors.info.withValues(alpha: 0.2))),
           focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  const BorderSide(color: SdColors.info, width: 1.5)),
+              borderSide: const BorderSide(color: SdColors.info, width: 1.5)),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
@@ -584,8 +595,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.add_rounded,
-                        size: 16, color: SdColors.success),
+                    Icon(Icons.add_rounded, size: 16, color: SdColors.success),
                     const SizedBox(width: 6),
                     Text('+ إضافة سطر',
                         style: TextStyle(
@@ -661,9 +671,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
           ),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color:
-                (balanced ? SdColors.success : SdColors.warningEdge)
-                    .withValues(alpha: 0.35),
+            color: (balanced ? SdColors.success : SdColors.warningEdge)
+                .withValues(alpha: 0.35),
             width: 1.2,
           ),
         ),
@@ -672,9 +681,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: (balanced
-                        ? SdColors.success
-                        : SdColors.danger)
+                color: (balanced ? SdColors.success : SdColors.danger)
                     .withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -682,8 +689,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                 balanced
                     ? Icons.check_circle_rounded
                     : Icons.warning_amber_rounded,
-                color:
-                    balanced ? SdColors.success : SdColors.danger,
+                color: balanced ? SdColors.success : SdColors.danger,
                 size: 16,
               ),
             ),
@@ -695,9 +701,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                     : 'غير متوازن · الفرق: ${_fmt(diff)}',
                 style: TextStyle(
                   fontFamily: 'Cairo',
-                  color: balanced
-                      ? SdColors.success
-                      : SdColors.danger,
+                  color: balanced ? SdColors.success : SdColors.danger,
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
@@ -737,8 +741,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
     }
 
     // تصميم الديسكتوب - بطاقات بسيطة في صف واحد
-    final balanceColor =
-        balanced ? SdColors.success : SdColors.danger;
+    final balanceColor = balanced ? SdColors.success : SdColors.danger;
     return Padding(
       padding:
           EdgeInsets.symmetric(horizontal: ar.spaceM, vertical: ar.spaceXS),
@@ -771,7 +774,9 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                   ),
                   if (!_isReadOnly) ...[
                     const SizedBox(width: 6),
-                    Icon(Icons.edit, size: 14, color: SdColors.success.withValues(alpha: 0.6)),
+                    Icon(Icons.edit,
+                        size: 14,
+                        color: SdColors.success.withValues(alpha: 0.6)),
                   ],
                 ],
               ),
@@ -823,8 +828,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.add_rounded,
-                        size: 16, color: SdColors.success),
+                    Icon(Icons.add_rounded, size: 16, color: SdColors.success),
                     const SizedBox(width: 6),
                     Text('+ إضافة سطر',
                         style: TextStyle(
@@ -1025,8 +1029,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
-                              color: SdColors.divider
-                                  .withValues(alpha: 0.5)),
+                              color: SdColors.divider.withValues(alpha: 0.5)),
                         ),
                       ),
                       child: Row(
@@ -1035,8 +1038,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: SdColors.success
-                                  .withValues(alpha: 0.15),
+                              color: SdColors.success.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -1176,14 +1178,14 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                         });
                       },
                       onEditingComplete: () {
-                        if (line.debit > 0) line.debitCtrl.text = _fmtNum(line.debit);
+                        if (line.debit > 0)
+                          line.debitCtrl.text = _fmtNum(line.debit);
                       },
                       decoration: InputDecoration(
                         hintText: 'مدين',
                         hintStyle: TextStyle(
                             fontFamily: 'Cairo',
-                            color:
-                                SdColors.success.withValues(alpha: 0.5),
+                            color: SdColors.success.withValues(alpha: 0.5),
                             fontSize: 11,
                             fontWeight: FontWeight.bold),
                         filled: true,
@@ -1192,13 +1194,13 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(
-                                color: SdColors.success
-                                    .withValues(alpha: 0.3))),
+                                color:
+                                    SdColors.success.withValues(alpha: 0.3))),
                         enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(
-                                color: SdColors.success
-                                    .withValues(alpha: 0.3))),
+                                color:
+                                    SdColors.success.withValues(alpha: 0.3))),
                         focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(
@@ -1233,14 +1235,14 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                         });
                       },
                       onEditingComplete: () {
-                        if (line.credit > 0) line.creditCtrl.text = _fmtNum(line.credit);
+                        if (line.credit > 0)
+                          line.creditCtrl.text = _fmtNum(line.credit);
                       },
                       decoration: InputDecoration(
                         hintText: 'دائن',
                         hintStyle: TextStyle(
                             fontFamily: 'Cairo',
-                            color:
-                                SdColors.danger.withValues(alpha: 0.5),
+                            color: SdColors.danger.withValues(alpha: 0.5),
                             fontSize: 11,
                             fontWeight: FontWeight.bold),
                         filled: true,
@@ -1249,17 +1251,15 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(
-                                color: SdColors.danger
-                                    .withValues(alpha: 0.3))),
+                                color: SdColors.danger.withValues(alpha: 0.3))),
                         enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide(
-                                color: SdColors.danger
-                                    .withValues(alpha: 0.3))),
+                                color: SdColors.danger.withValues(alpha: 0.3))),
                         focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
-                            borderSide: BorderSide(
-                                color: SdColors.danger, width: 1.5)),
+                            borderSide:
+                                BorderSide(color: SdColors.danger, width: 1.5)),
                         contentPadding:
                             EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                       ),
@@ -1311,16 +1311,18 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
             focusNode: focusNode,
             style: TextStyle(
                 fontFamily: 'Cairo',
-                color: Colors.black, fontSize: 13, fontWeight: FontWeight.w600),
+                color: Colors.black,
+                fontSize: 13,
+                fontWeight: FontWeight.w600),
             decoration: InputDecoration(
               hintText: 'ابحث بالاسم أو الكود...',
               hintStyle: TextStyle(
                   fontFamily: 'Cairo',
-                  color: Colors.black.withValues(alpha: 0.4), fontSize: 11),
+                  color: Colors.black.withValues(alpha: 0.4),
+                  fontSize: 11),
               suffixIcon: line.accountId != null
                   ? Icon(Icons.check_circle_rounded,
-                      color: SdColors.success.withValues(alpha: 0.7),
-                      size: 14)
+                      color: SdColors.success.withValues(alpha: 0.7), size: 14)
                   : Icon(Icons.search_rounded,
                       color: Colors.black.withValues(alpha: 0.3), size: 14),
               suffixIconConstraints:
@@ -1336,8 +1338,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                   borderSide: BorderSide(color: Colors.black, width: 1.2)),
               focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide:
-                      BorderSide(color: SdColors.success, width: 1.5)),
+                  borderSide: BorderSide(color: SdColors.success, width: 1.5)),
               contentPadding:
                   EdgeInsets.symmetric(horizontal: 10, vertical: 12),
             ),
@@ -1375,8 +1376,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
-                              color: SdColors.divider
-                                  .withValues(alpha: 0.3)),
+                              color: SdColors.divider.withValues(alpha: 0.3)),
                         ),
                       ),
                       child: Row(
@@ -1385,8 +1385,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: SdColors.success
-                                  .withValues(alpha: 0.15),
+                              color: SdColors.success.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -1404,7 +1403,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                               opt['Name']?.toString() ?? '',
                               style: TextStyle(
                                   fontFamily: 'Cairo',
-                                  color: Colors.black, fontSize: 11),
+                                  color: Colors.black,
+                                  fontSize: 11),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -1502,12 +1502,12 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                             fillColor: SdColors.surface,
                             border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                    color: SdColors.divider)),
+                                borderSide:
+                                    BorderSide(color: SdColors.divider)),
                             enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
-                                    color: SdColors.divider)),
+                                borderSide:
+                                    BorderSide(color: SdColors.divider)),
                             focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide:
@@ -1538,16 +1538,14 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                           itemCount: filtered.length,
                           separatorBuilder: (_, __) => Divider(
                               height: 1,
-                              color: SdColors.divider
-                                  .withValues(alpha: 0.3)),
+                              color: SdColors.divider.withValues(alpha: 0.3)),
                           itemBuilder: (_, i) {
                             final a = filtered[i];
                             final isSelected =
                                 line.accountId == a['Id']?.toString();
                             return Material(
                               color: isSelected
-                                  ? SdColors.success
-                                      .withValues(alpha: 0.1)
+                                  ? SdColors.success.withValues(alpha: 0.1)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(10),
                               child: InkWell(
@@ -1598,8 +1596,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                                       ),
                                       if (isSelected)
                                         Icon(Icons.check_circle_rounded,
-                                            color: SdColors.success,
-                                            size: 18),
+                                            color: SdColors.success, size: 18),
                                     ],
                                   ),
                                 ),
@@ -1626,193 +1623,192 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
 
     return Listener(
       onPointerDown: (_) {
-        if (_selectedLineIndex != index) setState(() => _selectedLineIndex = index);
+        if (_selectedLineIndex != index)
+          setState(() => _selectedLineIndex = index);
       },
       child: Container(
-      margin: EdgeInsets.symmetric(horizontal: 0, vertical: 2),
-      padding: EdgeInsets.symmetric(
-          horizontal: context.accR.spaceS, vertical: context.accR.spaceXS),
-      decoration: BoxDecoration(
-        color: isSelected
-            ? SdColors.success.withValues(alpha: 0.06)
-            : isEven
-                ? Colors.transparent
-                : SdColors.faint.withValues(alpha: 0.05),
-        border: Border.all(
-            color: isSelected ? SdColors.success : Colors.black,
-            width: isSelected ? 2 : 1.5),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          // رقم السطر
-          SizedBox(
-            width: 32,
-            child: Container(
-              padding: EdgeInsets.all(context.accR.spaceXS),
-              decoration: BoxDecoration(
-                color: SdColors.success.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
+        margin: EdgeInsets.symmetric(horizontal: 0, vertical: 2),
+        padding: EdgeInsets.symmetric(
+            horizontal: context.accR.spaceS, vertical: context.accR.spaceXS),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? SdColors.success.withValues(alpha: 0.06)
+              : isEven
+                  ? Colors.transparent
+                  : SdColors.faint.withValues(alpha: 0.05),
+          border: Border.all(
+              color: isSelected ? SdColors.success : Colors.black,
+              width: isSelected ? 2 : 1.5),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            // رقم السطر
+            SizedBox(
+              width: 32,
+              child: Container(
+                padding: EdgeInsets.all(context.accR.spaceXS),
+                decoration: BoxDecoration(
+                  color: SdColors.success.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${index + 1}',
+                  style: TextStyle(
+                      color: SdColors.success,
+                      fontSize: context.accR.body,
+                      fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
               ),
-              child: Text(
-                '${index + 1}',
+            ),
+            SizedBox(width: context.accR.spaceS),
+            // بحث الحساب
+            Expanded(
+              flex: 4,
+              child: _buildAccountSearch(line, index),
+            ),
+            SizedBox(width: context.accR.spaceS),
+            // مبلغ المدين
+            SizedBox(
+              width: 150,
+              child: TextField(
+                controller: line.debitCtrl,
                 style: TextStyle(
-                    color: SdColors.success,
+                    color: Colors.black,
                     fontSize: context.accR.body,
-                    fontWeight: FontWeight.bold),
+                    fontWeight: FontWeight.w500),
+                keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
+                onChanged: (v) {
+                  setState(() {
+                    line.debit = _parseNum(v);
+                    if (line.debit > 0 && line.credit > 0) {
+                      line.credit = 0;
+                      line.creditCtrl.clear();
+                    }
+                  });
+                },
+                onEditingComplete: () {
+                  if (line.debit > 0) line.debitCtrl.text = _fmtNum(line.debit);
+                },
+                decoration: InputDecoration(
+                  hintText: '0',
+                  hintStyle: TextStyle(color: Colors.black),
+                  filled: true,
+                  fillColor: SdColors.successTint,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                          color: SdColors.success.withValues(alpha: 0.4))),
+                  enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                          color: SdColors.success.withValues(alpha: 0.4))),
+                  focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide:
+                          BorderSide(color: SdColors.success, width: 1.5)),
+                  contentPadding: EdgeInsets.symmetric(
+                      horizontal: context.accR.spaceS,
+                      vertical: context.accR.spaceXS),
+                ),
               ),
             ),
-          ),
-          SizedBox(width: context.accR.spaceS),
-          // بحث الحساب
-          Expanded(
-            flex: 4,
-            child: _buildAccountSearch(line, index),
-          ),
-          SizedBox(width: context.accR.spaceS),
-          // مبلغ المدين
-          SizedBox(
-            width: 150,
-            child: TextField(
-              controller: line.debitCtrl,
-              style: TextStyle(
-                  color: Colors.black,
-                  fontSize: context.accR.body,
-                  fontWeight: FontWeight.w500),
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              onChanged: (v) {
-                setState(() {
-                  line.debit = _parseNum(v);
-                  if (line.debit > 0 && line.credit > 0) {
-                    line.credit = 0;
-                    line.creditCtrl.clear();
-                  }
-                });
-              },
-              onEditingComplete: () {
-                if (line.debit > 0) line.debitCtrl.text = _fmtNum(line.debit);
-              },
-              decoration: InputDecoration(
-                hintText: '0',
-                hintStyle: TextStyle(color: Colors.black),
-                filled: true,
-                fillColor: SdColors.successTint,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                        color: SdColors.success.withValues(alpha: 0.4))),
-                enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                        color: SdColors.success.withValues(alpha: 0.4))),
-                focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                        color: SdColors.success, width: 1.5)),
-                contentPadding: EdgeInsets.symmetric(
-                    horizontal: context.accR.spaceS,
-                    vertical: context.accR.spaceXS),
+            SizedBox(width: context.accR.spaceS),
+            // مبلغ الدائن
+            SizedBox(
+              width: 150,
+              child: TextField(
+                controller: line.creditCtrl,
+                style: TextStyle(
+                    color: Colors.black,
+                    fontSize: context.accR.body,
+                    fontWeight: FontWeight.w500),
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                onChanged: (v) {
+                  setState(() {
+                    line.credit = _parseNum(v);
+                    if (line.credit > 0 && line.debit > 0) {
+                      line.debit = 0;
+                      line.debitCtrl.clear();
+                    }
+                  });
+                },
+                onEditingComplete: () {
+                  if (line.credit > 0)
+                    line.creditCtrl.text = _fmtNum(line.credit);
+                },
+                decoration: InputDecoration(
+                  hintText: '0',
+                  hintStyle: TextStyle(color: Colors.black),
+                  filled: true,
+                  fillColor: SdColors.dangerTint,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                          color: SdColors.danger.withValues(alpha: 0.4))),
+                  enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                          color: SdColors.danger.withValues(alpha: 0.4))),
+                  focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide:
+                          BorderSide(color: SdColors.danger, width: 1.5)),
+                  contentPadding: EdgeInsets.symmetric(
+                      horizontal: context.accR.spaceS,
+                      vertical: context.accR.spaceXS),
+                ),
               ),
             ),
-          ),
-          SizedBox(width: context.accR.spaceS),
-          // مبلغ الدائن
-          SizedBox(
-            width: 150,
-            child: TextField(
-              controller: line.creditCtrl,
-              style: TextStyle(
-                  color: Colors.black,
-                  fontSize: context.accR.body,
-                  fontWeight: FontWeight.w500),
-              keyboardType: TextInputType.number,
-              textAlign: TextAlign.center,
-              onChanged: (v) {
-                setState(() {
-                  line.credit = _parseNum(v);
-                  if (line.credit > 0 && line.debit > 0) {
-                    line.debit = 0;
-                    line.debitCtrl.clear();
-                  }
-                });
-              },
-              onEditingComplete: () {
-                if (line.credit > 0) line.creditCtrl.text = _fmtNum(line.credit);
-              },
-              decoration: InputDecoration(
-                hintText: '0',
-                hintStyle: TextStyle(color: Colors.black),
-                filled: true,
-                fillColor: SdColors.dangerTint,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                        color: SdColors.danger.withValues(alpha: 0.4))),
-                enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                        color: SdColors.danger.withValues(alpha: 0.4))),
-                focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide:
-                        BorderSide(color: SdColors.danger, width: 1.5)),
-                contentPadding: EdgeInsets.symmetric(
-                    horizontal: context.accR.spaceS,
-                    vertical: context.accR.spaceXS),
+            SizedBox(width: context.accR.spaceS),
+            // البيان
+            Expanded(
+              flex: 2,
+              child: TextField(
+                controller: line.descCtrl,
+                style: TextStyle(
+                    color: Colors.black, fontSize: context.accR.financialSmall),
+                decoration: InputDecoration(
+                  hintText: 'بيان السطر',
+                  hintStyle: TextStyle(
+                      color: Colors.black, fontSize: context.accR.small),
+                  filled: true,
+                  fillColor: SdColors.surfaceAlt,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                          color: SdColors.faint.withValues(alpha: 0.2))),
+                  enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                          color: SdColors.faint.withValues(alpha: 0.2))),
+                  focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(
+                          color: SdColors.success.withValues(alpha: 0.5))),
+                  contentPadding: EdgeInsets.symmetric(
+                      horizontal: context.accR.spaceS,
+                      vertical: context.accR.spaceXS),
+                ),
               ),
             ),
-          ),
-          SizedBox(width: context.accR.spaceS),
-          // البيان
-          Expanded(
-            flex: 2,
-            child: TextField(
-              controller: line.descCtrl,
-              style: TextStyle(
-                  color: Colors.black, fontSize: context.accR.financialSmall),
-              decoration: InputDecoration(
-                hintText: 'بيان السطر',
-                hintStyle: TextStyle(
-                    color: Colors.black, fontSize: context.accR.small),
-                filled: true,
-                fillColor: SdColors.surfaceAlt,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                        color:
-                            SdColors.faint.withValues(alpha: 0.2))),
-                enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                        color:
-                            SdColors.faint.withValues(alpha: 0.2))),
-                focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(
-                        color: SdColors.success.withValues(alpha: 0.5))),
-                contentPadding: EdgeInsets.symmetric(
-                    horizontal: context.accR.spaceS,
-                    vertical: context.accR.spaceXS),
-              ),
+            // زر حذف السطر
+            SizedBox(
+              width: 44,
+              child: _lines.length > 2
+                  ? IconButton(
+                      icon: Icon(Icons.remove_circle,
+                          color: SdColors.danger, size: context.accR.iconM),
+                      onPressed: () => _removeLine(index),
+                      tooltip: 'حذف السطر',
+                    )
+                  : const SizedBox(),
             ),
-          ),
-          // زر حذف السطر
-          SizedBox(
-            width: 44,
-            child: _lines.length > 2
-                ? IconButton(
-                    icon: Icon(Icons.remove_circle,
-                        color: SdColors.danger,
-                        size: context.accR.iconM),
-                    onPressed: () => _removeLine(index),
-                    tooltip: 'حذف السطر',
-                  )
-                : const SizedBox(),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -1823,9 +1819,10 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
 
   Widget _buildAccountInfoPanel() {
     final ar = context.accR;
-    final line = _selectedLineIndex != null && _selectedLineIndex! < _lines.length
-        ? _lines[_selectedLineIndex!]
-        : null;
+    final line =
+        _selectedLineIndex != null && _selectedLineIndex! < _lines.length
+            ? _lines[_selectedLineIndex!]
+            : null;
 
     final accountInfo = line != null ? _getAccountInfo(line.accountId) : null;
     final hasAccount = accountInfo != null;
@@ -1852,8 +1849,10 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
     return Container(
       width: 260,
       margin: EdgeInsets.only(
-          left: ar.spaceS, top: ar.spaceXS,
-          bottom: ar.spaceXS, right: ar.spaceM),
+          left: ar.spaceS,
+          top: ar.spaceXS,
+          bottom: ar.spaceXS,
+          right: ar.spaceM),
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(ar.cardRadius),
@@ -1873,8 +1872,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               gradient: SdUiKit.neonPurpleGradient,
-              borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(ar.cardRadius)),
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(ar.cardRadius)),
             ),
             child: Row(
               children: [
@@ -1899,15 +1898,15 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.touch_app_rounded,
-                          color: SdColors.faint
-                              .withValues(alpha: 0.4),
+                          color: SdColors.faint.withValues(alpha: 0.4),
                           size: 40),
                       const SizedBox(height: 12),
                       Text(
                         'اضغط على سطر لعرض\nرصيد الحساب',
                         style: TextStyle(
                             fontFamily: 'Cairo',
-                            color: SdColors.faint, fontSize: 12),
+                            color: SdColors.faint,
+                            fontSize: 12),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -1929,8 +1928,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: SdColors.success
-                                .withValues(alpha: 0.15),
+                            color: SdColors.success.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(accountCode,
@@ -2026,8 +2024,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                             Text('مدين',
                                 style: TextStyle(
                                     fontFamily: 'Cairo',
-                                    color: SdColors.success
-                                        .withValues(alpha: 0.7),
+                                    color:
+                                        SdColors.success.withValues(alpha: 0.7),
                                     fontSize: 10)),
                           ],
                         ),
@@ -2047,8 +2045,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                             Text('دائن',
                                 style: TextStyle(
                                     fontFamily: 'Cairo',
-                                    color: SdColors.danger
-                                        .withValues(alpha: 0.7),
+                                    color:
+                                        SdColors.danger.withValues(alpha: 0.7),
                                     fontSize: 10)),
                           ],
                         ),
@@ -2166,7 +2164,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
   }
 
   void _autoFillSelectedLine() {
-    if (_selectedLineIndex == null || _selectedLineIndex! >= _lines.length) return;
+    if (_selectedLineIndex == null || _selectedLineIndex! >= _lines.length)
+      return;
     final line = _lines[_selectedLineIndex!];
     if (line.accountId == null) return;
 
@@ -2198,8 +2197,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
         color: SdColors.surface,
         border: Border(
             top: BorderSide(
-                color: SdColors.success.withValues(alpha: 0.3),
-                width: 1.5)),
+                color: SdColors.success.withValues(alpha: 0.3), width: 1.5)),
         boxShadow: isMob
             ? [
                 BoxShadow(
@@ -2227,8 +2225,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                       ),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                          color:
-                              SdColors.success.withValues(alpha: 0.3)),
+                          color: SdColors.success.withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -2320,8 +2317,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                       ),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                          color:
-                              SdColors.warning.withValues(alpha: 0.4)),
+                          color: SdColors.warning.withValues(alpha: 0.4)),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -2375,8 +2371,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                           icon: const Icon(Icons.chevron_left, size: 20),
                           tooltip: 'الأقدم',
                           padding: const EdgeInsets.all(4),
-                          constraints: const BoxConstraints(
-                              minWidth: 32, minHeight: 32),
+                          constraints:
+                              const BoxConstraints(minWidth: 32, minHeight: 32),
                         ),
                         InkWell(
                           onTap: _viewingEntryId != null ? _newEntry : null,
@@ -2407,8 +2403,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                           icon: const Icon(Icons.chevron_right, size: 20),
                           tooltip: 'الأحدث',
                           padding: const EdgeInsets.all(4),
-                          constraints: const BoxConstraints(
-                              minWidth: 32, minHeight: 32),
+                          constraints:
+                              const BoxConstraints(minWidth: 32, minHeight: 32),
                         ),
                       ],
                     ),
@@ -2429,16 +2425,13 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: (_isBalanced
-                            ? SdColors.success
-                            : SdColors.danger)
+                    color: (_isBalanced ? SdColors.success : SdColors.danger)
                         .withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                        color: (_isBalanced
-                                ? SdColors.success
-                                : SdColors.danger)
-                            .withValues(alpha: 0.3)),
+                        color:
+                            (_isBalanced ? SdColors.success : SdColors.danger)
+                                .withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -2447,9 +2440,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                         _isBalanced
                             ? Icons.check_circle_rounded
                             : Icons.warning_amber_rounded,
-                        color: _isBalanced
-                            ? SdColors.success
-                            : SdColors.danger,
+                        color: _isBalanced ? SdColors.success : SdColors.danger,
                         size: 16,
                       ),
                       const SizedBox(width: 6),
@@ -2459,9 +2450,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                             : 'غير متوازن · الفرق: ${_fmt(_difference)}',
                         style: TextStyle(
                           fontFamily: 'Cairo',
-                          color: _isBalanced
-                              ? SdColors.success
-                              : SdColors.danger,
+                          color:
+                              _isBalanced ? SdColors.success : SdColors.danger,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
                         ),
@@ -2478,8 +2468,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                       color: SdColors.successTint,
                       borderRadius: BorderRadius.circular(ar.cardRadius),
                       border: Border.all(
-                          color:
-                              SdColors.success.withValues(alpha: 0.4)),
+                          color: SdColors.success.withValues(alpha: 0.4)),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -2567,9 +2556,13 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
     if (picked != null && mounted) {
       final now = DateTime.now();
       setState(() => _entryDate = DateTime(
-        picked.year, picked.month, picked.day,
-        now.hour, now.minute, now.second,
-      ));
+            picked.year,
+            picked.month,
+            picked.day,
+            now.hour,
+            now.minute,
+            now.second,
+          ));
     }
   }
 
@@ -2616,16 +2609,12 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
               labelText: 'اسم القالب',
               labelStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.muted),
               border: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(SdUiKit.radiusMedium)),
+                  borderRadius: BorderRadius.circular(SdUiKit.radiusMedium)),
               enabledBorder: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(SdUiKit.radiusMedium),
-                  borderSide:
-                      const BorderSide(color: SdColors.divider)),
+                  borderRadius: BorderRadius.circular(SdUiKit.radiusMedium),
+                  borderSide: const BorderSide(color: SdColors.divider)),
               focusedBorder: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(SdUiKit.radiusMedium),
+                  borderRadius: BorderRadius.circular(SdUiKit.radiusMedium),
                   borderSide:
                       const BorderSide(color: SdColors.primary, width: 2)),
             ),
@@ -2634,9 +2623,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
             TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('إلغاء',
-                    style: TextStyle(
-                        fontFamily: 'Cairo',
-                        color: SdColors.faint))),
+                    style:
+                        TextStyle(fontFamily: 'Cairo', color: SdColors.faint))),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, nameController.text.trim()),
               style: SdUiKit.primaryButton,
@@ -2708,8 +2696,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
               itemCount: templates.length,
               itemBuilder: (_, i) {
                 final t = templates[i] as Map<String, dynamic>;
-                final lineCount =
-                    (t['lines'] as List?)?.length ?? 0;
+                final lineCount = (t['lines'] as List?)?.length ?? 0;
                 return ListTile(
                   title: Text(t['name'] ?? '',
                       style: TextStyle(
@@ -2720,10 +2707,12 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
                     '${t['description'] ?? ''} ($lineCount سطر)',
                     style: TextStyle(
                         fontFamily: 'Cairo',
-                        fontSize: 12, color: SdColors.faint),
+                        fontSize: 12,
+                        color: SdColors.faint),
                   ),
                   trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: SdColors.danger, size: 20),
+                    icon: const Icon(Icons.delete,
+                        color: SdColors.danger, size: 20),
                     tooltip: 'حذف القالب',
                     onPressed: () async {
                       templates.removeAt(i);
@@ -2745,9 +2734,8 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
             TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: Text('إلغاء',
-                    style: TextStyle(
-                        fontFamily: 'Cairo',
-                        color: SdColors.faint))),
+                    style:
+                        TextStyle(fontFamily: 'Cairo', color: SdColors.faint))),
           ],
         ),
       ),
@@ -2812,8 +2800,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
         .where((l) => l.accountId != null && (l.debit > 0 || l.credit > 0))
         .toList();
     if (validLines.length < 2) {
-      _snack(
-          'يجب أن يكون هناك سطران صالحان على الأقل', SdColors.warning);
+      _snack('يجب أن يكون هناك سطران صالحان على الأقل', SdColors.warning);
       return;
     }
 
@@ -2893,8 +2880,7 @@ class _CompoundJournalEntryPageState extends State<CompoundJournalEntryPage> {
       labelText: label,
       labelStyle:
           TextStyle(color: Colors.black, fontSize: context.accR.financialSmall),
-      prefixIcon:
-          Icon(icon, color: SdColors.success, size: context.accR.iconM),
+      prefixIcon: Icon(icon, color: SdColors.success, size: context.accR.iconM),
       filled: true,
       fillColor: SdColors.surfaceAlt,
       border: OutlineInputBorder(

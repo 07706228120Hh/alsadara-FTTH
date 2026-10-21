@@ -5,7 +5,6 @@ import '../../theme/accounting_responsive.dart';
 import '../../services/accounting_service.dart';
 import '../../services/accounting_cache_service.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة النسب المالية - تحليل 7 نسب مالية أساسية مع رسم بياني
 class FinancialRatiosPage extends StatefulWidget {
@@ -99,8 +98,7 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
 
   double _sumByType(String type) {
     return _accounts
-        .where(
-            (a) => (a['AccountType'] ?? a['Type'])?.toString() == type)
+        .where((a) => (a['AccountType'] ?? a['Type'])?.toString() == type)
         .fold(
             0.0,
             (sum, a) =>
@@ -144,8 +142,7 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
         totalLiabilities > 0 ? totalAssets / totalLiabilities : 0.0;
 
     // 2. نسبة المديونية (Debt Ratio)
-    final debtRatio =
-        totalAssets > 0 ? totalLiabilities / totalAssets : 0.0;
+    final debtRatio = totalAssets > 0 ? totalLiabilities / totalAssets : 0.0;
 
     // 3. هامش صافي الربح (Net Profit Margin)
     final profitMargin =
@@ -156,8 +153,7 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
         totalLiabilities > 0 ? cashBalance / totalLiabilities : 0.0;
 
     // 5. نسبة حقوق الملكية (Equity Ratio)
-    final equityRatio =
-        totalAssets > 0 ? totalEquity / totalAssets * 100 : 0.0;
+    final equityRatio = totalAssets > 0 ? totalEquity / totalAssets * 100 : 0.0;
 
     // 6. نسبة المصاريف التشغيلية (Operating Expense Ratio)
     final expenseRatio =
@@ -304,8 +300,7 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
           Expanded(
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(
-                        color: SdColors.primary))
+                    child: CircularProgressIndicator(color: SdColors.primary))
                 : _errorMessage != null
                     ? SdUiKit.errorView(_errorMessage!, _loadAllData)
                     : _buildContent(),
@@ -471,8 +466,8 @@ class _FinancialRatiosPageState extends State<FinancialRatiosPage> {
       return r.value;
     }).toList();
 
-    final maxVal = normalizedValues.fold<double>(
-        1, (m, v) => v.abs() > m ? v.abs() : m);
+    final maxVal =
+        normalizedValues.fold<double>(1, (m, v) => v.abs() > m ? v.abs() : m);
 
     return Container(
       padding: EdgeInsets.all(context.accR.spaceL),

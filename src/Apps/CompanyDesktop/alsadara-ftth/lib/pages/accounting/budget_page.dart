@@ -6,7 +6,7 @@ import '../../utils/responsive_helper.dart';
 import '../../services/accounting_service.dart';
 import '../../services/budget_service.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
+import '../../permissions/permissions.dart';
 
 /// صفحة إدارة الميزانية التقديرية
 class BudgetPage extends StatefulWidget {
@@ -119,12 +119,14 @@ class _BudgetPageState extends State<BudgetPage> {
           ),
         ],
       ),
-      floatingActionButton: !_showVariance
+      floatingActionButton: (!_showVariance &&
+              PermissionManager.instance.canAdd('accounting'))
           ? FloatingActionButton.extended(
               onPressed: _showAddBudgetDialog,
               icon: const Icon(Icons.add),
               label: Text('إضافة ميزانية',
-                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
               backgroundColor: SdColors.primarySoft,
               foregroundColor: Colors.white,
             )
@@ -145,22 +147,19 @@ class _BudgetPageState extends State<BudgetPage> {
 
   Widget _buildMonthYearSelector(AccountingResponsive r) {
     return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: r.paddingH, vertical: r.spaceS),
+      padding: EdgeInsets.symmetric(horizontal: r.paddingH, vertical: r.spaceS),
       color: SdColors.groundAlt,
       child: Column(
         children: [
           // سطر السنة
           Row(
             children: [
-              Icon(Icons.calendar_today,
-                  size: r.iconS, color: SdColors.muted),
+              Icon(Icons.calendar_today, size: r.iconS, color: SdColors.muted),
               SizedBox(width: r.spaceS),
               DropdownButton<int>(
                 value: _selectedYear,
                 style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: r.body, color: SdColors.ink),
+                    fontFamily: 'Cairo', fontSize: r.body, color: SdColors.ink),
                 items: List.generate(11, (i) {
                   final y = 2020 + i;
                   return DropdownMenuItem(value: y, child: Text('$y'));
@@ -202,16 +201,15 @@ class _BudgetPageState extends State<BudgetPage> {
                       fontFamily: 'Cairo',
                       fontSize: r.small,
                       color: selected ? Colors.white : SdColors.muted,
-                      fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight:
+                          selected ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                   selected: selected,
                   selectedColor: SdColors.platformLight,
                   backgroundColor: SdColors.surface,
                   side: BorderSide(
-                    color: selected
-                        ? SdColors.platformLight
-                        : SdColors.divider,
+                    color: selected ? SdColors.platformLight : SdColors.divider,
                   ),
                   onSelected: (_) {
                     setState(() => _selectedMonth = m);
@@ -264,7 +262,9 @@ class _BudgetPageState extends State<BudgetPage> {
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minWidth: isMob ? 550 : MediaQuery.of(context).size.width - r.paddingH * 2,
+              minWidth: isMob
+                  ? 550
+                  : MediaQuery.of(context).size.width - r.paddingH * 2,
             ),
             child: Column(
               children: [
@@ -272,7 +272,8 @@ class _BudgetPageState extends State<BudgetPage> {
                 Container(
                   decoration: SdUiKit.tableHeader,
                   padding: EdgeInsets.symmetric(
-                      horizontal: r.tableCellPadH, vertical: r.tableCellPadV + 4),
+                      horizontal: r.tableCellPadH,
+                      vertical: r.tableCellPadV + 4),
                   child: Row(
                     children: [
                       _headerCell('كود الحساب', r, flex: 2),
@@ -288,40 +289,44 @@ class _BudgetPageState extends State<BudgetPage> {
                   final b = _budgets[i];
                   final isAlt = i.isOdd;
                   return Container(
-                    color: isAlt
-                        ? SdColors.surfaceAlt
-                        : Colors.transparent,
+                    color: isAlt ? SdColors.surfaceAlt : Colors.transparent,
                     padding: EdgeInsets.symmetric(
                         horizontal: r.tableCellPadH, vertical: r.tableCellPadV),
                     child: Row(
                       children: [
-                        _dataCell(b['accountCode']?.toString() ?? '', r, flex: 2),
-                        _dataCell(b['accountName']?.toString() ?? '', r, flex: 3),
+                        _dataCell(b['accountCode']?.toString() ?? '', r,
+                            flex: 2),
+                        _dataCell(b['accountName']?.toString() ?? '', r,
+                            flex: 3),
                         _dataCell(_formatNumber(b['budgetAmount']), r,
-                            flex: 2,
-                            color: SdColors.primary,
-                            bold: true),
+                            flex: 2, color: SdColors.primary, bold: true),
                         _dataCell(b['notes']?.toString() ?? '', r, flex: 2),
                         Expanded(
                           flex: 2,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              _actionBtn(
-                                icon: Icons.edit,
-                                color: SdColors.primary,
-                                tooltip: 'تعديل',
-                                r: r,
-                                onTap: () => _showEditBudgetDialog(b),
-                              ),
-                              SizedBox(width: r.spaceXS),
-                              _actionBtn(
-                                icon: Icons.delete_outline,
-                                color: SdColors.danger,
-                                tooltip: 'حذف',
-                                r: r,
-                                onTap: () => _confirmDelete(b),
-                              ),
+                              if (PermissionManager.instance
+                                  .canEdit('accounting'))
+                                _actionBtn(
+                                  icon: Icons.edit,
+                                  color: SdColors.primary,
+                                  tooltip: 'تعديل',
+                                  r: r,
+                                  onTap: () => _showEditBudgetDialog(b),
+                                ),
+                              if (PermissionManager.instance
+                                  .canDelete('accounting'))
+                                SizedBox(width: r.spaceXS),
+                              if (PermissionManager.instance
+                                  .canDelete('accounting'))
+                                _actionBtn(
+                                  icon: Icons.delete_outline,
+                                  color: SdColors.danger,
+                                  tooltip: 'حذف',
+                                  r: r,
+                                  onTap: () => _confirmDelete(b),
+                                ),
                             ],
                           ),
                         ),
@@ -418,7 +423,9 @@ class _BudgetPageState extends State<BudgetPage> {
               scrollDirection: Axis.horizontal,
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minWidth: context.responsive.isMobile ? 550 : MediaQuery.of(context).size.width - r.paddingH * 2,
+                  minWidth: context.responsive.isMobile
+                      ? 550
+                      : MediaQuery.of(context).size.width - r.paddingH * 2,
                 ),
                 child: Column(
                   children: [
@@ -537,7 +544,8 @@ class _BudgetPageState extends State<BudgetPage> {
                         '$label\n${_formatNumber(rod.toY)}',
                         TextStyle(
                             fontFamily: 'Cairo',
-                            color: Colors.white, fontSize: r.small),
+                            color: Colors.white,
+                            fontSize: r.small),
                       );
                     },
                   ),
@@ -582,10 +590,10 @@ class _BudgetPageState extends State<BudgetPage> {
                       },
                     ),
                   ),
-                  topTitles:
-                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles:
-                      const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
                 ),
                 gridData: FlGridData(
                   show: true,
@@ -642,8 +650,7 @@ class _BudgetPageState extends State<BudgetPage> {
         Text(
           label,
           style: TextStyle(
-              fontFamily: 'Cairo',
-              fontSize: r.small, color: SdColors.muted),
+              fontFamily: 'Cairo', fontSize: r.small, color: SdColors.muted),
         ),
       ],
     );
@@ -673,8 +680,7 @@ class _BudgetPageState extends State<BudgetPage> {
             return AlertDialog(
               backgroundColor: SdColors.surface,
               shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(SdUiKit.radiusLarge)),
+                  borderRadius: BorderRadius.circular(SdUiKit.radiusLarge)),
               title: Text(
                 'إضافة ميزانية تقديرية',
                 style: TextStyle(
@@ -702,13 +708,12 @@ class _BudgetPageState extends State<BudgetPage> {
                         decoration: InputDecoration(
                           hintText: 'اختر الحساب',
                           hintStyle: TextStyle(
-                              fontFamily: 'Cairo',
-                              color: SdColors.faint),
+                              fontFamily: 'Cairo', color: SdColors.faint),
                           filled: true,
                           fillColor: SdColors.groundAlt,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                                SdUiKit.radiusMedium),
+                            borderRadius:
+                                BorderRadius.circular(SdUiKit.radiusMedium),
                             borderSide: BorderSide.none,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -716,7 +721,8 @@ class _BudgetPageState extends State<BudgetPage> {
                         ),
                         style: TextStyle(
                             fontFamily: 'Cairo',
-                            color: SdColors.ink, fontSize: 13),
+                            color: SdColors.ink,
+                            fontSize: 13),
                         items: leafAccounts.map<DropdownMenuItem<dynamic>>((a) {
                           final code = a['Code'] ?? a['code'] ?? '';
                           final name = a['Name'] ?? a['name'] ?? '';
@@ -740,19 +746,17 @@ class _BudgetPageState extends State<BudgetPage> {
                         controller: amountController,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        style: TextStyle(
-                            fontFamily: 'Cairo',
-                            color: SdColors.ink),
+                        style:
+                            TextStyle(fontFamily: 'Cairo', color: SdColors.ink),
                         decoration: InputDecoration(
                           hintText: '0',
                           hintStyle: TextStyle(
-                              fontFamily: 'Cairo',
-                              color: SdColors.faint),
+                              fontFamily: 'Cairo', color: SdColors.faint),
                           filled: true,
                           fillColor: SdColors.groundAlt,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                                SdUiKit.radiusMedium),
+                            borderRadius:
+                                BorderRadius.circular(SdUiKit.radiusMedium),
                             borderSide: BorderSide.none,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -769,19 +773,17 @@ class _BudgetPageState extends State<BudgetPage> {
                       TextField(
                         controller: notesController,
                         maxLines: 2,
-                        style: TextStyle(
-                            fontFamily: 'Cairo',
-                            color: SdColors.ink),
+                        style:
+                            TextStyle(fontFamily: 'Cairo', color: SdColors.ink),
                         decoration: InputDecoration(
                           hintText: 'ملاحظات اختيارية...',
                           hintStyle: TextStyle(
-                              fontFamily: 'Cairo',
-                              color: SdColors.faint),
+                              fontFamily: 'Cairo', color: SdColors.faint),
                           filled: true,
                           fillColor: SdColors.groundAlt,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(
-                                SdUiKit.radiusMedium),
+                            borderRadius:
+                                BorderRadius.circular(SdUiKit.radiusMedium),
                             borderSide: BorderSide.none,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -796,15 +798,16 @@ class _BudgetPageState extends State<BudgetPage> {
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: Text('إلغاء',
-                      style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint)),
+                      style: TextStyle(
+                          fontFamily: 'Cairo', color: SdColors.faint)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: SdColors.primarySoft,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                            SdUiKit.radiusMedium)),
+                        borderRadius:
+                            BorderRadius.circular(SdUiKit.radiusMedium)),
                   ),
                   onPressed: () async {
                     if (selectedAccount == null) {
@@ -821,10 +824,9 @@ class _BudgetPageState extends State<BudgetPage> {
                     }
                     await BudgetService.instance.setBudget(
                       companyId: _companyId,
-                      accountId: (selectedAccount['Id'] ??
-                              selectedAccount['id'] ??
-                              '')
-                          .toString(),
+                      accountId:
+                          (selectedAccount['Id'] ?? selectedAccount['id'] ?? '')
+                              .toString(),
                       accountCode: (selectedAccount['Code'] ??
                               selectedAccount['code'] ??
                               '')
@@ -846,7 +848,8 @@ class _BudgetPageState extends State<BudgetPage> {
                     _loadData();
                   },
                   child: Text('حفظ',
-                      style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+                      style: TextStyle(
+                          fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
                 ),
               ],
             );
@@ -873,8 +876,7 @@ class _BudgetPageState extends State<BudgetPage> {
         child: AlertDialog(
           backgroundColor: SdColors.surface,
           shape: RoundedRectangleBorder(
-              borderRadius:
-                  BorderRadius.circular(SdUiKit.radiusLarge)),
+              borderRadius: BorderRadius.circular(SdUiKit.radiusLarge)),
           title: Text(
             'تعديل ميزانية: ${budget['accountName']}',
             style: TextStyle(
@@ -893,14 +895,14 @@ class _BudgetPageState extends State<BudgetPage> {
                 Text('المبلغ المخطط',
                     style: TextStyle(
                         fontFamily: 'Cairo',
-                        color: SdColors.muted, fontSize: 13)),
+                        color: SdColors.muted,
+                        fontSize: 13)),
                 const SizedBox(height: 6),
                 TextField(
                   controller: amountController,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
-                  style:
-                      TextStyle(fontFamily: 'Cairo', color: SdColors.ink),
+                  style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink),
                   decoration: InputDecoration(
                     hintText: '0',
                     hintStyle:
@@ -908,8 +910,7 @@ class _BudgetPageState extends State<BudgetPage> {
                     filled: true,
                     fillColor: SdColors.groundAlt,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                          SdUiKit.radiusMedium),
+                      borderRadius: BorderRadius.circular(SdUiKit.radiusMedium),
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.symmetric(
@@ -920,13 +921,13 @@ class _BudgetPageState extends State<BudgetPage> {
                 Text('ملاحظات',
                     style: TextStyle(
                         fontFamily: 'Cairo',
-                        color: SdColors.muted, fontSize: 13)),
+                        color: SdColors.muted,
+                        fontSize: 13)),
                 const SizedBox(height: 6),
                 TextField(
                   controller: notesController,
                   maxLines: 2,
-                  style:
-                      TextStyle(fontFamily: 'Cairo', color: SdColors.ink),
+                  style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink),
                   decoration: InputDecoration(
                     hintText: 'ملاحظات اختيارية...',
                     hintStyle:
@@ -934,8 +935,7 @@ class _BudgetPageState extends State<BudgetPage> {
                     filled: true,
                     fillColor: SdColors.groundAlt,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                          SdUiKit.radiusMedium),
+                      borderRadius: BorderRadius.circular(SdUiKit.radiusMedium),
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.symmetric(
@@ -956,12 +956,10 @@ class _BudgetPageState extends State<BudgetPage> {
                 backgroundColor: SdColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                        SdUiKit.radiusMedium)),
+                    borderRadius: BorderRadius.circular(SdUiKit.radiusMedium)),
               ),
               onPressed: () async {
-                final amount =
-                    double.tryParse(amountController.text.trim());
+                final amount = double.tryParse(amountController.text.trim());
                 if (amount == null || amount <= 0) {
                   SdUiKit.showSnack(
                       context, 'يرجى إدخال مبلغ صحيح', SdColors.warning);
@@ -985,7 +983,8 @@ class _BudgetPageState extends State<BudgetPage> {
                 _loadData();
               },
               child: Text('تحديث',
-                  style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
+                  style: TextStyle(
+                      fontFamily: 'Cairo', fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -1014,8 +1013,7 @@ class _BudgetPageState extends State<BudgetPage> {
         _selectedMonth,
       );
       if (mounted) {
-        SdUiKit.showSnack(
-            context, 'تم حذف الميزانية', SdColors.success);
+        SdUiKit.showSnack(context, 'تم حذف الميزانية', SdColors.success);
       }
       _loadData();
     }

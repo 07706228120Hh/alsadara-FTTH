@@ -7,7 +7,6 @@ import '../../services/accounting_pdf_export_service.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../widgets/accounting_skeleton.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة الميزانية العمومية - Balance Sheet
 /// أصول = التزامات + حقوق ملكية
@@ -106,12 +105,14 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
     final warnings = <String>[];
     for (final a in _assets) {
       if (_balance(a) < -0.01) {
-        warnings.add('${a['Name'] ?? a['Code']}: رصيد سالب (${_balance(a).toStringAsFixed(0)})');
+        warnings.add(
+            '${a['Name'] ?? a['Code']}: رصيد سالب (${_balance(a).toStringAsFixed(0)})');
       }
     }
     for (final a in _liabilities) {
       if (_balance(a) > 0.01) {
-        warnings.add('${a['Name'] ?? a['Code']}: رصيد موجب غير طبيعي (${_balance(a).toStringAsFixed(0)})');
+        warnings.add(
+            '${a['Name'] ?? a['Code']}: رصيد موجب غير طبيعي (${_balance(a).toStringAsFixed(0)})');
       }
     }
     return warnings;
@@ -232,9 +233,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
                   : SdColors.danger.withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: _isBalanced
-                    ? SdColors.success
-                    : SdColors.danger,
+                color: _isBalanced ? SdColors.success : SdColors.danger,
               ),
             ),
             child: Row(
@@ -243,9 +242,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
                 Icon(
                   _isBalanced ? Icons.check_circle : Icons.warning_rounded,
                   size: isMob ? 14 : 18,
-                  color: _isBalanced
-                      ? SdColors.success
-                      : SdColors.danger,
+                  color: _isBalanced ? SdColors.success : SdColors.danger,
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -254,9 +251,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
                     fontFamily: 'Cairo',
                     fontSize: isMob ? 10 : ar.small,
                     fontWeight: FontWeight.bold,
-                    color: _isBalanced
-                        ? SdColors.success
-                        : SdColors.danger,
+                    color: _isBalanced ? SdColors.success : SdColors.danger,
                   ),
                 ),
               ],
@@ -474,12 +469,17 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('تحذيرات أرصدة:', style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: isMob ? 10 : ar.small, fontWeight: FontWeight.bold, color: SdColors.warning)),
-                  ..._balanceWarnings.map((w) => Text('• $w', style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: isMob ? 9 : ar.small - 1, color: SdColors.warning))),
+                  Text('تحذيرات أرصدة:',
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: isMob ? 10 : ar.small,
+                          fontWeight: FontWeight.bold,
+                          color: SdColors.warning)),
+                  ..._balanceWarnings.map((w) => Text('• $w',
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: isMob ? 9 : ar.small - 1,
+                          color: SdColors.warning))),
                 ],
               ),
             ),
@@ -575,9 +575,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
               final acc = accounts[i];
               final balance = _balance(acc).abs();
               return Container(
-                color: i.isEven
-                    ? Colors.transparent
-                    : SdColors.surfaceAlt,
+                color: i.isEven ? Colors.transparent : SdColors.surfaceAlt,
                 padding: EdgeInsets.symmetric(
                     horizontal: isMob ? 10 : ar.spaceL,
                     vertical: isMob ? 5 : ar.spaceXS),
@@ -616,8 +614,7 @@ class _BalanceSheetPageState extends State<BalanceSheetPage> {
               decoration: BoxDecoration(
                 color: SdColors.success.withOpacity(0.06),
                 border: Border(
-                    top: BorderSide(
-                        color: SdColors.success.withOpacity(0.2))),
+                    top: BorderSide(color: SdColors.success.withOpacity(0.2))),
               ),
               child: Row(
                 children: [

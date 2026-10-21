@@ -2,7 +2,7 @@
 import '../../services/accounting_service.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
+import '../../permissions/permissions.dart';
 
 /// صفحة شجرة الحسابات
 class ChartOfAccountsPage extends StatefulWidget {
@@ -51,14 +51,16 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
       _errorMessage = null;
     });
     try {
-      debugPrint('📊 شجرة الحسابات: بدء تحميل البيانات (companyId=${widget.companyId})');
+      debugPrint(
+          '📊 شجرة الحسابات: بدء تحميل البيانات (companyId=${widget.companyId})');
       final results = await Future.wait([
         AccountingService.instance.getAccounts(companyId: widget.companyId),
         AccountingService.instance.getAccountsTree(companyId: widget.companyId),
       ]).timeout(const Duration(seconds: 15), onTimeout: () {
         throw Exception('انتهت مهلة الاتصال');
       });
-      debugPrint('📊 شجرة الحسابات: وصلت النتائج - accounts success=${results[0]['success']}, tree success=${results[1]['success']}');
+      debugPrint(
+          '📊 شجرة الحسابات: وصلت النتائج - accounts success=${results[0]['success']}, tree success=${results[1]['success']}');
 
       if (results[0]['success'] == true) {
         _accounts = (results[0]['data'] is List) ? results[0]['data'] : [];
@@ -72,7 +74,8 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
         debugPrint('⚠️ فشل جلب الشجرة: ${results[1]['message']}');
         _treeData = [];
       }
-      debugPrint('📊 شجرة الحسابات: accounts=${_accounts.length}, tree=${_treeData.length}');
+      debugPrint(
+          '📊 شجرة الحسابات: accounts=${_accounts.length}, tree=${_treeData.length}');
 
       if (!mounted) return;
       setState(() {
@@ -84,11 +87,11 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           results[0]['success'] == true &&
           results[1]['success'] == true) {
         _showSeedDialog();
-      } else if (_accounts.isEmpty &&
-          results[0]['success'] != true) {
+      } else if (_accounts.isEmpty && results[0]['success'] != true) {
         // فشل في الاتصال
         setState(() {
-          _errorMessage = results[0]['message']?.toString() ?? 'فشل في جلب البيانات';
+          _errorMessage =
+              results[0]['message']?.toString() ?? 'فشل في جلب البيانات';
         });
       }
     } catch (e) {
@@ -117,8 +120,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('لاحقاً',
-                  style: TextStyle(color: SdColors.faint)),
+              child: Text('لاحقاً', style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -202,11 +204,12 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
               label: 'تحديث',
               onPressed: _loadData,
             ),
-            SdAppBarAction(
-              icon: Icons.add,
-              label: 'حساب جديد',
-              onPressed: _showAddAccountDialog,
-            ),
+            if (PermissionManager.instance.canAdd('accounting.chart'))
+              SdAppBarAction(
+                icon: Icons.add,
+                label: 'حساب جديد',
+                onPressed: _showAddAccountDialog,
+              ),
           ],
         ),
         body: Column(
@@ -216,8 +219,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
             Expanded(
               child: _isLoading
                   ? Center(
-                      child: CircularProgressIndicator(
-                          color: SdColors.success))
+                      child: CircularProgressIndicator(color: SdColors.success))
                   : _errorMessage != null
                       ? _buildError()
                       : _showTree
@@ -311,20 +313,19 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _buildStatChip(
-                'أصول', '$assets', SdColors.info, Icons.business),
+            _buildStatChip('أصول', '$assets', SdColors.info, Icons.business),
             SizedBox(width: context.accR.isMobile ? 4 : context.accR.spaceM),
-            _buildStatChip('التزامات', '$liabilities', SdColors.warning,
-                Icons.balance),
+            _buildStatChip(
+                'التزامات', '$liabilities', SdColors.warning, Icons.balance),
             SizedBox(width: context.accR.isMobile ? 4 : context.accR.spaceM),
             _buildStatChip(
                 'ملكية', '$equity', SdColors.platformMid, Icons.verified),
             SizedBox(width: context.accR.isMobile ? 4 : context.accR.spaceM),
-            _buildStatChip('إيرادات', '$revenue', SdColors.success,
-                Icons.trending_up),
+            _buildStatChip(
+                'إيرادات', '$revenue', SdColors.success, Icons.trending_up),
             SizedBox(width: context.accR.isMobile ? 4 : context.accR.spaceM),
-            _buildStatChip('مصروفات', '$expenses', SdColors.danger,
-                Icons.trending_down),
+            _buildStatChip(
+                'مصروفات', '$expenses', SdColors.danger, Icons.trending_down),
           ],
         ),
       ),
@@ -356,7 +357,8 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           Text(label,
               style: TextStyle(
                   fontFamily: 'Cairo',
-                  fontSize: context.accR.small, color: color.withOpacity(0.8))),
+                  fontSize: context.accR.small,
+                  color: color.withOpacity(0.8))),
         ],
       ),
     );
@@ -388,8 +390,9 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
             onPressed: _loadData,
             icon: Icon(Icons.refresh, size: context.accR.iconS),
             label: Text('إعادة المحاولة',
-                style:
-                    TextStyle(fontFamily: 'Cairo', fontSize: context.accR.financialSmall)),
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: context.accR.financialSmall)),
             style: ElevatedButton.styleFrom(
               backgroundColor: SdColors.primary,
               foregroundColor: Colors.white,
@@ -405,8 +408,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
   Widget _buildTreeView() {
     if (_treeData.isEmpty) {
       return const Center(
-        child: Text('لا توجد حسابات',
-            style: TextStyle(color: SdColors.faint)),
+        child: Text('لا توجد حسابات', style: TextStyle(color: SdColors.faint)),
       );
     }
     return ListView.builder(
@@ -541,9 +543,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                     name,
                     style: TextStyle(
                       fontFamily: 'Cairo',
-                      color: isActive
-                          ? SdColors.ink
-                          : SdColors.faint,
+                      color: isActive ? SdColors.ink : SdColors.faint,
                       fontSize: context.accR.body,
                       fontWeight: isLeaf ? FontWeight.normal : FontWeight.w600,
                     ),
@@ -598,31 +598,30 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                 SizedBox(width: context.accR.spaceS),
                 PopupMenuButton<String>(
                   icon: Icon(Icons.more_vert,
-                      color: SdColors.faint,
-                      size: context.accR.iconM),
+                      color: SdColors.faint, size: context.accR.iconM),
                   color: SdColors.surface,
                   onSelected: (action) => _handleAccountAction(action, node),
                   itemBuilder: (_) => [
-                    const PopupMenuItem(
-                        value: 'add_child',
-                        child: Text('إضافة حساب فرعي',
-                            style:
-                                TextStyle(color: SdColors.ink))),
-                    const PopupMenuItem(
-                        value: 'edit',
-                        child: Text('تعديل',
-                            style:
-                                TextStyle(color: SdColors.ink))),
+                    if (PermissionManager.instance.canAdd('accounting.chart'))
+                      const PopupMenuItem(
+                          value: 'add_child',
+                          child: Text('إضافة حساب فرعي',
+                              style: TextStyle(color: SdColors.ink))),
+                    if (PermissionManager.instance.canEdit('accounting.chart'))
+                      const PopupMenuItem(
+                          value: 'edit',
+                          child: Text('تعديل',
+                              style: TextStyle(color: SdColors.ink))),
                     if (isLeaf)
                       const PopupMenuItem(
                           value: 'statement',
                           child: Text('كشف حساب',
-                              style: TextStyle(
-                                  color: SdColors.ink))),
-                    const PopupMenuItem(
-                        value: 'delete',
-                        child: Text('حذف',
-                            style: TextStyle(color: SdColors.danger))),
+                              style: TextStyle(color: SdColors.ink))),
+                    if (PermissionManager.instance.canDelete('accounting.chart'))
+                      const PopupMenuItem(
+                          value: 'delete',
+                          child: Text('حذف',
+                              style: TextStyle(color: SdColors.danger))),
                   ],
                 ),
               ],
@@ -752,26 +751,26 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                     ),
                     PopupMenuButton<String>(
                       icon: Icon(Icons.more_vert,
-                          color: SdColors.faint,
-                          size: context.accR.iconM),
+                          color: SdColors.faint, size: context.accR.iconM),
                       color: SdColors.surface,
                       onSelected: (action) => _handleAccountAction(action, a),
                       itemBuilder: (_) => [
-                        const PopupMenuItem(
-                            value: 'edit',
-                            child: Text('تعديل',
-                                style: TextStyle(
-                                    color: SdColors.ink))),
+                        if (PermissionManager.instance
+                            .canEdit('accounting.chart'))
+                          const PopupMenuItem(
+                              value: 'edit',
+                              child: Text('تعديل',
+                                  style: TextStyle(color: SdColors.ink))),
                         const PopupMenuItem(
                             value: 'statement',
                             child: Text('كشف حساب',
-                                style: TextStyle(
-                                    color: SdColors.ink))),
-                        const PopupMenuItem(
-                            value: 'delete',
-                            child: Text('حذف',
-                                style:
-                                    TextStyle(color: SdColors.danger))),
+                                style: TextStyle(color: SdColors.ink))),
+                        if (PermissionManager.instance
+                            .canDelete('accounting.chart'))
+                          const PopupMenuItem(
+                              value: 'delete',
+                              child: Text('حذف',
+                                  style: TextStyle(color: SdColors.danger))),
                       ],
                     ),
                   ],
@@ -842,8 +841,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           backgroundColor: SdColors.surface,
           title: Text('إضافة حساب فرعي تحت: $parentName',
               style: TextStyle(
-                  color: SdColors.ink,
-                  fontSize: context.accR.headingSmall)),
+                  color: SdColors.ink, fontSize: context.accR.headingSmall)),
           content: SizedBox(
             width: context.accR.dialogSmallW,
             child: SingleChildScrollView(
@@ -892,8 +890,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('إلغاء',
-                  style: TextStyle(color: SdColors.faint)),
+              child: Text('إلغاء', style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -901,8 +898,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                   foregroundColor: Colors.black),
               onPressed: () async {
                 if (codeCtrl.text.isEmpty || nameCtrl.text.isEmpty) {
-                  _showSnackBar(
-                      'الرجاء ملء الحقول المطلوبة', SdColors.warning);
+                  _showSnackBar('الرجاء ملء الحقول المطلوبة', SdColors.warning);
                   return;
                 }
                 Navigator.pop(ctx);
@@ -923,8 +919,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                   _expandedNodes.add(parentId);
                   _loadData();
                 } else {
-                  _showSnackBar(
-                      result['message'] ?? 'خطأ', SdColors.danger);
+                  _showSnackBar(result['message'] ?? 'خطأ', SdColors.danger);
                 }
               },
               child: const Text('إنشاء'),
@@ -951,8 +946,8 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             backgroundColor: SdColors.surface,
-            title: Text('إضافة حساب جديد',
-                style: TextStyle(color: SdColors.ink)),
+            title:
+                Text('إضافة حساب جديد', style: TextStyle(color: SdColors.ink)),
             content: SizedBox(
               width: context.accR.dialogSmallW,
               child: SingleChildScrollView(
@@ -1006,8 +1001,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('إلغاء',
-                    style: TextStyle(color: SdColors.faint)),
+                child: Text('إلغاء', style: TextStyle(color: SdColors.faint)),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -1031,12 +1025,10 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                     companyId: widget.companyId ?? '',
                   );
                   if (result['success'] == true) {
-                    _showSnackBar(
-                        'تم إنشاء الحساب بنجاح', SdColors.success);
+                    _showSnackBar('تم إنشاء الحساب بنجاح', SdColors.success);
                     _loadData();
                   } else {
-                    _showSnackBar(
-                        result['message'] ?? 'خطأ', SdColors.danger);
+                    _showSnackBar(result['message'] ?? 'خطأ', SdColors.danger);
                   }
                 },
                 child: const Text('إنشاء'),
@@ -1081,8 +1073,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                     _buildField('الوصف', descCtrl, maxLines: 2),
                     SizedBox(height: context.accR.spaceM),
                     SwitchListTile(
-                      title: Text('نشط',
-                          style: TextStyle(color: SdColors.ink)),
+                      title: Text('نشط', style: TextStyle(color: SdColors.ink)),
                       value: isActive,
                       activeColor: SdColors.success,
                       onChanged: (v) => setDialogState(() => isActive = v),
@@ -1094,8 +1085,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('إلغاء',
-                    style: TextStyle(color: SdColors.faint)),
+                child: Text('إلغاء', style: TextStyle(color: SdColors.faint)),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -1121,8 +1111,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                     _showSnackBar('تم التعديل بنجاح', SdColors.success);
                     _loadData();
                   } else {
-                    _showSnackBar(
-                        result['message'] ?? 'خطأ', SdColors.danger);
+                    _showSnackBar(result['message'] ?? 'خطأ', SdColors.danger);
                   }
                 },
                 child: const Text('حفظ'),
@@ -1229,9 +1218,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                           ),
                         ),
                         Container(
-                            width: 1,
-                            height: 30,
-                            color: SdColors.divider),
+                            width: 1, height: 30, color: SdColors.divider),
                         Expanded(
                           child: Column(
                             children: [
@@ -1250,9 +1237,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                           ),
                         ),
                         Container(
-                            width: 1,
-                            height: 30,
-                            color: SdColors.divider),
+                            width: 1, height: 30, color: SdColors.divider),
                         Expanded(
                           child: Column(
                             children: [
@@ -1290,8 +1275,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.receipt_long,
-                                color:
-                                    SdColors.faint.withOpacity(0.3),
+                                color: SdColors.faint.withOpacity(0.3),
                                 size: context.accR.iconXL),
                             SizedBox(height: context.accR.spaceM),
                             Text('لا توجد حركات مرحّلة على هذا الحساب',
@@ -1366,8 +1350,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                               ],
                             ),
                           ),
-                          const Divider(
-                              color: SdColors.divider, height: 1),
+                          const Divider(color: SdColors.divider, height: 1),
                           // الحركات
                           Expanded(
                             child: ListView.builder(
@@ -1382,8 +1365,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                   decoration: BoxDecoration(
                                     color: i % 2 == 0
                                         ? Colors.transparent
-                                        : SdColors.surfaceAlt
-                                            .withOpacity(0.5),
+                                        : SdColors.surfaceAlt.withOpacity(0.5),
                                     border: Border(
                                         bottom: BorderSide(
                                             color: SdColors.divider
@@ -1397,8 +1379,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                               '#${e['EntryNumber'] ?? ''}',
                                               style: TextStyle(
                                                   fontFamily: 'Cairo',
-                                                  color:
-                                                      SdColors.primary,
+                                                  color: SdColors.primary,
                                                   fontSize: context.accR.small,
                                                   fontWeight:
                                                       FontWeight.bold))),
@@ -1408,8 +1389,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                               _formatDate(e['EntryDate']),
                                               style: TextStyle(
                                                   fontFamily: 'Cairo',
-                                                  color:
-                                                      SdColors.faint,
+                                                  color: SdColors.faint,
                                                   fontSize:
                                                       context.accR.small))),
                                       Expanded(
@@ -1419,8 +1399,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                                   '',
                                               style: TextStyle(
                                                   fontFamily: 'Cairo',
-                                                  color: SdUiKit
-                                                      .textPrimary,
+                                                  color: SdUiKit.textPrimary,
                                                   fontSize: context.accR.small),
                                               overflow: TextOverflow.ellipsis)),
                                       SizedBox(
@@ -1433,8 +1412,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                                   fontFamily: 'Cairo',
                                                   color: debit > 0
                                                       ? SdColors.success
-                                                      : SdUiKit
-                                                          .textMuted,
+                                                      : SdUiKit.textMuted,
                                                   fontSize: context.accR.small),
                                               textAlign: TextAlign.center)),
                                       SizedBox(
@@ -1447,8 +1425,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                                                   fontFamily: 'Cairo',
                                                   color: credit > 0
                                                       ? SdColors.danger
-                                                      : SdUiKit
-                                                          .textMuted,
+                                                      : SdUiKit.textMuted,
                                                   fontSize: context.accR.small),
                                               textAlign: TextAlign.center)),
                                     ],
@@ -1464,7 +1441,8 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: Text('إغلاق',
-                      style: TextStyle(fontFamily: 'Cairo', color: SdColors.success)),
+                      style: TextStyle(
+                          fontFamily: 'Cairo', color: SdColors.success)),
                 ),
               ],
             ),
@@ -1486,19 +1464,16 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: SdColors.surface,
-          title: Text('تأكيد الحذف',
-              style: TextStyle(color: SdColors.ink)),
+          title: Text('تأكيد الحذف', style: TextStyle(color: SdColors.ink)),
           content: Text('هل تريد حذف الحساب "${account['Name']}"؟',
               style: const TextStyle(color: SdColors.muted)),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('إلغاء',
-                  style: TextStyle(color: SdColors.faint)),
+              child: Text('إلغاء', style: TextStyle(color: SdColors.faint)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: SdColors.danger),
+              style: ElevatedButton.styleFrom(backgroundColor: SdColors.danger),
               onPressed: () async {
                 Navigator.pop(ctx);
                 final result = await AccountingService.instance
@@ -1507,8 +1482,7 @@ class _ChartOfAccountsPageState extends State<ChartOfAccountsPage> {
                   _showSnackBar('تم الحذف', SdColors.success);
                   _loadData();
                 } else {
-                  _showSnackBar(
-                      result['message'] ?? 'خطأ', SdColors.danger);
+                  _showSnackBar(result['message'] ?? 'خطأ', SdColors.danger);
                 }
               },
               child: const Text('حذف'),

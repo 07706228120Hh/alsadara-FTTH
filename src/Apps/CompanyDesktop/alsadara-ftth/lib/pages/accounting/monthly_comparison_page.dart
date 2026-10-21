@@ -6,7 +6,6 @@ import '../../services/accounting_export_service.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../utils/responsive_helper.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة تقرير المقارنة الشهرية - مقارنة الإيرادات والمصروفات وصافي الربح عبر الأشهر
 class MonthlyComparisonPage extends StatefulWidget {
@@ -90,10 +89,10 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
       final expensesResult = results[0];
       final collectionsResult = results[1];
 
-      final expenses = (expensesResult['success'] == true &&
-              expensesResult['data'] is List)
-          ? expensesResult['data'] as List
-          : [];
+      final expenses =
+          (expensesResult['success'] == true && expensesResult['data'] is List)
+              ? expensesResult['data'] as List
+              : [];
       final collections = (collectionsResult['success'] == true &&
               collectionsResult['data'] is List)
           ? collectionsResult['data'] as List
@@ -102,8 +101,7 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
       // تجميع المصروفات حسب الشهر
       final expensesByMonth = <String, double>{};
       for (final e in expenses) {
-        final dateStr =
-            (e['ExpenseDate'] ?? e['CreatedAt'] ?? '').toString();
+        final dateStr = (e['ExpenseDate'] ?? e['CreatedAt'] ?? '').toString();
         final key = _extractMonthKey(dateStr);
         if (key != null) {
           expensesByMonth[key] =
@@ -128,10 +126,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
       final monthlyData = <Map<String, dynamic>>[];
       for (int i = 0; i < _monthCount; i++) {
         final month = DateTime(now.year, now.month - _monthCount + 1 + i, 1);
-        final key =
-            '${month.year}-${month.month.toString().padLeft(2, '0')}';
-        final monthName =
-            '${_arabicMonths[month.month - 1]} ${month.year}';
+        final key = '${month.year}-${month.month.toString().padLeft(2, '0')}';
+        final monthName = '${_arabicMonths[month.month - 1]} ${month.year}';
         final revenue = collectionsByMonth[key] ?? 0;
         final expense = expensesByMonth[key] ?? 0;
         final netIncome = revenue - expense;
@@ -224,7 +220,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ في التصدير', style: TextStyle(fontFamily: 'Cairo')),
+          content:
+              Text('خطأ في التصدير', style: TextStyle(fontFamily: 'Cairo')),
           backgroundColor: SdColors.danger,
         ),
       );
@@ -264,8 +261,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
               Expanded(
                 child: _isLoading
                     ? const Center(
-                        child: CircularProgressIndicator(
-                            color: SdColors.success))
+                        child:
+                            CircularProgressIndicator(color: SdColors.success))
                     : _errorMessage != null
                         ? Center(
                             child: SdEmptyState(
@@ -342,14 +339,10 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
           vertical: isMob ? 4 : 6,
         ),
         decoration: BoxDecoration(
-          color: isSelected
-              ? SdColors.primary
-              : SdColors.groundAlt,
+          color: isSelected ? SdColors.primary : SdColors.groundAlt,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected
-                ? SdColors.primary
-                : SdColors.divider,
+            color: isSelected ? SdColors.primary : SdColors.divider,
           ),
         ),
         child: Text(
@@ -457,8 +450,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
                 minY: 0,
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
-                    tooltipPadding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                    tooltipPadding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     tooltipMargin: 6,
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final label = rodIndex == 0 ? 'إيرادات' : 'مصروفات';
@@ -507,8 +500,7 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
                         if (idx < 0 || idx >= _monthlyData.length) {
                           return const SizedBox.shrink();
                         }
-                        final key =
-                            _monthlyData[idx]['monthKey'] as String;
+                        final key = _monthlyData[idx]['monthKey'] as String;
                         return Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
@@ -565,8 +557,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
     );
   }
 
-  Widget _legendDot(Color color, String label, AccountingResponsive ar,
-      bool isMob) {
+  Widget _legendDot(
+      Color color, String label, AccountingResponsive ar, bool isMob) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -613,7 +605,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
       }
     }
 
-    final avgNetIncome = countWithData > 0 ? totalNetIncome / countWithData : 0.0;
+    final avgNetIncome =
+        countWithData > 0 ? totalNetIncome / countWithData : 0.0;
 
     if (isMob) {
       return Column(
@@ -694,8 +687,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
     );
   }
 
-  Widget _summaryCard(String title, double value, Color color,
-      IconData icon, AccountingResponsive ar, bool isMob) {
+  Widget _summaryCard(String title, double value, Color color, IconData icon,
+      AccountingResponsive ar, bool isMob) {
     return Container(
       padding: EdgeInsets.all(isMob ? 10 : ar.cardPad),
       decoration: BoxDecoration(
@@ -779,7 +772,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
                 return _buildTableRow(_monthlyData[i], i, ar, isMob);
               }),
               // صف الإجماليات
-              _buildTotalsRow(totalRevenue, totalExpenses, totalNetIncome, ar, isMob),
+              _buildTotalsRow(
+                  totalRevenue, totalExpenses, totalNetIncome, ar, isMob),
             ],
           ),
         ),
@@ -825,8 +819,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
     );
   }
 
-  Widget _buildTableRow(
-      Map<String, dynamic> data, int index, AccountingResponsive ar, bool isMob) {
+  Widget _buildTableRow(Map<String, dynamic> data, int index,
+      AccountingResponsive ar, bool isMob) {
     final revenue = data['revenue'] as double;
     final expenses = data['expenses'] as double;
     final netIncome = data['netIncome'] as double;
@@ -923,9 +917,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
                               ? Icons.arrow_upward_rounded
                               : Icons.arrow_downward_rounded,
                           size: 14,
-                          color: changePercent >= 0
-                              ? _clrRevenue
-                              : _clrExpenses,
+                          color:
+                              changePercent >= 0 ? _clrRevenue : _clrExpenses,
                         ),
                         const SizedBox(width: 2),
                         Text(
@@ -934,9 +927,8 @@ class _MonthlyComparisonPageState extends State<MonthlyComparisonPage> {
                             fontFamily: 'Cairo',
                             fontSize: ar.tableCellFont,
                             fontWeight: FontWeight.w600,
-                            color: changePercent >= 0
-                                ? _clrRevenue
-                                : _clrExpenses,
+                            color:
+                                changePercent >= 0 ? _clrRevenue : _clrExpenses,
                           ),
                         ),
                       ],

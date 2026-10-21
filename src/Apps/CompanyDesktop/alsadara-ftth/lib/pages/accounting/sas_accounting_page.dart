@@ -5,7 +5,6 @@ import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
 
 /// 📡 صفحة «نظام الساس — الحسابات»
 /// تعرض ملخّص محاسبة عمليات الساس فقط (SubscriptionLog.Source == Sas) من الدفتر المحاسبي الموحّد.
@@ -215,13 +214,11 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
         : 'كل الفترات';
     return Container(
       width: double.infinity,
-      padding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       color: SdColors.surface,
       child: Row(
         children: [
-          const Icon(Icons.date_range,
-              size: 18, color: SdColors.faint),
+          const Icon(Icons.date_range, size: 18, color: SdColors.faint),
           const SizedBox(width: 8),
           Text(
             label,
@@ -240,7 +237,8 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
           OutlinedButton.icon(
             onPressed: _pickDateRange,
             icon: const Icon(Icons.filter_alt_outlined, size: 18),
-            label: Text('تصفية بالتاريخ', style: TextStyle(fontFamily: 'Cairo')),
+            label:
+                Text('تصفية بالتاريخ', style: TextStyle(fontFamily: 'Cairo')),
           ),
         ],
       ),
@@ -269,8 +267,7 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
       return const Center(
         child: SdEmptyState(
           title: 'لا توجد عمليات ساس محاسبية بعد',
-          message:
-              'ستظهر الحركات هنا بعد أول تفعيل عبر نظام الساس',
+          message: 'ستظهر الحركات هنا بعد أول تفعيل عبر نظام الساس',
           icon: Icons.router,
         ),
       );
@@ -383,8 +380,7 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
           Text(
             c.title,
             style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 13, color: SdColors.faint),
+                fontFamily: 'Cairo', fontSize: 13, color: SdColors.faint),
           ),
         ],
       ),
@@ -436,7 +432,8 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
                         '${_currencyFormat.format(count)} عملية · ${_currencyFormat.format(total)}',
                         style: TextStyle(
                             fontFamily: 'Cairo',
-                            fontSize: 12, color: SdColors.muted),
+                            fontSize: 12,
+                            color: SdColors.muted),
                       ),
                     ],
                   ),
@@ -508,8 +505,7 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
                 Text(
                   plan,
                   style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 12, color: SdColors.faint),
+                      fontFamily: 'Cairo', fontSize: 12, color: SdColors.faint),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -523,7 +519,8 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
                 Text(dateLabel,
                     style: TextStyle(
                         fontFamily: 'Cairo',
-                        fontSize: 11, color: SdColors.muted)),
+                        fontSize: 11,
+                        color: SdColors.muted)),
                 const SizedBox(height: 2),
                 Row(
                   children: [
@@ -540,7 +537,8 @@ class _SasAccountingPageState extends State<SasAccountingPage> {
             _currencyFormat.format(collected),
             style: TextStyle(
                 fontFamily: 'Cairo',
-                fontWeight: FontWeight.bold, color: SdColors.success),
+                fontWeight: FontWeight.bold,
+                color: SdColors.success),
           ),
         ],
       ),

@@ -17,7 +17,6 @@ import '../home_page.dart';
 import '../../multi_tenant.dart';
 import 'permissions_management_v2_page.dart';
 import '../../permissions/permissions.dart';
-import '../../frontend/components/sd_dash_kit.dart';
 
 /// حالة الاشتراك
 enum CompanyStatus {
@@ -141,40 +140,41 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
 
     return SdTheme.scope(
       child: Scaffold(
-      backgroundColor: SdColors.ground,
-      appBar: _buildPremiumAppBar(statusColor, statusText, isCompact),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(isCompact ? 16 : 24),
-        child: Column(
-          children: [
-            // الصف الأول: معلومات الشركة + الاشتراك
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // بطاقة معلومات الشركة
-                  Expanded(
-                    flex: 3,
-                    child: _buildCompactInfoCard(dateFormat, isCompact),
-                  ),
-                  SizedBox(width: isCompact ? 12 : 20),
-                  // بطاقة الاشتراك
-                  Expanded(
-                    flex: 2,
-                    child: _buildCompactSubscriptionCard(dateFormat, isCompact),
-                  ),
-                ],
+        backgroundColor: SdColors.ground,
+        appBar: _buildPremiumAppBar(statusColor, statusText, isCompact),
+        body: SingleChildScrollView(
+          padding: EdgeInsets.all(isCompact ? 16 : 24),
+          child: Column(
+            children: [
+              // الصف الأول: معلومات الشركة + الاشتراك
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // بطاقة معلومات الشركة
+                    Expanded(
+                      flex: 3,
+                      child: _buildCompactInfoCard(dateFormat, isCompact),
+                    ),
+                    SizedBox(width: isCompact ? 12 : 20),
+                    // بطاقة الاشتراك
+                    Expanded(
+                      flex: 2,
+                      child:
+                          _buildCompactSubscriptionCard(dateFormat, isCompact),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            SizedBox(height: isCompact ? 16 : 24),
+              SizedBox(height: isCompact ? 16 : 24),
 
-            // الصف الثاني: جميع الأزرار
-            _buildAllActionsGrid(isCompact),
-          ],
+              // الصف الثاني: جميع الأزرار
+              _buildAllActionsGrid(isCompact),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 
@@ -220,8 +220,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
             decoration: BoxDecoration(
               gradient: SdDashKit.primaryGradient,
               borderRadius: BorderRadius.circular(12),
-              boxShadow: SdDashKit.glowShadow(
-                  SdColors.info.withOpacity(0.5)),
+              boxShadow: SdDashKit.glowShadow(SdColors.info.withOpacity(0.5)),
             ),
             child: Icon(
               Icons.business_rounded,
@@ -379,8 +378,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: SdColors.info.withOpacity(0.2), width: 1),
+        border: Border.all(color: SdColors.info.withOpacity(0.2), width: 1),
         boxShadow: [
           BoxShadow(
             color: SdColors.info.withOpacity(0.18),
@@ -531,8 +529,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           ],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: SdColors.info.withOpacity(0.25), width: 1.5),
+        border: Border.all(color: SdColors.info.withOpacity(0.25), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: SdColors.info.withOpacity(0.2),
@@ -588,7 +585,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
   Widget _buildCompactSubscriptionCard(DateFormat dateFormat, bool isCompact) {
     // ألوان بطاقات الاشتراك - تباين قوي بين الخلفية والنص
     const Color subscriptionBlue = SdColors.platformTint; // خلفية زرقاء فاتحة
-    const Color subscriptionGreen = SdColors.successTintEdge; // خلفية خضراء فاتحة
+    const Color subscriptionGreen =
+        SdColors.successTintEdge; // خلفية خضراء فاتحة
     const Color blueText = SdColors.primaryLight; // نص أزرق داكن جداً
     const Color greenText = SdColors.fieldBase; // نص أخضر داكن جداً
     const Color orangeText = SdColors.warningEdge; // برتقالي داكن جداً
@@ -599,8 +597,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: SdColors.success.withOpacity(0.2), width: 1.5),
+        border:
+            Border.all(color: SdColors.success.withOpacity(0.2), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: SdColors.success.withOpacity(0.12),
@@ -859,8 +857,7 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: SdColors.info.withOpacity(0.35), width: 1.5),
+        border: Border.all(color: SdColors.info.withOpacity(0.35), width: 1.5),
         boxShadow: [
           BoxShadow(
             color: SdColors.info.withOpacity(0.2),
@@ -984,9 +981,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                   label: _isLinkedToCitizen
                       ? 'إلغاء ربط المواطن'
                       : 'ربط بوابة المواطن',
-                  backgroundColor: _isLinkedToCitizen
-                      ? orangeLightBg
-                      : SdColors.accentTint,
+                  backgroundColor:
+                      _isLinkedToCitizen ? orangeLightBg : SdColors.accentTint,
                   foregroundColor: _isLinkedToCitizen ? orange : teal,
                   onPressed: _isLinkedToCitizen
                       ? _unlinkFromCitizenPortal
@@ -1489,7 +1485,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
                   color: SdColors.faint.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.toggle_on_rounded, color: SdColors.faint),
+                child:
+                    const Icon(Icons.toggle_on_rounded, color: SdColors.faint),
               ),
               title: const Text('صلاحيات V1 (بسيطة)'),
               subtitle: const Text('تفعيل/تعطيل الميزة بالكامل'),
@@ -1624,7 +1621,8 @@ class _CompanyDetailsPageState extends State<CompanyDetailsPage> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _company.isActive ? SdColors.warning : SdColors.success,
+              backgroundColor:
+                  _company.isActive ? SdColors.warning : SdColors.success,
             ),
             child: Text(_company.isActive ? 'تعطيل' : 'تفعيل'),
           ),
@@ -2193,9 +2191,8 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: isEnabled
-                  ? SdColors.info.withOpacity(0.2)
-                  : SdColors.ground,
+              color:
+                  isEnabled ? SdColors.info.withOpacity(0.2) : SdColors.ground,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isEnabled
@@ -2207,9 +2204,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
               children: [
                 Icon(
                   feature['icon'] as IconData,
-                  color: isEnabled
-                      ? SdColors.info
-                      : SdColors.faint,
+                  color: isEnabled ? SdColors.info : SdColors.faint,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -2217,9 +2212,7 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                   child: Text(
                     feature['label'] as String,
                     style: TextStyle(
-                      color: isEnabled
-                          ? SdColors.ink
-                          : SdColors.faint,
+                      color: isEnabled ? SdColors.ink : SdColors.faint,
                       fontSize: 12,
                       fontWeight:
                           isEnabled ? FontWeight.w600 : FontWeight.normal,
@@ -2433,8 +2426,7 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                                       size: 48, color: SdColors.faint),
                                   const SizedBox(height: 12),
                                   Text('لا يوجد مستخدمين',
-                                      style: TextStyle(
-                                          color: SdColors.muted)),
+                                      style: TextStyle(color: SdColors.muted)),
                                 ],
                               ),
                             )
@@ -2477,18 +2469,15 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: user.isActive
-                    ? SdColors.successTint
-                    : SdColors.dangerTint,
+                color:
+                    user.isActive ? SdColors.successTint : SdColors.dangerTint,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 user.isActive ? 'نشط' : 'معطل',
                 style: TextStyle(
                   fontSize: 10,
-                  color: user.isActive
-                      ? SdColors.success
-                      : SdColors.danger,
+                  color: user.isActive ? SdColors.success : SdColors.danger,
                 ),
               ),
             ),
@@ -2517,17 +2506,20 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.person_outline, size: 14, color: SdColors.faint),
+                const Icon(Icons.person_outline,
+                    size: 14, color: SdColors.faint),
                 const SizedBox(width: 4),
                 Text(user.username,
-                    style: const TextStyle(fontSize: 12, color: SdColors.faint)),
+                    style:
+                        const TextStyle(fontSize: 12, color: SdColors.faint)),
                 const SizedBox(width: 16),
                 if (user.email != null) ...[
                   const Icon(Icons.email_outlined,
                       size: 14, color: SdColors.faint),
                   const SizedBox(width: 4),
                   Text(user.email!,
-                      style: const TextStyle(fontSize: 12, color: SdColors.faint)),
+                      style:
+                          const TextStyle(fontSize: 12, color: SdColors.faint)),
                 ],
               ],
             ),
@@ -2539,8 +2531,8 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
             // زر الصلاحيات
             IconButton(
               onPressed: () => _managePermissions(user),
-              icon:
-                  const Icon(Icons.security_rounded, color: SdColors.platformBase),
+              icon: const Icon(Icons.security_rounded,
+                  color: SdColors.platformBase),
               tooltip: 'الصلاحيات',
             ),
             // زر تعديل
@@ -2618,7 +2610,8 @@ class _CompanyUsersDialogState extends State<_CompanyUsersDialog> {
                   color: SdColors.faint.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.toggle_on_rounded, color: SdColors.faint),
+                child:
+                    const Icon(Icons.toggle_on_rounded, color: SdColors.faint),
               ),
               title: const Text('صلاحيات V1 (بسيطة)'),
               subtitle: const Text('تفعيل/تعطيل الميزة بالكامل'),

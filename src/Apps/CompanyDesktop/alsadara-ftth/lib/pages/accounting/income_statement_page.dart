@@ -7,7 +7,6 @@ import '../../services/accounting_pdf_export_service.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../widgets/accounting_skeleton.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة قائمة الدخل - Income Statement (الأرباح والخسائر)
 class IncomeStatementPage extends StatefulWidget {
@@ -217,8 +216,7 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.calendar_month,
-                      size: isMob ? 12 : 16,
-                      color: SdColors.primary),
+                      size: isMob ? 12 : 16, color: SdColors.primary),
                   const SizedBox(width: 4),
                   Text(
                     '${DateFormat('yyyy/MM/dd').format(_dateFrom)} - ${DateFormat('yyyy/MM/dd').format(_dateTo)}',
@@ -460,13 +458,10 @@ class _IncomeStatementPageState extends State<IncomeStatementPage> {
             ...List.generate(accounts.length, (i) {
               final acc = accounts[i];
               final balance = _balance(acc).abs();
-              final percentage =
-                  total > 0 ? (balance / total * 100) : 0.0;
+              final percentage = total > 0 ? (balance / total * 100) : 0.0;
 
               return Container(
-                color: i.isEven
-                    ? Colors.transparent
-                    : SdColors.surfaceAlt,
+                color: i.isEven ? Colors.transparent : SdColors.surfaceAlt,
                 padding: EdgeInsets.symmetric(
                     horizontal: isMob ? 10 : ar.spaceL,
                     vertical: isMob ? 6 : ar.spaceS),

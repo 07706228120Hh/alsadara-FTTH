@@ -22,7 +22,6 @@ import '../home_page.dart';
 import '../../permissions/permissions.dart';
 import '../../multi_tenant.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_dash_kit.dart';
 
 /// حالة الاشتراك
 enum CompanyStatus {
@@ -237,28 +236,27 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
   Widget build(BuildContext context) {
     return SdTheme.scope(
       child: Scaffold(
-      backgroundColor: SdColors.ground,
-      body: Column(
-        children: [
-          // شريط الأدوات العلوي الفخم
-          _buildPremiumToolbar(),
+        backgroundColor: SdColors.ground,
+        body: Column(
+          children: [
+            // شريط الأدوات العلوي الفخم
+            _buildPremiumToolbar(),
 
-          // المحتوى
-          Expanded(
-            child: _isLoading
-                ? SdDashKit.loadingIndicator(
-                    message: 'جاري تحميل الشركات...')
-                : _errorMessage != null
-                    ? SdDashKit.errorWidget(
-                        message: 'حدث خطأ',
-                        details: _errorMessage,
-                        onRetry: _loadCompanies,
-                      )
-                    : _buildContent(),
-          ),
-        ],
+            // المحتوى
+            Expanded(
+              child: _isLoading
+                  ? SdDashKit.loadingIndicator(message: 'جاري تحميل الشركات...')
+                  : _errorMessage != null
+                      ? SdDashKit.errorWidget(
+                          message: 'حدث خطأ',
+                          details: _errorMessage,
+                          onRetry: _loadCompanies,
+                        )
+                      : _buildContent(),
+            ),
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -290,8 +288,8 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                 decoration: BoxDecoration(
                   gradient: SdDashKit.primaryGradient,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: SdDashKit.glowShadow(
-                      SdColors.info.withOpacity(0.2)),
+                  boxShadow:
+                      SdDashKit.glowShadow(SdColors.info.withOpacity(0.2)),
                 ),
                 child: const Icon(Icons.business_rounded,
                     color: Colors.white, size: 22),
@@ -329,8 +327,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                 decoration: BoxDecoration(
                   color: SdColors.success.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: SdColors.success.withOpacity(0.3)),
+                  border: Border.all(color: SdColors.success.withOpacity(0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -343,8 +340,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color:
-                                SdColors.success.withOpacity(0.5),
+                            color: SdColors.success.withOpacity(0.5),
                             blurRadius: 4,
                           ),
                         ],
@@ -376,8 +372,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                     decoration: BoxDecoration(
                       color: SdColors.groundAlt,
                       borderRadius: BorderRadius.circular(10),
-                      border:
-                          Border.all(color: SdColors.divider),
+                      border: Border.all(color: SdColors.divider),
                     ),
                     child: Icon(Icons.refresh_rounded,
                         size: 20, color: SdColors.faint),
@@ -435,12 +430,8 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   SdColors.danger,
                   CompanyStatus.critical),
               const SizedBox(width: 8),
-              _buildPremiumStatChip(
-                  'منتهية',
-                  stats['expired']!,
-                  Icons.cancel_rounded,
-                  SdColors.danger,
-                  CompanyStatus.expired),
+              _buildPremiumStatChip('منتهية', stats['expired']!,
+                  Icons.cancel_rounded, SdColors.danger, CompanyStatus.expired),
               const SizedBox(width: 8),
               _buildPremiumStatChip(
                   'معلقة',
@@ -470,9 +461,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? color.withOpacity(0.12)
-                  : SdColors.surface,
+              color: isSelected ? color.withOpacity(0.12) : SdColors.surface,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: isSelected ? color : color.withOpacity(0.2),
@@ -507,9 +496,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
-                    color: isSelected
-                        ? color.withOpacity(0.8)
-                        : SdColors.muted,
+                    color: isSelected ? color.withOpacity(0.8) : SdColors.muted,
                   ),
                 ),
               ],
@@ -738,9 +725,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? color.withOpacity(0.15)
-                  : SdColors.ground,
+              color: isSelected ? color.withOpacity(0.15) : SdColors.ground,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected ? color : Colors.black.withOpacity(0.3),
@@ -782,9 +767,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                     Text(
                       label,
                       style: TextStyle(
-                        color: isSelected
-                            ? color
-                            : SdColors.muted,
+                        color: isSelected ? color : SdColors.muted,
                         fontSize: 11,
                       ),
                     ),
@@ -830,8 +813,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       children: [
         Row(
           children: [
-            Icon(Icons.analytics_outlined,
-                color: SdColors.info, size: 20),
+            Icon(Icons.analytics_outlined, color: SdColors.info, size: 20),
             const SizedBox(width: 8),
             const Text(
               'الإحصائيات',
@@ -926,13 +908,10 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
           width: 140,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: isSelected
-                ? gradient[0].withOpacity(0.1)
-                : SdColors.surface,
+            color: isSelected ? gradient[0].withOpacity(0.1) : SdColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color:
-                  isSelected ? gradient[0] : SdColors.divider,
+              color: isSelected ? gradient[0] : SdColors.divider,
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -982,8 +961,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
       decoration: BoxDecoration(
         color: SdColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: SdColors.divider.withOpacity(0.5)),
+        border: Border.all(color: SdColors.divider.withOpacity(0.5)),
       ),
       child: Row(
         children: [
@@ -997,8 +975,8 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   color: SdColors.faint,
                   fontSize: 13,
                 ),
-                prefixIcon: Icon(Icons.search_rounded,
-                    color: SdColors.info, size: 20),
+                prefixIcon:
+                    Icon(Icons.search_rounded, color: SdColors.info, size: 20),
                 filled: true,
                 fillColor: SdColors.groundAlt.withOpacity(0.5),
                 border: OutlineInputBorder(
@@ -1044,8 +1022,7 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                   decoration: BoxDecoration(
                     color: SdColors.danger.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: SdColors.danger.withOpacity(0.2)),
+                    border: Border.all(color: SdColors.danger.withOpacity(0.2)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1080,14 +1057,12 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
                 ],
               ),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                  color: SdColors.info.withOpacity(0.15)),
+              border: Border.all(color: SdColors.info.withOpacity(0.15)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.business_rounded,
-                    size: 14, color: SdColors.info),
+                Icon(Icons.business_rounded, size: 14, color: SdColors.info),
                 const SizedBox(width: 6),
                 Text(
                   '${_filteredCompanies.length} شركة',
@@ -1349,7 +1324,8 @@ class _UnifiedCompaniesPageState extends State<UnifiedCompaniesPage> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: company.isActive ? SdColors.warning : SdColors.success,
+              backgroundColor:
+                  company.isActive ? SdColors.warning : SdColors.success,
             ),
             child: Text(company.isActive ? 'تعطيل' : 'تفعيل'),
           ),
@@ -1843,8 +1819,7 @@ class _UnifiedCompanyCard extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: SdColors.info
-                                      .withOpacity(0.1),
+                                  color: SdColors.info.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -1859,8 +1834,7 @@ class _UnifiedCompanyCard extends StatelessWidget {
                               if (company.email != null) ...[
                                 const SizedBox(width: 12),
                                 Icon(Icons.email_outlined,
-                                    size: 14,
-                                    color: SdColors.faint),
+                                    size: 14, color: SdColors.faint),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
@@ -1882,7 +1856,8 @@ class _UnifiedCompanyCard extends StatelessWidget {
                                     color: SdColors.accent.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                        color: SdColors.accent.withOpacity(0.3)),
+                                        color:
+                                            SdColors.accent.withOpacity(0.3)),
                                   ),
                                   child: const Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -1915,12 +1890,10 @@ class _UnifiedCompanyCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color:
-                            SdColors.groundAlt.withOpacity(0.5),
+                        color: SdColors.groundAlt.withOpacity(0.5),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                            color: SdColors.divider
-                                .withOpacity(0.5)),
+                            color: SdColors.divider.withOpacity(0.5)),
                       ),
                       child: Row(
                         children: [
@@ -1992,8 +1965,7 @@ class _UnifiedCompanyCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon,
-            size: 16, color: color ?? SdColors.muted),
+        Icon(icon, size: 16, color: color ?? SdColors.muted),
         const SizedBox(width: 6),
         Text(
           value,
@@ -2304,8 +2276,8 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                       decoration: BoxDecoration(
                         color: SdColors.success.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
-                        border:
-                            Border.all(color: SdColors.success.withOpacity(0.5)),
+                        border: Border.all(
+                            color: SdColors.success.withOpacity(0.5)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -2674,7 +2646,9 @@ class _CompanyPermissionsDialogState extends State<_CompanyPermissionsDialog>
                       isEnabled
                           ? Icons.check_circle_rounded
                           : Icons.cancel_rounded,
-                      color: isEnabled ? SdColors.success : SdColors.dangerTintEdge,
+                      color: isEnabled
+                          ? SdColors.success
+                          : SdColors.dangerTintEdge,
                       size: 20,
                     ),
                   ),

@@ -7,7 +7,6 @@ import '../../services/accounting_pdf_export_service.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../widgets/accounting_skeleton.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة ميزان المراجعة - Trial Balance
 class TrialBalancePage extends StatefulWidget {
@@ -24,7 +23,8 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
   String? _errorMessage;
   List<dynamic> _accounts = [];
   String _searchQuery = '';
-  String _filterType = 'الكل'; // الكل، أصول، التزامات، حقوق ملكية، إيرادات، مصروفات
+  String _filterType =
+      'الكل'; // الكل، أصول، التزامات، حقوق ملكية، إيرادات، مصروفات
 
   final _fmt = NumberFormat('#,##0.00', 'en');
 
@@ -126,8 +126,10 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
   bool _isNaturalDebit(dynamic a) {
     final type = (a['AccountType'] ?? a['Type'] ?? '').toString();
     // Assets=0, Expenses=4 → طبيعة مدينة | Liabilities=1, Equity=2, Revenue=3 → طبيعة دائنة
-    return type == '0' || type == '4' ||
-        type.toLowerCase() == 'assets' || type.toLowerCase() == 'expenses';
+    return type == '0' ||
+        type == '4' ||
+        type.toLowerCase() == 'assets' ||
+        type.toLowerCase() == 'expenses';
   }
 
   double get _totalDebit {
@@ -271,9 +273,7 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                   : SdColors.danger.withOpacity(0.15),
               borderRadius: BorderRadius.circular(ar.badgeRadius + 4),
               border: Border.all(
-                color: _isBalanced
-                    ? SdColors.success
-                    : SdColors.danger,
+                color: _isBalanced ? SdColors.success : SdColors.danger,
                 width: 1.5,
               ),
             ),
@@ -283,9 +283,7 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                 Icon(
                   _isBalanced ? Icons.check_circle : Icons.warning_rounded,
                   size: isMob ? 14 : 18,
-                  color: _isBalanced
-                      ? SdColors.success
-                      : SdColors.danger,
+                  color: _isBalanced ? SdColors.success : SdColors.danger,
                 ),
                 SizedBox(width: 4),
                 Text(
@@ -294,9 +292,7 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                     fontFamily: 'Cairo',
                     fontSize: isMob ? 10 : ar.small,
                     fontWeight: FontWeight.bold,
-                    color: _isBalanced
-                        ? SdColors.success
-                        : SdColors.danger,
+                    color: _isBalanced ? SdColors.success : SdColors.danger,
                   ),
                 ),
               ],
@@ -362,7 +358,8 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
             height: isMob ? 30 : ar.searchBarH,
             child: TextField(
               onChanged: (v) => setState(() => _searchQuery = v),
-              style: TextStyle(fontFamily: 'Cairo', fontSize: isMob ? 11 : ar.inputText),
+              style: TextStyle(
+                  fontFamily: 'Cairo', fontSize: isMob ? 11 : ar.inputText),
               decoration: InputDecoration(
                 hintText: 'بحث بالاسم أو الكود...',
                 hintStyle: TextStyle(
@@ -400,9 +397,7 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                         : Colors.transparent,
                     borderRadius: BorderRadius.circular(ar.badgeRadius + 4),
                     border: Border.all(
-                      color: isSelected
-                          ? SdColors.primary
-                          : SdColors.divider,
+                      color: isSelected ? SdColors.primary : SdColors.divider,
                     ),
                   ),
                   child: Text(label,
@@ -411,9 +406,7 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
                         fontSize: isMob ? 9 : ar.small,
                         fontWeight:
                             isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected
-                            ? SdColors.primary
-                            : SdColors.faint,
+                        color: isSelected ? SdColors.primary : SdColors.faint,
                       )),
                 ),
               ),
@@ -466,9 +459,7 @@ class _TrialBalancePageState extends State<TrialBalancePage> {
               final typeColor = _typeColors[type] ?? SdColors.faint;
 
               return Container(
-                color: i.isEven
-                    ? Colors.transparent
-                    : SdColors.surfaceAlt,
+                color: i.isEven ? Colors.transparent : SdColors.surfaceAlt,
                 padding: EdgeInsets.symmetric(
                     horizontal: ar.tableCellPadH, vertical: ar.tableCellPadV),
                 child: Row(

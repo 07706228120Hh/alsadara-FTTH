@@ -12,7 +12,6 @@ import '../../models/agent.dart';
 import '../../services/agent_api_service.dart';
 import '../accounting/agent_transactions_page.dart';
 import '../accounting/agent_commission_page.dart';
-import '../../frontend/components/sd_ui_kit.dart';
 
 class AgentsManagementPage extends StatefulWidget {
   final String? initialAgentId;
@@ -160,8 +159,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       horizontal: isMob ? 12 : 20, vertical: isMob ? 10 : 14),
                   decoration: BoxDecoration(
                     color: SdColors.surface,
-                    border: Border(
-                        bottom: BorderSide(color: SdColors.divider)),
+                    border: Border(bottom: BorderSide(color: SdColors.divider)),
                   ),
                   child: Row(
                     children: [
@@ -242,8 +240,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
               color: SdColors.surface,
-              border: const Border(
-                  top: BorderSide(color: SdColors.divider)),
+              border: const Border(top: BorderSide(color: SdColors.divider)),
             ),
             child: SafeArea(
               top: false,
@@ -253,8 +250,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   children: [
                     _buildMobileNavItem(0, Icons.support_agent_rounded,
                         'الوكلاء', SdColors.platformBase),
-                    _buildMobileNavItem(1, Icons.receipt_long, 'المعاملات',
-                        SdColors.warning),
+                    _buildMobileNavItem(
+                        1, Icons.receipt_long, 'المعاملات', SdColors.warning),
                     _buildMobileNavItem(
                         2, Icons.percent, 'العمولات', SdColors.platformLight),
                   ],
@@ -365,9 +362,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon,
-                  size: 20,
-                  color: isSelected ? color : SdColors.faint),
+              Icon(icon, size: 20, color: isSelected ? color : SdColors.faint),
               const SizedBox(height: 2),
               Text(label,
                   style: TextStyle(
@@ -450,9 +445,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                gradient: _sidebarIndex == 0
-                    ? SdUiKit.neonPurpleGradient
-                    : null,
+                gradient:
+                    _sidebarIndex == 0 ? SdUiKit.neonPurpleGradient : null,
                 color:
                     _sidebarIndex != 0 ? tabInfo.color.withOpacity(0.1) : null,
                 borderRadius: BorderRadius.circular(6),
@@ -495,8 +489,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 tooltip: 'تحديث',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                style: IconButton.styleFrom(
-                    foregroundColor: SdColors.muted),
+                style: IconButton.styleFrom(foregroundColor: SdColors.muted),
               ),
               const SizedBox(width: 4),
               IconButton(
@@ -522,21 +515,19 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     textDirection: TextDirection.rtl,
                     decoration: InputDecoration(
                       hintText: 'بحث عن وكيل...',
-                      hintStyle: const TextStyle(
-                          fontSize: 12, color: SdColors.faint),
+                      hintStyle:
+                          const TextStyle(fontSize: 12, color: SdColors.faint),
                       prefixIcon: const Icon(Icons.search,
                           size: 16, color: SdColors.faint),
                       filled: true,
                       fillColor: SdColors.ground,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide:
-                            BorderSide(color: SdColors.divider),
+                        borderSide: BorderSide(color: SdColors.divider),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide:
-                            BorderSide(color: SdColors.divider),
+                        borderSide: BorderSide(color: SdColors.divider),
                       ),
                       contentPadding:
                           const EdgeInsets.symmetric(horizontal: 10),
@@ -587,8 +578,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            gradient:
-                _sidebarIndex == 0 ? SdUiKit.neonPurpleGradient : null,
+            gradient: _sidebarIndex == 0 ? SdUiKit.neonPurpleGradient : null,
             color: _sidebarIndex != 0 ? tabInfo.color.withOpacity(0.1) : null,
             borderRadius: BorderRadius.circular(8),
           ),
@@ -608,8 +598,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 )),
           ),
           const Text(' / ',
-              style: TextStyle(
-                  fontSize: 16, color: SdColors.muted)),
+              style: TextStyle(fontSize: 16, color: SdColors.muted)),
           Text(_selectedAgent!.name,
               style: const TextStyle(
                 fontSize: 18,
@@ -650,10 +639,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               textDirection: TextDirection.rtl,
               decoration: InputDecoration(
                 hintText: 'بحث عن وكيل...',
-                hintStyle: const TextStyle(
-                    fontSize: 13, color: SdColors.faint),
-                prefixIcon: const Icon(Icons.search,
-                    size: 18, color: SdColors.faint),
+                hintStyle: const TextStyle(fontSize: 13, color: SdColors.faint),
+                prefixIcon:
+                    const Icon(Icons.search, size: 18, color: SdColors.faint),
                 filled: true,
                 fillColor: SdColors.ground,
                 border: OutlineInputBorder(
@@ -904,8 +892,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
             const SizedBox(height: 12),
             Text(
               _searchQuery.isNotEmpty ? 'لا توجد نتائج' : 'لا يوجد وكلاء بعد',
-              style: const TextStyle(
-                  fontSize: 16, color: SdColors.faint),
+              style: const TextStyle(fontSize: 16, color: SdColors.faint),
             ),
             const SizedBox(height: 8),
             if (_searchQuery.isEmpty)
@@ -1024,8 +1011,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                             fontWeight: FontWeight.w500,
                           )),
                       const SizedBox(width: 6),
-                      const Icon(Icons.phone,
-                          size: 10, color: SdColors.faint),
+                      const Icon(Icons.phone, size: 10, color: SdColors.faint),
                       const SizedBox(width: 2),
                       Text(agent.phoneNumber,
                           style: const TextStyle(
@@ -1056,8 +1042,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     Text('أجور',
                         style: TextStyle(
                             fontSize: 9,
-                            color:
-                                SdColors.warning.withOpacity(0.8))),
+                            color: SdColors.warning.withOpacity(0.8))),
                     Text(_formatCurrency(agent.totalCharges),
                         style: const TextStyle(
                           fontSize: 11,
@@ -1194,39 +1179,50 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     onTap: () {
                       Clipboard.setData(ClipboardData(text: agent.phoneNumber));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('تم نسخ ${agent.phoneNumber}'), duration: const Duration(seconds: 1)),
+                        SnackBar(
+                            content: Text('تم نسخ ${agent.phoneNumber}'),
+                            duration: const Duration(seconds: 1)),
                       );
                     },
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.phone, size: 11, color: SdColors.faint),
+                        const Icon(Icons.phone,
+                            size: 11, color: SdColors.faint),
                         const SizedBox(width: 3),
                         Text(agent.phoneNumber,
-                            style: const TextStyle(fontSize: 11, color: SdColors.muted)),
+                            style: const TextStyle(
+                                fontSize: 11, color: SdColors.muted)),
                         const SizedBox(width: 2),
                         const Icon(Icons.copy, size: 10, color: SdColors.faint),
                       ],
                     ),
                   ),
-                  if (agent.plainPassword != null && agent.plainPassword!.isNotEmpty) ...[
+                  if (agent.plainPassword != null &&
+                      agent.plainPassword!.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     InkWell(
                       onTap: () {
-                        Clipboard.setData(ClipboardData(text: agent.plainPassword!));
+                        Clipboard.setData(
+                            ClipboardData(text: agent.plainPassword!));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('تم نسخ كلمة المرور'), duration: Duration(seconds: 1)),
+                          const SnackBar(
+                              content: Text('تم نسخ كلمة المرور'),
+                              duration: Duration(seconds: 1)),
                         );
                       },
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.lock, size: 11, color: SdColors.faint),
+                          const Icon(Icons.lock,
+                              size: 11, color: SdColors.faint),
                           const SizedBox(width: 3),
                           Text(agent.plainPassword!,
-                              style: const TextStyle(fontSize: 11, color: SdColors.muted)),
+                              style: const TextStyle(
+                                  fontSize: 11, color: SdColors.muted)),
                           const SizedBox(width: 2),
-                          const Icon(Icons.copy, size: 10, color: SdColors.faint),
+                          const Icon(Icons.copy,
+                              size: 10, color: SdColors.faint),
                         ],
                       ),
                     ),
@@ -1248,7 +1244,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     onTap: () => _sendAgentInfoViaWhatsApp(agent),
                     borderRadius: BorderRadius.circular(4),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: SdColors.whatsapp.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(4),
@@ -1258,7 +1255,11 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                         children: [
                           Icon(Icons.send, size: 10, color: SdColors.whatsapp),
                           SizedBox(width: 3),
-                          Text('إرسال البيانات', style: TextStyle(fontSize: 10, color: SdColors.whatsapp, fontWeight: FontWeight.w600)),
+                          Text('إرسال البيانات',
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  color: SdColors.whatsapp,
+                                  fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ),
@@ -1275,8 +1276,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text('أجور: ',
-                    style: TextStyle(
-                        fontSize: 10, color: SdColors.faint)),
+                    style: TextStyle(fontSize: 10, color: SdColors.faint)),
                 Text(_formatCurrency(agent.totalCharges),
                     style: const TextStyle(
                       fontSize: 11,
@@ -1289,8 +1289,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text('تسديد: ',
-                    style: TextStyle(
-                        fontSize: 10, color: SdColors.faint)),
+                    style: TextStyle(fontSize: 10, color: SdColors.faint)),
                 Text(_formatCurrency(agent.totalPayments),
                     style: const TextStyle(
                       fontSize: 11,
@@ -1313,9 +1312,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: agent.hasDebt
-                      ? SdColors.danger
-                      : SdColors.success,
+                  color: agent.hasDebt ? SdColors.danger : SdColors.success,
                 ),
               ),
             ),
@@ -1344,7 +1341,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر فتح واتساب'), backgroundColor: SdColors.danger),
+          const SnackBar(
+              content: Text('تعذر فتح واتساب'),
+              backgroundColor: SdColors.danger),
         );
       }
     }
@@ -1358,16 +1357,14 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         const PopupMenuItem(
             value: 'charge',
             child: Row(children: [
-              Icon(Icons.add_circle_outline,
-                  size: 16, color: SdColors.warning),
+              Icon(Icons.add_circle_outline, size: 16, color: SdColors.warning),
               SizedBox(width: 8),
               Text('إضافة أجور'),
             ])),
         const PopupMenuItem(
             value: 'payment',
             child: Row(children: [
-              Icon(Icons.payments_outlined,
-                  size: 16, color: SdColors.success),
+              Icon(Icons.payments_outlined, size: 16, color: SdColors.success),
               SizedBox(width: 8),
               Text('تسجيل تسديد'),
             ])),
@@ -1375,8 +1372,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         const PopupMenuItem(
             value: 'edit',
             child: Row(children: [
-              Icon(Icons.edit_outlined,
-                  size: 16, color: SdColors.primary),
+              Icon(Icons.edit_outlined, size: 16, color: SdColors.primary),
               SizedBox(width: 8),
               Text('تعديل'),
             ])),
@@ -1401,8 +1397,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         const PopupMenuItem(
             value: 'delete',
             child: Row(children: [
-              Icon(Icons.delete_outline,
-                  size: 16, color: SdColors.danger),
+              Icon(Icons.delete_outline, size: 16, color: SdColors.danger),
               SizedBox(width: 8),
               Text('حذف'),
             ])),
@@ -1413,8 +1408,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           border: Border.all(color: SdColors.divider),
           borderRadius: BorderRadius.circular(6),
         ),
-        child: const Icon(Icons.more_vert,
-            size: 16, color: SdColors.faint),
+        child: const Icon(Icons.more_vert, size: 16, color: SdColors.faint),
       ),
     );
   }
@@ -1553,20 +1547,16 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           Row(
             children: [
               Expanded(
-                  child: _buildBalanceBox('الأجور', agent.totalCharges,
-                      SdColors.warning)),
-              const SizedBox(width: 10),
-              Expanded(
-                  child: _buildBalanceBox('التسديد', agent.totalPayments,
-                      SdColors.success)),
+                  child: _buildBalanceBox(
+                      'الأجور', agent.totalCharges, SdColors.warning)),
               const SizedBox(width: 10),
               Expanded(
                   child: _buildBalanceBox(
-                      'الصافي',
-                      agent.netBalance,
-                      agent.hasDebt
-                          ? SdColors.danger
-                          : SdColors.success)),
+                      'التسديد', agent.totalPayments, SdColors.success)),
+              const SizedBox(width: 10),
+              Expanded(
+                  child: _buildBalanceBox('الصافي', agent.netBalance,
+                      agent.hasDebt ? SdColors.danger : SdColors.success)),
             ],
           ),
         ],
@@ -1581,8 +1571,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         Icon(icon, size: 14, color: SdColors.faint),
         const SizedBox(width: 4),
         Text('$label: ',
-            style: const TextStyle(
-                fontSize: 12, color: SdColors.faint)),
+            style: const TextStyle(fontSize: 12, color: SdColors.faint)),
         Text(value,
             style: const TextStyle(
                 fontSize: 12,
@@ -1764,8 +1753,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
 
   Widget _buildTransactionRow(AgentTransactionModel tx) {
     final isCharge = tx.isCharge;
-    final color =
-        isCharge ? SdColors.warning : SdColors.success;
+    final color = isCharge ? SdColors.warning : SdColors.success;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(10),
@@ -1798,13 +1786,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 ),
                 if (tx.description.isNotEmpty)
                   Text(tx.description,
-                      style: const TextStyle(
-                          fontSize: 11, color: SdColors.muted)),
+                      style:
+                          const TextStyle(fontSize: 11, color: SdColors.muted)),
                 if (tx.referenceNumber != null &&
                     tx.referenceNumber!.isNotEmpty)
                   Text('مرجع: ${tx.referenceNumber}',
-                      style: const TextStyle(
-                          fontSize: 10, color: SdColors.faint)),
+                      style:
+                          const TextStyle(fontSize: 10, color: SdColors.faint)),
               ],
             ),
           ),
@@ -1833,8 +1821,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           const SizedBox(width: 4),
           // أزرار التعديل والحذف (مدير النظام فقط)
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert,
-                size: 16, color: SdColors.faint),
+            icon: const Icon(Icons.more_vert, size: 16, color: SdColors.faint),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
             itemBuilder: (_) => [
@@ -1919,8 +1906,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           child: AlertDialog(
             title: const Row(
               children: [
-                Icon(Icons.person_add,
-                    size: 20, color: SdColors.platformLight),
+                Icon(Icons.person_add, size: 20, color: SdColors.platformLight),
                 SizedBox(width: 8),
                 Text('إضافة وكيل جديد', style: TextStyle(fontSize: 16)),
               ],
@@ -1968,8 +1954,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                             return const Padding(
                               padding: EdgeInsets.symmetric(vertical: 8),
                               child: Center(
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2)),
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2)),
                             );
                           }
                           if (companies.isEmpty) {
@@ -1991,8 +1977,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                             ),
                             items: companies
                                 .map((c) => DropdownMenuItem(
-                                      value:
-                                          (c['Id'] ?? c['id'])?.toString() ?? '',
+                                      value: (c['Id'] ?? c['id'])?.toString() ??
+                                          '',
                                       child: Text(
                                           (c['Name'] ??
                                                       c['name'] ??
@@ -2047,7 +2033,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     );
                     return;
                   }
-                  if (needCompanySelection && (selectedCompanyId == null || selectedCompanyId!.isEmpty)) {
+                  if (needCompanySelection &&
+                      (selectedCompanyId == null ||
+                          selectedCompanyId!.isEmpty)) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('يرجى اختيار الشركة')),
                     );
@@ -2079,7 +2067,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(e.toString().replaceFirst('Exception: ', '')),
+                            content: Text(
+                                e.toString().replaceFirst('Exception: ', '')),
                             backgroundColor: SdColors.danger),
                       );
                     }
@@ -2117,8 +2106,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           child: AlertDialog(
             title: Row(
               children: [
-                const Icon(Icons.edit,
-                    size: 20, color: SdColors.primary),
+                const Icon(Icons.edit, size: 20, color: SdColors.primary),
                 const SizedBox(width: 8),
                 Text('تعديل ${agent.name}',
                     style: const TextStyle(fontSize: 16)),
@@ -2218,7 +2206,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(e.toString().replaceFirst('Exception: ', '')),
+                            content: Text(
+                                e.toString().replaceFirst('Exception: ', '')),
                             backgroundColor: SdColors.danger),
                       );
                     }
@@ -2257,17 +2246,15 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                 Icon(
                   isCharge ? Icons.add_circle_outline : Icons.payments_outlined,
                   size: 20,
-                  color: isCharge
-                      ? SdColors.warning
-                      : SdColors.success,
+                  color: isCharge ? SdColors.warning : SdColors.success,
                 ),
                 const SizedBox(width: 8),
                 Text(isCharge ? 'إضافة أجور' : 'تسجيل تسديد',
                     style: const TextStyle(fontSize: 16)),
                 const Spacer(),
                 Text(agent.name,
-                    style: const TextStyle(
-                        fontSize: 12, color: SdColors.faint)),
+                    style:
+                        const TextStyle(fontSize: 12, color: SdColors.faint)),
               ],
             ),
             content: SizedBox(
@@ -2368,16 +2355,16 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(e.toString().replaceFirst('Exception: ', '')),
+                            content: Text(
+                                e.toString().replaceFirst('Exception: ', '')),
                             backgroundColor: SdColors.danger),
                       );
                     }
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isCharge
-                      ? SdColors.warning
-                      : SdColors.success,
+                  backgroundColor:
+                      isCharge ? SdColors.warning : SdColors.success,
                   foregroundColor: Colors.white,
                 ),
                 child: Text(isCharge ? 'إضافة أجور' : 'تسجيل تسديد'),
@@ -2406,14 +2393,13 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
           child: AlertDialog(
             title: Row(
               children: [
-                const Icon(Icons.edit,
-                    size: 20, color: SdColors.primary),
+                const Icon(Icons.edit, size: 20, color: SdColors.primary),
                 const SizedBox(width: 8),
                 const Text('تعديل المعاملة', style: TextStyle(fontSize: 16)),
                 const Spacer(),
                 Text('#${tx.id}',
-                    style: const TextStyle(
-                        fontSize: 11, color: SdColors.faint)),
+                    style:
+                        const TextStyle(fontSize: 11, color: SdColors.faint)),
               ],
             ),
             content: SizedBox(
@@ -2425,9 +2411,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: (tx.isCharge
-                              ? SdColors.warning
-                              : SdColors.success)
+                      color: (tx.isCharge ? SdColors.warning : SdColors.success)
                           .withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -2451,8 +2435,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                         const Spacer(),
                         Text(DateFormat('yyyy/MM/dd').format(tx.createdAt),
                             style: const TextStyle(
-                                fontSize: 11,
-                                color: SdColors.faint)),
+                                fontSize: 11, color: SdColors.faint)),
                       ],
                     ),
                   ),
@@ -2531,7 +2514,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(e.toString().replaceFirst('Exception: ', '')),
+                            content: Text(
+                                e.toString().replaceFirst('Exception: ', '')),
                             backgroundColor: SdColors.danger),
                       );
                     }
@@ -2558,7 +2542,8 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
         child: AlertDialog(
           title: const Row(
             children: [
-              Icon(Icons.warning_amber_rounded, size: 22, color: SdColors.danger),
+              Icon(Icons.warning_amber_rounded,
+                  size: 22, color: SdColors.danger),
               SizedBox(width: 8),
               Text('حذف المعاملة', style: TextStyle(fontSize: 16)),
             ],
@@ -2593,8 +2578,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                           const SizedBox(width: 8),
                           Text(tx.category.displayName,
                               style: const TextStyle(
-                                  fontSize: 11,
-                                  color: SdColors.faint)),
+                                  fontSize: 11, color: SdColors.faint)),
                         ],
                       ),
                       const SizedBox(height: 4),
@@ -2604,8 +2588,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
                       if (tx.description.isNotEmpty)
                         Text(tx.description,
                             style: const TextStyle(
-                                fontSize: 12,
-                                color: SdColors.muted)),
+                                fontSize: 12, color: SdColors.muted)),
                       Text(
                           DateFormat('yyyy/MM/dd - HH:mm').format(tx.createdAt),
                           style: const TextStyle(
@@ -2732,7 +2715,9 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: SdColors.danger),
+          SnackBar(
+              content: Text(e.toString().replaceFirst('Exception: ', '')),
+              backgroundColor: SdColors.danger),
         );
       }
     }
@@ -2795,8 +2780,7 @@ class _AgentsManagementPageState extends State<AgentsManagementPage> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline,
-              size: 48, color: SdColors.danger),
+          const Icon(Icons.error_outline, size: 48, color: SdColors.danger),
           const SizedBox(height: 12),
           Text(_errorMessage ?? 'خطأ غير معروف',
               style: const TextStyle(color: SdColors.danger)),

@@ -4,7 +4,6 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../theme/accounting_responsive.dart';
 import '../../services/accounting_service.dart';
 import '../../frontend/frontend.dart';
-import '../../frontend/components/sd_ui_kit.dart';
 
 /// صفحة المقارنة السنوية - مقارنة الإيرادات والمصروفات بين سنتين
 class YearComparisonPage extends StatefulWidget {
@@ -242,8 +241,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
               Expanded(
                 child: _isLoading
                     ? const Center(
-                        child: CircularProgressIndicator(
-                            color: SdColors.success))
+                        child:
+                            CircularProgressIndicator(color: SdColors.success))
                     : _errorMessage != null
                         ? Center(
                             child: SdEmptyState(
@@ -309,8 +308,7 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
         ),
         SizedBox(width: isMob ? 8 : 12),
         Icon(Icons.compare_arrows_rounded,
-            color: SdColors.faint,
-            size: isMob ? 16 : 20),
+            color: SdColors.faint, size: isMob ? 16 : 20),
         SizedBox(width: isMob ? 8 : 12),
         _yearDropdown(
           label: 'السنة 2',
@@ -433,14 +431,15 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
       totalExpY2 += m['expenses2'] as double;
     }
 
-    final revChange =
-        totalRevY1 != 0 ? ((totalRevY2 - totalRevY1) / totalRevY1.abs()) * 100 : 0.0;
-    final expChange =
-        totalExpY1 != 0 ? ((totalExpY2 - totalExpY1) / totalExpY1.abs()) * 100 : 0.0;
+    final revChange = totalRevY1 != 0
+        ? ((totalRevY2 - totalRevY1) / totalRevY1.abs()) * 100
+        : 0.0;
+    final expChange = totalExpY1 != 0
+        ? ((totalExpY2 - totalExpY1) / totalExpY1.abs()) * 100
+        : 0.0;
     final netY1 = totalRevY1 - totalExpY1;
     final netY2 = totalRevY2 - totalExpY2;
-    final netChange =
-        netY1 != 0 ? ((netY2 - netY1) / netY1.abs()) * 100 : 0.0;
+    final netChange = netY1 != 0 ? ((netY2 - netY1) / netY1.abs()) * 100 : 0.0;
 
     if (isMob) {
       return Column(
@@ -590,8 +589,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
               ),
               if (changePercent != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: changePercent >= 0
                         ? _clrPositive.withOpacity(0.1)
@@ -606,9 +605,7 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
                             ? Icons.arrow_upward_rounded
                             : Icons.arrow_downward_rounded,
                         size: isMob ? 10 : 12,
-                        color: changePercent >= 0
-                            ? _clrPositive
-                            : _clrNegative,
+                        color: changePercent >= 0 ? _clrPositive : _clrNegative,
                       ),
                       const SizedBox(width: 2),
                       Text(
@@ -617,9 +614,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
                           fontFamily: 'Cairo',
                           fontSize: isMob ? 9 : 10,
                           fontWeight: FontWeight.bold,
-                          color: changePercent >= 0
-                              ? _clrPositive
-                              : _clrNegative,
+                          color:
+                              changePercent >= 0 ? _clrPositive : _clrNegative,
                         ),
                       ),
                     ],
@@ -702,8 +698,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
                 minY: 0,
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
-                    tooltipPadding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                    tooltipPadding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     tooltipMargin: 6,
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final year = rodIndex == 0 ? '$_year1' : '$_year2';
@@ -922,8 +918,8 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
     );
   }
 
-  Widget _buildTableRow(
-      Map<String, dynamic> data, int index, AccountingResponsive ar, bool isMob) {
+  Widget _buildTableRow(Map<String, dynamic> data, int index,
+      AccountingResponsive ar, bool isMob) {
     final revenue1 = data['revenue1'] as double;
     final revenue2 = data['revenue2'] as double;
     final expenses1 = data['expenses1'] as double;
@@ -1078,12 +1074,19 @@ class _YearComparisonPageState extends State<YearComparisonPage> {
     );
   }
 
-  Widget _buildTotalsRow(double totalRevY1, double totalRevY2,
-      double totalExpY1, double totalExpY2, AccountingResponsive ar, bool isMob) {
-    final revChange =
-        totalRevY1 != 0 ? ((totalRevY2 - totalRevY1) / totalRevY1.abs()) * 100 : 0.0;
-    final expChange =
-        totalExpY1 != 0 ? ((totalExpY2 - totalExpY1) / totalExpY1.abs()) * 100 : 0.0;
+  Widget _buildTotalsRow(
+      double totalRevY1,
+      double totalRevY2,
+      double totalExpY1,
+      double totalExpY2,
+      AccountingResponsive ar,
+      bool isMob) {
+    final revChange = totalRevY1 != 0
+        ? ((totalRevY2 - totalRevY1) / totalRevY1.abs()) * 100
+        : 0.0;
+    final expChange = totalExpY1 != 0
+        ? ((totalExpY2 - totalExpY1) / totalExpY1.abs()) * 100
+        : 0.0;
 
     return Container(
       padding: EdgeInsets.symmetric(
