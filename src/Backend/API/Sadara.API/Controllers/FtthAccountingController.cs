@@ -2344,13 +2344,21 @@ public class FtthAccountingController : ControllerBase
                 .ThenBy(a => a.Id)   // كاسر تعادل حتمي عند تكرار الاسم
                 .Select(a => new { a.Username, a.OwnerUserId, a.CompanyId })
                 .ToListAsync();
+            // صمام أمان: اسم مستخدم مرتبط بعدّة مالكين مختلفين = غامض ⇒ لا نُنسب به قيداً
+            // (نتركه للمطابقة القديمة/الاحتياطية) حتى يُفرده المالك (حساب خاص لكل موظف).
+            var ambiguousNames = ftthAccs
+                .GroupBy(a => (a.Username ?? "").ToLower().Trim())
+                .Where(g => g.Select(x => x.OwnerUserId).Distinct().Count() > 1)
+                .Select(g => g.Key)
+                .ToHashSet();
             foreach (var a in ftthAccs)
             {
                 if (string.IsNullOrWhiteSpace(a.Username)) continue;
+                var k = a.Username.ToLower().Trim();
+                if (ambiguousNames.Contains(k)) continue; // اسم مكرّر لعدّة مالكين → تخطَّ
                 // تخطّى حساباً مالكه غير نشط/محذوف — لئلا يُنسب القيد لمستخدم محذوف
                 if (!ownerName.TryGetValue(a.OwnerUserId, out var fn)) continue;
-                ftthToUser.TryAdd(a.Username.ToLower().Trim(),
-                    new { Id = a.OwnerUserId, FullName = fn, CompanyId = (Guid?)a.CompanyId });
+                ftthToUser.TryAdd(k, new { Id = a.OwnerUserId, FullName = fn, CompanyId = (Guid?)a.CompanyId });
             }
 
             foreach (var u in userMap)
