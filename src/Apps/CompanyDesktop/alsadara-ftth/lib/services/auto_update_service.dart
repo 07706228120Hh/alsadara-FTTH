@@ -186,6 +186,31 @@ class AutoUpdateService {
     return null;
   }
 
+  /// فحص يدوي للتحديثات (زر «التحقق من التحديثات» في شاشة الدخول).
+  ///
+  /// يختلف عن [checkForUpdate] التلقائي في أنه:
+  ///   * يتجاوز آلية snooze (المستخدم طلب الفحص صراحةً).
+  ///   * يرمي استثناءً عند فشل الشبكة بدل ابتلاعه، كي يميّز المستدعي
+  ///     بين «أنت على أحدث إصدار» (يرجع null) و«تعذّر الفحص» (استثناء).
+  ///
+  /// يرجع [UpdateInfo] إن توفّر إصدار أحدث، أو null إن كان المستخدم على الأحدث.
+  Future<UpdateInfo?> checkForUpdateManual() async {
+    final response = await http.get(
+      Uri.parse(githubApiUrl),
+      headers: {'Accept': 'application/vnd.github.v3+json'},
+    );
+    if (response.statusCode != 200) {
+      throw Exception('GitHub API returned ${response.statusCode}');
+    }
+    final data = json.decode(response.body);
+    final updateInfo = UpdateInfo.fromGitHubRelease(data);
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (_isNewerVersion(updateInfo.version, packageInfo.version)) {
+      return updateInfo;
+    }
+    return null;
+  }
+
   /// مقارنة الإصدارات
   bool _isNewerVersion(String newVersion, String currentVersion) {
     try {

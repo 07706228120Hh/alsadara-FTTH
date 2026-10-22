@@ -15,6 +15,7 @@ import '../../services/vps_auth_service.dart';
 import '../../services/api/api_client.dart';
 import '../../permissions/permissions.dart';
 import '../../widgets/update_dialog.dart';
+import '../../services/auto_update_service.dart';
 import '../../services/dual_auth_service.dart';
 import '../../services/fcm_token_service.dart';
 import '../../services/notification_service.dart';
@@ -146,6 +147,9 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
 
   // App version
   String _appVersion = '';
+
+  // فحص التحديثات اليدوي (زر في شاشة الدخول)
+  bool _checkingUpdate = false;
 
   // Animations
   late AnimationController _formAnimController;
@@ -521,6 +525,43 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         UpdateManager.checkAndShowUpdateDialog(context);
       }
     });
+  }
+
+  /// فحص يدوي للتحديثات من زر شاشة الدخول (قبل تسجيل الدخول).
+  /// يعرض نتيجة واضحة في كل حالة: تحديث متوفّر / أنت على الأحدث / تعذّر الفحص.
+  Future<void> _manualCheckForUpdate() async {
+    if (_checkingUpdate) return;
+    if (!Platform.isWindows && !Platform.isAndroid) {
+      _showSnackBar('التحديث مدعوم على Windows و Android فقط', SdColors.danger);
+      return;
+    }
+    setState(() => _checkingUpdate = true);
+    try {
+      final info = await AutoUpdateService.instance.checkForUpdateManual();
+      if (!mounted) return;
+      if (info != null && info.downloadUrl.isNotEmpty) {
+        // تحديث متوفّر — افتح حوار التحميل/التثبيت المعتاد.
+        final current = await AutoUpdateService.instance.getCurrentVersion();
+        if (!mounted) return;
+        await UpdateDialog.show(context, info, current);
+      } else if (info != null && info.downloadUrl.isEmpty) {
+        // إصدار أحدث موجود لكن بلا ملف تثبيت مناسب لهذه المنصة.
+        _showSnackBar(
+            'يتوفّر إصدار أحدث (v${info.version}) لكن لا يوجد ملف تثبيت متاح لهذه المنصة',
+            SdColors.danger);
+      } else {
+        final current = await AutoUpdateService.instance.getCurrentVersion();
+        if (!mounted) return;
+        _showSnackBar('أنت على أحدث إصدار (v$current)', SdColors.success);
+      }
+    } catch (_) {
+      if (mounted) {
+        _showSnackBar('تعذّر التحقق من التحديثات. تأكد من اتصال الإنترنت',
+            SdColors.danger);
+      }
+    } finally {
+      if (mounted) setState(() => _checkingUpdate = false);
+    }
   }
 
   /// تحويل الدور من الإنجليزية (VPS API) إلى العربية
@@ -1057,6 +1098,8 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
           ),
         ),
         const SizedBox(width: 8),
+        _buildUpdateIconButton(),
+        const SizedBox(width: 8),
         _LiveStatusBadge(
           loading: _loadingCompanies,
           offline: _companiesLoadError != null,
@@ -1518,6 +1561,33 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         Navigator.push(context,
             MaterialPageRoute(builder: (_) => const NetworkToolsHomePage()));
       },
+    );
+  }
+
+  /// زر أيقونة صغير في رأس البطاقة للتحقق اليدوي من التحديثات.
+  Widget _buildUpdateIconButton() {
+    return Tooltip(
+      message: 'التحقق من التحديثات',
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.08),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: _checkingUpdate ? null : _manualCheckForUpdate,
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: _checkingUpdate
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.system_update_alt_rounded,
+                    size: 18, color: Colors.white),
+          ),
+        ),
+      ),
     );
   }
 
