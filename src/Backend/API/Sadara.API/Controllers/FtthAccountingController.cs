@@ -91,6 +91,27 @@ public class FtthAccountingController : ControllerBase
             if (tokenUserId == null)
                 return Unauthorized(new { success = false, message = "جلسة غير صالحة" });
 
+            // idempotency (#2): إذا وُجد سجل بنفس FtthTransactionId لنفس الشركة، أعِد الموجود
+            // بدل إنشاء سجل/قيد مكرّر (حماية من الضغط المزدوج/إعادة الإرسال).
+            // الحماية النهائية تتطلّب فهرساً فريداً (migration منفصلة بعد إزالة التكرار الحالي).
+            if (!string.IsNullOrWhiteSpace(dto.FtthTransactionId) && dto.CompanyId.HasValue)
+            {
+                var existingLog = await _unitOfWork.SubscriptionLogs.AsQueryable()
+                    .Where(s => !s.IsDeleted
+                        && s.FtthTransactionId == dto.FtthTransactionId
+                        && s.CompanyId == dto.CompanyId)
+                    .OrderByDescending(s => s.CreatedAt)
+                    .FirstOrDefaultAsync();
+                if (existingLog != null)
+                    return Ok(new
+                    {
+                        success = true,
+                        message = "العملية مسجّلة مسبقاً",
+                        data = new { id = existingLog.Id, journalEntryId = existingLog.JournalEntryId },
+                        idempotent = true
+                    });
+            }
+
             // 1. إنشاء SubscriptionLog
             var log = new SubscriptionLog
             {
