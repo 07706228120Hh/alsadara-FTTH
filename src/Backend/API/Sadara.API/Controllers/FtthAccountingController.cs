@@ -2012,7 +2012,12 @@ public class FtthAccountingController : ControllerBase
                 return NotFound(new { success = false, message = "المستخدم غير موجود" });
 
             user.FtthUsername = dto.FtthUsername;
-            user.FtthPasswordEncrypted = dto.FtthPasswordEncrypted;
+            // إصلاح: لا نمسح كلمة المرور القديمة عند عدم إرسالها (إعادة الربط لا تُفقدها).
+            // تُمسح فقط عند إزالة الربط (اسم مستخدم فارغ)؛ وتُحدَّث فقط عند إرسال قيمة جديدة.
+            if (string.IsNullOrEmpty(dto.FtthUsername))
+                user.FtthPasswordEncrypted = null;
+            else if (!string.IsNullOrEmpty(dto.FtthPasswordEncrypted))
+                user.FtthPasswordEncrypted = dto.FtthPasswordEncrypted;
             _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();
 
@@ -2143,7 +2148,7 @@ public class FtthAccountingController : ControllerBase
                     u.Username,
                     u.PhoneNumber,
                     u.FtthUsername,
-                    u.FtthPasswordEncrypted,
+                    // أُزيلت u.FtthPasswordEncrypted من الاستجابة (منع تسريب السرّ في قائمة العرض)
                     hasLink = u.FtthUsername != null && u.FtthUsername != "",
                     u.CompanyId
                 })
