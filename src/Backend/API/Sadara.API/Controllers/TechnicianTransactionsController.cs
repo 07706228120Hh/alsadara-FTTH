@@ -508,20 +508,26 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
 
             technicians = technicians.OrderBy(t => ((dynamic)t).netBalance).ToList();
 
-            // مزامنة حقول User المخزّنة مع القيم المحسوبة (لمنع التضارب مستقبلاً)
-            foreach (dynamic t in technicians)
+            // مزامنة حقول User المخزّنة مع القيم المحسوبة من الدفتر (مصدر الحقيقة).
+            // ⚠️ إصلاح: تُجرى فقط عند غياب فلتر التاريخ — وإلا نكتب مجموع الفترة فوق إجمالي
+            // كل الزمن فنُفسد الرصيد المخزّن (كان يسبّب تباين أرصدة الفنيين). شاشة العرض
+            // المفلترة لا يجوز أن تُحدّث حقلاً إجمالياً.
+            if (!from.HasValue && !to.HasValue)
             {
-                var dbUser = await _unitOfWork.Users.GetByIdAsync((Guid)t.id);
-                if (dbUser != null && (dbUser.TechTotalCharges != (decimal)t.totalCharges
-                    || dbUser.TechTotalPayments != (decimal)t.totalPayments))
+                foreach (dynamic t in technicians)
                 {
-                    dbUser.TechTotalCharges = t.totalCharges;
-                    dbUser.TechTotalPayments = t.totalPayments;
-                    dbUser.TechNetBalance = t.netBalance;
-                    _unitOfWork.Users.Update(dbUser);
+                    var dbUser = await _unitOfWork.Users.GetByIdAsync((Guid)t.id);
+                    if (dbUser != null && (dbUser.TechTotalCharges != (decimal)t.totalCharges
+                        || dbUser.TechTotalPayments != (decimal)t.totalPayments))
+                    {
+                        dbUser.TechTotalCharges = t.totalCharges;
+                        dbUser.TechTotalPayments = t.totalPayments;
+                        dbUser.TechNetBalance = t.netBalance;
+                        _unitOfWork.Users.Update(dbUser);
+                    }
                 }
+                await _unitOfWork.SaveChangesAsync();
             }
-            await _unitOfWork.SaveChangesAsync();
 
             var totalAllCharges = technicians.Sum(t => (decimal)((dynamic)t).totalCharges);
             var totalAllPayments = technicians.Sum(t => (decimal)((dynamic)t).totalPayments);
