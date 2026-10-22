@@ -568,9 +568,6 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             var payGuard = GuardCompany(technician.CompanyId);
             if (payGuard != null) return payGuard;
 
-            // #8 ذرّية: الرصيد + المعاملة + القيد في معاملة واحدة (كلّها أو لا شيء)
-            await _unitOfWork.BeginTransactionAsync();
-
             technician.TechTotalPayments += request.Amount;
             technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
             _unitOfWork.Users.Update(technician);
@@ -600,47 +597,50 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             var companyId = technician.CompanyId ?? Guid.Empty;
             if (companyId != Guid.Empty)
             {
-                // صندوق الشركة (11104) — مصدر النقد
-                var cashAcct = await _unitOfWork.Accounts.AsQueryable()
-                    .FirstOrDefaultAsync(a => a.Code == AccountCodes.CompanyMainCash && a.IsActive && a.CompanyId == companyId);
-                if (cashAcct == null)
+                try
                 {
-                    // لا نُحدّث الرصيد بلا قيد مقابل — تراجع كامل
-                    await _unitOfWork.RollbackTransactionAsync();
-                    return StatusCode(500, new { success = false, message = "حساب صندوق الشركة (11104) غير موجود — تعذّر تسجيل القيد" });
+                    // صندوق الشركة (11104) — مصدر النقد
+                    var cashAcct = await _unitOfWork.Accounts.AsQueryable()
+                        .FirstOrDefaultAsync(a => a.Code == AccountCodes.CompanyMainCash && a.IsActive && a.CompanyId == companyId);
+                    var techSubAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
+                        _unitOfWork, AccountCodes.TechnicianReceivables, technician.Id, technician.FullName ?? "فني", companyId);
+
+                    if (cashAcct != null)
+                    {
+                        await _unitOfWork.SaveChangesAsync();
+
+                        // مدين: صندوق الشركة (كاش يدخل) — دائن: ذمة الفني (تنقص)
+                        var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                        {
+                            (cashAcct.Id, request.Amount, 0, $"تسديد فني {technician.FullName} → صندوق الشركة"),
+                            (techSubAcct.Id, 0, request.Amount, $"تسديد ذمة فني {technician.FullName}")
+                        };
+                        await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                            _unitOfWork, companyId, GetCurrentUserId(),
+                            $"تسديد فني {technician.FullName} - {request.Amount:N0} دينار",
+                            JournalReferenceType.TechnicianCollection, technician.Id.ToString(),
+                            journalLines, txDate);
+
+                        // ربط القيد بالمعاملة
+                        var je = await _unitOfWork.JournalEntries.AsQueryable()
+                            .Where(j => j.ReferenceId == technician.Id.ToString()
+                                && j.CompanyId == companyId)
+                            .OrderByDescending(j => j.CreatedAt)
+                            .FirstOrDefaultAsync();
+                        if (je != null)
+                        {
+                            tx.JournalEntryId = je.Id;
+                            _unitOfWork.TechnicianTransactions.Update(tx);
+                        }
+                    }
                 }
-
-                var techSubAcct = await ServiceRequestAccountingHelper.FindOrCreateSubAccount(
-                    _unitOfWork, AccountCodes.TechnicianReceivables, technician.Id, technician.FullName ?? "فني", companyId);
-                await _unitOfWork.SaveChangesAsync();
-
-                // مدين: صندوق الشركة (كاش يدخل) — دائن: ذمة الفني (تنقص)
-                var journalLines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+                catch (Exception ex)
                 {
-                    (cashAcct.Id, request.Amount, 0, $"تسديد فني {technician.FullName} → صندوق الشركة"),
-                    (techSubAcct.Id, 0, request.Amount, $"تسديد ذمة فني {technician.FullName}")
-                };
-                await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
-                    _unitOfWork, companyId, GetCurrentUserId(),
-                    $"تسديد فني {technician.FullName} - {request.Amount:N0} دينار",
-                    JournalReferenceType.TechnicianCollection, technician.Id.ToString(),
-                    journalLines, txDate);
-
-                // ربط القيد بالمعاملة
-                var je = await _unitOfWork.JournalEntries.AsQueryable()
-                    .Where(j => j.ReferenceId == technician.Id.ToString()
-                        && j.CompanyId == companyId)
-                    .OrderByDescending(j => j.CreatedAt)
-                    .FirstOrDefaultAsync();
-                if (je != null)
-                {
-                    tx.JournalEntryId = je.Id;
-                    _unitOfWork.TechnicianTransactions.Update(tx);
+                    _logger.LogWarning(ex, "فشل إنشاء القيد المحاسبي لتسديد الفني {TechName}", technician.FullName);
                 }
             }
 
             await _unitOfWork.SaveChangesAsync();
-            await _unitOfWork.CommitTransactionAsync();
 
             _logger.LogInformation("تم تسجيل تسديد {Amount} من الفني {TechName}", request.Amount, technician.FullName);
 
@@ -653,7 +653,6 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
         }
         catch (Exception ex)
         {
-            try { await _unitOfWork.RollbackTransactionAsync(); } catch { /* لا معاملة مفتوحة */ }
             _logger.LogError(ex, "خطأ في تسجيل تسديد الفني");
             return StatusCode(500, new { success = false, message = "خطأ داخلي في الخادم" });
         }
