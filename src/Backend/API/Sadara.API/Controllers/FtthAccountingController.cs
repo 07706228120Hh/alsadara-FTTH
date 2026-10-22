@@ -2304,18 +2304,22 @@ public class FtthAccountingController : ControllerBase
             // تُضاف أولاً فتأخذ الأولوية (TryAdd = الأول يفوز)؛ الموثّق/الأساسي يفوز عند تكرار الاسم.
             // القديم (FtthUsername/Username/FullName أدناه) يبقى رجوعاً احتياطياً فلا ينكسر شيء.
             var ownerName = userMap.ToDictionary(x => (Guid)x.Id, x => (string)(x.FullName ?? ""));
+            var syncCompanyId = dto?.CompanyId; // عزل: اقصر الحسابات على شركة المزامنة عند توفّرها
             var ftthAccs = await _db.FtthAccounts
-                .Where(a => !a.IsDeleted && a.IsActive)
+                .Where(a => !a.IsDeleted && a.IsActive
+                    && (syncCompanyId == null || a.CompanyId == syncCompanyId))
                 .OrderByDescending(a => a.Status == "Verified")
                 .ThenByDescending(a => a.IsPrimary)
+                .ThenBy(a => a.Id)   // كاسر تعادل حتمي عند تكرار الاسم
                 .Select(a => new { a.Username, a.OwnerUserId, a.CompanyId })
                 .ToListAsync();
             foreach (var a in ftthAccs)
             {
                 if (string.IsNullOrWhiteSpace(a.Username)) continue;
-                ownerName.TryGetValue(a.OwnerUserId, out var fn);
+                // تخطّى حساباً مالكه غير نشط/محذوف — لئلا يُنسب القيد لمستخدم محذوف
+                if (!ownerName.TryGetValue(a.OwnerUserId, out var fn)) continue;
                 ftthToUser.TryAdd(a.Username.ToLower().Trim(),
-                    new { Id = a.OwnerUserId, FullName = fn ?? "", CompanyId = (Guid?)a.CompanyId });
+                    new { Id = a.OwnerUserId, FullName = fn, CompanyId = (Guid?)a.CompanyId });
             }
 
             foreach (var u in userMap)
