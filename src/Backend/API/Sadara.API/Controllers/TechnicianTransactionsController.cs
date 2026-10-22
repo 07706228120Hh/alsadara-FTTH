@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.Application.Interfaces;
 using Sadara.API.Constants;
 using Sadara.API.Authorization;
 
@@ -15,10 +16,20 @@ namespace Sadara.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<TechnicianTransactionsController> logger) : ControllerBase
+public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<TechnicianTransactionsController> logger, ICurrentTenant tenant) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<TechnicianTransactionsController> _logger = logger;
+    private readonly ICurrentTenant _tenant = tenant;
+
+    /// <summary>عزل الشركة: يمنع عملية على فني/معاملة شركة أخرى (SuperAdmin يتجاوز). null = مسموح.</summary>
+    private IActionResult? GuardCompany(Guid? companyId)
+    {
+        if (_tenant.IsSuperAdmin) return null;
+        if (companyId == null || _tenant.CompanyId == null || _tenant.CompanyId.Value != companyId.Value)
+            return StatusCode(403, new { success = false, message = "لا تملك صلاحية إجراء عملية على شركة أخرى" });
+        return null;
+    }
 
     /// <summary>
     /// جلب معاملات الفني الحالي (my-transactions)
@@ -229,6 +240,10 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             var technician = await _unitOfWork.Users.GetByIdAsync(technicianId);
             if (technician == null)
                 return NotFound(new { success = false, message = "الفني غير موجود" });
+
+            // عزل: منع عرض معاملات فني شركة أخرى
+            var viewGuard = GuardCompany(technician.CompanyId);
+            if (viewGuard != null) return viewGuard;
 
             var query = _unitOfWork.TechnicianTransactions.AsQueryable()
                 .Where(t => t.TechnicianId == technicianId);
@@ -549,6 +564,10 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             if (technician == null)
                 return NotFound(new { success = false, message = "الفني غير موجود" });
 
+            // عزل: منع تسديد لفني شركة أخرى
+            var payGuard = GuardCompany(technician.CompanyId);
+            if (payGuard != null) return payGuard;
+
             technician.TechTotalPayments += request.Amount;
             technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
             _unitOfWork.Users.Update(technician);
@@ -654,6 +673,10 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             if (tx == null)
                 return NotFound(new { success = false, message = "المعاملة غير موجودة" });
 
+            // عزل: منع تعديل معاملة شركة أخرى
+            var updGuard = GuardCompany(tx.CompanyId);
+            if (updGuard != null) return updGuard;
+
             var technician = await _unitOfWork.Users.GetByIdAsync(tx.TechnicianId);
             if (technician == null)
                 return NotFound(new { success = false, message = "الفني غير موجود" });
@@ -730,6 +753,10 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             if (tx == null)
                 return NotFound(new { success = false, message = "المعاملة غير موجودة" });
 
+            // عزل: منع حذف معاملة شركة أخرى
+            var delGuard = GuardCompany(tx.CompanyId);
+            if (delGuard != null) return delGuard;
+
             var technician = await _unitOfWork.Users.GetByIdAsync(tx.TechnicianId);
             if (technician == null)
                 return NotFound(new { success = false, message = "الفني غير موجود" });
@@ -789,9 +816,11 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
     {
         try
         {
+            // عزل: غير SuperAdmin يعيد حساب أرصدة شركته فقط
+            var scopeCompanyId = _tenant.IsSuperAdmin ? (Guid?)null : _tenant.CompanyId;
             // حساب الأرصدة الحقيقية من جدول المعاملات
             var actualBalances = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                .Where(t => !t.IsDeleted)
+                .Where(t => !t.IsDeleted && (scopeCompanyId == null || t.CompanyId == scopeCompanyId))
                 .GroupBy(t => t.TechnicianId)
                 .Select(g => new
                 {

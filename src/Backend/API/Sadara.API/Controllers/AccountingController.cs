@@ -555,7 +555,10 @@ public class AccountingController : ControllerBase
             if (!_tenant.IsSuperAdmin && _tenant.CompanyId == null)
                 return StatusCode(403, new { success = false, message = "لا تملك صلاحية إنشاء قيد" });
             var writeCompanyId = _tenant.IsSuperAdmin ? dto.CompanyId : _tenant.CompanyId!.Value;
-            var createdById = GetCurrentUserId() ?? dto.CreatedById;
+            // المنفّذ من التوكن حصراً — لا نثق بجسم الطلب لحقل التدقيق (عدم الإنكار)
+            var createdById = GetCurrentUserId();
+            if (createdById == null)
+                return Unauthorized(new { success = false, message = "جلسة غير صالحة" });
 
             // فحص الفترة المقفلة — على الشركة الفعلية للكتابة
             var entryDateForCheck = dto.EntryDate ?? DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).DateTime;
@@ -595,7 +598,7 @@ public class AccountingController : ControllerBase
                 Status = JournalEntryStatus.Draft,
                 Notes = dto.Notes,
                 CompanyId = writeCompanyId,
-                CreatedById = createdById
+                CreatedById = createdById.Value
             };
 
             await _unitOfWork.JournalEntries.AddAsync(entry);
@@ -679,8 +682,11 @@ public class AccountingController : ControllerBase
                 _unitOfWork.Accounts.Update(account);
             }
 
+            var approverId = GetCurrentUserId();
+            if (approverId == null)
+                return Unauthorized(new { success = false, message = "جلسة غير صالحة" });
             entry.Status = JournalEntryStatus.Posted;
-            entry.ApprovedById = GetCurrentUserId() ?? dto.ApprovedById;
+            entry.ApprovedById = approverId.Value;
             entry.ApprovedAt = DateTime.UtcNow;
             _unitOfWork.JournalEntries.Update(entry);
 
@@ -6242,6 +6248,11 @@ public class AccountingController : ControllerBase
     [Authorize(Policy = "CompanyAdminOrAbove")]
     public async Task<IActionResult> ClosePeriod([FromBody] ClosePeriodDto dto)
     {
+        // عزل: منع إقفال فترة شركة أخرى + ختم المُقفِل من التوكن
+        var guard = GuardCompanyAccess(dto.CompanyId);
+        if (guard != null) return guard;
+        var closedById = GetCurrentUserId() ?? dto.ClosedById;
+
         var exists = await _unitOfWork.ClosedPeriods.AnyAsync(
             p => p.CompanyId == dto.CompanyId && p.Year == dto.Year && p.Month == dto.Month && !p.IsDeleted);
         if (exists)
@@ -6251,7 +6262,7 @@ public class AccountingController : ControllerBase
         {
             Year = dto.Year,
             Month = dto.Month,
-            ClosedById = dto.ClosedById,
+            ClosedById = closedById,
             ClosingNotes = dto.Notes,
             CompanyId = dto.CompanyId
         };
@@ -6282,6 +6293,9 @@ public class AccountingController : ControllerBase
     [HttpGet("closed-periods/check")]
     public async Task<IActionResult> CheckPeriodClosed([FromQuery] Guid companyId, [FromQuery] int year, [FromQuery] int month)
     {
+        // عزل: فحص فترة شركة المستخدم فقط (غير SuperAdmin)
+        var guard = GuardCompanyAccess(companyId);
+        if (guard != null) return guard;
         var isClosed = await IsPeriodClosed(companyId, new DateTime(year, month, 1));
         return Ok(new { success = true, isClosed });
     }

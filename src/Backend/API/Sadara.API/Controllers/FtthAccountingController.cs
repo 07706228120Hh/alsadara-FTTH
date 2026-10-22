@@ -80,6 +80,12 @@ public class FtthAccountingController : ControllerBase
     {
         try
         {
+            // عزل (دفاع-بعمق): غير SuperAdmin لا يسجّل عملية لشركة غير شركته —
+            // لا نعتمد على علَم EnforceIsolation وحده.
+            if (!_tenant.IsSuperAdmin && dto.CompanyId.HasValue
+                && _tenant.CompanyId.HasValue && dto.CompanyId.Value != _tenant.CompanyId.Value)
+                return StatusCode(403, new { success = false, message = "لا تملك صلاحية التسجيل على شركة أخرى" });
+
             // 1. إنشاء SubscriptionLog
             var log = new SubscriptionLog
             {
@@ -190,9 +196,10 @@ public class FtthAccountingController : ControllerBase
                 try
                 {
                     // منفّذ العملية (CreatedById) من التوكن حصراً، لا من جسم الطلب (عدم الإنكار).
-                    // نرجع لـ dto.UserId فقط إذا غاب claim المستخدم (لا يحدث تحت [Authorize] عملياً).
-                    var createdById = GetCurrentUserId() ?? dto.UserId!.Value;
-                    journalEntryId = await CreateAccountingEntry(log, dto, createdById);
+                    var tokenUserId = GetCurrentUserId();
+                    if (tokenUserId == null)
+                        return Unauthorized(new { success = false, message = "جلسة غير صالحة" });
+                    journalEntryId = await CreateAccountingEntry(log, dto, tokenUserId.Value);
                     if (journalEntryId.HasValue)
                     {
                         log.JournalEntryId = journalEntryId;
