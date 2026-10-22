@@ -1867,33 +1867,38 @@ public class AccountingController : ControllerBase
 
             // === حساب خصم الذمم إن وُجد ===
             decimal duesDeducted = 0;
-            if (dto.DeductTechDues && empUser != null && empUser.TechNetBalance < 0)
+            if (dto.DeductTechDues && empUser != null)
             {
-                // TechNetBalance سالب يعني عليه مبلغ
-                var totalDues = Math.Abs(empUser.TechNetBalance);
-                duesDeducted = Math.Min(totalDues, salary.NetSalary);
-
-                // تحديث رصيد الفني
-                empUser.TechTotalPayments += duesDeducted;
-                empUser.TechNetBalance = empUser.TechTotalPayments - empUser.TechTotalCharges;
-                _unitOfWork.Users.Update(empUser);
-
-                // تسجيل معاملة تسديد في نظام ذمم الفنيين
-                var techTx = new TechnicianTransaction
+                // المصدر الموحّد (#13): رصيد الفني من الدفتر المحاسبي (1140x) لا الحقل المخزّن
+                var techLedger = await ServiceRequestAccountingHelper.GetTechnicianLedgerBalanceAsync(
+                    _unitOfWork, empUser.Id, salary.CompanyId);
+                if (techLedger.Net < 0) // سالب = عليه مبلغ
                 {
-                    TechnicianId = empUser.Id,
-                    Type = TechnicianTransactionType.Payment,
-                    Category = TechnicianTransactionCategory.SalaryDeduction,
-                    Amount = duesDeducted,
-                    BalanceAfter = empUser.TechNetBalance,
-                    Description = $"خصم ذمم من راتب {salary.Month}/{salary.Year}",
-                    ReferenceNumber = $"SAL-{salary.Id}",
-                    Notes = $"تسديد تلقائي من الراتب - صافي الراتب: {salary.NetSalary}, الذمم المخصومة: {duesDeducted}",
-                    CreatedById = dto.PaidById,
-                    CompanyId = salary.CompanyId,
-                    CreatedAt = DateTime.UtcNow
-                };
-                await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
+                    var totalDues = Math.Abs(techLedger.Net);
+                    duesDeducted = Math.Min(totalDues, salary.NetSalary);
+
+                    // مزامنة الحقل المخزّن مع الحركة (يبقى مرآةً للدفتر)
+                    empUser.TechTotalPayments += duesDeducted;
+                    empUser.TechNetBalance = empUser.TechTotalPayments - empUser.TechTotalCharges;
+                    _unitOfWork.Users.Update(empUser);
+
+                    // تسجيل معاملة تسديد في نظام ذمم الفنيين
+                    var techTx = new TechnicianTransaction
+                    {
+                        TechnicianId = empUser.Id,
+                        Type = TechnicianTransactionType.Payment,
+                        Category = TechnicianTransactionCategory.SalaryDeduction,
+                        Amount = duesDeducted,
+                        BalanceAfter = empUser.TechNetBalance,
+                        Description = $"خصم ذمم من راتب {salary.Month}/{salary.Year}",
+                        ReferenceNumber = $"SAL-{salary.Id}",
+                        Notes = $"تسديد تلقائي من الراتب - صافي الراتب: {salary.NetSalary}, الذمم المخصومة: {duesDeducted}",
+                        CreatedById = dto.PaidById,
+                        CompanyId = salary.CompanyId,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
+                }
             }
 
             decimal actualCashPayout = salary.NetSalary - duesDeducted;
@@ -1947,12 +1952,10 @@ public class AccountingController : ControllerBase
 
                 if (duesDeducted > 0)
                 {
-                    // جزء يذهب لتسديد ذمم الفني
-                    var techReceivableAcct = await FindAccountByCode(AccountCodes.TechnicianReceivables, salary.CompanyId);
-                    if (techReceivableAcct != null)
-                    {
-                        journalLines.Add((techReceivableAcct.Id, 0, duesDeducted, $"تسديد ذمم {empName} من الراتب"));
-                    }
+                    // #13: إلى حساب الفني الفرعي 1140x (لا الأب 1140) لينقص رصيده في الدفتر
+                    // ويمتنع تكرار الخصم في الشهر التالي.
+                    var techSubAcct = await FindOrCreateSubAccount(AccountCodes.TechnicianReceivables, salary.UserId, empName, salary.CompanyId);
+                    journalLines.Add((techSubAcct.Id, 0, duesDeducted, $"تسديد ذمم {empName} من الراتب"));
                     if (actualCashPayout > 0)
                     {
                         journalLines.Add((cashAcctSal.Id, 0, actualCashPayout, $"صرف صافي راتب {empName} نقداً {salary.Month}/{salary.Year}"));
