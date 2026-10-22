@@ -3250,6 +3250,14 @@ public static class ServiceRequestAccountingHelper
             DateTimeKind.Utc);
         var year = now.Year;
 
+        // ═══ تأكيد توازن القيد (مدين=دائن) قبل الحفظ — حماية مركزية لكل المستدعين ═══
+        // يمنع ترحيل قيد غير متوازن بصمت يكسر ميزان المراجعة (بهامش تقريب 0.001).
+        var totalDebitCheck = lines.Sum(l => l.DebitAmount);
+        var totalCreditCheck = lines.Sum(l => l.CreditAmount);
+        if (Math.Abs(totalDebitCheck - totalCreditCheck) > 0.001m)
+            throw new InvalidOperationException(
+                $"قيد غير متوازن: مدين={totalDebitCheck} دائن={totalCreditCheck} (مرجع={referenceType}/{referenceId})");
+
         var entryId = Guid.NewGuid();
         var entry = new JournalEntry
         {

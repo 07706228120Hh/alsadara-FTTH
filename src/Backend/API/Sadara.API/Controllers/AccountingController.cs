@@ -31,6 +31,14 @@ public class AccountingController : ControllerBase
         _tenant = tenant;
     }
 
+    /// <summary>هوية المنفّذ من التوكن (claim) — لختم من أنشأ/اعتمد القيد (عدم الإنكار).</summary>
+    private Guid? GetCurrentUserId()
+    {
+        var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+        return Guid.TryParse(sub, out var id) ? id : (Guid?)null;
+    }
+
     /// <summary>عزل الشركة: يمنع عملية على شركة غير شركة المستخدم (SuperAdmin يتجاوز). null = مسموح.</summary>
     private IActionResult? GuardCompanyAccess(Guid? companyId)
     {
@@ -542,9 +550,16 @@ public class AccountingController : ControllerBase
             if (dto.Lines == null || dto.Lines.Count < 2)
                 return BadRequest(new { success = false, message = "القيد يجب أن يحتوي على سطرين على الأقل" });
 
-            // فحص الفترة المقفلة
+            // عزل: الشركة من التوكن لغير SuperAdmin؛ والمنفّذ من التوكن لا من جسم الطلب.
+            // غير SuperAdmin بلا شركة في التوكن = رفض (اتساقاً مع ResolveReadScope).
+            if (!_tenant.IsSuperAdmin && _tenant.CompanyId == null)
+                return StatusCode(403, new { success = false, message = "لا تملك صلاحية إنشاء قيد" });
+            var writeCompanyId = _tenant.IsSuperAdmin ? dto.CompanyId : _tenant.CompanyId!.Value;
+            var createdById = GetCurrentUserId() ?? dto.CreatedById;
+
+            // فحص الفترة المقفلة — على الشركة الفعلية للكتابة
             var entryDateForCheck = dto.EntryDate ?? DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(3)).DateTime;
-            var periodError = await CheckPeriodLockForUser(dto.CompanyId, entryDateForCheck);
+            var periodError = await CheckPeriodLockForUser(writeCompanyId, entryDateForCheck);
             if (periodError != null)
                 return BadRequest(new { success = false, message = periodError });
 
@@ -562,7 +577,7 @@ public class AccountingController : ControllerBase
                 _logger.LogWarning("⚠️ قيد يدوي يحتوي نفس الحساب في المدين والدائن: {Accounts}", string.Join(", ", duplicateAccounts));
 
             // توليد رقم القيد
-            var entryNumber = await GenerateEntryNumber(dto.CompanyId);
+            var entryNumber = await GenerateEntryNumber(writeCompanyId);
 
             await _unitOfWork.BeginTransactionAsync();
 
@@ -579,8 +594,8 @@ public class AccountingController : ControllerBase
                 ReferenceType = JournalReferenceType.Manual,
                 Status = JournalEntryStatus.Draft,
                 Notes = dto.Notes,
-                CompanyId = dto.CompanyId,
-                CreatedById = dto.CreatedById
+                CompanyId = writeCompanyId,
+                CreatedById = createdById
             };
 
             await _unitOfWork.JournalEntries.AddAsync(entry);
@@ -626,6 +641,10 @@ public class AccountingController : ControllerBase
             if (entry == null)
                 return NotFound(new { success = false, message = "القيد غير موجود" });
 
+            // عزل: منع ترحيل قيد شركة أخرى بمعرّفه
+            var postGuard = GuardCompanyAccess(entry.CompanyId);
+            if (postGuard != null) return postGuard;
+
             if (entry.Status != JournalEntryStatus.Draft)
                 return BadRequest(new { success = false, message = "القيد مُعتمد بالفعل أو ملغي" });
 
@@ -661,7 +680,7 @@ public class AccountingController : ControllerBase
             }
 
             entry.Status = JournalEntryStatus.Posted;
-            entry.ApprovedById = dto.ApprovedById;
+            entry.ApprovedById = GetCurrentUserId() ?? dto.ApprovedById;
             entry.ApprovedAt = DateTime.UtcNow;
             _unitOfWork.JournalEntries.Update(entry);
 
@@ -4651,6 +4670,10 @@ public class AccountingController : ControllerBase
             if (account == null)
                 return NotFound(new { success = false, message = "الحساب غير موجود" });
 
+            // ═══ عزل الشركة: منع قراءة كشف حساب شركة أخرى (IDOR) ═══
+            var guard = GuardCompanyAccess(account.CompanyId);
+            if (guard != null) return guard;
+
             // ═══ حساب الرصيد الافتتاحي (ما قبل fromDate) ═══
             // الاتجاه الموحد: مدين - دائن (موجب = مدين، سالب = دائن)
             decimal openingBalance = 0;
@@ -4742,10 +4765,15 @@ public class AccountingController : ControllerBase
     {
         try
         {
+            // ═══ عزل الشركة: غير SuperAdmin يُفلتر دائماً بشركة التوكن (يتجاهل companyId من العميل) ═══
+            var (scopedCompanyId, denied) = ResolveReadScope(companyId);
+            if (denied)
+                return StatusCode(403, new { success = false, message = "لا تملك صلاحية الوصول" });
+
             var pid = userId.ToString();
             var personAccounts = await _unitOfWork.Accounts.AsQueryable()
                 .Where(a => a.Description == pid && a.IsActive && a.IsLeaf
-                    && (!companyId.HasValue || a.CompanyId == companyId))
+                    && (!scopedCompanyId.HasValue || a.CompanyId == scopedCompanyId))
                 .Select(a => new { a.Id, a.Code, a.Name })
                 .ToListAsync();
 
