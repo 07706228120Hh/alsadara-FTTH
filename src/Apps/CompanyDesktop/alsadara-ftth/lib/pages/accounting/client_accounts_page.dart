@@ -2761,10 +2761,24 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     }
   }
 
+  /// بيان الحركة المعروض في كشف الحساب.
+  /// للقيود التلقائية (تجديد/خدمة...) نُفضّل بيان القيد الكامل (EntryDescription) لأنه
+  /// يحوي اسم المشترك والمنفّذ (مثل «تجديد BASIC - أحمد علي - نقد عبر علي صالح»).
+  /// للقيود اليدوية (Manual) نُبقي وصف السطر الخاص بكل حساب. ونرجع للآخر عند الفراغ.
+  String _lineDisplayDesc(dynamic line) {
+    final entryDesc = line['EntryDescription']?.toString() ?? '';
+    final lineDesc = line['Description']?.toString() ?? '';
+    final isManual = (line['ReferenceType']?.toString() ?? '') == 'Manual';
+    if (isManual) {
+      return lineDesc.isNotEmpty ? lineDesc : entryDesc;
+    }
+    return entryDesc.isNotEmpty ? entryDesc : lineDesc;
+  }
+
   Widget _buildStmtTableRow(int index, dynamic line, double running, {dynamic prevLine}) {
     final ar = context.accR;
     final dateStr = line['EntryDate']?.toString() ?? '';
-    final desc = (line['Description']?.toString().isNotEmpty == true ? line['Description'] : line['EntryDescription'])?.toString() ?? '';
+    final desc = _lineDisplayDesc(line);
     final debit = ((line['DebitAmount'] ?? 0) as num).toDouble();
     final credit = ((line['CreditAmount'] ?? 0) as num).toDouble();
 
@@ -2873,11 +2887,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
     final line = src[index];
     final entryNum = line['EntryNumber']?.toString() ?? '';
     final dateStr = line['EntryDate']?.toString() ?? '';
-    final desc = (line['Description']?.toString().isNotEmpty == true
-                ? line['Description']
-                : line['EntryDescription'])
-            ?.toString() ??
-        '';
+    final desc = _lineDisplayDesc(line);
     final debit = ((line['DebitAmount'] ?? 0) as num).toDouble();
     final credit = ((line['CreditAmount'] ?? 0) as num).toDouble();
     final origIdx = _statementLines.indexOf(line);
@@ -3625,11 +3635,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
 
   TableRow _buildTableRow(int index, dynamic line, double running) {
     final dateStr = line['EntryDate']?.toString() ?? '';
-    final desc = (line['Description']?.toString().isNotEmpty == true
-                ? line['Description']
-                : line['EntryDescription'])
-            ?.toString() ??
-        '';
+    final desc = _lineDisplayDesc(line);
     final debit = ((line['DebitAmount'] ?? 0) as num).toDouble();
     final credit = ((line['CreditAmount'] ?? 0) as num).toDouble();
 
