@@ -3100,6 +3100,29 @@ public static class ServiceRequestAccountingHelper
     }
 
     /// <summary>
+    /// مصدر الحقيقة الموحّد لرصيد الفني: يُحسب من الدفتر المحاسبي (حسابات ذمم الفنيين 1140x)
+    /// مباشرةً، بمفتاح موثوق (Account.Description = معرّف الفني الذي يختمه FindOrCreateSubAccount).
+    /// يرجع (Charges=مدين=ما عليه، Payments=دائن=ما له، Net=Payments-Charges؛ سالب = عليه).
+    /// للقراءة فقط — لا يكتب شيئاً. تستدعيه كل الشاشات لتعرض نفس الرقم.
+    /// </summary>
+    public static async Task<(decimal Charges, decimal Payments, decimal Net)> GetTechnicianLedgerBalanceAsync(
+        IUnitOfWork unitOfWork, Guid technicianId, Guid? companyId = null)
+    {
+        var pid = technicianId.ToString();
+        var q = unitOfWork.JournalEntryLines.AsQueryable()
+            .Where(l => l.JournalEntry != null
+                && l.JournalEntry.Status == JournalEntryStatus.Posted
+                && l.Account != null
+                && l.Account.Code.StartsWith("1140")
+                && l.Account.Description == pid
+                && (companyId == null || l.Account.CompanyId == companyId));
+
+        var charges = await q.SumAsync(l => (decimal?)l.DebitAmount) ?? 0m;
+        var payments = await q.SumAsync(l => (decimal?)l.CreditAmount) ?? 0m;
+        return (charges, payments, payments - charges);
+    }
+
+    /// <summary>
     /// يضمن وجود حساب أب ثابت بكود معروف للشركة؛ يُنشئه إن غاب (بلا حساب أب أعلى — جذر منطقي لفرعه).
     /// يُستخدم لحسابات الذمم/التحصيل الثابتة (مثل «ذمم المواطنين 1180») التي يفترض <see cref="FindOrCreateSubAccount"/>
     /// وجود أبها مسبقاً وإلا يرمي. آمن للتزامن (يلتقط تعارض الإنشاء المتوازي ويعيد البحث).
