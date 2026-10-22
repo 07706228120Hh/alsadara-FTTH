@@ -3345,6 +3345,7 @@ class _ClientAccountsPageState extends State<ClientAccountsPage> {
                             const SizedBox(height: 8),
                             Wrap(spacing: 16, children: [
                               if (entry['ReferenceType'] != null) Text('النوع: ${_refTypeLabel(entry['ReferenceType'])}', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.faint)),
+                              if ((entry['CreatedByName']?.toString() ?? '').isNotEmpty) Text('المنفّذ: ${entry['CreatedByName']}', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, fontWeight: FontWeight.w600, color: SdColors.info)),
                               if (entry['ReferenceId'] != null) Text('مرجع: ${entry['ReferenceId']}', style: TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.primary)),
                             ]),
                           ],

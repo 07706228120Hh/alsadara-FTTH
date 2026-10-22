@@ -510,7 +510,9 @@ public class AccountingController : ControllerBase
                     j.Notes,
                     j.CompanyId,
                     j.CreatedById,
+                    CreatedByName = j.CreatedBy != null ? j.CreatedBy.FullName : "",
                     j.ApprovedById,
+                    ApprovedByName = j.ApprovedBy != null ? j.ApprovedBy.FullName : "",
                     j.ApprovedAt,
                     j.CreatedAt,
                     Lines = j.Lines.Select(l => new
@@ -529,6 +531,10 @@ public class AccountingController : ControllerBase
 
             if (entry == null)
                 return NotFound(new { success = false, message = "القيد غير موجود" });
+
+            // عزل: منع قراءة قيد شركة أخرى
+            var guard = GuardCompanyAccess(entry.CompanyId);
+            if (guard != null) return guard;
 
             return Ok(new { success = true, data = entry });
         }
@@ -4723,6 +4729,7 @@ public class AccountingController : ControllerBase
                     EntryDate = l.JournalEntry != null ? l.JournalEntry.EntryDate : DateTime.MinValue,
                     EntryDescription = l.JournalEntry != null ? l.JournalEntry.Description : "",
                     ReferenceType = l.JournalEntry != null ? l.JournalEntry.ReferenceType.ToString() : "",
+                    CreatedByName = l.JournalEntry != null && l.JournalEntry.CreatedBy != null ? l.JournalEntry.CreatedBy.FullName : "",
                     l.DebitAmount,
                     l.CreditAmount,
                     l.Description
@@ -4830,6 +4837,7 @@ public class AccountingController : ControllerBase
                     EntryDate = l.JournalEntry != null ? l.JournalEntry.EntryDate : DateTime.MinValue,
                     EntryDescription = l.JournalEntry != null ? l.JournalEntry.Description : "",
                     ReferenceType = l.JournalEntry != null ? l.JournalEntry.ReferenceType.ToString() : "",
+                    CreatedByName = l.JournalEntry != null && l.JournalEntry.CreatedBy != null ? l.JournalEntry.CreatedBy.FullName : "",
                     l.DebitAmount,
                     l.CreditAmount,
                     l.Description
@@ -4843,7 +4851,7 @@ public class AccountingController : ControllerBase
                 return new
                 {
                     l.Id, l.AccountId, l.JournalEntryId, l.EntryNumber, l.EntryDate,
-                    l.EntryDescription, l.ReferenceType, l.DebitAmount, l.CreditAmount, l.Description,
+                    l.EntryDescription, l.ReferenceType, l.CreatedByName, l.DebitAmount, l.CreditAmount, l.Description,
                     AccountCode = acct?.Code ?? "",
                     AccountName = acct?.Name ?? ""
                 };
