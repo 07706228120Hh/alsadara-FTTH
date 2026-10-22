@@ -59,6 +59,15 @@ public class FtthAccountingController : ControllerBase
         return activatedBy;
     }
 
+    /// هوية المنفّذ الحقيقية من التوكن (claim) — لختم من أنشأ القيد (عدم الإنكار)
+    /// لا نثق بأي معرّف مستخدم قادم من جسم الطلب لحقل التدقيق هذا.
+    private Guid? GetCurrentUserId()
+    {
+        var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+        return Guid.TryParse(sub, out var id) ? id : (Guid?)null;
+    }
+
     // ==================== 1. حفظ عملية مع قيد محاسبي ====================
 
     /// <summary>
@@ -180,7 +189,10 @@ public class FtthAccountingController : ControllerBase
             {
                 try
                 {
-                    journalEntryId = await CreateAccountingEntry(log, dto);
+                    // منفّذ العملية (CreatedById) من التوكن حصراً، لا من جسم الطلب (عدم الإنكار).
+                    // نرجع لـ dto.UserId فقط إذا غاب claim المستخدم (لا يحدث تحت [Authorize] عملياً).
+                    var createdById = GetCurrentUserId() ?? dto.UserId!.Value;
+                    journalEntryId = await CreateAccountingEntry(log, dto, createdById);
                     if (journalEntryId.HasValue)
                     {
                         log.JournalEntryId = journalEntryId;
@@ -224,9 +236,11 @@ public class FtthAccountingController : ControllerBase
     ///   دائن: إيراد صيانة 4110 (رسوم الصيانة — إن وُجدت)
     ///   دائن: إيراد خصم الشركة 4120 (خصم الشركة غير الممرّر — إن لم يُفعَّل)
     /// </summary>
-    private async Task<Guid?> CreateAccountingEntry(SubscriptionLog log, FtthLogWithAccountingDto dto)
+    private async Task<Guid?> CreateAccountingEntry(SubscriptionLog log, FtthLogWithAccountingDto dto, Guid createdById)
     {
         var companyId = dto.CompanyId!.Value;
+        // userId = المشغّل صاحب الصندوق/الذمة (نسبة العملية) — من dto.
+        // createdById = المنفّذ الحقيقي (من التوكن) — لختم حقول التدقيق فقط.
         var userId = dto.UserId!.Value;
         var collectionType = dto.CollectionType ?? "cash";
 
@@ -352,7 +366,7 @@ public class FtthAccountingController : ControllerBase
                     BalanceAfter = agent.NetBalance,
                     Description = $"{opType} {planName} - {customerName}",
                     ReferenceNumber = log.Id.ToString(),
-                    CreatedById = userId,
+                    CreatedById = createdById,
                     Notes = $"تفعيل عبر {operatorName}"
                 };
                 await _unitOfWork.AgentTransactions.AddAsync(agentTx);
@@ -385,7 +399,7 @@ public class FtthAccountingController : ControllerBase
                     BalanceAfter = tech.TechNetBalance,
                     Description = $"{opType} {planName} - {customerName}",
                     ReferenceNumber = log.Id.ToString(),
-                    CreatedById = userId,
+                    CreatedById = createdById,
                     CompanyId = techCompanyId,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -462,9 +476,9 @@ public class FtthAccountingController : ControllerBase
                 DateTimeKind.Utc);
         }
 
-        // إنشاء القيد
+        // إنشاء القيد — CreatedById/ApprovedById = المنفّذ من التوكن (createdById)، لا dto.UserId
         await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
-            _unitOfWork, companyId, userId, description,
+            _unitOfWork, companyId, createdById, description,
             JournalReferenceType.FtthSubscription, log.Id.ToString(), lines,
             activationEntryDate);
 
@@ -2598,7 +2612,8 @@ public class FtthAccountingController : ControllerBase
                                 autoMaintenanceFee,                                // أجور الصيانة (إيراد)
                                 true);                                             // SystemDiscountEnabled=true
 
-                            var jeId = await CreateAccountingEntry(log, accountingDto);
+                            // مسار دفعي: المنفّذ يبقى UserId الأصلي للسجل (سلوك سابق محفوظ)
+                            var jeId = await CreateAccountingEntry(log, accountingDto, accountingDto.UserId!.Value);
                             if (jeId.HasValue)
                             {
                                 log.JournalEntryId = jeId;
@@ -2989,7 +3004,8 @@ public class FtthAccountingController : ControllerBase
                             autoBasePrice, autoCompanyDiscount,
                             log.ManualDiscount ?? 0, autoMaintenanceFee, sde);
 
-                        var jeId = await CreateAccountingEntry(log, accountingDto);
+                        // مسار دفعي: المنفّذ يبقى UserId الأصلي للسجل (سلوك سابق محفوظ)
+                        var jeId = await CreateAccountingEntry(log, accountingDto, accountingDto.UserId!.Value);
                         if (jeId.HasValue)
                         {
                             log.JournalEntryId = jeId;
@@ -3711,7 +3727,8 @@ public class FtthAccountingController : ControllerBase
                         log.LinkedAgentId, log.LinkedTechnicianId,
                         log.PlanPrice, 0, 0, log.MaintenanceFee ?? 0, true);
 
-                    var jeId = await CreateAccountingEntry(log, dto);
+                    // مسار دفعي: المنفّذ يبقى UserId الأصلي للسجل (سلوك سابق محفوظ)
+                    var jeId = await CreateAccountingEntry(log, dto, dto.UserId!.Value);
                     if (jeId.HasValue)
                     {
                         log.JournalEntryId = jeId;
@@ -3934,7 +3951,8 @@ public class FtthAccountingController : ControllerBase
                         null, null,
                         log.PlanPrice ?? 0, 0, 0, 0, true);
 
-                    var jeId = await CreateAccountingEntry(log, dto);
+                    // مسار دفعي: المنفّذ يبقى UserId الأصلي للسجل (سلوك سابق محفوظ)
+                    var jeId = await CreateAccountingEntry(log, dto, dto.UserId!.Value);
                     if (jeId.HasValue)
                     {
                         log.JournalEntryId = jeId;
