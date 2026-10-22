@@ -2014,6 +2014,10 @@ public class FtthAccountingController : ControllerBase
             if (user == null)
                 return NotFound(new { success = false, message = "المستخدم غير موجود" });
 
+            // عزل: غير SuperAdmin لا يربط حساب مستخدم من شركة أخرى (IDOR)
+            if (!_tenant.IsSuperAdmin && (user.CompanyId == null || user.CompanyId != _tenant.CompanyId))
+                return StatusCode(403, new { success = false, message = "لا تملك صلاحية على مستخدم شركة أخرى" });
+
             user.FtthUsername = dto.FtthUsername;
             // إصلاح: لا نمسح كلمة المرور القديمة عند عدم إرسالها (إعادة الربط لا تُفقدها).
             // تُمسح فقط عند إزالة الربط (اسم مستخدم فارغ)؛ وتُحدَّث فقط عند إرسال قيمة جديدة.
