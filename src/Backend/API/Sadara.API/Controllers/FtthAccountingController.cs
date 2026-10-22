@@ -8,6 +8,7 @@ using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 using Sadara.API.Authorization;
 using Sadara.API.Constants;
+using Sadara.Infrastructure.Data;
 
 namespace Sadara.API.Controllers;
 
@@ -25,13 +26,15 @@ public class FtthAccountingController : ControllerBase
     private readonly ILogger<FtthAccountingController> _logger;
     private readonly IConfiguration _configuration;
     private readonly ICurrentTenant _tenant;
+    private readonly SadaraDbContext _db;
 
-    public FtthAccountingController(IUnitOfWork unitOfWork, ILogger<FtthAccountingController> logger, IConfiguration configuration, ICurrentTenant tenant)
+    public FtthAccountingController(IUnitOfWork unitOfWork, ILogger<FtthAccountingController> logger, IConfiguration configuration, ICurrentTenant tenant, SadaraDbContext db)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _configuration = configuration;
         _tenant = tenant;
+        _db = db;
     }
 
     /// تحويل اسم المستخدم (FtthUsername/Username) إلى الاسم الكامل — للعمليات الفردية
@@ -2296,6 +2299,25 @@ public class FtthAccountingController : ControllerBase
                 .Select(u => new { u.Id, u.FtthUsername, u.Username, u.FullName, u.CompanyId })
                 .ToListAsync();
             var ftthToUser = new Dictionary<string, dynamic>();
+
+            // ═══ المصدر الموحّد الجديد (المرحلة 2): حسابات «الحسابات المرتبطة» FtthAccount ═══
+            // تُضاف أولاً فتأخذ الأولوية (TryAdd = الأول يفوز)؛ الموثّق/الأساسي يفوز عند تكرار الاسم.
+            // القديم (FtthUsername/Username/FullName أدناه) يبقى رجوعاً احتياطياً فلا ينكسر شيء.
+            var ownerName = userMap.ToDictionary(x => (Guid)x.Id, x => (string)(x.FullName ?? ""));
+            var ftthAccs = await _db.FtthAccounts
+                .Where(a => !a.IsDeleted && a.IsActive)
+                .OrderByDescending(a => a.Status == "Verified")
+                .ThenByDescending(a => a.IsPrimary)
+                .Select(a => new { a.Username, a.OwnerUserId, a.CompanyId })
+                .ToListAsync();
+            foreach (var a in ftthAccs)
+            {
+                if (string.IsNullOrWhiteSpace(a.Username)) continue;
+                ownerName.TryGetValue(a.OwnerUserId, out var fn);
+                ftthToUser.TryAdd(a.Username.ToLower().Trim(),
+                    new { Id = a.OwnerUserId, FullName = fn ?? "", CompanyId = (Guid?)a.CompanyId });
+            }
+
             foreach (var u in userMap)
             {
                 var val = new { u.Id, u.FullName, u.CompanyId };
