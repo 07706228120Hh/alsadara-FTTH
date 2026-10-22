@@ -1940,6 +1940,13 @@ public class AccountingController : ControllerBase
             // مدين: 2120 رواتب مستحقة (عكس الاستحقاق)
             // دائن: حساب النقدية 1110
             var cashAcctSal = await FindAccountByCode(AccountCodes.Cash, salary.CompanyId);
+            // P1: لا نعتبر الخصم «مدفوعاً» بلا قيد يُنقِص دَين الفني في الدفتر (مصدر الحقيقة)
+            // — وإلا يبقى الدفتر كما هو فيتكرّر الخصم الشهر التالي. تراجع كامل.
+            if (cashAcctSal == null && duesDeducted > 0)
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                return StatusCode(500, new { success = false, message = "حساب النقدية (1110) غير موجود — تعذّر تسجيل قيد خصم الذمم، أُلغيت العملية" });
+            }
             if (cashAcctSal != null)
             {
                 var salaryPayableAcctPay = await FindAccountByCode(AccountCodes.SalariesPayable, salary.CompanyId);

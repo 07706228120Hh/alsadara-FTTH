@@ -450,9 +450,9 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             var techAccounts = techParent != null
                 ? await _unitOfWork.Accounts.AsQueryable()
                     .Where(a => a.ParentAccountId == techParent.Id && a.IsLeaf)
-                    .Select(a => new { a.Id, a.Name })
+                    .Select(a => new { a.Id, a.Name, a.Description })
                     .ToListAsync()
-                : new List<dynamic>().Select(x => new { Id = Guid.Empty, Name = "" }).ToList();
+                : new List<dynamic>().Select(x => new { Id = Guid.Empty, Name = "", Description = (string?)null }).ToList();
 
             // جلب بيانات الفنيين (الاسم، الهاتف) مع فلتر الشركة
             var allTechUsers = await _unitOfWork.Users.AsQueryable()
@@ -460,14 +460,15 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
                 .Select(u => new { u.Id, u.FullName, u.PhoneNumber })
                 .ToListAsync();
 
-            // ربط: اسم الحساب → User
-            var userByName = allTechUsers.GroupBy(u => u.FullName).ToDictionary(g => g.Key, g => g.First());
+            // ربط موثوق: Account.Description = معرّف الفني (لا الاسم الهشّ) — يطابق الدالة المركزية
+            var userById = allTechUsers.ToDictionary(u => u.Id, u => u);
 
             // حساب أرصدة كل فني من JournalEntryLines
             var technicians = new List<dynamic>();
             foreach (var acc in techAccounts)
             {
-                if (!userByName.TryGetValue(acc.Name, out var techUser)) continue;
+                if (!Guid.TryParse((string?)acc.Description, out var accTechId)
+                    || !userById.TryGetValue(accTechId, out var techUser)) continue;
 
                 var jlQuery = _unitOfWork.JournalEntryLines.AsQueryable()
                     .Where(l => l.AccountId == acc.Id
