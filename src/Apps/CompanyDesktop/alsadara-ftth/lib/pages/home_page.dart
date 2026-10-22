@@ -1316,8 +1316,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 );
               },
             ),
-          // زر تتبّع الكادر على الخريطة
-          if (_isAdminUser || PermissionManager.instance.canView('tracking'))
+          // زر تتبّع الكادر على الخريطة — بصلاحية tracking فقط
+          if (PermissionManager.instance.canView('tracking'))
             SdAppBarAction(
               icon: Icons.my_location_rounded,
               label: 'تتبّع الكادر',
@@ -1416,8 +1416,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       SdNavSection(
         title: 'الإدارة',
         items: [
-          // إدارة المستخدمين (مدير فقط)
-          if (_isAdminUser)
+          // إدارة المستخدمين — تخضع لصلاحية users (لا للعلَم النصّي)
+          if (PermissionManager.instance.canView('users'))
             SdNavItem(
               id: 'users',
               label: 'إدارة المستخدمين',
@@ -1446,8 +1446,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 );
               },
             ),
-          // المستخدمين (محظور) لغير المدراء
-          if (!_isAdminUser)
+          // المستخدمين (محظور) لمن لا يملك صلاحية users
+          if (!PermissionManager.instance.canView('users'))
             SdNavItem(
               id: 'users',
               label: 'المستخدمين',
@@ -1456,8 +1456,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               enabled: false,
               onTap: () => _showPermissionDenied(),
             ),
-          // إعدادات الشركة (للمدير فقط)
-          if (_isAdminUser)
+          // إعدادات الشركة — تخضع لصلاحية settings
+          if (PermissionManager.instance.canView('settings'))
             SdNavItem(
               id: 'company_settings',
               label: 'إعدادات الشركة',
@@ -1489,8 +1489,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 tenantCode: widget.tenantCode,
               )),
             ),
-          // مزامنة FTTH (للمدير فقط)
-          if (_isAdminUser)
+          // مزامنة FTTH — تخضع لصلاحية settings
+          if (PermissionManager.instance.canView('settings'))
             SdNavItem(
               id: 'ftth_sync',
               label: 'مزامنة FTTH',
