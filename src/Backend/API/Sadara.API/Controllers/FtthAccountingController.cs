@@ -2024,6 +2024,33 @@ public class FtthAccountingController : ControllerBase
             _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();
 
+            // المرحلة 3 (النهج أ): اضمن وجود FtthAccount بنفس اسم المستخدم (المصدر الموحّد الجديد).
+            // غير موثّق بلا كلمة مرور — تُدخَل لاحقاً من تبويب «الحسابات المرتبطة». لا يكسر القديم.
+            if (!string.IsNullOrWhiteSpace(dto.FtthUsername) && user.CompanyId.HasValue)
+            {
+                var uname = dto.FtthUsername.Trim();
+                var exists = await _db.FtthAccounts.AnyAsync(a => !a.IsDeleted
+                    && a.OwnerUserId == user.Id && a.CompanyId == user.CompanyId.Value
+                    && a.Username.ToLower() == uname.ToLower());
+                if (!exists)
+                {
+                    var hasPrimary = await _db.FtthAccounts.AnyAsync(a => !a.IsDeleted
+                        && a.OwnerUserId == user.Id && a.CompanyId == user.CompanyId.Value && a.IsPrimary);
+                    await _db.FtthAccounts.AddAsync(new FtthAccount
+                    {
+                        Id = Guid.NewGuid(),
+                        CompanyId = user.CompanyId.Value,
+                        OwnerUserId = user.Id,
+                        Username = uname,
+                        Label = "حساب مرتبط",
+                        Status = "Unverified",
+                        IsPrimary = !hasPrimary,
+                        IsActive = true
+                    });
+                    await _db.SaveChangesAsync();
+                }
+            }
+
             return Ok(new { success = true, message = "تم ربط حساب FTTH بنجاح" });
         }
         catch (Exception ex)
