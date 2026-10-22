@@ -654,6 +654,11 @@ public class AccountingController : ControllerBase
             var postGuard = GuardCompanyAccess(entry.CompanyId);
             if (postGuard != null) return postGuard;
 
+            // المعتمِد من التوكن — قبل أي كتابة/معاملة (تجنّب معاملة مفتوحة عند 401)
+            var approverId = GetCurrentUserId();
+            if (approverId == null)
+                return Unauthorized(new { success = false, message = "جلسة غير صالحة" });
+
             if (entry.Status != JournalEntryStatus.Draft)
                 return BadRequest(new { success = false, message = "القيد مُعتمد بالفعل أو ملغي" });
 
@@ -688,9 +693,6 @@ public class AccountingController : ControllerBase
                 _unitOfWork.Accounts.Update(account);
             }
 
-            var approverId = GetCurrentUserId();
-            if (approverId == null)
-                return Unauthorized(new { success = false, message = "جلسة غير صالحة" });
             entry.Status = JournalEntryStatus.Posted;
             entry.ApprovedById = approverId.Value;
             entry.ApprovedAt = DateTime.UtcNow;

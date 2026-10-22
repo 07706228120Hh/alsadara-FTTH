@@ -86,6 +86,11 @@ public class FtthAccountingController : ControllerBase
                 && _tenant.CompanyId.HasValue && dto.CompanyId.Value != _tenant.CompanyId.Value)
                 return StatusCode(403, new { success = false, message = "لا تملك صلاحية التسجيل على شركة أخرى" });
 
+            // المنفّذ من التوكن — قبل أي كتابة (عدم الإنكار، تجنّب كتابة جزئية عند 401)
+            var tokenUserId = GetCurrentUserId();
+            if (tokenUserId == null)
+                return Unauthorized(new { success = false, message = "جلسة غير صالحة" });
+
             // 1. إنشاء SubscriptionLog
             var log = new SubscriptionLog
             {
@@ -195,10 +200,7 @@ public class FtthAccountingController : ControllerBase
             {
                 try
                 {
-                    // منفّذ العملية (CreatedById) من التوكن حصراً، لا من جسم الطلب (عدم الإنكار).
-                    var tokenUserId = GetCurrentUserId();
-                    if (tokenUserId == null)
-                        return Unauthorized(new { success = false, message = "جلسة غير صالحة" });
+                    // منفّذ العملية (CreatedById) من التوكن حصراً (حُسم أعلاه)
                     journalEntryId = await CreateAccountingEntry(log, dto, tokenUserId.Value);
                     if (journalEntryId.HasValue)
                     {
