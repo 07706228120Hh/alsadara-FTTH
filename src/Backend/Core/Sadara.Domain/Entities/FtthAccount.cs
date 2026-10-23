@@ -27,6 +27,13 @@ public class FtthAccount : BaseEntity<Guid>, ITenantScoped
     public string Username { get; set; } = string.Empty;
 
     /// <summary>
+    /// معرّف عضو الفريق على خادم FTTH (team member id، مثل "1838865").
+    /// يُجلب من <c>/api/teams/members</c> عند الربط. تسجّل بعض العمليات المنفّذ بهذا الرقم
+    /// بدل اسم المستخدم، فنطابق المزامنة به كمفتاح أول (ثم Username ثم اسم المالك).
+    /// </summary>
+    public string? FtthMemberId { get; set; }
+
+    /// <summary>
     /// كلمة مرور FTTH مشفّرة (تُحفظ مشفّرة عبر ISecretProtector في المتحكم لاحقاً).
     /// ⚠️ لا يُعاد هذا الحقل أبداً في أي استجابة API — يُفكّ تشفيره داخلياً فقط عند تسجيل الدخول لنظام FTTH.
     /// </summary>

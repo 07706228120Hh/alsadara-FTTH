@@ -2033,10 +2033,11 @@ public class FtthAccountingController : ControllerBase
             if (!string.IsNullOrWhiteSpace(dto.FtthUsername) && user.CompanyId.HasValue)
             {
                 var uname = dto.FtthUsername.Trim();
-                var exists = await _db.FtthAccounts.AnyAsync(a => !a.IsDeleted
+                var memberId = string.IsNullOrWhiteSpace(dto.FtthMemberId) ? null : dto.FtthMemberId.Trim();
+                var existing = await _db.FtthAccounts.FirstOrDefaultAsync(a => !a.IsDeleted
                     && a.OwnerUserId == user.Id && a.CompanyId == user.CompanyId.Value
                     && a.Username.ToLower() == uname.ToLower());
-                if (!exists)
+                if (existing == null)
                 {
                     var hasPrimary = await _db.FtthAccounts.AnyAsync(a => !a.IsDeleted
                         && a.OwnerUserId == user.Id && a.CompanyId == user.CompanyId.Value && a.IsPrimary);
@@ -2046,11 +2047,19 @@ public class FtthAccountingController : ControllerBase
                         CompanyId = user.CompanyId.Value,
                         OwnerUserId = user.Id,
                         Username = uname,
+                        FtthMemberId = memberId,
                         Label = "حساب مرتبط",
                         Status = "Unverified",
                         IsPrimary = !hasPrimary,
                         IsActive = true
                     });
+                    await _db.SaveChangesAsync();
+                }
+                else if (memberId != null && string.IsNullOrWhiteSpace(existing.FtthMemberId))
+                {
+                    // حساب موجود بلا رقم عضو — عبّئه (ترحيل تدريجي)
+                    existing.FtthMemberId = memberId;
+                    _db.FtthAccounts.Update(existing);
                     await _db.SaveChangesAsync();
                 }
             }
@@ -2341,24 +2350,37 @@ public class FtthAccountingController : ControllerBase
                     && (syncCompanyId == null || a.CompanyId == syncCompanyId))
                 .OrderByDescending(a => a.Status == "Verified")
                 .ThenByDescending(a => a.IsPrimary)
-                .ThenBy(a => a.Id)   // كاسر تعادل حتمي عند تكرار الاسم
-                .Select(a => new { a.Username, a.OwnerUserId, a.CompanyId })
+                .ThenBy(a => a.Id)   // كاسر تعادل حتمي
+                .Select(a => new { a.Username, a.FtthMemberId, a.OwnerUserId, a.CompanyId })
                 .ToListAsync();
-            // صمام أمان: اسم مستخدم مرتبط بعدّة مالكين مختلفين = غامض ⇒ لا نُنسب به قيداً
-            // (نتركه للمطابقة القديمة/الاحتياطية) حتى يُفرده المالك (حساب خاص لكل موظف).
-            var ambiguousNames = ftthAccs
-                .GroupBy(a => (a.Username ?? "").ToLower().Trim())
-                .Where(g => g.Select(x => x.OwnerUserId).Distinct().Count() > 1)
-                .Select(g => g.Key)
-                .ToHashSet();
+
+            // المرحلة 7: مفاتيح المطابقة = اسم المستخدم + رقم عضو الفريق (FtthMemberId)،
+            // لأن FTTH يسجّل المنفّذ أحياناً برقم العضو لا باسمه.
+            // صمام أمان: أي مفتاح (اسم أو رقم) مرتبط بعدّة مالكين = غامض ⇒ لا نُنسب به
+            // (نتركه للمطابقة الاحتياطية) حتى يُفرده المالك.
+            var keyOwners = new Dictionary<string, HashSet<Guid>>();
+            void NoteKey(string? key, Guid owner)
+            {
+                if (string.IsNullOrWhiteSpace(key)) return;
+                var kk = key.ToLower().Trim();
+                if (!keyOwners.TryGetValue(kk, out var set)) { set = new HashSet<Guid>(); keyOwners[kk] = set; }
+                set.Add(owner);
+            }
+            foreach (var a in ftthAccs) { NoteKey(a.Username, a.OwnerUserId); NoteKey(a.FtthMemberId, a.OwnerUserId); }
+            var ambiguousKeys = keyOwners.Where(x => x.Value.Count > 1).Select(x => x.Key).ToHashSet();
+
             foreach (var a in ftthAccs)
             {
-                if (string.IsNullOrWhiteSpace(a.Username)) continue;
-                var k = a.Username.ToLower().Trim();
-                if (ambiguousNames.Contains(k)) continue; // اسم مكرّر لعدّة مالكين → تخطَّ
                 // تخطّى حساباً مالكه غير نشط/محذوف — لئلا يُنسب القيد لمستخدم محذوف
                 if (!ownerName.TryGetValue(a.OwnerUserId, out var fn)) continue;
-                ftthToUser.TryAdd(k, new { Id = a.OwnerUserId, FullName = fn, CompanyId = (Guid?)a.CompanyId });
+                var val = new { Id = a.OwnerUserId, FullName = fn, CompanyId = (Guid?)a.CompanyId };
+                foreach (var key in new[] { a.Username, a.FtthMemberId })
+                {
+                    if (string.IsNullOrWhiteSpace(key)) continue;
+                    var kk = key.ToLower().Trim();
+                    if (ambiguousKeys.Contains(kk)) continue; // مفتاح مكرّر لعدّة مالكين → تخطَّ
+                    ftthToUser.TryAdd(kk, val);
+                }
             }
 
             foreach (var u in userMap)
@@ -4297,7 +4319,8 @@ public record OperatorCreditCollectionDto(
 public record LinkFtthAccountDto(
     Guid UserId,
     string FtthUsername,
-    string? FtthPasswordEncrypted
+    string? FtthPasswordEncrypted,
+    string? FtthMemberId = null
 );
 
 public record SetRenewalCycleDto(

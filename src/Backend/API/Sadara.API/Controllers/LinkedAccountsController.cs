@@ -345,6 +345,7 @@ public class LinkedAccountsController : ControllerBase
                 Username = request.Username.Trim(),
                 ServerUrl = string.IsNullOrWhiteSpace(request.ServerUrl) ? DefaultFtthBaseUrl : request.ServerUrl.Trim(),
                 Role = string.IsNullOrWhiteSpace(request.Role) ? null : request.Role.Trim(),
+                FtthMemberId = string.IsNullOrWhiteSpace(request.FtthMemberId) ? null : request.FtthMemberId.Trim(),
                 PasswordEncrypted = _secretProtector.Protect(request.Password ?? string.Empty),
                 IsActive = true,
                 IsPrimary = request.IsPrimary ?? false,
@@ -399,6 +400,7 @@ public class LinkedAccountsController : ControllerBase
 
             if (request.Label != null) account.Label = request.Label.Trim();
             if (!string.IsNullOrWhiteSpace(request.Username)) account.Username = request.Username.Trim();
+            if (!string.IsNullOrWhiteSpace(request.FtthMemberId)) account.FtthMemberId = request.FtthMemberId.Trim();
             if (request.IsActive.HasValue) account.IsActive = request.IsActive.Value;
 
             // إعادة التشفير فقط عند إرسال كلمة مرور جديدة غير فارغة (نفس نمط SasAgentController).
@@ -1035,7 +1037,8 @@ public record CreateFtthAccountRequest(
     string Password,
     string? ServerUrl = null,
     string? Role = null,
-    bool? IsPrimary = null);
+    bool? IsPrimary = null,
+    string? FtthMemberId = null);
 
 /// <summary>طلب تعديل حساب FTTH. كلمة المرور اختيارية: تُعاد كتابتها فقط عند إرسال قيمة غير فارغة.</summary>
 public record UpdateFtthAccountRequest(
@@ -1044,7 +1047,8 @@ public record UpdateFtthAccountRequest(
     string? Password = null,
     bool? IsActive = null,
     bool? IsPrimary = null,
-    string? ServerUrl = null);
+    string? ServerUrl = null,
+    string? FtthMemberId = null);
 
 /// <summary>طلب إنشاء حساب ساس لموظّف. كلمة المرور تُشفَّر فور الاستقبال ولا تُعاد.</summary>
 public record CreateSasLinkedAccountRequest(
