@@ -505,6 +505,7 @@ public class LinkedAccountsController : ControllerBase
                 var info = await FetchFtthMemberInfoAsync(account.ServerUrl, result.AccessToken!, account.Username, ct);
                 if (!string.IsNullOrWhiteSpace(info.MemberId)) account.FtthMemberId = info.MemberId;
                 if (!string.IsNullOrWhiteSpace(info.Role)) account.Role = info.Role;
+                await FetchTransactionsDiagAsync(account.ServerUrl, result.AccessToken!, ct); // تشخيص مؤقّت
             }
             account.UpdatedAt = DateTime.UtcNow;
             _db.FtthAccounts.Update(account);
@@ -1092,6 +1093,54 @@ public class LinkedAccountsController : ControllerBase
             _logger.LogWarning(ex, "تعذّر جلب أعضاء فريق FTTH أثناء التوثيق");
             return (null, null, null);
         }
+    }
+
+    /// <summary>تشخيص مؤقّت: يجلب عمليات حيّة ويسجّل createdBy/transactionUser/username + مفاتيح المعاملة.</summary>
+    private async Task FetchTransactionsDiagAsync(string serverUrl, string accessToken, CancellationToken ct)
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(serverUrl) ? DefaultFtthBaseUrl : serverUrl.TrimEnd('/');
+        if (!IsAllowedFtthServerUrl(baseUrl)) return;
+        try
+        {
+            using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(25) };
+            client.DefaultRequestHeaders.Add("Origin", "https://admin.ftth.iq");
+            client.DefaultRequestHeaders.Add("Referer", "https://admin.ftth.iq/");
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            var from = DateTime.UtcNow.AddDays(-150).ToString("yyyy-MM-dd");
+            var to = DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd");
+            var url = $"{baseUrl}/api/transactions?pageSize=50&pageNumber=1&sortCriteria.property=occuredAt&sortCriteria.direction=desc"
+                    + $"&occuredAt.from={from}&occuredAt.to={to}&createdAt.from={from}&createdAt.to={to}&walletOwnerType=partner";
+            var response = await client.GetAsync(url, ct);
+            if (!response.IsSuccessStatusCode) { _logger.LogInformation("تشخيص عمليات: HTTP {Code}", (int)response.StatusCode); return; }
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array) return;
+
+            var map = new Dictionary<string, string>();
+            bool loggedKeys = false;
+            foreach (var tx in items.EnumerateArray())
+            {
+                if (tx.ValueKind != JsonValueKind.Object) continue;
+                if (!loggedKeys)
+                {
+                    _logger.LogInformation("تشخيص عمليات: مفاتيح المعاملة=[{Keys}]",
+                        string.Join(",", tx.EnumerateObject().Select(p => p.Name)));
+                    loggedKeys = true;
+                }
+                string cb = GetJsonString(tx, "createdBy")
+                    ?? (tx.TryGetProperty("createdBy", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetRawText() : "");
+                var tu = GetJsonString(tx, "transactionUser") ?? "";
+                var un = GetJsonString(tx, "username") ?? "";
+                if (!string.IsNullOrEmpty(cb) && !map.ContainsKey(cb)) map[cb] = $"transactionUser={tu} username={un}";
+            }
+            foreach (var kv in map)
+                _logger.LogInformation("تشخيص عمليات: createdBy={Cb} => {Info}", kv.Key, kv.Value);
+        }
+        catch (Exception ex) { _logger.LogWarning("تشخيص عمليات فشل: {Msg}", ex.Message); }
     }
 
     /// <summary>يقرأ خاصية نصّية من كائن JSON (أو null).</summary>
