@@ -1065,23 +1065,25 @@ public class LinkedAccountsController : ControllerBase
                 if (!string.IsNullOrWhiteSpace(u)) allUsernames.Add(u!);
                 if (u?.Trim().ToLowerInvariant() == want) matched = m;
             }
-            // المعرّف الرقمي للحساب يأتي من JWT (AccountId) — هذا ما يُطابق createdBy في العمليات،
-            // وليس id العضو في القائمة (GUID). مستقل عن مطابقة اسم المستخدم.
-            string? memberId = ExtractNumericAccountIdFromJwt(accessToken);
-
-            _logger.LogInformation("توثيق FTTH تشخيص: الحساب={Want} عدد الأعضاء={Count} معرّف_JWT={Id}",
-                want, allUsernames.Count, memberId ?? "(null)");
-
+            // المعرّف = حقل id العضو في /api/teams/members (فريد لكل عامل، عادةً GUID).
+            // ليس AccountId في JWT (ذاك معرّف الشريك المشترك بين كل عمّال الحساب).
+            string? memberId = null;
             string? role = null;
             string? display = null;
             if (matched != null)
             {
                 var mm = matched.Value;
+                memberId = GetJsonString(mm, "id");
+                if (memberId == null && mm.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.Number)
+                    memberId = idEl.GetRawText();
                 if (mm.TryGetProperty("role", out var r) && r.ValueKind == JsonValueKind.Object)
                     role = GetJsonString(r, "displayValue");
                 var nm = $"{GetJsonString(mm, "firstName") ?? ""} {GetJsonString(mm, "lastName") ?? ""}".Trim();
                 display = string.IsNullOrEmpty(nm) ? null : nm;
             }
+
+            _logger.LogInformation("توثيق FTTH: الحساب={Want} عدد الأعضاء={Count} معرّف_العضو={Id}",
+                want, allUsernames.Count, memberId ?? "(null)");
             return (memberId, role, display);
         }
         catch (OperationCanceledException) { throw; }
