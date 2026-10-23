@@ -1416,8 +1416,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       SdNavSection(
         title: 'الإدارة',
         items: [
-          // إدارة المستخدمين — تخضع لصلاحية users (لا للعلَم النصّي)
-          if (PermissionManager.instance.canView('users'))
+          // إدارة المستخدمين (موظفو الشركة — UsersPageVPS) تخضع لصلاحية
+          // hr.employees مثل لوحة HR لنفس الصفحة. ملاحظة جذرية: المفتاح 'users'
+          // في السجلّ هو صلاحية «مشتركي FTTH» (النظام الثاني) لا موظفي الشركة،
+          // فاستخدامه هنا كان يُظهر العنصر لأي ليدر فنّي لديه صلاحية المشتركين.
+          if (PermissionManager.instance.canView('hr.employees'))
             SdNavItem(
               id: 'users',
               label: 'إدارة المستخدمين',
@@ -1446,16 +1449,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 );
               },
             ),
-          // المستخدمين (محظور) لمن لا يملك صلاحية users
-          if (!PermissionManager.instance.canView('users'))
-            SdNavItem(
-              id: 'users',
-              label: 'المستخدمين',
-              icon: Icons.people_outline,
-              group: SdGroup.neutral,
-              enabled: false,
-              onTap: () => _showPermissionDenied(),
-            ),
+          // ملاحظة: لا نعرض عنصراً بديلاً مُعطَّلاً لمن لا يملك الصلاحية —
+          // يُخفى العنصر تماماً مثل بقية عناصر القائمة (اتساق + عدم إظهار ما لا يُصرَّح به).
           // إعدادات الشركة — تخضع لصلاحية settings
           if (PermissionManager.instance.canView('settings'))
             SdNavItem(
@@ -2618,6 +2613,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // ignore: unused_element
   void _showPermissionDenied() {
     final r = context.responsive;
     showDialog(
