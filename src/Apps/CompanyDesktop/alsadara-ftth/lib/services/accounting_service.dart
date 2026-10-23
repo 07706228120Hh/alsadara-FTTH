@@ -788,6 +788,7 @@ class AccountingService {
     required String userId,
     required String ftthUsername,
     String? ftthPasswordEncrypted,
+    String? ftthMemberId,
   }) async {
     final response = await _client.post(
       '/ftth-accounting/link-ftth-account',
@@ -795,6 +796,7 @@ class AccountingService {
         'userId': userId,
         'ftthUsername': ftthUsername,
         'ftthPasswordEncrypted': ftthPasswordEncrypted,
+        'ftthMemberId': ftthMemberId,
       },
       (json) => json,
     );

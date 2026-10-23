@@ -107,9 +107,29 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
     return null;
   }
 
+  /// استخراج معرّف عضو الفريق الرقمي من كائن مشغّل FTTH.
+  /// تسجّل بعض العمليات المنفّذ بالرقم (مثل "1838865") بدل اسم المستخدم،
+  /// فنلتقط أول مرشّح **رقمي بحت** من الحقول المحتملة. إن كان المعرّف GUID
+  /// (غير رقمي) نُعيد null فتتراجع المزامنة لمطابقة اسم المستخدم/الاسم (آمن).
+  String? _extractMemberId(Map<String, dynamic> op) {
+    final candidates = <Object?>[
+      op['id'],
+      op['memberId'],
+      op['accountId'],
+      (op['self'] is Map) ? (op['self'] as Map)['id'] : null,
+    ];
+    final digitsOnly = RegExp(r'^\d+$');
+    for (final v in candidates) {
+      final s = v?.toString().trim() ?? '';
+      if (s.isNotEmpty && digitsOnly.hasMatch(s)) return s;
+    }
+    return null;
+  }
+
   /// ربط مشغل FTTH بموظف
   Future<void> _linkOperator(Map<String, dynamic> ftthOp) async {
     final ftthUsername = ftthOp['username']?.toString() ?? '';
+    final ftthMemberId = _extractMemberId(ftthOp);
     final firstName = ftthOp['firstName']?.toString() ?? '';
     final lastName = ftthOp['lastName']?.toString() ?? '';
     final opName = '$firstName $lastName'.trim();
@@ -296,6 +316,7 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
         await AccountingService.instance.linkFtthAccount(
           userId: result,
           ftthUsername: ftthUsername,
+          ftthMemberId: ftthMemberId,
         );
       }
 
