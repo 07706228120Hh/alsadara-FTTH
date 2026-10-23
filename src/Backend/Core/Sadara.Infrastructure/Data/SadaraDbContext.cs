@@ -260,6 +260,28 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<FixedExpensePayment>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<TaskAudit>().HasQueryFilter(x => !x.IsDeleted);
 
+        // ── Phase 1 / Stream F: DB-level safeguards against double posting ──
+        // Partial unique indexes: soft-deleted rows never conflict, so cancel/void + re-post keeps working.
+        // Controllers must treat a unique violation (SQLSTATE 23505) on these index names as "already posted".
+        // See docs/tasks-finance-fix/PHASE1_MIGRATIONS.md (pre-migration cleanup + rollback).
+        modelBuilder.Entity<SubscriptionLog>()
+            .HasIndex(x => new { x.CompanyId, x.FtthTransactionId })
+            .HasDatabaseName("UX_SubscriptionLogs_Company_FtthTx")
+            .IsUnique()
+            .AreNullsDistinct(false) // a NULL CompanyId (legacy stamping gap) must not bypass the guard
+            .HasFilter("\"FtthTransactionId\" IS NOT NULL AND NOT \"IsDeleted\"");
+        modelBuilder.Entity<TechnicianTransaction>()
+            .HasIndex(x => new { x.ServiceRequestId, x.Category })
+            .HasDatabaseName("UX_TechnicianTransactions_ServiceRequest_Category_Charge")
+            .IsUnique()
+            // "Type" = 0 is TechnicianTransactionType.Charge (stored as integer).
+            .HasFilter("\"ServiceRequestId\" IS NOT NULL AND NOT \"IsDeleted\" AND \"Type\" = 0");
+        // Keep the full (non-partial) FK index: the partial unique index above does not cover
+        // payments/deleted rows, so EF must not treat it as a replacement and drop this one.
+        modelBuilder.Entity<TechnicianTransaction>()
+            .HasIndex(x => x.ServiceRequestId)
+            .HasDatabaseName("IX_TechnicianTransactions_ServiceRequestId");
+
         // Department entities query filters
         modelBuilder.Entity<Department>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<DepartmentTask>().HasQueryFilter(x => !x.IsDeleted);
