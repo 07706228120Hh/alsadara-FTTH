@@ -1065,28 +1065,24 @@ public class LinkedAccountsController : ControllerBase
                 if (!string.IsNullOrWhiteSpace(u)) allUsernames.Add(u!);
                 if (u?.Trim().ToLowerInvariant() == want) matched = m;
             }
-            // تشخيص مؤقّت: كل أسماء مستخدمي الأعضاء لنعرف أين يقع منفّذ مثل "1838865".
-            _logger.LogInformation("توثيق FTTH تشخيص: الحساب={Want} عدد الأعضاء={Count} الأسماء=[{All}]",
-                want, allUsernames.Count, string.Join(",", allUsernames));
+            // المعرّف الرقمي للحساب يأتي من JWT (AccountId) — هذا ما يُطابق createdBy في العمليات،
+            // وليس id العضو في القائمة (GUID). مستقل عن مطابقة اسم المستخدم.
+            string? memberId = ExtractNumericAccountIdFromJwt(accessToken);
 
-            if (matched == null) return (null, null, null);
-            var mm = matched.Value;
-
-            // معرّف العضو القانوني: نفضّل رقماً بحتاً، وإلا نخزّن حقل id كما هو (GUID).
-            string? memberId = FirstNumericProp(mm, "id", "memberId", "accountId");
-            if (memberId == null && mm.TryGetProperty("self", out var self) && self.ValueKind == JsonValueKind.Object)
-                memberId = FirstNumericProp(self, "id", "memberId", "accountId");
-            if (memberId == null) memberId = GetJsonString(mm, "id");
-            if (memberId == null && mm.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.Number)
-                memberId = idEl.GetRawText();
+            _logger.LogInformation("توثيق FTTH تشخيص: الحساب={Want} عدد الأعضاء={Count} معرّف_JWT={Id}",
+                want, allUsernames.Count, memberId ?? "(null)");
 
             string? role = null;
-            if (mm.TryGetProperty("role", out var r) && r.ValueKind == JsonValueKind.Object)
-                role = GetJsonString(r, "displayValue");
-            var display = $"{GetJsonString(mm, "firstName") ?? ""} {GetJsonString(mm, "lastName") ?? ""}".Trim();
-
-            _logger.LogInformation("توثيق FTTH تشخيص: عضو مطابق username={U} id={Id} role={Role}", want, memberId, role);
-            return (memberId, role, string.IsNullOrEmpty(display) ? null : display);
+            string? display = null;
+            if (matched != null)
+            {
+                var mm = matched.Value;
+                if (mm.TryGetProperty("role", out var r) && r.ValueKind == JsonValueKind.Object)
+                    role = GetJsonString(r, "displayValue");
+                var nm = $"{GetJsonString(mm, "firstName") ?? ""} {GetJsonString(mm, "lastName") ?? ""}".Trim();
+                display = string.IsNullOrEmpty(nm) ? null : nm;
+            }
+            return (memberId, role, display);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
@@ -1099,6 +1095,53 @@ public class LinkedAccountsController : ControllerBase
     /// <summary>يقرأ خاصية نصّية من كائن JSON (أو null).</summary>
     private static string? GetJsonString(JsonElement obj, string name)
         => obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
+    /// <summary>
+    /// يفكّ JWT (بلا تحقّق توقيع — بيانات عرض فقط) ويستخرج معرّف الحساب الرقمي:
+    /// يفضّل مطالبة باسم يحوي "account"+"id"، وإلا أول قيمة رقمية قصيرة ليست وقتاً (exp/iat/nbf).
+    /// يسجّل أسماء المطالبات (مع القيم الرقمية القصيرة) للتشخيص. لا يرمي استثناءً.
+    /// </summary>
+    private string? ExtractNumericAccountIdFromJwt(string? jwt)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(jwt)) return null;
+            var parts = jwt.Split('.');
+            if (parts.Length < 2) return null;
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
+            switch (payload.Length % 4) { case 2: payload += "=="; break; case 3: payload += "="; break; }
+            var bytes = Convert.FromBase64String(payload);
+            using var doc = JsonDocument.Parse(bytes);
+
+            var skip = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                { "exp", "iat", "nbf", "auth_time", "updated_at" };
+            var diag = new List<string>();
+            string? best = null;         // مطالبة باسم account*id
+            string? firstNumeric = null; // أول قيمة رقمية قصيرة (غير زمنية)
+            foreach (var p in doc.RootElement.EnumerateObject())
+            {
+                string? v = p.Value.ValueKind == JsonValueKind.String ? p.Value.GetString()
+                          : p.Value.ValueKind == JsonValueKind.Number ? p.Value.GetRawText() : null;
+                var isNum = !string.IsNullOrEmpty(v) && v!.Length <= 12 && v.All(char.IsDigit);
+                diag.Add(isNum ? $"{p.Name}={v}" : p.Name);
+                if (isNum && !skip.Contains(p.Name))
+                {
+                    firstNumeric ??= v;
+                    if (best == null
+                        && p.Name.Contains("account", StringComparison.OrdinalIgnoreCase)
+                        && p.Name.Contains("id", StringComparison.OrdinalIgnoreCase))
+                        best = v;
+                }
+            }
+            _logger.LogInformation("توثيق FTTH تشخيص JWT: المطالبات=[{Claims}]", string.Join(",", diag));
+            return best ?? firstNumeric;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("توثيق FTTH: تعذّر فكّ JWT: {Msg}", ex.Message);
+            return null;
+        }
+    }
 
     /// <summary>أول خاصية قيمتها **أرقام فقط** من بين الأسماء المعطاة (نص أو رقم)، وإلا null.</summary>
     private static string? FirstNumericProp(JsonElement obj, params string[] names)
