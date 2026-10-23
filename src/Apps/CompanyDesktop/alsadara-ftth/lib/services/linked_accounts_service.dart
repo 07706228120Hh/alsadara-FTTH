@@ -20,6 +20,9 @@ class LinkedAccount {
   final DateTime? lastVerifiedAt;
   final DateTime? lastLoginAt;
 
+  /// رقم عضو الفريق على FTTH (يُجلب عند «توثيق»). null قبل التوثيق أو إن لم يُعثر عليه.
+  final String? ftthMemberId;
+
   /// هل يملك الخادم سراً مخزّناً لهذا الحساب (بلا كشف قيمته).
   final bool hasSecret;
 
@@ -45,6 +48,7 @@ class LinkedAccount {
     this.hasSecret = false,
     this.accountType,
     this.amountMultiplier,
+    this.ftthMemberId,
   });
 
   bool get isFtth => provider.toLowerCase() == 'ftth';
@@ -92,6 +96,7 @@ class LinkedAccount {
       accountType: _parseInt(j['accountType'] ?? j['AccountType']),
       amountMultiplier:
           _parseDouble(j['amountMultiplier'] ?? j['AmountMultiplier']),
+      ftthMemberId: (j['ftthMemberId'] ?? j['FtthMemberId'])?.toString(),
     );
   }
 }

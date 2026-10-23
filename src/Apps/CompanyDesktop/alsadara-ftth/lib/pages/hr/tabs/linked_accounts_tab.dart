@@ -97,8 +97,18 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
       final data = res['data'];
       final verified =
           data is Map ? (data['verified'] == true || data['Verified'] == true) : false;
-      _toast(verified ? 'تم التحقّق بنجاح' : 'فشل التحقّق — تأكّد من البيانات',
-          color: verified ? SdColors.success : SdColors.warning);
+      final memberId = data is Map
+          ? (data['ftthMemberId'] ?? data['FtthMemberId'])?.toString()
+          : null;
+      final String msg;
+      if (!verified) {
+        msg = 'فشل التحقّق — تأكّد من البيانات';
+      } else if (memberId != null && memberId.isNotEmpty) {
+        msg = 'تم التوثيق وجلب رقم العضو ($memberId) بنجاح';
+      } else {
+        msg = 'تم التوثيق (لم يُعثر على رقم عضو مطابق)';
+      }
+      _toast(msg, color: verified ? SdColors.success : SdColors.warning);
       _load();
     } else {
       _toast(res['message']?.toString() ?? 'تعذّر التحقّق', color: SdColors.danger);
@@ -841,6 +851,15 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
               icon: Icons.person_outline,
               ltrValue: true,
             ),
+
+            // رقم عضو الفريق على FTTH (يظهر بعد «توثيق»)
+            if (a.ftthMemberId != null && a.ftthMemberId!.isNotEmpty)
+              SdInfoRow(
+                label: 'رقم العضو (FTTH)',
+                value: a.ftthMemberId!,
+                icon: Icons.badge_outlined,
+                ltrValue: true,
+              ),
 
             // كلمة المرور (مخفية + إظهار + نسخ)
             _passwordRow(a, _reveal),
