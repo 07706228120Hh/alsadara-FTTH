@@ -321,7 +321,23 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
   String? _bundleIdFromApi;
 
   // فترات الالتزام المتاحة (تمت إضافة 2 شهر بناءً على طلبك)
-  final List<int> commitmentPeriods = [1, 2, 3, 6, 12];
+  // فترات الالتزام المتاحة — تُملأ ديناميكياً من bundles.items[].commitmentPeriods
+  // عبر _captureBundleMeta()، والقيمة هنا احتياط فقط. (البوّابة الرسمية تعرض [1,2,3,4,6,12].)
+  List<int> commitmentPeriods = [1, 2, 3, 4, 6, 12];
+
+  /// خيارات المدة المعروضة في القائمة — اتحاد الفترات القادمة من الخادم مع
+  /// المدة المختارة والمدة الحالية للاشتراك، لضمان عدم وجود قيمة «يتيمة»
+  /// في DropdownButtonFormField (قيمة غير موجودة في items تُسقط الحقل).
+  List<int> get _periodOptions {
+    final set = <int>{...commitmentPeriods};
+    if (selectedCommitmentPeriod != null && selectedCommitmentPeriod! > 0) {
+      set.add(selectedCommitmentPeriod!);
+    }
+    final current = subscriptionInfo?.commitmentPeriod ?? 0;
+    if (current > 0) set.add(current);
+    final list = set.toList()..sort();
+    return list.isEmpty ? [1] : list;
+  }
 
   // إضافة قائمة طرق الدفع والمتغير الخاص بها
   final List<String> paymentMethods = ["نقد", "أجل", "ماستر", "وكيل", "فني"];
@@ -461,28 +477,24 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
 
   // تحديد نوع العملية حسب الحالة الحالية
   // القيم المسموحة من API: PurchaseFromTrial, ImmediateExtend, ImmediateChange, Renew
+  //
+  // ⚠️ جذري: التفعيل الفعلي لأي اشتراك غير تجريبي يُرسَل دائماً إلى
+  // POST /subscriptions/{id}/change بـ changeType:1 (ImmediateChange). لذلك يجب
+  // أن يكون نوع العملية في حساب السعر مطابقاً (Change) لا تخميناً بـ Extend.
+  // باقات اللاين-أب الجديدة (BASIC/PLUS/TURBO/PRO MAX) يرفض الخادم معها Extend/Renew
+  // (RestrictedPlan) ويسمح بـ Change فقط — فاستخدام Extend كان يسبب «فشل حساب السعر».
   String _determinePlanOperationType() {
     if (isNewSubscription) return 'PurchaseFromTrial';
-    if (subscriptionInfo != null &&
-        selectedPlan == subscriptionInfo!.currentPlan &&
-        selectedCommitmentPeriod == subscriptionInfo!.commitmentPeriod) {
-      // نفس الخطة ونفس المدة = تمديد فوري
-      return 'ImmediateExtend';
-    }
-    // تغيير الخطة أو المدة = تغيير فوري
     return 'ImmediateChange';
   }
 
   /// الحصول على نوع العملية لـ calculate-price API (يستخدم قيم مختصرة)
-  /// calculate-price يستخدم: Extend, Change, PurchaseFromTrial
+  /// calculate-price يستخدم: Change, PurchaseFromTrial.
+  /// نستخدم Change دائماً للاشتراك غير التجريبي ليطابق مسار التفعيل الفعلي
+  /// (POST /change) وليعمل مع باقات اللاين-أب الجديدة المقيّدة.
   String _getCalcPriceOperationType() {
     if (isNewSubscription) return 'PurchaseFromTrial';
-    if (subscriptionInfo != null &&
-        selectedPlan == subscriptionInfo!.currentPlan &&
-        selectedCommitmentPeriod == subscriptionInfo!.commitmentPeriod) {
-      return 'Extend'; // calculate-price يستخدم Extend وليس ImmediateExtend
-    }
-    return 'Change'; // calculate-price يستخدم Change وليس ImmediateChange
+    return 'Change';
   }
 
   /// الحصول على رقم ID لنوع العملية من allowed-actions API
@@ -9155,11 +9167,20 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
       if (items is! List || items.isEmpty) return;
       String? bundleId;
       final vasIds = <String>[];
+      final periods = <int>{};
       for (final item in items) {
         if (item is! Map) continue;
         final b = item['bundleId']?.toString().trim();
         if ((bundleId == null || bundleId.isEmpty) && b != null && b.isNotEmpty) {
           bundleId = b;
+        }
+        // التقاط فترات الالتزام المتاحة (commitmentPeriods) كما يعرضها الخادم
+        final cps = item['commitmentPeriods'];
+        if (cps is List) {
+          for (final p in cps) {
+            final n = p is int ? p : int.tryParse(p.toString());
+            if (n != null && n > 0) periods.add(n);
+          }
         }
         final subs = item['applicableSubscriptions'];
         if (subs is List) {
@@ -9183,6 +9204,10 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
       }
       if (bundleId != null && bundleId.isNotEmpty) _bundleIdFromApi = bundleId;
       if (vasIds.isNotEmpty) _vasServiceIds = vasIds;
+      if (periods.isNotEmpty) {
+        commitmentPeriods = periods.toList()..sort();
+        debugPrint('📅 فترات الالتزام من الخادم: $commitmentPeriods');
+      }
     } catch (e) {
       debugPrint('⚠️ فشل التقاط ميتاداتا الحزمة: $e');
     }
@@ -12025,14 +12050,14 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                       _autoFetchExtendPriceIfNeeded();
                     },
                     selectedItemBuilder: (context) =>
-                        commitmentPeriods.map((period) {
+                        _periodOptions.map((period) {
                       return Center(
                           child: Text("$period شهر",
                               style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 16 * sc)));
                     }).toList(),
-                    items: commitmentPeriods.map((period) {
+                    items: _periodOptions.map((period) {
                       return DropdownMenuItem(
                         alignment: AlignmentDirectional.center,
                         value: period,
