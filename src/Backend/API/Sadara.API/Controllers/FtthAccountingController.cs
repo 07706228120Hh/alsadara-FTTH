@@ -2387,20 +2387,21 @@ public class FtthAccountingController : ControllerBase
             {
                 var val = new { u.Id, u.FullName, u.CompanyId };
                 // أولوية: FtthUsername > Username > FullName
+                // P2-1: لا نُعيد مفتاحاً غامضاً عبر الرجوع القديم (حتى لا تُساء النسبة المالية).
                 if (!string.IsNullOrWhiteSpace(u.FtthUsername))
                 {
                     var k = u.FtthUsername.ToLower().Trim();
-                    ftthToUser.TryAdd(k, val);
+                    if (!ambiguousKeys.Contains(k)) ftthToUser.TryAdd(k, val);
                 }
                 if (!string.IsNullOrWhiteSpace(u.Username))
                 {
                     var k = u.Username.ToLower().Trim();
-                    ftthToUser.TryAdd(k, val);
+                    if (!ambiguousKeys.Contains(k)) ftthToUser.TryAdd(k, val);
                 }
                 if (!string.IsNullOrWhiteSpace(u.FullName))
                 {
                     var k = u.FullName.ToLower().Trim();
-                    ftthToUser.TryAdd(k, val);
+                    if (!ambiguousKeys.Contains(k)) ftthToUser.TryAdd(k, val);
                 }
             }
 
