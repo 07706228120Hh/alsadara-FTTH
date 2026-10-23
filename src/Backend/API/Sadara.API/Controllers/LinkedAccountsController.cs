@@ -1056,30 +1056,37 @@ public class LinkedAccountsController : ControllerBase
                 return (null, null, null);
 
             var want = username.Trim().ToLowerInvariant();
+            var allUsernames = new List<string>();
+            JsonElement? matched = null;
             foreach (var m in items.EnumerateArray())
             {
                 if (m.ValueKind != JsonValueKind.Object) continue;
-                var uname = GetJsonString(m, "username")?.Trim().ToLowerInvariant();
-                if (uname != want) continue;
-
-                string? memberId = FirstNumericProp(m, "id", "memberId", "accountId");
-                if (memberId == null && m.TryGetProperty("self", out var self) && self.ValueKind == JsonValueKind.Object)
-                    memberId = FirstNumericProp(self, "id", "memberId", "accountId");
-
-                string? role = null;
-                if (m.TryGetProperty("role", out var r) && r.ValueKind == JsonValueKind.Object)
-                    role = GetJsonString(r, "displayValue");
-
-                var display = $"{GetJsonString(m, "firstName") ?? ""} {GetJsonString(m, "lastName") ?? ""}".Trim();
-
-                if (memberId == null)
-                {
-                    var keys = string.Join(",", m.EnumerateObject().Select(p => p.Name));
-                    _logger.LogWarning("توثيق FTTH: طوبق اسم المستخدم لكن بلا رقم عضو رقمي. مفاتيح الكائن=[{Keys}]", keys);
-                }
-                return (memberId, role, string.IsNullOrEmpty(display) ? null : display);
+                var u = GetJsonString(m, "username");
+                if (!string.IsNullOrWhiteSpace(u)) allUsernames.Add(u!);
+                if (u?.Trim().ToLowerInvariant() == want) matched = m;
             }
-            return (null, null, null); // لا عضو مطابق للاسم
+            // تشخيص مؤقّت: كل أسماء مستخدمي الأعضاء لنعرف أين يقع منفّذ مثل "1838865".
+            _logger.LogInformation("توثيق FTTH تشخيص: الحساب={Want} عدد الأعضاء={Count} الأسماء=[{All}]",
+                want, allUsernames.Count, string.Join(",", allUsernames));
+
+            if (matched == null) return (null, null, null);
+            var mm = matched.Value;
+
+            // معرّف العضو القانوني: نفضّل رقماً بحتاً، وإلا نخزّن حقل id كما هو (GUID).
+            string? memberId = FirstNumericProp(mm, "id", "memberId", "accountId");
+            if (memberId == null && mm.TryGetProperty("self", out var self) && self.ValueKind == JsonValueKind.Object)
+                memberId = FirstNumericProp(self, "id", "memberId", "accountId");
+            if (memberId == null) memberId = GetJsonString(mm, "id");
+            if (memberId == null && mm.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.Number)
+                memberId = idEl.GetRawText();
+
+            string? role = null;
+            if (mm.TryGetProperty("role", out var r) && r.ValueKind == JsonValueKind.Object)
+                role = GetJsonString(r, "displayValue");
+            var display = $"{GetJsonString(mm, "firstName") ?? ""} {GetJsonString(mm, "lastName") ?? ""}".Trim();
+
+            _logger.LogInformation("توثيق FTTH تشخيص: عضو مطابق username={U} id={Id} role={Role}", want, memberId, role);
+            return (memberId, role, string.IsNullOrEmpty(display) ? null : display);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)
