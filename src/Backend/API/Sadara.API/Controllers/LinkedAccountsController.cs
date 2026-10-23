@@ -283,7 +283,7 @@ public class LinkedAccountsController : ControllerBase
                 .Select(x => new LinkedAccountDto(
                     x.Id, "Ftth", x.Label, x.Username, x.ServerUrl, x.Role,
                     x.IsActive, x.IsPrimary, x.Status, x.LastVerifiedAt, x.LastLoginAt, true,
-                    null, null))
+                    null, null, x.FtthMemberId))
                 .ToListAsync(ct);
 
             // حسابات الساس (قراءة فقط — لا نُنادي وحدة الساس ولا نعدّلها). نوع الحساب يُحوَّل لنص في الذاكرة.
@@ -497,7 +497,15 @@ public class LinkedAccountsController : ControllerBase
             var result = await FtthLoginAsync(account.ServerUrl, account.Username, password, ct);
 
             account.Status = result.Ok ? "Verified" : "Invalid";
-            if (result.Ok) account.LastVerifiedAt = DateTime.UtcNow;
+            if (result.Ok)
+            {
+                account.LastVerifiedAt = DateTime.UtcNow;
+                // بعد دخول ناجح: اجلب بيانات العضو من FTTH وخزّن رقم العضو (المصدر الموحّد لمطابقة العمليات)
+                // والدور/الاسم للعرض. لا يُرمى استثناء — فشل الجلب لا يُفشل التوثيق.
+                var info = await FetchFtthMemberInfoAsync(account.ServerUrl, result.AccessToken!, account.Username, ct);
+                if (!string.IsNullOrWhiteSpace(info.MemberId)) account.FtthMemberId = info.MemberId;
+                if (!string.IsNullOrWhiteSpace(info.Role)) account.Role = info.Role;
+            }
             account.UpdatedAt = DateTime.UtcNow;
             _db.FtthAccounts.Update(account);
             await _db.SaveChangesAsync(ct);
@@ -505,8 +513,17 @@ public class LinkedAccountsController : ControllerBase
             return Ok(new
             {
                 success = true,
-                data = new { verified = result.Ok, status = account.Status, lastVerifiedAt = account.LastVerifiedAt },
-                message = result.Ok ? "تم التحقق بنجاح" : "فشل التحقق من بيانات الاعتماد"
+                data = new
+                {
+                    verified = result.Ok,
+                    status = account.Status,
+                    lastVerifiedAt = account.LastVerifiedAt,
+                    ftthMemberId = account.FtthMemberId,
+                    role = account.Role
+                },
+                message = result.Ok
+                    ? (account.FtthMemberId != null ? "تم التحقق وجلب رقم العضو بنجاح" : "تم التحقق (لم يُعثر على رقم عضو مطابق)")
+                    : "فشل التحقق من بيانات الاعتماد"
             });
         }
         catch (Exception ex)
@@ -937,7 +954,7 @@ public class LinkedAccountsController : ControllerBase
     private static LinkedAccountDto ToDto(FtthAccount a)
         => new(a.Id, "Ftth", a.Label, a.Username, a.ServerUrl, a.Role,
                a.IsActive, a.IsPrimary, a.Status, a.LastVerifiedAt, a.LastLoginAt, true,
-               null, null);
+               null, null, a.FtthMemberId);
 
     /// <summary>يبني DTO حساب ساس موحّد من الكيان — بلا أي كلمة مرور (مطابق لتمثيل الساس في GetLinkedAccounts).</summary>
     private static LinkedAccountDto ToSasDto(SasAccount a)
@@ -1008,6 +1025,90 @@ public class LinkedAccountsController : ControllerBase
             return (false, null, null, "تعذّر الاتصال بنظام FTTH");
         }
     }
+
+    /// <summary>
+    /// بعد دخول FTTH ناجح: يجلب أعضاء الفريق (/api/teams/members) بالتوكن، ويطابق العضو
+    /// الذي اسم مستخدمه = اسم مستخدم الحساب، فيعيد (رقم العضو الرقمي، الدور، الاسم المعروض).
+    /// رقم العضو يُقبل **رقمياً بحتاً** فقط (id/memberId/accountId/self.id). لا يرمي استثناءً —
+    /// يعيد null عند أي فشل كي لا يُفشل التوثيق. إن طابق الاسم بلا رقم، يسجّل مفاتيح الكائن للتشخيص.
+    /// </summary>
+    private async Task<(string? MemberId, string? Role, string? DisplayName)> FetchFtthMemberInfoAsync(
+        string serverUrl, string accessToken, string username, CancellationToken ct)
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(serverUrl) ? DefaultFtthBaseUrl : serverUrl.TrimEnd('/');
+        if (!IsAllowedFtthServerUrl(baseUrl)) return (null, null, null); // دفاع SSRF
+        try
+        {
+            using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(20) };
+            client.DefaultRequestHeaders.Add("Origin", "https://admin.ftth.iq");
+            client.DefaultRequestHeaders.Add("Referer", "https://admin.ftth.iq/");
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            var response = await client.GetAsync($"{baseUrl}/api/teams/members", ct);
+            if (!response.IsSuccessStatusCode) return (null, null, null);
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
+                return (null, null, null);
+
+            var want = username.Trim().ToLowerInvariant();
+            foreach (var m in items.EnumerateArray())
+            {
+                if (m.ValueKind != JsonValueKind.Object) continue;
+                var uname = GetJsonString(m, "username")?.Trim().ToLowerInvariant();
+                if (uname != want) continue;
+
+                string? memberId = FirstNumericProp(m, "id", "memberId", "accountId");
+                if (memberId == null && m.TryGetProperty("self", out var self) && self.ValueKind == JsonValueKind.Object)
+                    memberId = FirstNumericProp(self, "id", "memberId", "accountId");
+
+                string? role = null;
+                if (m.TryGetProperty("role", out var r) && r.ValueKind == JsonValueKind.Object)
+                    role = GetJsonString(r, "displayValue");
+
+                var display = $"{GetJsonString(m, "firstName") ?? ""} {GetJsonString(m, "lastName") ?? ""}".Trim();
+
+                if (memberId == null)
+                {
+                    var keys = string.Join(",", m.EnumerateObject().Select(p => p.Name));
+                    _logger.LogWarning("توثيق FTTH: طوبق اسم المستخدم لكن بلا رقم عضو رقمي. مفاتيح الكائن=[{Keys}]", keys);
+                }
+                return (memberId, role, string.IsNullOrEmpty(display) ? null : display);
+            }
+            return (null, null, null); // لا عضو مطابق للاسم
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "تعذّر جلب أعضاء فريق FTTH أثناء التوثيق");
+            return (null, null, null);
+        }
+    }
+
+    /// <summary>يقرأ خاصية نصّية من كائن JSON (أو null).</summary>
+    private static string? GetJsonString(JsonElement obj, string name)
+        => obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
+    /// <summary>أول خاصية قيمتها **أرقام فقط** من بين الأسماء المعطاة (نص أو رقم)، وإلا null.</summary>
+    private static string? FirstNumericProp(JsonElement obj, params string[] names)
+    {
+        foreach (var n in names)
+        {
+            if (!obj.TryGetProperty(n, out var v)) continue;
+            string? s = v.ValueKind switch
+            {
+                JsonValueKind.String => v.GetString(),
+                JsonValueKind.Number => v.GetRawText(),
+                _ => null
+            };
+            if (!string.IsNullOrWhiteSpace(s) && s.All(char.IsDigit)) return s;
+        }
+        return null;
+    }
 }
 
 // ============ DTOs (لا تحوي أي كلمة مرور) ============
@@ -1027,7 +1128,8 @@ public record LinkedAccountDto(
     DateTime? LastLoginAt,
     bool HasSecret,
     int? AccountType = null,
-    decimal? AmountMultiplier = null);
+    decimal? AmountMultiplier = null,
+    string? FtthMemberId = null);
 
 /// <summary>طلب إنشاء حساب FTTH لموظّف. كلمة المرور تُشفَّر فور الاستقبال ولا تُعاد.</summary>
 public record CreateFtthAccountRequest(
