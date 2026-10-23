@@ -34,6 +34,48 @@ class FtthPlansService {
     'PRO MAX',
   ];
 
+  /// ربط الباقة (قديمة أو جديدة) بمرادفها الفعّال — مطابق لجدول `plansDisplayInfo`
+  /// في `/api/configurations` بالبوّابة الرسمية (نفس الفئة/السرعة):
+  /// FIBER 35→BASIC(60)، FIBER 50→PLUS(125)، FIBER 75→TURBO(250)، FIBER 150→PRO MAX(500).
+  /// الخادم يقبل اسم الباقة الفعّالة فقط في `services[].value` عند الـChange/التجديد،
+  /// لذا نحوّل الاسم القديم إلى مرادفه قبل الإرسال (كما يفعل البورتل تماماً).
+  static const Map<String, String> _activeEquivalentByPlan = <String, String>{
+    'FIBER 35': 'BASIC',
+    'FIBER 50': 'PLUS',
+    'FIBER 75': 'TURBO',
+    'FIBER 150': 'PRO MAX',
+    'BASIC': 'BASIC',
+    'PLUS': 'PLUS',
+    'TURBO': 'TURBO',
+    'PRO MAX': 'PRO MAX',
+  };
+
+  /// الاسم العربي المعروض لكل فئة (مطابق `plansDisplayInfo.arabicName`).
+  static const Map<String, String> _arabicNameByTier = <String, String>{
+    'BASIC': 'أساسي',
+    'PLUS': 'بلس',
+    'TURBO': 'تيربو',
+    'PRO MAX': 'برو ماكس',
+  };
+
+  static String _normalizePlanKey(String? name) =>
+      (name ?? '').trim().toUpperCase().replaceAll(RegExp(r'\s+'), ' ');
+
+  /// الباقة الفعّالة المكافئة لأي باقة (قديمة أو جديدة)، أو null إن تعذّر التحويل.
+  static String? activeEquivalentPlan(String? plan) {
+    final k = _normalizePlanKey(plan);
+    if (k.isEmpty) return null;
+    return _activeEquivalentByPlan[k];
+  }
+
+  /// الاسم العربي المعروض للباقة (مثل البوّابة: «Fiber 35» → «أساسي»)،
+  /// وإلا يُعيد الاسم كما هو.
+  static String displayName(String? plan) {
+    final tier = activeEquivalentPlan(plan);
+    if (tier != null) return _arabicNameByTier[tier] ?? tier;
+    return (plan ?? '').trim();
+  }
+
   List<String>? _activePlans; // كاش في الذاكرة
   Map<String, double>? _prices; // كاش أسعار في الذاكرة
 

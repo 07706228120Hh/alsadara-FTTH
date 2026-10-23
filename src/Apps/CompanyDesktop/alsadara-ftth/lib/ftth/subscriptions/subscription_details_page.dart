@@ -17,6 +17,7 @@ import '../../services/subscription_logs_service.dart';
 import '../../services/api/api_config.dart';
 import '../../services/auth_service.dart';
 import '../../services/ftth_api_config.dart';
+import '../../services/ftth_plans_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../permissions/permission_manager.dart';
 import '../../services/dual_auth_service.dart';
@@ -1472,7 +1473,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
               'GET',
               '${FtthApi.api}/customers/subscriptions?customerId=${widget.userId}',
             )
-            .timeout(const Duration(seconds: 15));
+            .timeout(const Duration(seconds: 25));
 
         if (response.statusCode == 401) {
           if (mounted) AuthErrorHandler.handle401Error(context);
@@ -1489,14 +1490,20 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
             subscriptionInfo = SubscriptionInfo.fromJson(matchingSubscription);
             debugPrint('📊 Sales Type من API: ${subscriptionInfo!.salesType}');
             setState(() {
+              // نبدأ من الباقة الحالية ثم نحوّلها لمرادفها الفعّال (FIBER 35 → BASIC)
               selectedPlan = subscriptionInfo!.currentPlan;
-              _validateSelectedPlan(); // التأكد من صحة الخطة المحددة
+              _validateSelectedPlan();
               selectedCommitmentPeriod = subscriptionInfo!.commitmentPeriod;
+              // عرض بيانات الاشتراك فوراً (لا ننتظر العنوان/المحافظ/السعر)
+              isLoading = false;
             });
-            // تحميل عنوان المشترك أولاً ثم جلب الأرصدة ثم الحساب
-            await _loadCustomerAddress();
-            await _loadWalletsThenPrice();
-            await _checkZoneMaintenanceFee();
+            // جلب العنوان والأرصدة ورسوم الصيانة بالتوازي — كلٌّ يعزل أخطاءه
+            // داخلياً فلا يُسقط الصفحة على مكالمة بطيئة/فاشلة واحدة.
+            await Future.wait([
+              _loadCustomerAddress(),
+              _loadWalletsThenPrice(),
+              _checkZoneMaintenanceFee(),
+            ]);
           } else {
             throw Exception('لم يتم العثور على اشتراكات لهذا المستخدم');
           }
@@ -6510,8 +6517,16 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
                             SizedBox(height: 16),
                             _buildInfoSection('🛜 معلومات الخدمات', [
                               if (widget.currentBaseService != null)
-                                _buildInfoRow('الخدمة الأساسية الحالية',
-                                    widget.currentBaseService!, Icons.wifi),
+                                _buildInfoRow(
+                                    'الخدمة الأساسية الحالية',
+                                    // عرض اسم الفئة مثل البورتل (Fiber 35 → أساسي)،
+                                    // مع إبقاء الاسم الأصلي للوضوح.
+                                    FtthPlansService.activeEquivalentPlan(
+                                                widget.currentBaseService) !=
+                                            null
+                                        ? '${FtthPlansService.displayName(widget.currentBaseService)} · ${widget.currentBaseService}'
+                                        : widget.currentBaseService!,
+                                    Icons.wifi),
                               if (widget.services != null) ...[
                                 _buildInfoRow(
                                     'عدد الخدمات',
@@ -9079,9 +9094,10 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
 
   // تم إزالة صفوف المعلومات الإضافية بعد تبسيط البطاقة
 
-  // دالة للتأكد من أن الخطة المحددة موجودة في القائمة المتاحة.
-  // مهم: لا نُرجع الخطة قسراً إلى أول عنصر (كان يسبب تحويل الباقة الفعلية → FIBER 35 قديماً)،
-  // بل نضيف الباقة الحالية للقائمة لأنها قيمة صالحة على الخادم.
+  // دالة للتأكد من أن الخطة المحددة قيمة صالحة يقبلها الخادم.
+  // جذري (كما في البورتل): الباقة القديمة (FIBER 35/50/75/150) لا تُقبل في
+  // services[].value؛ نحوّلها إلى مرادفها الفعّال (BASIC/PLUS/TURBO/PRO MAX)
+  // عبر جدول plansDisplayInfo بدل إبقاء الاسم القديم الذي يسبب «فشل حساب السعر».
   void _validateSelectedPlan() {
     if (selectedPlan == null) return; // لم يختر المستخدم بعد
     if (availablePlans.contains(selectedPlan)) return;
@@ -9093,26 +9109,26 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
         return;
       }
     }
-    // للاشتراك الجديد (تجريبي): الباقة الحالية اسم قديم لا يقبله الخادم
-    // (مثل "Fiber 35" من اشتراك تجريبي أُنشئ قبل تغيير الأسماء) → لا نُبقيه؛
-    // نختار أول باقة صالحة من الحزمة كي لا يُرسَل اسم مرفوض عند الشراء.
-    if (isNewSubscription) {
-      if (availablePlans.isNotEmpty) selectedPlan = availablePlans.first;
+    // تحويل الباقة القديمة إلى مرادفها الفعّال (FIBER 35 → BASIC ...)
+    final eq = FtthPlansService.activeEquivalentPlan(selectedPlan);
+    if (eq != null && availablePlans.contains(eq)) {
+      selectedPlan = eq;
       return;
     }
-    // للتجديد: الباقة الحالية قيمة صالحة على الخادم لكنها غير مدرجة بعد → أضِفها بدل استبدالها
-    if (selectedPlan!.trim().isNotEmpty) {
-      availablePlans.add(selectedPlan!);
-    } else if (availablePlans.isNotEmpty) {
-      selectedPlan = availablePlans.first;
-    }
+    // لا مرادف صالح: لا نُبقي اسماً يرفضه الخادم.
+    // التجريبي/الجديد: أول باقة صالحة؛ غيره: اترك الاختيار للمستخدم
+    // (يُبرز حقل الباقة «اختر» بدل محاولة حساب سعر باقة مرفوضة).
+    selectedPlan = (isNewSubscription && availablePlans.isNotEmpty)
+        ? availablePlans.first
+        : null;
   }
 
-  /// يضمن وجود الباقة الحالية للاشتراك ضمن القائمة (كي لا يفشل الـ dropdown)
+  /// يضمن وجود مرادف الباقة الحالية الفعّال ضمن القائمة (كي لا يفشل الـ dropdown).
+  /// لا نُدرج الاسم القديم الخام (الخادم يرفضه)؛ نُدرج المرادف الفعّال فقط.
   void _ensureCurrentPlanInList() {
-    final cur = subscriptionInfo?.currentPlan.trim() ?? '';
-    if (cur.isNotEmpty && !availablePlans.contains(cur)) {
-      availablePlans.add(cur);
+    final eq = FtthPlansService.activeEquivalentPlan(subscriptionInfo?.currentPlan);
+    if (eq != null && eq.isNotEmpty && !availablePlans.contains(eq)) {
+      availablePlans.add(eq);
     }
   }
 
@@ -9277,13 +9293,21 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
       if (plans.isNotEmpty) {
         availablePlans = plans;
       }
-      // في كل الأحوال نضمن أن الباقة الحالية موجودة (قيمة صالحة على الخادم)
+      // في كل الأحوال نضمن أن مرادف الباقة الحالية موجود ضمن القائمة
       _ensureCurrentPlanInList();
+      // إعادة بذر الاختيار من الباقة الحالية بعد وصول القائمة، كي يُختار
+      // المرادف الفعّال (FIBER 35 → BASIC) تلقائياً بدل أن يبقى الحقل فارغاً.
+      if (selectedPlan == null && subscriptionInfo != null) {
+        selectedPlan = subscriptionInfo!.currentPlan;
+      }
       _validateSelectedPlan();
     });
     if (plans.isNotEmpty) {
       debugPrint('✅ الباقات المتاحة (تلقائياً): $availablePlans');
     }
+    // بعد تحديد الباقة الفعّالة الصحيحة (المرادف)، احسب السعر تلقائياً إن أمكن
+    // (يتحقّق داخلياً من جاهزية الأرصدة وعدم وجود سعر مسبق).
+    _autoComputePriceIfPossible();
   }
 
   /// حساب السعر الشهري بناءً على السعر الإجمالي وفترة الالتزام
