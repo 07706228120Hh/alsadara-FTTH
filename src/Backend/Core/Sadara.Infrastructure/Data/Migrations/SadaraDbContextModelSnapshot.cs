@@ -3174,6 +3174,9 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("PartnerId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("PasswordEncrypted")
                         .IsRequired()
                         .HasColumnType("text");
@@ -3200,6 +3203,8 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.HasIndex("OwnerUserId");
 
                     b.HasIndex("CompanyId", "OwnerUserId");
+
+                    b.HasIndex("CompanyId", "PartnerId");
 
                     b.HasIndex("CompanyId", "OwnerUserId", "Username")
                         .IsUnique()
@@ -3249,6 +3254,66 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .HasFilter("\"IsDeleted\" = false");
 
                     b.ToTable("FtthExcludedCreators");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.FtthPartner", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastVerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MainPasswordEncrypted")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("MainUsername")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PartnerAccountId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ServerUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "Name")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.HasIndex("CompanyId", "PartnerAccountId");
+
+                    b.ToTable("FtthPartners");
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.FtthSubscriberCache", b =>
@@ -7650,6 +7715,9 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<string>("OperationType")
                         .HasColumnType("text");
 
+                    b.Property<string>("OperatorUsername")
+                        .HasColumnType("text");
+
                     b.Property<int>("PaidMonths")
                         .HasColumnType("integer");
 
@@ -10090,6 +10158,17 @@ namespace Sadara.Infrastructure.Data.Migrations
                 });
 
             modelBuilder.Entity("Sadara.Domain.Entities.FtthExcludedCreator", b =>
+                {
+                    b.HasOne("Sadara.Domain.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Company");
+                });
+
+            modelBuilder.Entity("Sadara.Domain.Entities.FtthPartner", b =>
                 {
                     b.HasOne("Sadara.Domain.Entities.Company", "Company")
                         .WithMany()

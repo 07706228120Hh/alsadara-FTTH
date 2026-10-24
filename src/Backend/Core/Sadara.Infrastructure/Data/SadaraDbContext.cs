@@ -166,6 +166,9 @@ public class SadaraDbContext : DbContext
     // ==================== FTTH Excluded Creators (منفّذو عمليات مستبعَدون من المقارنة) ====================
     public DbSet<FtthExcludedCreator> FtthExcludedCreators => Set<FtthExcludedCreator>();
 
+    // ==================== FTTH Partners (الشركاء الرئيسيون — مصدر الجلب) ====================
+    public DbSet<FtthPartner> FtthPartners => Set<FtthPartner>();
+
     // ==================== Credential Reveal Audit (تدقيق كشف الاعتماد المُعمَّر) ====================
     public DbSet<CredentialRevealAudit> CredentialRevealAudits => Set<CredentialRevealAudit>();
     public DbSet<ForceLogoutAudit> ForceLogoutAudits => Set<ForceLogoutAudit>();
@@ -476,6 +479,20 @@ public class SadaraDbContext : DbContext
             .HasFilter("\"IsDeleted\" = false");
         modelBuilder.Entity<FtthExcludedCreator>()
             .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+
+        // ==================== FTTH Partners (الشركاء الرئيسيون) ====================
+        modelBuilder.Entity<FtthPartner>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<FtthPartner>()
+            .HasIndex(x => new { x.CompanyId, x.Name })
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false");
+        modelBuilder.Entity<FtthPartner>()
+            .HasIndex(x => new { x.CompanyId, x.PartnerAccountId });
+        modelBuilder.Entity<FtthPartner>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        // فهرس حساب الموظف حسب شريكه (للتجميع والمطابقة)
+        modelBuilder.Entity<FtthAccount>()
+            .HasIndex(x => new { x.CompanyId, x.PartnerId });
 
         // ==================== Credential Reveal Audit (تدقيق كشف الاعتماد المُعمَّر) ====================
         // سجلّ دائم لكل عملية كشف كلمة مرور (FTTH/ساس). معزول بالشركة + فهرسان مركّبان للجلب المعزول:
