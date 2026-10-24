@@ -835,14 +835,22 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                               fontSize: 11, fontWeight: FontWeight.w600),
                         )),
                         // الوصف
-                        _rowCellExpanded(child: Text(
-                          entry['Description'] ?? '',
-                          style: TextStyle(
-                              fontFamily: 'Cairo',
-                              color: SdColors.ink,
-                              fontSize: 11),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
+                        _rowCellExpanded(child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              entry['Description'] ?? '',
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  color: SdColors.ink,
+                                  fontSize: 11),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                            _partnerOperatorLine(entry),
+                          ],
                         )),
                         // النوع
                         _rowCell(width: 70, child: Text(
@@ -1768,6 +1776,10 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
                                   _infoChip('النوع', _refTypeLabel(entry['ReferenceType'])),
                                 if (entry['ReferenceId'] != null)
                                   _infoChip('مرجع', entry['ReferenceId'].toString()),
+                                if ((entry['PartnerName'] ?? '').toString().trim().isNotEmpty)
+                                  _infoChip('الشريك', entry['PartnerName'].toString().trim()),
+                                if ((entry['OperatorUsername'] ?? '').toString().trim().isNotEmpty)
+                                  _infoChip('المشغّل', entry['OperatorUsername'].toString().trim()),
                                 if (entry['CreatedBy'] != null)
                                   _infoChip('أنشأه', (entry['CreatedBy']?['FullName'] ?? entry['CreatedBy']?['fullName'] ?? '').toString()),
                                 if (entry['ApprovedBy'] != null)
@@ -2153,6 +2165,56 @@ class _JournalEntriesPageState extends State<JournalEntriesPage> {
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: readOnly ? BorderSide(color: SdColors.divider) : BorderSide.none),
+      ),
+    );
+  }
+
+  /// سطر خافت صغير يعرض الشريك والمشغّل أسفل الوصف (عند توفّرهما فقط)
+  Widget _partnerOperatorLine(dynamic entry) {
+    final partner = (entry['PartnerName'] ?? '').toString().trim();
+    final operator = (entry['OperatorUsername'] ?? '').toString().trim();
+    if (partner.isEmpty && operator.isEmpty) return const SizedBox.shrink();
+
+    final chips = <Widget>[];
+    if (partner.isNotEmpty) {
+      chips.add(Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.handshake_outlined, size: 10, color: SdColors.faint),
+          const SizedBox(width: 2),
+          Flexible(
+            child: Text('الشريك: $partner',
+                style: TextStyle(
+                    fontFamily: 'Cairo', color: SdColors.faint, fontSize: 9),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1),
+          ),
+        ],
+      ));
+    }
+    if (operator.isNotEmpty) {
+      chips.add(Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.person_outline, size: 10, color: SdColors.faint),
+          const SizedBox(width: 2),
+          Flexible(
+            child: Text('المشغّل: $operator',
+                style: TextStyle(
+                    fontFamily: 'Cairo', color: SdColors.faint, fontSize: 9),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1),
+          ),
+        ],
+      ));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 1,
+        children: chips,
       ),
     );
   }
