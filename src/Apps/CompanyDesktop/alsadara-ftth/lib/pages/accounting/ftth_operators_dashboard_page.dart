@@ -758,6 +758,18 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             final createdBy = (tx['createdBy'] ?? '').toString().trim();
             // تخطّي عمليات المنفّذين المستبعَدين (لا تدخل الملخّصات ولا المقارنة)
             if (_excludedCreators.contains(createdBy.toLowerCase())) continue;
+            // شريك FTTH من العملية نفسها (معرّف FTTH الموحّد) — مصدر حقيقة واحد للشريك.
+            final txPartner = tx['partner'];
+            final ftthPartnerId = (txPartner is Map
+                    ? (txPartner['id'] ?? txPartner['Id'])
+                    : null)
+                ?.toString();
+            final ftthPartnerName = (txPartner is Map
+                    ? (txPartner['displayValue'] ??
+                        txPartner['name'] ??
+                        txPartner['Name'])
+                    : null)
+                ?.toString();
             final transactionUser =
                 (tx['transactionUser'] ?? '').toString().trim();
             final username = (tx['username'] ?? '').toString().trim();
@@ -879,8 +891,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               paymentMethod: paymentMethod,
               startsAt: startsAt,
               endsAt: endsAt,
-              partnerId: tagPartnerId,
-              partnerName: tagPartnerName,
+              // الشريك من العملية (معرّف FTTH) أولاً — موحّد؛ وإلا وسم الجلب متعدّد الشركاء.
+              partnerId: (ftthPartnerId != null && ftthPartnerId.isNotEmpty)
+                  ? ftthPartnerId
+                  : tagPartnerId,
+              partnerName: (ftthPartnerName != null && ftthPartnerName.isNotEmpty)
+                  ? ftthPartnerName
+                  : tagPartnerName,
             ));
           }
 
