@@ -775,7 +775,8 @@ public class FtthAccountingController : ControllerBase
     public async Task<IActionResult> GetOperatorsDashboard(
         [FromQuery] Guid? companyId = null,
         [FromQuery] DateTime? from = null,
-        [FromQuery] DateTime? to = null)
+        [FromQuery] DateTime? to = null,
+        [FromQuery] Guid? partnerId = null)
     {
         try
         {
@@ -784,6 +785,17 @@ public class FtthAccountingController : ControllerBase
             if (companyId.HasValue)
                 // تضمين السجلات القديمة التي لم يُحدد لها CompanyId (للتوافق مع البيانات السابقة)
                 query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
+
+            // فلتر الشريك: نحلّ معرّف الكيان → معرّف شريك FTTH (PartnerAccountId) الذي تحمله العمليات،
+            // ونفلتر به أو بمعرّف الكيان نفسه (توافق).
+            if (partnerId.HasValue)
+            {
+                var partnerGuid = partnerId.Value.ToString();
+                var ftthPid = await _db.FtthPartners.Where(p => p.Id == partnerId.Value && !p.IsDeleted)
+                    .Select(p => p.PartnerAccountId).FirstOrDefaultAsync();
+                query = query.Where(l => l.PartnerId == partnerGuid
+                    || (ftthPid != null && l.PartnerId == ftthPid));
+            }
             if (from.HasValue)
             {
                 var fromUtc = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
