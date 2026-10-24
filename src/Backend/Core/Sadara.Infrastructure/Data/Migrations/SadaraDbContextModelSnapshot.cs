@@ -8282,6 +8282,12 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("text");
 
+                    b.Property<string>("OperatorUsername")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PartnerId")
+                        .HasColumnType("text");
+
                     b.Property<string>("ReceivedBy")
                         .HasColumnType("text");
 

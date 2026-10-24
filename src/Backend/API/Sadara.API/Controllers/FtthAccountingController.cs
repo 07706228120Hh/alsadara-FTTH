@@ -434,6 +434,8 @@ public class FtthAccountingController : ControllerBase
                     ReferenceNumber = log.Id.ToString(),
                     CreatedById = createdById,
                     CompanyId = techCompanyId,
+                    PartnerId = log.PartnerId,                 // نسخة الشريك (تقارير الفني لكل شريك)
+                    OperatorUsername = log.OperatorUsername,   // نسخة معرّف المشغّل الخام
                     CreatedAt = DateTime.UtcNow
                 };
                 await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
@@ -2363,8 +2365,22 @@ public class FtthAccountingController : ControllerBase
                 .OrderByDescending(a => a.Status == "Verified")
                 .ThenByDescending(a => a.IsPrimary)
                 .ThenBy(a => a.Id)   // كاسر تعادل حتمي
-                .Select(a => new { a.Username, a.FtthMemberId, a.OwnerUserId, a.CompanyId })
+                .Select(a => new { a.Username, a.FtthMemberId, a.OwnerUserId, a.CompanyId, a.PartnerId })
                 .ToListAsync();
+
+            // ═══ المطابقة بمفتاح (شريك + اسم مستخدم) — المستوى الأول الأدقّ ═══
+            // يحلّ تصادم أسماء المستخدمين بين الشركاء. غامض (شريك+اسم لعدّة مالكين) ⇒ يُتخطّى.
+            string PartnerKey(Guid? partnerId, string? username)
+                => $"{(partnerId?.ToString() ?? "")}\u0001{(username ?? "").ToLower().Trim()}";
+            var pkOwners = new Dictionary<string, HashSet<Guid>>();
+            foreach (var a in ftthAccs)
+            {
+                if (a.PartnerId == null || string.IsNullOrWhiteSpace(a.Username)) continue;
+                var pk = PartnerKey(a.PartnerId, a.Username);
+                if (!pkOwners.TryGetValue(pk, out var set)) { set = new HashSet<Guid>(); pkOwners[pk] = set; }
+                set.Add(a.OwnerUserId);
+            }
+            var ftthToUserByPartner = new Dictionary<string, dynamic>();
 
             // المرحلة 7: مفاتيح المطابقة = اسم المستخدم + رقم عضو الفريق (FtthMemberId)،
             // لأن FTTH يسجّل المنفّذ أحياناً برقم العضو لا باسمه.
@@ -2386,6 +2402,13 @@ public class FtthAccountingController : ControllerBase
                 // تخطّى حساباً مالكه غير نشط/محذوف — لئلا يُنسب القيد لمستخدم محذوف
                 if (!ownerName.TryGetValue(a.OwnerUserId, out var fn)) continue;
                 var val = new { Id = a.OwnerUserId, FullName = fn, CompanyId = (Guid?)a.CompanyId };
+                // المستوى الأول: مفتاح (شريك + اسم) غير الغامض
+                if (a.PartnerId != null && !string.IsNullOrWhiteSpace(a.Username))
+                {
+                    var pk = PartnerKey(a.PartnerId, a.Username);
+                    if (pkOwners.TryGetValue(pk, out var set) && set.Count == 1)
+                        ftthToUserByPartner.TryAdd(pk, val);
+                }
                 foreach (var key in new[] { a.Username, a.FtthMemberId })
                 {
                     if (string.IsNullOrWhiteSpace(key)) continue;
@@ -2575,7 +2598,18 @@ public class FtthAccountingController : ControllerBase
                     {
                         userId = directUserId;
                     }
-                    // ثانياً: البحث بـ CreatedBy (اسم المستخدم في FTTH)
+                    // المستوى 1: مفتاح (شريك + اسم مستخدم) — الأدقّ، يحلّ تصادم الأسماء بين الشركاء
+                    if (userId == null && !string.IsNullOrEmpty(tx.PartnerId) && !string.IsNullOrEmpty(tx.CreatedBy)
+                        && Guid.TryParse(tx.PartnerId, out var txPartnerGuid))
+                    {
+                        var pk = PartnerKey(txPartnerGuid, tx.CreatedBy);
+                        if (ftthToUserByPartner.TryGetValue(pk, out var pu))
+                        {
+                            userId = pu.Id;
+                            companyId ??= pu.CompanyId;
+                        }
+                    }
+                    // المستوى 2: البحث بـ CreatedBy (اسم المستخدم في FTTH) — رجوع إن لم يُحدَّد الشريك
                     if (userId == null && !string.IsNullOrEmpty(tx.CreatedBy))
                     {
                         var key = tx.CreatedBy.ToLower().Trim();

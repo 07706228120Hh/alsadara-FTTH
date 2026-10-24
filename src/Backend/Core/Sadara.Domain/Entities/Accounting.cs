@@ -649,6 +649,12 @@ public class TechnicianTransaction : BaseEntity<long>
     /// <summary>القيد المحاسبي المرتبط</summary>
     public Guid? JournalEntryId { get; set; }
 
+    /// <summary>الشريك الرئيسي للعملية المصدر (نسخة من SubscriptionLog.PartnerId) — لتقارير الفني لكل شريك.</summary>
+    public string? PartnerId { get; set; }
+
+    /// <summary>معرّف المشغّل الخام للعملية المصدر (createdBy) — نسخة من SubscriptionLog.OperatorUsername.</summary>
+    public string? OperatorUsername { get; set; }
+
     // ============ Navigation Properties ============
 
     /// <summary>الفني</summary>
