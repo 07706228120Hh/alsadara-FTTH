@@ -130,6 +130,7 @@ public class FtthAccountingController : ControllerBase
                 DeviceUsername = dto.DeviceUsername,
                 OperationType = dto.OperationType,
                 ActivatedBy = dto.ActivatedBy,
+                OperatorUsername = dto.ActivatedBy, // المعرّف الخام قبل حلّه لاسم (لا يُستبدَل)
                 ActivationDate = dto.ActivationDate,
                 ActivationTime = dto.ActivationTime,
                 SessionId = dto.SessionId,
@@ -2365,20 +2366,30 @@ public class FtthAccountingController : ControllerBase
                 .OrderByDescending(a => a.Status == "Verified")
                 .ThenByDescending(a => a.IsPrimary)
                 .ThenBy(a => a.Id)   // كاسر تعادل حتمي
-                .Select(a => new { a.Username, a.FtthMemberId, a.OwnerUserId, a.CompanyId, a.PartnerId })
+                .Select(a => new { a.Username, a.FtthMemberId, a.OwnerUserId, a.CompanyId, a.PartnerId,
+                    // معرّف شريك FTTH (PartnerAccountId) — هو ما تحمله العمليات (مثل "2261175")،
+                    // لا GUID كياننا؛ نجلبه بربط FtthPartner لتجسير المطابقة.
+                    PartnerAccountId = _db.FtthPartners.Where(p => p.Id == a.PartnerId)
+                        .Select(p => p.PartnerAccountId).FirstOrDefault() })
                 .ToListAsync();
 
             // ═══ المطابقة بمفتاح (شريك + اسم مستخدم) — المستوى الأول الأدقّ ═══
-            // يحلّ تصادم أسماء المستخدمين بين الشركاء. غامض (شريك+اسم لعدّة مالكين) ⇒ يُتخطّى.
-            string PartnerKey(Guid? partnerId, string? username)
-                => $"{(partnerId?.ToString() ?? "")}\u0001{(username ?? "").ToLower().Trim()}";
+            // المفتاح = معرّف شريك FTTH (PartnerAccountId) + اسم المستخدم (موحّد مع العمليات).
+            // دعم GUID كياننا أيضاً (توافقاً مع أي وسم قديم). غامض ⇒ يُتخطّى.
+            string PartnerKey(string? partnerKey, string? username)
+                => $"{(partnerKey ?? "").Trim()}\u0001{(username ?? "").ToLower().Trim()}";
             var pkOwners = new Dictionary<string, HashSet<Guid>>();
+            void NotePartner(string? partnerKey, string? username, Guid owner)
+            {
+                if (string.IsNullOrWhiteSpace(partnerKey) || string.IsNullOrWhiteSpace(username)) return;
+                var pk = PartnerKey(partnerKey, username);
+                if (!pkOwners.TryGetValue(pk, out var set)) { set = new HashSet<Guid>(); pkOwners[pk] = set; }
+                set.Add(owner);
+            }
             foreach (var a in ftthAccs)
             {
-                if (a.PartnerId == null || string.IsNullOrWhiteSpace(a.Username)) continue;
-                var pk = PartnerKey(a.PartnerId, a.Username);
-                if (!pkOwners.TryGetValue(pk, out var set)) { set = new HashSet<Guid>(); pkOwners[pk] = set; }
-                set.Add(a.OwnerUserId);
+                NotePartner(a.PartnerAccountId, a.Username, a.OwnerUserId);           // بمعرّف FTTH
+                NotePartner(a.PartnerId?.ToString(), a.Username, a.OwnerUserId);      // بمعرّف كياننا (توافق)
             }
             var ftthToUserByPartner = new Dictionary<string, dynamic>();
 
@@ -2402,13 +2413,16 @@ public class FtthAccountingController : ControllerBase
                 // تخطّى حساباً مالكه غير نشط/محذوف — لئلا يُنسب القيد لمستخدم محذوف
                 if (!ownerName.TryGetValue(a.OwnerUserId, out var fn)) continue;
                 var val = new { Id = a.OwnerUserId, FullName = fn, CompanyId = (Guid?)a.CompanyId };
-                // المستوى الأول: مفتاح (شريك + اسم) غير الغامض
-                if (a.PartnerId != null && !string.IsNullOrWhiteSpace(a.Username))
+                // المستوى الأول: مفتاح (شريك + اسم) غير الغامض — بمعرّف FTTH وبمعرّف كياننا
+                void AddPartnerKey(string? partnerKey)
                 {
-                    var pk = PartnerKey(a.PartnerId, a.Username);
+                    if (string.IsNullOrWhiteSpace(partnerKey) || string.IsNullOrWhiteSpace(a.Username)) return;
+                    var pk = PartnerKey(partnerKey, a.Username);
                     if (pkOwners.TryGetValue(pk, out var set) && set.Count == 1)
                         ftthToUserByPartner.TryAdd(pk, val);
                 }
+                AddPartnerKey(a.PartnerAccountId);
+                AddPartnerKey(a.PartnerId?.ToString());
                 foreach (var key in new[] { a.Username, a.FtthMemberId })
                 {
                     if (string.IsNullOrWhiteSpace(key)) continue;
@@ -2598,11 +2612,11 @@ public class FtthAccountingController : ControllerBase
                     {
                         userId = directUserId;
                     }
-                    // المستوى 1: مفتاح (شريك + اسم مستخدم) — الأدقّ، يحلّ تصادم الأسماء بين الشركاء
-                    if (userId == null && !string.IsNullOrEmpty(tx.PartnerId) && !string.IsNullOrEmpty(tx.CreatedBy)
-                        && Guid.TryParse(tx.PartnerId, out var txPartnerGuid))
+                    // المستوى 1: مفتاح (شريك + اسم مستخدم) — الأدقّ، يحلّ تصادم الأسماء بين الشركاء.
+                    // tx.PartnerId = معرّف شريك FTTH (مثل "2261175") أو GUID كياننا — كلاهما مُفهرَس.
+                    if (userId == null && !string.IsNullOrEmpty(tx.PartnerId) && !string.IsNullOrEmpty(tx.CreatedBy))
                     {
-                        var pk = PartnerKey(txPartnerGuid, tx.CreatedBy);
+                        var pk = PartnerKey(tx.PartnerId, tx.CreatedBy);
                         if (ftthToUserByPartner.TryGetValue(pk, out var pu))
                         {
                             userId = pu.Id;
