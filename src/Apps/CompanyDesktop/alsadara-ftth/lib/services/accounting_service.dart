@@ -803,6 +803,54 @@ class AccountingService {
     return _toMap(response);
   }
 
+  // ═══════════ المنفّذون المستبعَدون من المقارنة ═══════════
+
+  /// قائمة المنفّذين المستبعَدين لشركة المستخدم.
+  Future<Map<String, dynamic>> getExcludedCreators() async {
+    final response =
+        await _client.get('/ftth-accounting/excluded-creators', (json) => json);
+    return _toMap(response);
+  }
+
+  /// إضافة منفّذ مستبعَد (رقم أو اسم + ملاحظة اختيارية).
+  Future<Map<String, dynamic>> addExcludedCreator({
+    required String identifier,
+    String? note,
+  }) async {
+    final response = await _client.post(
+      '/ftth-accounting/excluded-creators',
+      {'identifier': identifier, if (note != null) 'note': note},
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// تعديل منفّذ مستبعَد.
+  Future<Map<String, dynamic>> updateExcludedCreator(
+    String id, {
+    String? identifier,
+    String? note,
+    bool? isActive,
+  }) async {
+    final response = await _client.put(
+      '/ftth-accounting/excluded-creators/$id',
+      {
+        if (identifier != null) 'identifier': identifier,
+        if (note != null) 'note': note,
+        if (isActive != null) 'isActive': isActive,
+      },
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// حذف منفّذ مستبعَد.
+  Future<Map<String, dynamic>> deleteExcludedCreator(String id) async {
+    final response = await _client.delete(
+        '/ftth-accounting/excluded-creators/$id', (json) => json);
+    return _toMap(response);
+  }
+
   /// جلب بصمات العمليات المحفوظة في خادمنا (IDs + composite keys)
   Future<Map<String, List<String>>> getExistingFtthFingerprints({
     String? companyId,
