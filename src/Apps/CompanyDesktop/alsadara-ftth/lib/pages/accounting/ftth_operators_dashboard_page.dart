@@ -13,6 +13,7 @@ import '../../services/vps_auth_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/api/api_config.dart';
 import '../../services/accounting_service.dart';
+import '../../services/linked_accounts_service.dart';
 import '../../services/task_api_service.dart';
 import '../../services/plan_pricing_service.dart';
 import '../../services/ftth_plans_service.dart';
@@ -647,7 +648,21 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   //  TAB 2: جلب بيانات خادم FTTH
   // ════════════════════════════════════════════════════════════════
 
-  Future<void> _loadFtthData() async {
+  /// جلب عمليات FTTH.
+  ///
+  /// التدفّق القديم (حساب واحد) = استدعاء بلا معاملات، سلوكه يبقى كما هو حرفياً.
+  /// للجلب متعدّد الشركاء:
+  ///  - [overrideToken]: توكن الشريك المؤقّت (من `loginPartner`)؛ يُمرَّر Bearer
+  ///    مباشرة لطلبات `/api/transactions` بدل توكن المستخدم. إن null فالسلوك الأصلي.
+  ///  - [tagPartnerId] / [tagPartnerName]: وسم كل عملية بمعرّف/اسم الشريك عندنا.
+  ///  - [append]: false (الافتراضي) يصفّر `_ftthOperators`؛ true يدمج في الحالية
+  ///    مع حذف المكرّر بـ`tx.id`.
+  Future<void> _loadFtthData({
+    String? overrideToken,
+    String? tagPartnerId,
+    String? tagPartnerName,
+    bool append = false,
+  }) async {
     if (!_ftthAuthenticated || !mounted) return;
     setState(() {
       _isLoadingFtth = true;
@@ -677,10 +692,19 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       final toStr = '${DateFormat('yyyy-MM-ddTHH:mm:ss.SSS').format(utcTo)}Z';
 
       // لا نفلتر بنوع العملية — نجلب الكل لعرض تفصيلي
-      Map<String, _FtthOperatorData> operators = {};
+      // append=true: ندمج في الحالية (لا نصفّرها) ونمنع تكرار أي عملية بـtx.id.
+      Map<String, _FtthOperatorData> operators = append ? _ftthOperators : {};
       final Set<String> seenTxIds = {}; // منع تكرار نفس العملية
-      double totalNeg = 0, totalPos = 0;
-      int totalCnt = 0;
+      if (append) {
+        for (final op in operators.values) {
+          for (final t in op.transactions) {
+            if (t.id.isNotEmpty) seenTxIds.add(t.id);
+          }
+        }
+      }
+      double totalNeg = append ? _ftthTotalNegative : 0;
+      double totalPos = append ? _ftthTotalPositive : 0;
+      int totalCnt = append ? _ftthTotalCount : 0;
       int page = 1;
       const pageSize = 1000;
       bool hasMore = true;
@@ -707,8 +731,22 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         final url =
             'https://admin.ftth.iq/api/transactions?${baseParams.join('&')}';
 
-        final response =
-            await AuthService.instance.authenticatedRequest('GET', url);
+        // توكن الشريك المؤقّت يُمرَّر Bearer مباشرة؛ التدفّق الأصلي (null)
+        // يبقى على authenticatedRequest كما هو تماماً (تجديد توكن/401/Cloudflare).
+        final http.Response response;
+        if (overrideToken != null) {
+          response = await http.get(
+            Uri.parse(url),
+            headers: {
+              'Authorization': 'Bearer $overrideToken',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          );
+        } else {
+          response =
+              await AuthService.instance.authenticatedRequest('GET', url);
+        }
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -840,6 +878,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               paymentMethod: paymentMethod,
               startsAt: startsAt,
               endsAt: endsAt,
+              partnerId: tagPartnerId,
+              partnerName: tagPartnerName,
             ));
           }
 
@@ -850,13 +890,20 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             page++;
           }
         } else if (response.statusCode == 401) {
-          if (mounted) {
-            setState(() {
-              _ftthAuthenticated = false;
-              _errorFtth = 'انتهت جلسة FTTH — يرجى تسجيل الدخول مرة أخرى';
-            });
+          // توكن الشريك المؤقّت 401 لا يعني انتهاء جلسة المستخدم الرئيسية؛
+          // نوقف هذا الشريك فقط دون التأثير على مؤشّر دخول FTTH الأساسي.
+          if (overrideToken != null) {
+            _errorFtth = 'تعذّر جلب عمليات الشريك (انتهت صلاحية توكنه)';
+            hasMore = false;
+          } else {
+            if (mounted) {
+              setState(() {
+                _ftthAuthenticated = false;
+                _errorFtth = 'انتهت جلسة FTTH — يرجى تسجيل الدخول مرة أخرى';
+              });
+            }
+            return;
           }
-          return;
         } else {
           _errorFtth = 'خطأ من خادم FTTH: ${response.statusCode}';
           hasMore = false;
@@ -871,10 +918,123 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       if (mounted) setState(() => _isLoadingFtth = false);
 
       // ═══ المرحلة 2: نسب "بدون منشئ" عبر audit-logs (في الخلفية مع عداد) ═══
-      _resolveOrphansInBackground();
+      // تُشغَّل فقط للحساب الرئيسي (overrideToken == null)؛ audit-logs تُستعلم
+      // بتوكن المستخدم الأساسي ولا تنطبق على بيانات الشركاء المجلوبة بتوكنهم.
+      if (overrideToken == null) _resolveOrphansInBackground();
     } catch (e) {
       _errorFtth = 'خطأ في جلب بيانات FTTH';
       if (mounted) setState(() => _isLoadingFtth = false);
+    }
+  }
+
+  /// جلب عمليات كل الشركاء الرئيسيين النشطين ودمجها في `_ftthOperators`.
+  ///
+  /// لكل شريك: `loginPartner` يُرجع توكناً مؤقّتاً يُمرَّر إلى `_loadFtthData`
+  /// (append=false لأول شريك ناجح ثم true للبقية) مع وسم كل عملية بـ(partnerId
+  /// عندنا + partnerName). فشل شريك لا يوقف البقية. لا يصفّر البيانات القائمة إلا
+  /// بأول دمج ناجح.
+  Future<void> _loadAllPartnersData() async {
+    if (!_ftthAuthenticated || !mounted) return;
+
+    void toast(String msg, {Color? color}) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg, style: const TextStyle(fontFamily: 'Cairo')),
+          backgroundColor: color ?? SdColors.accent,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+
+    final partnersRes = await LinkedAccountsService.instance.getPartners();
+    if (!mounted) return;
+    if (partnersRes['success'] != true) {
+      toast(
+        (partnersRes['message'] ?? 'تعذّر جلب الشركاء الرئيسيين').toString(),
+        color: SdColors.danger,
+      );
+      return;
+    }
+
+    final rawData = partnersRes['data'];
+    final List rawList = rawData is List
+        ? rawData
+        : (rawData is Map
+            ? (rawData['data'] ?? rawData['items'] ?? []) as List
+            : []);
+    // الشركاء النشطون فقط (isActive != false)
+    final partners = rawList
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .where((p) {
+      final v = p['isActive'] ?? p['IsActive'];
+      if (v == null) return true;
+      if (v is bool) return v;
+      final s = v.toString().toLowerCase();
+      return s == 'true' || s == '1';
+    }).toList();
+
+    if (partners.isEmpty) {
+      toast('لا يوجد شركاء رئيسيون نشطون', color: SdColors.warning);
+      return;
+    }
+
+    bool mergedAny = false;
+    int ok = 0, fail = 0;
+    for (final p in partners) {
+      if (!mounted) return;
+      final partnerId = (p['id'] ?? p['Id'] ?? '').toString();
+      final partnerName = (p['name'] ?? p['Name'] ?? '').toString();
+      if (partnerId.isEmpty) continue;
+
+      toast('جلب الشريك ${partnerName.isNotEmpty ? partnerName : partnerId}…');
+      try {
+        final loginRes =
+            await LinkedAccountsService.instance.loginPartner(partnerId);
+        if (!mounted) return;
+        if (loginRes['success'] != true) {
+          fail++;
+          toast(
+            'تعذّر دخول الشريك ${partnerName.isNotEmpty ? partnerName : partnerId}',
+            color: SdColors.danger,
+          );
+          continue;
+        }
+        final data = loginRes['data'];
+        final token = data is Map
+            ? (data['accessToken'] ?? data['AccessToken'])?.toString()
+            : null;
+        if (token == null || token.isEmpty) {
+          fail++;
+          continue;
+        }
+        // اسم/معرّف الشريك من ردّ الدخول إن توفّرا (وإلا من قائمة الشركاء)
+        final resPartnerName = data is Map
+            ? (data['partnerName'] ?? data['PartnerName'])?.toString()
+            : null;
+        await _loadFtthData(
+          overrideToken: token,
+          tagPartnerId: partnerId,
+          tagPartnerName: (resPartnerName != null && resPartnerName.isNotEmpty)
+              ? resPartnerName
+              : partnerName,
+          append: mergedAny, // false لأول شريك ناجح ثم true للبقية
+        );
+        mergedAny = true;
+        ok++;
+      } catch (_) {
+        fail++;
+        toast(
+          'خطأ أثناء جلب الشريك ${partnerName.isNotEmpty ? partnerName : partnerId}',
+          color: SdColors.danger,
+        );
+      }
+    }
+
+    if (mounted) {
+      toast('اكتمل جلب الشركاء: $ok نجح، $fail فشل',
+          color: fail == 0 ? SdColors.success : SdColors.warning);
     }
   }
 
@@ -1254,6 +1414,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           'paymentMethod': tx.paymentMethod,
           'remainingBalance': tx.remainingBalance,
           'createAccounting': true,
+          // وسم الشريك + المعرّف الخام (للمطابقة الخادمية بـ partnerId + اسم المستخدم)
+          if (tx.partnerId != null) 'partnerId': tx.partnerId,
+          if (tx.partnerName != null) 'partnerName': tx.partnerName,
+          'operatorUsername': createdBy,
         };
         if (tx.startsAt.isNotEmpty) {
           final parsed = DateTime.tryParse(tx.startsAt);
@@ -6569,6 +6733,27 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   backgroundColor: SdColors.successTint,
                   onPressed: _exportToExcel,
                 ),
+                if (_ftthAuthenticated) ...[
+                  SizedBox(width: context.accR.spaceS),
+                  ActionChip(
+                    label: Text(
+                      'مزامنة كل الشركاء',
+                      style: TextStyle(fontSize: context.accR.small),
+                    ),
+                    avatar: Icon(
+                      Icons.groups_2,
+                      size: context.accR.iconS,
+                      color: SdColors.platformBase,
+                    ),
+                    backgroundColor: SdColors.platformTint,
+                    onPressed: _isLoadingFtth
+                        ? null
+                        : () async {
+                            await _loadAllPartnersData();
+                            await _buildComparison();
+                          },
+                  ),
+                ],
                 if (_ftthAuthenticated && _ftthOperators.isNotEmpty) ...[
                   SizedBox(width: context.accR.spaceS),
                   Builder(builder: (_) {
@@ -11601,6 +11786,8 @@ class _FtthTransaction {
   final String paymentMethod; // نوع الدفع
   final String startsAt; // بداية الاشتراك
   final String endsAt; // نهاية الاشتراك
+  String? partnerId; // معرّف الشريك الرئيسي عندنا (لجلب متعدّد الشركاء)
+  String? partnerName; // اسم الشريك الرئيسي (للوسم فقط)
 
   _FtthTransaction({
     required this.id,
@@ -11621,6 +11808,8 @@ class _FtthTransaction {
     this.paymentMethod = '',
     this.startsAt = '',
     this.endsAt = '',
+    this.partnerId,
+    this.partnerName,
   });
 }
 
