@@ -505,7 +505,6 @@ public class LinkedAccountsController : ControllerBase
                 var info = await FetchFtthMemberInfoAsync(account.ServerUrl, result.AccessToken!, account.Username, ct);
                 if (!string.IsNullOrWhiteSpace(info.MemberId)) account.FtthMemberId = info.MemberId;
                 if (!string.IsNullOrWhiteSpace(info.Role)) account.Role = info.Role;
-                await FetchTransactionsDiagAsync(account.ServerUrl, result.AccessToken!, ct); // تشخيص مؤقّت
             }
             account.UpdatedAt = DateTime.UtcNow;
             _db.FtthAccounts.Update(account);
@@ -1057,13 +1056,13 @@ public class LinkedAccountsController : ControllerBase
                 return (null, null, null);
 
             var want = username.Trim().ToLowerInvariant();
-            var allUsernames = new List<string>();
+            int memberCount = 0;
             JsonElement? matched = null;
             foreach (var m in items.EnumerateArray())
             {
                 if (m.ValueKind != JsonValueKind.Object) continue;
+                memberCount++;
                 var u = GetJsonString(m, "username");
-                if (!string.IsNullOrWhiteSpace(u)) allUsernames.Add(u!);
                 if (u?.Trim().ToLowerInvariant() == want) matched = m;
             }
             // المعرّف = حقل id العضو في /api/teams/members (فريد لكل عامل، عادةً GUID).
@@ -1084,7 +1083,7 @@ public class LinkedAccountsController : ControllerBase
             }
 
             _logger.LogInformation("توثيق FTTH: الحساب={Want} عدد الأعضاء={Count} معرّف_العضو={Id}",
-                want, allUsernames.Count, memberId ?? "(null)");
+                want, memberCount, memberId ?? "(null)");
             return (memberId, role, display);
         }
         catch (OperationCanceledException) { throw; }
@@ -1095,121 +1094,9 @@ public class LinkedAccountsController : ControllerBase
         }
     }
 
-    /// <summary>تشخيص مؤقّت: يجلب عمليات حيّة ويسجّل createdBy/transactionUser/username + مفاتيح المعاملة.</summary>
-    private async Task FetchTransactionsDiagAsync(string serverUrl, string accessToken, CancellationToken ct)
-    {
-        var baseUrl = string.IsNullOrWhiteSpace(serverUrl) ? DefaultFtthBaseUrl : serverUrl.TrimEnd('/');
-        if (!IsAllowedFtthServerUrl(baseUrl)) return;
-        try
-        {
-            using var handler = new HttpClientHandler { AllowAutoRedirect = false };
-            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(25) };
-            client.DefaultRequestHeaders.Add("Origin", "https://admin.ftth.iq");
-            client.DefaultRequestHeaders.Add("Referer", "https://admin.ftth.iq/");
-            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-            client.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-
-            var from = DateTime.UtcNow.AddDays(-150).ToString("yyyy-MM-dd");
-            var to = DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd");
-            var url = $"{baseUrl}/api/transactions?pageSize=50&pageNumber=1&sortCriteria.property=occuredAt&sortCriteria.direction=desc"
-                    + $"&occuredAt.from={from}&occuredAt.to={to}&createdAt.from={from}&createdAt.to={to}&walletOwnerType=partner";
-            var response = await client.GetAsync(url, ct);
-            if (!response.IsSuccessStatusCode) { _logger.LogInformation("تشخيص عمليات: HTTP {Code}", (int)response.StatusCode); return; }
-            var json = await response.Content.ReadAsStringAsync(ct);
-            using var doc = JsonDocument.Parse(json);
-            if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array) return;
-
-            var map = new Dictionary<string, string>();
-            bool loggedKeys = false;
-            foreach (var tx in items.EnumerateArray())
-            {
-                if (tx.ValueKind != JsonValueKind.Object) continue;
-                if (!loggedKeys)
-                {
-                    _logger.LogInformation("تشخيص عمليات: مفاتيح المعاملة=[{Keys}]",
-                        string.Join(",", tx.EnumerateObject().Select(p => p.Name)));
-                    loggedKeys = true;
-                }
-                string cb = GetJsonString(tx, "createdBy")
-                    ?? (tx.TryGetProperty("createdBy", out var c) && c.ValueKind == JsonValueKind.Number ? c.GetRawText() : "");
-                var tu = GetJsonString(tx, "transactionUser") ?? "";
-                var un = GetJsonString(tx, "username") ?? "";
-                if (!string.IsNullOrEmpty(cb) && !map.ContainsKey(cb)) map[cb] = $"transactionUser={tu} username={un}";
-            }
-            foreach (var kv in map)
-                _logger.LogInformation("تشخيص عمليات: createdBy={Cb} => {Info}", kv.Key, kv.Value);
-        }
-        catch (Exception ex) { _logger.LogWarning("تشخيص عمليات فشل: {Msg}", ex.Message); }
-    }
-
     /// <summary>يقرأ خاصية نصّية من كائن JSON (أو null).</summary>
     private static string? GetJsonString(JsonElement obj, string name)
         => obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
-
-    /// <summary>
-    /// يفكّ JWT (بلا تحقّق توقيع — بيانات عرض فقط) ويستخرج معرّف الحساب الرقمي:
-    /// يفضّل مطالبة باسم يحوي "account"+"id"، وإلا أول قيمة رقمية قصيرة ليست وقتاً (exp/iat/nbf).
-    /// يسجّل أسماء المطالبات (مع القيم الرقمية القصيرة) للتشخيص. لا يرمي استثناءً.
-    /// </summary>
-    private string? ExtractNumericAccountIdFromJwt(string? jwt)
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(jwt)) return null;
-            var parts = jwt.Split('.');
-            if (parts.Length < 2) return null;
-            var payload = parts[1].Replace('-', '+').Replace('_', '/');
-            switch (payload.Length % 4) { case 2: payload += "=="; break; case 3: payload += "="; break; }
-            var bytes = Convert.FromBase64String(payload);
-            using var doc = JsonDocument.Parse(bytes);
-
-            var skip = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                { "exp", "iat", "nbf", "auth_time", "updated_at" };
-            var diag = new List<string>();
-            string? best = null;         // مطالبة باسم account*id
-            string? firstNumeric = null; // أول قيمة رقمية قصيرة (غير زمنية)
-            foreach (var p in doc.RootElement.EnumerateObject())
-            {
-                string? v = p.Value.ValueKind == JsonValueKind.String ? p.Value.GetString()
-                          : p.Value.ValueKind == JsonValueKind.Number ? p.Value.GetRawText() : null;
-                var isNum = !string.IsNullOrEmpty(v) && v!.Length <= 12 && v.All(char.IsDigit);
-                diag.Add(isNum ? $"{p.Name}={v}" : p.Name);
-                if (isNum && !skip.Contains(p.Name))
-                {
-                    firstNumeric ??= v;
-                    if (best == null
-                        && p.Name.Contains("account", StringComparison.OrdinalIgnoreCase)
-                        && p.Name.Contains("id", StringComparison.OrdinalIgnoreCase))
-                        best = v;
-                }
-            }
-            _logger.LogInformation("توثيق FTTH تشخيص JWT: المطالبات=[{Claims}]", string.Join(",", diag));
-            return best ?? firstNumeric;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("توثيق FTTH: تعذّر فكّ JWT: {Msg}", ex.Message);
-            return null;
-        }
-    }
-
-    /// <summary>أول خاصية قيمتها **أرقام فقط** من بين الأسماء المعطاة (نص أو رقم)، وإلا null.</summary>
-    private static string? FirstNumericProp(JsonElement obj, params string[] names)
-    {
-        foreach (var n in names)
-        {
-            if (!obj.TryGetProperty(n, out var v)) continue;
-            string? s = v.ValueKind switch
-            {
-                JsonValueKind.String => v.GetString(),
-                JsonValueKind.Number => v.GetRawText(),
-                _ => null
-            };
-            if (!string.IsNullOrWhiteSpace(s) && s.All(char.IsDigit)) return s;
-        }
-        return null;
-    }
 }
 
 // ============ DTOs (لا تحوي أي كلمة مرور) ============

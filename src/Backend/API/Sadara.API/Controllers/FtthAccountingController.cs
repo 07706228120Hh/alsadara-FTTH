@@ -2345,6 +2345,18 @@ public class FtthAccountingController : ControllerBase
             // القديم (FtthUsername/Username/FullName أدناه) يبقى رجوعاً احتياطياً فلا ينكسر شيء.
             var ownerName = userMap.ToDictionary(x => (Guid)x.Id, x => (string)(x.FullName ?? ""));
             var syncCompanyId = dto?.CompanyId; // عزل: اقصر الحسابات على شركة المزامنة عند توفّرها
+
+            // ═══ المنفّذون المستبعَدون: عمليات createdBy ضمن القائمة تُتخطّى كلياً ═══
+            // (مثل بطاقات لا تدخل حسابات الشركة). المطابقة بلا حساسية لحالة الأحرف + trim.
+            var excludedCreators = (await _db.FtthExcludedCreators
+                    .Where(x => !x.IsDeleted && x.IsActive
+                        && (syncCompanyId == null || x.CompanyId == syncCompanyId))
+                    .Select(x => x.Identifier)
+                    .ToListAsync())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.ToLower().Trim())
+                .ToHashSet();
+
             var ftthAccs = await _db.FtthAccounts
                 .Where(a => !a.IsDeleted && a.IsActive
                     && (syncCompanyId == null || a.CompanyId == syncCompanyId))
@@ -2439,6 +2451,14 @@ public class FtthAccountingController : ControllerBase
 
             foreach (var tx in dto.Transactions)
             {
+                // ═══ استبعاد: منفّذ العملية ضمن القائمة ⇒ تخطٍّ كامل (لا سجلّ ولا قيد) ═══
+                if (excludedCreators.Count > 0 && !string.IsNullOrWhiteSpace(tx.CreatedBy)
+                    && excludedCreators.Contains(tx.CreatedBy.ToLower().Trim()))
+                {
+                    skipped++;
+                    continue;
+                }
+
                 // تحديث السجلات الموجودة إذا كانت بياناتها ناقصة
                 if (!string.IsNullOrEmpty(tx.FtthTransactionId) && existingSet.Contains(tx.FtthTransactionId))
                 {
@@ -4242,9 +4262,108 @@ public class FtthAccountingController : ControllerBase
         }
     }
 
+    // ==================== المنفّذون المستبعَدون من المقارنة (CRUD) ====================
+
+    /// <summary>قائمة المنفّذين المستبعَدين لشركة المستخدم (من التوكن).</summary>
+    [HttpGet("excluded-creators")]
+    [RequirePermission("accounting.ftth_operators", "view")]
+    public async Task<IActionResult> GetExcludedCreators([FromQuery] Guid? companyId)
+    {
+        var scope = ResolveExclusionCompany(companyId);
+        if (scope == null) return BadRequest(new { success = false, message = "تعذّر تحديد الشركة" });
+        var list = await _db.FtthExcludedCreators
+            .Where(x => !x.IsDeleted && x.CompanyId == scope.Value)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new { id = x.Id, identifier = x.Identifier, note = x.Note, isActive = x.IsActive, createdAt = x.CreatedAt })
+            .ToListAsync();
+        return Ok(new { success = true, data = list, total = list.Count });
+    }
+
+    /// <summary>إضافة منفّذ مستبعَد (رقم أو اسم). عمليات createdBy المطابقة تُتخطّى في المزامنة/المقارنة.</summary>
+    [HttpPost("excluded-creators")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
+    public async Task<IActionResult> AddExcludedCreator([FromBody] ExcludedCreatorDto dto)
+    {
+        var scope = ResolveExclusionCompany(dto?.CompanyId);
+        if (scope == null) return BadRequest(new { success = false, message = "تعذّر تحديد الشركة" });
+        var ident = (dto?.Identifier ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(ident)) return BadRequest(new { success = false, message = "المعرّف مطلوب" });
+        var exists = await _db.FtthExcludedCreators.AnyAsync(x => !x.IsDeleted
+            && x.CompanyId == scope.Value && x.Identifier.ToLower() == ident.ToLower());
+        if (exists) return Conflict(new { success = false, message = "المعرّف مُضاف مسبقاً" });
+        var entity = new FtthExcludedCreator
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = scope.Value,
+            Identifier = ident,
+            Note = string.IsNullOrWhiteSpace(dto?.Note) ? null : dto!.Note!.Trim(),
+            IsActive = dto?.IsActive ?? true,
+            CreatedById = CurrentUserIdOrNull()
+        };
+        await _db.FtthExcludedCreators.AddAsync(entity);
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, data = new { id = entity.Id }, message = "تمت إضافة المنفّذ المستبعَد" });
+    }
+
+    /// <summary>تعديل منفّذ مستبعَد (المعرّف/الملاحظة/التفعيل).</summary>
+    [HttpPut("excluded-creators/{id}")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
+    public async Task<IActionResult> UpdateExcludedCreator(Guid id, [FromBody] ExcludedCreatorDto dto)
+    {
+        var entity = await _db.FtthExcludedCreators.FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
+        if (entity == null) return NotFound(new { success = false, message = "غير موجود" });
+        if (!CanAccessCompany(entity.CompanyId)) return Forbid();
+        if (!string.IsNullOrWhiteSpace(dto?.Identifier))
+        {
+            var newIdent = dto!.Identifier!.Trim();
+            var dup = await _db.FtthExcludedCreators.AnyAsync(x => !x.IsDeleted && x.Id != id
+                && x.CompanyId == entity.CompanyId && x.Identifier.ToLower() == newIdent.ToLower());
+            if (dup) return Conflict(new { success = false, message = "المعرّف مُضاف مسبقاً" });
+            entity.Identifier = newIdent;
+        }
+        if (dto?.Note != null) entity.Note = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim();
+        if (dto?.IsActive != null) entity.IsActive = dto.IsActive.Value;
+        entity.UpdatedAt = DateTime.UtcNow;
+        _db.FtthExcludedCreators.Update(entity);
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, message = "تم التعديل" });
+    }
+
+    /// <summary>حذف منفّذ مستبعَد (حذف ناعم).</summary>
+    [HttpDelete("excluded-creators/{id}")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
+    public async Task<IActionResult> DeleteExcludedCreator(Guid id)
+    {
+        var entity = await _db.FtthExcludedCreators.FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
+        if (entity == null) return NotFound(new { success = false, message = "غير موجود" });
+        if (!CanAccessCompany(entity.CompanyId)) return Forbid();
+        entity.IsDeleted = true;
+        entity.DeletedAt = DateTime.UtcNow;
+        _db.FtthExcludedCreators.Update(entity);
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    // عزل: شركة المستبعَدين = شركة التوكن (SuperAdmin يجوز له تحديد شركة).
+    private Guid? ResolveExclusionCompany(Guid? requested)
+        => _tenant.IsSuperAdmin ? (requested ?? _tenant.CompanyId) : _tenant.CompanyId;
+
+    private bool CanAccessCompany(Guid companyId)
+        => _tenant.IsSuperAdmin || (_tenant.CompanyId.HasValue && _tenant.CompanyId.Value == companyId);
+
+    private Guid? CurrentUserIdOrNull()
+    {
+        var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+        return Guid.TryParse(sub, out var g) ? g : (Guid?)null;
+    }
+
 }
 
 // ==================== DTOs ====================
+
+/// <summary>طلب إضافة/تعديل منفّذ مستبعَد.</summary>
+public record ExcludedCreatorDto(string? Identifier, string? Note = null, bool? IsActive = null, Guid? CompanyId = null);
 
 public record FtthLogWithAccountingDto(
     // حقول SubscriptionLog الأساسية
