@@ -66,6 +66,11 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   Map<String, dynamic>? _oursSummary;
   Map<String, dynamic>? _oursDistributions;
 
+  // ── فلتر الشريك الرئيسي (تبويب خادمنا) ──
+  // null = «الكل». القيمة = معرّف كيان الشريك عندنا (Guid في id).
+  String? _selectedOursPartnerId;
+  List<Map<String, dynamic>> _oursPartners = [];
+
   // ── TAB 2: خادم FTTH ──
   bool _isLoadingFtth = false;
   String? _errorFtth;
@@ -338,6 +343,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     _toDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
     _dateLabel = 'اليوم';
     _loadExcludedCreators();
+    _loadOursPartners();
     _loadOursData();
     _checkFtthAuth();
     _loadAvailableZones();
@@ -601,6 +607,29 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   //  TAB 1: جلب بيانات خادمنا
   // ════════════════════════════════════════════════════════════════
 
+  /// جلب الشركاء الرئيسيين مرّة واحدة لقائمة فلتر تبويب «خادمنا».
+  /// فشل الجلب لا يكسر الشاشة — تبقى القائمة فارغة (= «الكل» فقط).
+  Future<void> _loadOursPartners() async {
+    try {
+      final res = await LinkedAccountsService.instance.getPartners();
+      if (!mounted) return;
+      if (res['success'] == true) {
+        final list = (res['data'] as List?) ?? [];
+        final partners = <Map<String, dynamic>>[];
+        for (final p in list) {
+          if (p is Map) {
+            final id = (p['id'] ?? p['Id'] ?? '').toString();
+            final name = (p['name'] ?? p['Name'] ?? '').toString();
+            if (id.isNotEmpty) {
+              partners.add({'id': id, 'name': name.isNotEmpty ? name : id});
+            }
+          }
+        }
+        setState(() => _oursPartners = partners);
+      }
+    } catch (_) {}
+  }
+
   Future<void> _loadOursData() async {
     if (!mounted) return;
     setState(() {
@@ -610,6 +639,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     try {
       var url =
           '${ApiConfig.vpsBaseUrl}/api/ftth-accounting/operators-dashboard?companyId=$_companyId';
+      if (_selectedOursPartnerId != null) {
+        url += '&partnerId=$_selectedOursPartnerId';
+      }
       if (_fromDate != null) {
         url += '&from=${_fromDate!.toIso8601String().split('T')[0]}';
       }
@@ -643,6 +675,50 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       _errorOurs = 'خطأ';
     }
     if (mounted) setState(() => _isLoadingOurs = false);
+  }
+
+  /// قائمة منسدلة لفلترة بيانات تبويب «خادمنا» حسب الشريك الرئيسي.
+  /// null = «الكل»؛ أي اختيار يُعيد تحميل البيانات عبر partnerId.
+  Widget _buildOursPartnerFilter() {
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: SdColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black, width: 1.5),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          value: _selectedOursPartnerId,
+          isDense: true,
+          icon: const Icon(Icons.business, size: 16, color: SdColors.faint),
+          hint: Text('الشريك',
+              style: TextStyle(
+                  fontFamily: 'Cairo', fontSize: 12, color: SdColors.faint)),
+          style: const TextStyle(
+              fontFamily: 'Cairo', fontSize: 12, color: Colors.black87),
+          dropdownColor: Colors.white,
+          items: [
+            DropdownMenuItem<String?>(
+              value: null,
+              child: Text('كل الشركاء',
+                  style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+            ),
+            for (final p in _oursPartners)
+              DropdownMenuItem<String?>(
+                value: p['id'] as String,
+                child: Text(p['name'].toString(),
+                    style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+              ),
+          ],
+          onChanged: (v) {
+            setState(() => _selectedOursPartnerId = v);
+            _loadOursData();
+          },
+        ),
+      ),
+    );
   }
 
   // ════════════════════════════════════════════════════════════════
@@ -4439,6 +4515,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     ),
                   ),
                 ),
+                if (_oursPartners.isNotEmpty) ...[
+                  SizedBox(width: context.accR.spaceS),
+                  _buildOursPartnerFilter(),
+                ],
                 const Spacer(),
                 ElevatedButton.icon(
                   onPressed: () => Navigator.push(
@@ -12490,6 +12570,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   Map<String, String> _linkingMap = {};
   Map<String, String> _reverseMap = {};
 
+  // ── الشركاء الرئيسيون: معرّف FTTH (partnerAccountId) → اسمنا ──
+  Map<String, String> _partnerNames = {};
+
   // ── قوائم الموظفين للتعديل ──
   List<String> _staffTechnicians = [];
   List<String> _staffAgents = [];
@@ -12530,6 +12613,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     ['التاريخ',     'تاريخ التفعيل',     3],
     ['الوقت',       'وقت التفعيل',       2],
     ['المشغل',      'المُفعِّل',          4],
+    ['الشريك',      'الشريك',            3],
     ['العميل',      'اسم العميل',        5],
     ['م.العميل',    'م.العميل',          3],
     ['م.الاشتراك',  'م.الاشتراك',        3],
@@ -12576,7 +12660,46 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
       });
       _loadLinking();
     });
+    _loadPartnersMap();
     _searchCtrl.addListener(_applyFilters);
+  }
+
+  /// يحلّ اسم الشريك: من الخريطة عبر معرّف FTTH، ثم الاسم الخام، وإلا «—».
+  String _resolvePartnerName(String partnerId, String rawName) {
+    final mapped = _partnerNames[partnerId];
+    if (mapped != null && mapped.isNotEmpty) return mapped;
+    if (rawName.isNotEmpty) return rawName;
+    return '—';
+  }
+
+  /// يبني خريطة (partnerAccountId → اسمنا) من الشركاء الرئيسيين، ثم يعيد
+  /// حساب عمود «الشريك» للسجلات المحمّلة. فشل الجلب لا يكسر الشاشة.
+  Future<void> _loadPartnersMap() async {
+    try {
+      final res = await LinkedAccountsService.instance.getPartners();
+      if (!mounted) return;
+      if (res['success'] != true) return;
+      final list = (res['data'] as List?) ?? [];
+      final map = <String, String>{};
+      for (final p in list) {
+        if (p is Map) {
+          final acc = (p['partnerAccountId'] ?? p['PartnerAccountId'] ?? '')
+              .toString();
+          final name = (p['name'] ?? p['Name'] ?? '').toString();
+          if (acc.isNotEmpty && name.isNotEmpty) map[acc] = name;
+        }
+      }
+      setState(() {
+        _partnerNames = map;
+        for (final r in _records) {
+          r['الشريك'] = _resolvePartnerName(
+            r['partnerId']?.toString() ?? '',
+            r['partnerName']?.toString() ?? '',
+          );
+        }
+      });
+      _applyFilters();
+    } catch (_) {}
   }
 
   Future<void> _loadColVisibility() async {
@@ -12947,11 +13070,20 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
         final finalExp = apiExpense ?? expense;
         final finalTotal = finalPD + finalRev - finalExp;
 
+        // الشريك الرئيسي: معرّف FTTH الخام من العملية + اسم خام إن وُجد
+        final rawPartnerId =
+            (item['PartnerId'] ?? item['partnerId'] ?? '').toString();
+        final rawPartnerName =
+            (item['PartnerName'] ?? item['partnerName'] ?? '').toString();
+
         return {
           'id':               item['Id']?.toString() ?? '',
           'تاريخ التفعيل':   _toLocalDate(item['ActivationDate']?.toString()),
           'وقت التفعيل':    _toLocalTime(item['ActivationDate']?.toString()),
           'المُفعِّل':        item['ActivatedBy']?.toString() ?? '',
+          'partnerId':        rawPartnerId,
+          'partnerName':      rawPartnerName,
+          'الشريك':           _resolvePartnerName(rawPartnerId, rawPartnerName),
           'اسم العميل':      item['CustomerName']?.toString() ?? '',
           'م.العميل':         item['CustomerId']?.toString() ?? '',
           'م.الاشتراك':       item['SubscriptionId']?.toString() ?? '',
@@ -14758,6 +14890,9 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
                         ],
                       ),
               ),
+            // الشريك الرئيسي (معرّف FTTH محلول إلى اسمنا)
+            if (!_hiddenCols.contains('الشريك'))
+              txt(3, r['الشريك']?.toString() ?? ''),
             // العميل
             if (!_hiddenCols.contains('اسم العميل'))
               txt(5, r['اسم العميل']?.toString() ?? ''),
