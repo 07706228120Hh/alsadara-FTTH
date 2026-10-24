@@ -283,7 +283,11 @@ public class LinkedAccountsController : ControllerBase
                 .Select(x => new LinkedAccountDto(
                     x.Id, "Ftth", x.Label, x.Username, x.ServerUrl, x.Role,
                     x.IsActive, x.IsPrimary, x.Status, x.LastVerifiedAt, x.LastLoginAt, true,
-                    null, null, x.FtthMemberId))
+                    null, null, x.FtthMemberId,
+                    x.PartnerId.HasValue ? x.PartnerId.ToString() : null,
+                    x.PartnerId.HasValue
+                        ? _db.FtthPartners.Where(p => p.Id == x.PartnerId.Value).Select(p => p.Name).FirstOrDefault()
+                        : null))
                 .ToListAsync(ct);
 
             // حسابات الساس (قراءة فقط — لا نُنادي وحدة الساس ولا نعدّلها). نوع الحساب يُحوَّل لنص في الذاكرة.
@@ -1399,7 +1403,9 @@ public record LinkedAccountDto(
     bool HasSecret,
     int? AccountType = null,
     decimal? AmountMultiplier = null,
-    string? FtthMemberId = null);
+    string? FtthMemberId = null,
+    string? PartnerId = null,
+    string? PartnerName = null);
 
 /// <summary>طلب إنشاء شريك رئيسي. كلمة مرور الحساب الرئيسي تُشفَّر ولا تُعاد.</summary>
 public record CreatePartnerRequest(
