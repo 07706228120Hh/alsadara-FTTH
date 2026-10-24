@@ -374,6 +374,12 @@ public class LinkedAccountsController : ControllerBase
 
             return Ok(new { success = true, data = ToDto(account), message = "تم ربط حساب FTTH بنجاح" });
         }
+        catch (DbUpdateException dbex) when (dbex.InnerException is Npgsql.PostgresException pg && pg.SqlState == "23505")
+        {
+            // تكرار (نفس الشركة+المالك+اسم المستخدم) — رسالة ودّية بدل 500.
+            return Conflict(new { success = false,
+                message = "هذا الحساب مربوط مسبقاً لهذا الموظف. استخدم «تعديل» على بطاقته لإضافة الشريك." });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في إنشاء حساب FTTH");
