@@ -2928,95 +2928,104 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     String? tmpUser = _transactionUser;
     bool tmpWithoutUser = _showTransactionsWithoutUser;
 
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setDlg) {
-            Widget section(String title, IconData icon, Widget content) {
-              return Container(
-                margin: EdgeInsets.only(bottom: context.accR.spaceM),
-                padding: EdgeInsets.all(context.accR.spaceM),
-                decoration: BoxDecoration(
-                  color: SdColors.surfaceAlt,
-                  borderRadius: BorderRadius.circular(context.accR.cardRadius),
-                  border: Border.all(color: SdColors.divider),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(icon,
-                            size: context.accR.iconM, color: SdColors.primary),
-                        SizedBox(width: context.accR.spaceS),
-                        Text(title,
-                            style: TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: context.accR.body,
-                              fontWeight: FontWeight.bold,
-                              color: SdColors.primary,
-                            )),
-                      ],
-                    ),
-                    SizedBox(height: context.accR.spaceS),
-                    content,
-                  ],
-                ),
-              );
-            }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (ctx) {
+          return StatefulBuilder(
+            builder: (ctx, setDlg) {
+              void resetFilters() {
+                setDlg(() {
+                  tmpWalletTypes.clear();
+                  tmpWalletOwnerTypes = ['partner'];
+                  tmpSalesTypes.clear();
+                  tmpChangeTypes.clear();
+                  tmpPaymentMethods.clear();
+                  tmpZones.clear();
+                  tmpTransactionTypes.clear();
+                  tmpServiceNames.clear();
+                  tmpUser = null;
+                  tmpWithoutUser = false;
+                });
+              }
 
-            return Directionality(
-              textDirection: TextDirection.rtl,
-              child: AlertDialog(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(context.accR.radiusL)),
-                title: Row(
-                  children: [
-                    Icon(Icons.tune,
-                        color: SdColors.primary, size: context.accR.iconM),
-                    SizedBox(width: context.accR.spaceM),
-                    Text('تصفية متقدمة',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: context.accR.headingSmall,
-                          fontWeight: FontWeight.bold,
-                          color: SdColors.primary,
-                        )),
-                    Spacer(),
-                    TextButton.icon(
-                      onPressed: () {
-                        setDlg(() {
-                          tmpWalletTypes.clear();
-                          tmpWalletOwnerTypes = ['partner'];
-                          tmpSalesTypes.clear();
-                          tmpChangeTypes.clear();
-                          tmpPaymentMethods.clear();
-                          tmpZones.clear();
-                          tmpTransactionTypes.clear();
-                          tmpServiceNames.clear();
-                          tmpUser = null;
-                          tmpWithoutUser = false;
-                        });
-                      },
-                      icon: Icon(Icons.restart_alt,
-                          size: context.accR.iconS, color: SdColors.danger),
-                      label: Text('إعادة تعيين',
-                          style: TextStyle(
-                            fontSize: context.accR.small,
-                            color: SdColors.danger,
-                          )),
-                    ),
-                  ],
-                ),
-                content: Container(
-                  width: context.accR.dialogMediumW,
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.75,
+              Widget section(String title, IconData icon, Widget content) {
+                return Container(
+                  margin: EdgeInsets.only(bottom: context.accR.spaceL),
+                  padding: EdgeInsets.all(context.accR.spaceL),
+                  decoration: BoxDecoration(
+                    color: SdColors.surface,
+                    borderRadius:
+                        BorderRadius.circular(context.accR.cardRadius),
+                    border: Border.all(color: SdColors.divider),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: SdColors.cardEdge,
+                        offset: Offset(0, 2),
+                        blurRadius: 0,
+                      ),
+                    ],
                   ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(context.accR.spaceXS),
+                            decoration: BoxDecoration(
+                              color: SdColors.surfaceAlt,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(icon,
+                                size: context.accR.iconM,
+                                color: SdColors.primary),
+                          ),
+                          SizedBox(width: context.accR.spaceS),
+                          Text(title,
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: context.accR.body,
+                                fontWeight: FontWeight.bold,
+                                color: SdColors.primary,
+                              )),
+                        ],
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                            vertical: context.accR.spaceS),
+                        child: const Divider(
+                            height: 1, color: SdColors.divider),
+                      ),
+                      content,
+                    ],
+                  ),
+                );
+              }
+
+              return Directionality(
+                textDirection: TextDirection.rtl,
+                child: Scaffold(
+                  backgroundColor: SdColors.ground,
+                  appBar: SdAppBar(
+                    title: 'تصفية متقدمة',
+                    actions: [
+                      SdAppBarAction(
+                        icon: Icons.restart_alt,
+                        label: 'إعادة تعيين',
+                        danger: true,
+                        onPressed: resetFilters,
+                      ),
+                    ],
+                  ),
+                  body: SafeArea(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(context.accR.spaceXL),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 720),
+                          child: Column(
+                            children: [
                         // اسم المستخدم
                         section(
                             'اسم المستخدم',
@@ -3402,50 +3411,108 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                 );
                               }).toList(),
                             )),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  bottomNavigationBar: Container(
+                    decoration: const BoxDecoration(
+                      color: SdColors.surface,
+                      border:
+                          Border(top: BorderSide(color: SdColors.divider)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x14000000),
+                          offset: Offset(0, -2),
+                          blurRadius: 8,
+                        ),
                       ],
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.accR.spaceXL,
+                          vertical: context.accR.spaceM,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: SdColors.muted,
+                                  side: const BorderSide(
+                                      color: SdColors.divider),
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: context.accR.spaceM),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(10)),
+                                ),
+                                child: Text('إلغاء',
+                                    style: TextStyle(
+                                      fontFamily: 'Cairo',
+                                      fontWeight: FontWeight.w600,
+                                      color: SdColors.muted,
+                                    )),
+                              ),
+                            ),
+                            SizedBox(width: context.accR.spaceM),
+                            Expanded(
+                              flex: 2,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedWalletTypes = tmpWalletTypes;
+                                    _selectedWalletOwnerTypes =
+                                        tmpWalletOwnerTypes;
+                                    _selectedSalesTypes = tmpSalesTypes;
+                                    _selectedChangeTypes = tmpChangeTypes;
+                                    _selectedPaymentMethods =
+                                        tmpPaymentMethods;
+                                    _selectedZones = tmpZones;
+                                    _selectedTransactionTypes =
+                                        tmpTransactionTypes;
+                                    _selectedServiceNames = tmpServiceNames;
+                                    _transactionUser = tmpUser;
+                                    _showTransactionsWithoutUser =
+                                        tmpWithoutUser;
+                                  });
+                                  Navigator.pop(ctx);
+                                  _comparisonRows.clear();
+                                  _refreshAll();
+                                },
+                                icon: Icon(Icons.check,
+                                    size: context.accR.iconM),
+                                label: Text('تطبيق',
+                                    style: TextStyle(
+                                        fontFamily: 'Cairo',
+                                        fontWeight: FontWeight.w600)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: SdColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: context.accR.spaceM),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: Text('إلغاء',
-                        style: TextStyle(color: SdColors.muted)),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _selectedWalletTypes = tmpWalletTypes;
-                        _selectedWalletOwnerTypes = tmpWalletOwnerTypes;
-                        _selectedSalesTypes = tmpSalesTypes;
-                        _selectedChangeTypes = tmpChangeTypes;
-                        _selectedPaymentMethods = tmpPaymentMethods;
-                        _selectedZones = tmpZones;
-                        _selectedTransactionTypes = tmpTransactionTypes;
-                        _selectedServiceNames = tmpServiceNames;
-                        _transactionUser = tmpUser;
-                        _showTransactionsWithoutUser = tmpWithoutUser;
-                      });
-                      Navigator.pop(ctx);
-                      _comparisonRows.clear();
-                      _refreshAll();
-                    },
-                    icon: Icon(Icons.check, size: context.accR.iconM),
-                    label: Text('تطبيق',
-                        style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: SdColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
