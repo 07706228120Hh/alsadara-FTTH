@@ -301,6 +301,30 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   // عمليات كل المشغلين — تُجلب مرة واحدة وتُمرر للتفاصيل (لمنع اختلاف الأرقام)
   Map<String, List<Map<String, dynamic>>> _compareOperatorTxs = {};
 
+  // المنفّذون المستبعَدون — معرّفات صغيرة الأحرف مُشذّبة؛ عملياتهم تُخفى من الملخّصات والمقارنة
+  Set<String> _excludedCreators = {};
+
+  /// جلب قائمة المنفّذين المستبعَدين من الخادم وتعبئة المجموعة.
+  /// الفشل لا يكسر الشاشة (try/catch).
+  Future<void> _loadExcludedCreators() async {
+    try {
+      final result = await AccountingService.instance.getExcludedCreators();
+      if (result['success'] == true) {
+        final data = (result['data'] as List?) ?? [];
+        final next = <String>{};
+        for (final item in data) {
+          if (item is Map && (item['isActive'] != false)) {
+            final id = (item['identifier'] ?? '').toString().toLowerCase().trim();
+            if (id.isNotEmpty) next.add(id);
+          }
+        }
+        _excludedCreators = next;
+      }
+    } catch (e) {
+      debugPrint('⚠️ فشل جلب المنفّذين المستبعَدين: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -311,6 +335,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     _fromDate = DateTime(now.year, now.month, now.day);
     _toDate = DateTime(now.year, now.month, now.day, 23, 59, 59);
     _dateLabel = 'اليوم';
+    _loadExcludedCreators();
     _loadOursData();
     _checkFtthAuth();
     _loadAvailableZones();
@@ -692,6 +717,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           for (final tx in items) {
             // فحص 3 حقول لمعرفة المنشئ
             final createdBy = (tx['createdBy'] ?? '').toString().trim();
+            // تخطّي عمليات المنفّذين المستبعَدين (لا تدخل الملخّصات ولا المقارنة)
+            if (_excludedCreators.contains(createdBy.toLowerCase())) continue;
             final transactionUser =
                 (tx['transactionUser'] ?? '').toString().trim();
             final username = (tx['username'] ?? '').toString().trim();
@@ -1308,6 +1335,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     if (!mounted) return;
     setState(() => _isLoadingCompare = true);
 
+    // 0. تحميل قائمة المنفّذين المستبعَدين قبل بناء الصفوف
+    await _loadExcludedCreators();
+
     // 1. تحميل بيانات خادمنا إذا لم تُحمَّل
     if (_oursOperators.isEmpty && !_isLoadingOurs) await _loadOursData();
     // انتظار انتهاء تحميل بياناتنا
@@ -1681,6 +1711,10 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       // ترتيب: الأكثر عمليات أولاً
       rows.sort((a, b) => (b.oursCount + b.ftthCount)
           .compareTo(a.oursCount + a.ftthCount));
+
+      // إخفاء صفوف المنفّذين المستبعَدين من المقارنة (عرض فقط — لا حذف)
+      rows.removeWhere((r) =>
+          _excludedCreators.contains(r.operatorName.toLowerCase().trim()));
 
       _comparisonRows = rows;
       _totalMatched = matched;
@@ -2928,6 +2962,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     String? tmpUser = _transactionUser;
     bool tmpWithoutUser = _showTransactionsWithoutUser;
 
+    // حالة قسم «المنفّذون المستبعَدون» (محلية للشاشة)
+    List<Map<String, dynamic>> excludedItems = [];
+    bool excludedLoading = false;
+    bool excludedLoadedOnce = false;
+    final TextEditingController addIdentifierCtrl = TextEditingController();
+    final TextEditingController addNoteCtrl = TextEditingController();
+
     Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
@@ -3001,6 +3042,73 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                     ],
                   ),
                 );
+              }
+
+              // ── إدارة المنفّذين المستبعَدين ──
+              Future<void> loadExcluded() async {
+                final res =
+                    await AccountingService.instance.getExcludedCreators();
+                if (!ctx.mounted) return;
+                final list = res['success'] == true
+                    ? ((res['data'] as List?) ?? [])
+                        .whereType<Map>()
+                        .map((e) => Map<String, dynamic>.from(e))
+                        .toList()
+                    : <Map<String, dynamic>>[];
+                setDlg(() {
+                  excludedItems = list;
+                  excludedLoading = false;
+                });
+              }
+
+              Future<void> addExcluded() async {
+                final id = addIdentifierCtrl.text.trim();
+                if (id.isEmpty) return;
+                final note = addNoteCtrl.text.trim();
+                final res = await AccountingService.instance.addExcludedCreator(
+                  identifier: id,
+                  note: note.isEmpty ? null : note,
+                );
+                final ok = res['success'] == true;
+                if (ok) {
+                  addIdentifierCtrl.clear();
+                  addNoteCtrl.clear();
+                  await loadExcluded();
+                  await _loadExcludedCreators();
+                }
+                if (!ctx.mounted) return;
+                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                  content: Text(
+                    (res['message'] ?? (ok ? 'تمت الإضافة' : 'فشل الإضافة'))
+                        .toString(),
+                    style: const TextStyle(fontFamily: 'Cairo'),
+                  ),
+                ));
+              }
+
+              Future<void> deleteExcluded(String id) async {
+                final res =
+                    await AccountingService.instance.deleteExcludedCreator(id);
+                final ok = res['success'] == true;
+                if (ok) {
+                  await loadExcluded();
+                  await _loadExcludedCreators();
+                }
+                if (!ctx.mounted) return;
+                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                  content: Text(
+                    (res['message'] ?? (ok ? 'تم الحذف' : 'فشل الحذف'))
+                        .toString(),
+                    style: const TextStyle(fontFamily: 'Cairo'),
+                  ),
+                ));
+              }
+
+              // تحميل أولي لمرة واحدة عند فتح الشاشة
+              if (!excludedLoadedOnce) {
+                excludedLoadedOnce = true;
+                excludedLoading = true;
+                loadExcluded();
               }
 
               return Directionality(
@@ -3410,6 +3518,177 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                                   }),
                                 );
                               }).toList(),
+                            )),
+
+                        // المنفّذون المستبعَدون
+                        section(
+                            'المنفّذون المستبعَدون',
+                            Icons.visibility_off,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'عملياتهم لا تظهر في الملخّصات ولا المقارنة (إخفاء عرضٍ فقط).',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: context.accR.small,
+                                    color: SdColors.muted,
+                                  ),
+                                ),
+                                SizedBox(height: context.accR.spaceS),
+                                // صفّ الإضافة
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: TextField(
+                                        controller: addIdentifierCtrl,
+                                        style: const TextStyle(
+                                            fontFamily: 'Cairo'),
+                                        decoration: InputDecoration(
+                                          hintText: 'رقم أو اسم',
+                                          isDense: true,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 12, vertical: 10),
+                                          border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8)),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: context.accR.spaceS),
+                                    Expanded(
+                                      flex: 3,
+                                      child: TextField(
+                                        controller: addNoteCtrl,
+                                        style: const TextStyle(
+                                            fontFamily: 'Cairo'),
+                                        decoration: InputDecoration(
+                                          hintText: 'ملاحظة (اختياري)',
+                                          isDense: true,
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 12, vertical: 10),
+                                          border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8)),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: context.accR.spaceS),
+                                    ElevatedButton.icon(
+                                      onPressed: addExcluded,
+                                      icon: Icon(Icons.add,
+                                          size: context.accR.iconS),
+                                      label: Text('إضافة',
+                                          style: const TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontWeight: FontWeight.w600)),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: SdColors.primary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 14, vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: context.accR.spaceM),
+                                // القائمة الحالية
+                                if (excludedLoading)
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                        vertical: context.accR.spaceM),
+                                    child: Row(children: [
+                                      const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2)),
+                                      SizedBox(width: context.accR.spaceS),
+                                      Text('جارٍ التحميل...',
+                                          style: TextStyle(
+                                              fontFamily: 'Cairo',
+                                              fontSize: context.accR.small,
+                                              color: SdColors.muted)),
+                                    ]),
+                                  )
+                                else if (excludedItems.isEmpty)
+                                  Padding(
+                                    padding: EdgeInsets.symmetric(
+                                        vertical: context.accR.spaceM),
+                                    child: Text('لا يوجد منفّذون مستبعَدون.',
+                                        style: TextStyle(
+                                            fontFamily: 'Cairo',
+                                            fontSize: context.accR.small,
+                                            color: SdColors.muted)),
+                                  )
+                                else
+                                  ...excludedItems.map((item) {
+                                    final id =
+                                        (item['id'] ?? '').toString();
+                                    final identifier =
+                                        (item['identifier'] ?? '').toString();
+                                    final note =
+                                        (item['note'] ?? '').toString();
+                                    return Container(
+                                      margin: EdgeInsets.only(
+                                          bottom: context.accR.spaceXS),
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: context.accR.spaceM,
+                                          vertical: context.accR.spaceXS),
+                                      decoration: BoxDecoration(
+                                        color: SdColors.surfaceAlt,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                            color: SdColors.divider),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(identifier,
+                                                    style: TextStyle(
+                                                      fontFamily: 'Cairo',
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize:
+                                                          context.accR.body,
+                                                      color: SdColors.ink,
+                                                    )),
+                                                if (note.isNotEmpty)
+                                                  Text(note,
+                                                      style: TextStyle(
+                                                        fontFamily: 'Cairo',
+                                                        fontSize: context
+                                                            .accR.small,
+                                                        color: SdColors.muted,
+                                                      )),
+                                              ],
+                                            ),
+                                          ),
+                                          IconButton(
+                                            onPressed: id.isEmpty
+                                                ? null
+                                                : () => deleteExcluded(id),
+                                            icon: Icon(Icons.delete_outline,
+                                                size: context.accR.iconM,
+                                                color: SdColors.danger),
+                                            tooltip: 'حذف',
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                              ],
                             )),
                             ],
                           ),
