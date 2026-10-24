@@ -196,6 +196,7 @@ class LinkedAccountsService {
     bool? isActive,
     bool? isPrimary,
     String? serverUrl,
+    String? partnerId,
   }) async {
     final body = <String, dynamic>{
       if (label != null) 'label': label,
@@ -204,6 +205,7 @@ class LinkedAccountsService {
       if (isActive != null) 'isActive': isActive,
       if (isPrimary != null) 'isPrimary': isPrimary,
       if (serverUrl != null) 'serverUrl': serverUrl,
+      if (partnerId != null && partnerId.isNotEmpty) 'partnerId': partnerId,
     };
     final response =
         await _client.put('/linked-accounts/ftth/$id', body, (json) => json);

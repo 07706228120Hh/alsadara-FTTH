@@ -280,8 +280,8 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
         final screenWidth = MediaQuery.of(ctx).size.width;
         return StatefulBuilder(
           builder: (ctx, setD) {
-            // تحميل الشركاء مرّة واحدة (الإضافة فقط).
-            if (!isEdit && !partnersLoaded && !partnersLoading) {
+            // تحميل الشركاء مرّة واحدة (إضافة وتعديل — لإسناد شريك لحساب قائم).
+            if (!partnersLoaded && !partnersLoading) {
               partnersLoading = true;
               _service.getPartners().then((res) {
                 if (!ctx.mounted) return;
@@ -334,7 +334,7 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
                       _dialogField(labelCtrl, 'التسمية', Icons.label_outline),
                       const SizedBox(height: 12),
                       // ربط بشريك رئيسي + اختيار مشغّل (الإضافة فقط).
-                      if (!isEdit) ...[
+                      ...[
                         DropdownButtonFormField<String>(
                           initialValue: selectedPartnerId,
                           isDense: true,
@@ -375,12 +375,15 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
                               : (v) {
                                   setD(() {
                                     selectedPartnerId = v;
-                                    selectedOperator = null;
-                                    operators = const [];
-                                    userCtrl.clear();
-                                    operatorsLoading = v != null;
+                                    // الإضافة: الاسم يُملأ من المشغّل؛ التعديل: الاسم ثابت.
+                                    if (!isEdit) {
+                                      selectedOperator = null;
+                                      operators = const [];
+                                      userCtrl.clear();
+                                      operatorsLoading = v != null;
+                                    }
                                   });
-                                  if (v != null) {
+                                  if (!isEdit && v != null) {
                                     _service
                                         .getPartnerOperators(v)
                                         .then((res) {
@@ -396,7 +399,7 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
                                 },
                         ),
                         const SizedBox(height: 12),
-                        if (selectedPartnerId != null)
+                        if (!isEdit && selectedPartnerId != null)
                           DropdownButtonFormField<String>(
                             initialValue: selectedOperator,
                             isDense: true,
@@ -447,8 +450,9 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
                                     });
                                   },
                           ),
-                        if (selectedPartnerId != null)
+                        if (!isEdit && selectedPartnerId != null)
                           const SizedBox(height: 12),
+                        if (isEdit) const SizedBox(height: 12),
                       ],
                       _dialogField(
                         userCtrl,
@@ -518,6 +522,7 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
                               password: passCtrl.text,
                               serverUrl: serverCtrl.text.trim(),
                               isPrimary: isPrimary,
+                              partnerId: selectedPartnerId,
                             );
                           } else {
                             res = await _service.createFtth(
