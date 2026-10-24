@@ -290,6 +290,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   // ── TAB 3: المقارنة ──
   bool _isLoadingCompare = false;
   List<_ComparisonRow> _comparisonRows = [];
+  String? _selectedPartnerFilter; // null = الكل؛ '' = بدون شريك
   int _hoveredCompIdx = -1;
   int _totalMatched = 0;
   int _totalOursOnly = 0;
@@ -1753,6 +1754,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               .where((t) => _subscriptionTypeSet.contains(t.type) && t.amount < 0)
               .fold<double>(0, (s, t) => s + t.amount.abs());
 
+          final partner1 = _derivePartnerForRow(missingTxs, matchedTxs);
           rows.add(_ComparisonRow(
             operatorName: oursName.toString(),
             operatorUserId: oursOp['userId']?.toString(),
@@ -1766,6 +1768,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             ftthTransactions: missingTxs,
             wrongTransactions: wrongTxs,
             matchedTransactions: matchedTxs,
+            partnerId: partner1.$1,
+            partnerName: partner1.$2,
           ));
         } else {
           oursOnly += oursCount;
@@ -1857,6 +1861,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         final unmatchedSubAmt = ftthOp.transactions
             .where((t) => _subscriptionTypeSet.contains(t.type) && t.amount < 0)
             .fold<double>(0, (s, t) => s + t.amount.abs());
+        final partner3 = _derivePartnerForRow(missingTxs);
         rows.add(_ComparisonRow(
           operatorName: ftthOp.name,
           operatorUserId: unmatchedUserId,
@@ -1869,6 +1874,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           ftthOnlyCount: missingTxs.length,
           ftthTransactions: missingTxs,
           wrongTransactions: wrongTxs,
+          partnerId: partner3.$1,
+          partnerName: partner3.$2,
         ));
       }
 
@@ -9155,8 +9162,15 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               ],
             ),
           ),
+          _buildPartnerFilter(),
           LayoutBuilder(
             builder: (context, constraints) {
+              final visibleRows = _selectedPartnerFilter == null
+                  ? _comparisonRows
+                  : _comparisonRows
+                      .where((r) =>
+                          (r.partnerId ?? '') == _selectedPartnerFilter)
+                      .toList();
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: ConstrainedBox(
@@ -9219,7 +9233,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           label:
                               Expanded(child: Center(child: Text('النسبة')))),
                     ],
-                    rows: _comparisonRows.asMap().entries.map((entry) {
+                    rows: visibleRows.asMap().entries.map((entry) {
                       final i = entry.key;
                       final row = entry.value;
                       final total = row.matchedCount +
@@ -9377,22 +9391,22 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                       cells: [
                         DataCell(Center(child: Text(''))),
                         DataCell(Center(child: Text('المجموع', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
-                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.oursCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
-                        DataCell(Center(child: Text(_currencyFormat.format(_comparisonRows.fold<double>(0, (s, r) => s + r.oursAmount)), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
-                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.ftthCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.accent)))),
-                        DataCell(Center(child: Text(_currencyFormat.format(_comparisonRows.fold<double>(0, (s, r) => s + r.ftthAmount)), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.accent)))),
-                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.ftthTransactions.length)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.danger)))),
-                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.wrongTransactions.length)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.warning)))),
+                        DataCell(Center(child: Text('${visibleRows.fold<int>(0, (s, r) => s + r.oursCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(visibleRows.fold<double>(0, (s, r) => s + r.oursAmount)), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900)))),
+                        DataCell(Center(child: Text('${visibleRows.fold<int>(0, (s, r) => s + r.ftthCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.accent)))),
+                        DataCell(Center(child: Text(_currencyFormat.format(visibleRows.fold<double>(0, (s, r) => s + r.ftthAmount)), style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.accent)))),
+                        DataCell(Center(child: Text('${visibleRows.fold<int>(0, (s, r) => s + r.ftthTransactions.length)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.danger)))),
+                        DataCell(Center(child: Text('${visibleRows.fold<int>(0, (s, r) => s + r.wrongTransactions.length)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.warning)))),
                         DataCell(Center(child: () {
-                          final totalDiff = _comparisonRows.fold<double>(0, (s, r) => s + r.wrongTransactions.fold<double>(0, (s2, w) => s2 + (w.ftthAmount - w.oursAmount)));
+                          final totalDiff = visibleRows.fold<double>(0, (s, r) => s + r.wrongTransactions.fold<double>(0, (s2, w) => s2 + (w.ftthAmount - w.oursAmount)));
                           return Text(totalDiff.abs() < 1 ? '0' : '${totalDiff > 0 ? '+' : ''}${_currencyFormat.format(totalDiff)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: totalDiff.abs() < 1 ? SdColors.success : SdColors.danger));
                         }())),
-                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.matchedCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.success)))),
-                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.oursOnlyCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.info)))),
-                        DataCell(Center(child: Text('${_comparisonRows.fold<int>(0, (s, r) => s + r.ftthOnlyCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.danger)))),
+                        DataCell(Center(child: Text('${visibleRows.fold<int>(0, (s, r) => s + r.matchedCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.success)))),
+                        DataCell(Center(child: Text('${visibleRows.fold<int>(0, (s, r) => s + r.oursOnlyCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.info)))),
+                        DataCell(Center(child: Text('${visibleRows.fold<int>(0, (s, r) => s + r.ftthOnlyCount)}', style: TextStyle(fontSize: context.accR.small, fontWeight: FontWeight.w900, color: SdColors.danger)))),
                         DataCell(Center(child: () {
-                          final totalAll = _comparisonRows.fold<int>(0, (s, r) => s + r.matchedCount + r.oursOnlyCount + r.ftthOnlyCount);
-                          final totalMatched = _comparisonRows.fold<int>(0, (s, r) => s + r.matchedCount);
+                          final totalAll = visibleRows.fold<int>(0, (s, r) => s + r.matchedCount + r.oursOnlyCount + r.ftthOnlyCount);
+                          final totalMatched = visibleRows.fold<int>(0, (s, r) => s + r.matchedCount);
                           final pct = totalAll > 0 ? (totalMatched / totalAll * 100).toStringAsFixed(0) : '0';
                           return _buildMatchBadge(pct);
                         }())),
@@ -9402,6 +9416,70 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                 ),
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// فلتر «الشريك» لتبويب المقارنة — chips خياراتها الشركاء المتمايزون
+  /// الظاهرون في _comparisonRows (+ «الكل» و«بدون شريك» عند وجود صفوف بلا شريك).
+  /// الفلترة عرضٌ فقط ولا تمسّ _comparisonRows.
+  Widget _buildPartnerFilter() {
+    final Map<String, String> partners = {}; // partnerId → partnerName
+    var hasNoPartner = false;
+    for (final r in _comparisonRows) {
+      final pid = r.partnerId;
+      if (pid != null && pid.isNotEmpty) {
+        partners[pid] = (r.partnerName != null && r.partnerName!.isNotEmpty)
+            ? r.partnerName!
+            : pid;
+      } else {
+        hasNoPartner = true;
+      }
+    }
+    // لا تعرض الفلتر إن لم يوجد أي شريك (سلوك افتراضي كما كان)
+    if (partners.isEmpty) return const SizedBox.shrink();
+
+    Widget chip(String label, String? value) => Padding(
+          padding: const EdgeInsets.only(left: 6),
+          child: ChoiceChip(
+            label: Text(label,
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: context.accR.small,
+                    fontWeight: FontWeight.w600)),
+            selected: _selectedPartnerFilter == value,
+            onSelected: (_) =>
+                setState(() => _selectedPartnerFilter = value),
+            selectedColor: SdColors.primaryTint,
+            visualDensity: VisualDensity.compact,
+          ),
+        );
+
+    final chips = <Widget>[chip('الكل', null)];
+    partners.forEach((id, name) => chips.add(chip(name, id)));
+    if (hasNoPartner) chips.add(chip('بدون شريك', ''));
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          context.accR.spaceL, 0, context.accR.spaceL, context.accR.spaceS),
+      child: Row(
+        children: [
+          Icon(Icons.handshake_outlined,
+              size: context.accR.iconM, color: SdColors.accent),
+          const SizedBox(width: 6),
+          Text('الشريك:',
+              style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: context.accR.small,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: chips),
+            ),
           ),
         ],
       ),
@@ -11840,6 +11918,8 @@ class _ComparisonRow {
   final List<_FtthTransaction> ftthTransactions; // ناقصة (FTTH فقط)
   final List<_WrongTransaction> wrongTransactions; // خاطئة (مبلغ مختلف)
   final List<_FtthTransaction> matchedTransactions; // مطابقة
+  final String? partnerId; // الشريك المشتق من عمليات المشغّل (اختياري)
+  final String? partnerName;
 
   _ComparisonRow({
     required this.operatorName,
@@ -11854,7 +11934,25 @@ class _ComparisonRow {
     this.ftthTransactions = const [],
     this.wrongTransactions = const [],
     this.matchedTransactions = const [],
+    this.partnerId,
+    this.partnerName,
   });
+}
+
+/// يشتقّ الشريك لصفّ المقارنة من أول عملية تحمل partnerId غير null
+/// (ftthTransactions ثم matchedTransactions). يعيد (partnerId, partnerName)؛
+/// null إن لم توجد أي عملية موسومة بشريك.
+(String?, String?) _derivePartnerForRow(
+  List<_FtthTransaction> primary, [
+  List<_FtthTransaction> secondary = const [],
+]) {
+  for (final tx in primary) {
+    if (tx.partnerId != null) return (tx.partnerId, tx.partnerName);
+  }
+  for (final tx in secondary) {
+    if (tx.partnerId != null) return (tx.partnerId, tx.partnerName);
+  }
+  return (null, null);
 }
 
 // ══════════════════════════════════════════════════════════════════
