@@ -170,6 +170,7 @@ class LinkedAccountsService {
     String? serverUrl,
     String? role,
     bool? isPrimary,
+    String? partnerId,
   }) async {
     final body = <String, dynamic>{
       'ownerUserId': ownerUserId,
@@ -179,6 +180,7 @@ class LinkedAccountsService {
       if (serverUrl != null && serverUrl.isNotEmpty) 'serverUrl': serverUrl,
       if (role != null && role.isNotEmpty) 'role': role,
       if (isPrimary != null) 'isPrimary': isPrimary,
+      if (partnerId != null && partnerId.isNotEmpty) 'partnerId': partnerId,
     };
     final response =
         await _client.post('/linked-accounts/ftth', body, (json) => json);
@@ -316,6 +318,76 @@ class LinkedAccountsService {
   Future<Map<String, dynamic>> deleteSas(String id) async {
     final response =
         await _client.delete('/linked-accounts/sas/$id', (json) => json);
+    return _toMap(response);
+  }
+
+  // ═══════════ الشركاء الرئيسيون (FtthPartner) ═══════════
+
+  /// قائمة الشركاء الرئيسيين للشركة (بلا أسرار).
+  Future<Map<String, dynamic>> getPartners() async {
+    final response =
+        await _client.get('/linked-accounts/partners', (json) => json);
+    return _toMap(response);
+  }
+
+  /// إضافة شريك رئيسي (اسم + اعتماد الحساب الرئيسي).
+  Future<Map<String, dynamic>> createPartner({
+    required String name,
+    required String mainUsername,
+    required String mainPassword,
+    String? serverUrl,
+  }) async {
+    final body = <String, dynamic>{
+      'name': name,
+      'mainUsername': mainUsername,
+      'mainPassword': mainPassword,
+      if (serverUrl != null && serverUrl.isNotEmpty) 'serverUrl': serverUrl,
+    };
+    final response =
+        await _client.post('/linked-accounts/partners', body, (json) => json);
+    return _toMap(response);
+  }
+
+  /// تعديل شريك (كلمة المرور اختيارية).
+  Future<Map<String, dynamic>> updatePartner(
+    String id, {
+    String? name,
+    String? mainUsername,
+    String? mainPassword,
+    bool? isActive,
+    String? serverUrl,
+  }) async {
+    final body = <String, dynamic>{
+      if (name != null) 'name': name,
+      if (mainUsername != null) 'mainUsername': mainUsername,
+      if (mainPassword != null && mainPassword.isNotEmpty)
+        'mainPassword': mainPassword,
+      if (isActive != null) 'isActive': isActive,
+      if (serverUrl != null) 'serverUrl': serverUrl,
+    };
+    final response = await _client.put(
+        '/linked-accounts/partners/$id', body, (json) => json);
+    return _toMap(response);
+  }
+
+  /// حذف شريك.
+  Future<Map<String, dynamic>> deletePartner(String id) async {
+    final response = await _client.delete(
+        '/linked-accounts/partners/$id', (json) => json);
+    return _toMap(response);
+  }
+
+  /// توثيق الحساب الرئيسي للشريك (دخول خادمي + التقاط PartnerAccountId).
+  Future<Map<String, dynamic>> verifyPartner(String id) async {
+    final response = await _client.post(
+        '/linked-accounts/partners/$id/verify', {}, (json) => json);
+    return _toMap(response);
+  }
+
+  /// قائمة مشغّلي الشريك (أسماء المستخدمين) لقائمة الاختيار عند الربط. بلا أسرار.
+  Future<Map<String, dynamic>> getPartnerOperators(String id) async {
+    final response = await _client.get(
+        '/linked-accounts/partners/$id/operators', (json) => json);
     return _toMap(response);
   }
 }
