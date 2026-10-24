@@ -23,6 +23,10 @@ class LinkedAccount {
   /// رقم عضو الفريق على FTTH (يُجلب عند «توثيق»). null قبل التوثيق أو إن لم يُعثر عليه.
   final String? ftthMemberId;
 
+  /// الشريك الرئيسي المُسنَد لهذا الحساب (معرّف الكيان عندنا) + اسمه للعرض. null = بلا شريك.
+  final String? partnerId;
+  final String? partnerName;
+
   /// هل يملك الخادم سراً مخزّناً لهذا الحساب (بلا كشف قيمته).
   final bool hasSecret;
 
@@ -49,6 +53,8 @@ class LinkedAccount {
     this.accountType,
     this.amountMultiplier,
     this.ftthMemberId,
+    this.partnerId,
+    this.partnerName,
   });
 
   bool get isFtth => provider.toLowerCase() == 'ftth';
@@ -97,6 +103,8 @@ class LinkedAccount {
       amountMultiplier:
           _parseDouble(j['amountMultiplier'] ?? j['AmountMultiplier']),
       ftthMemberId: (j['ftthMemberId'] ?? j['FtthMemberId'])?.toString(),
+      partnerId: (j['partnerId'] ?? j['PartnerId'])?.toString(),
+      partnerName: (j['partnerName'] ?? j['PartnerName'])?.toString(),
     );
   }
 }

@@ -259,7 +259,7 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
     List<Map<String, dynamic>> partners = const [];
     bool partnersLoading = false;
     bool partnersLoaded = false;
-    String? selectedPartnerId;
+    String? selectedPartnerId = existing?.partnerId;
     List<Map<String, dynamic>> operators = const [];
     bool operatorsLoading = false;
     String? selectedOperator;
@@ -1035,6 +1035,14 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
               icon: Icons.person_outline,
               ltrValue: true,
             ),
+
+            // الشريك الرئيسي المُسنَد (يظهر بعد إسناده من «تعديل»)
+            if (a.partnerName != null && a.partnerName!.isNotEmpty)
+              SdInfoRow(
+                label: 'الشريك',
+                value: a.partnerName!,
+                icon: Icons.handshake_outlined,
+              ),
 
             // رقم عضو الفريق على FTTH (يظهر بعد «توثيق»)
             if (a.ftthMemberId != null && a.ftthMemberId!.isNotEmpty)
