@@ -2472,6 +2472,11 @@ public class FtthAccountingController : ControllerBase
                         if (existing != null)
                         {
                             bool needsUpdate = false;
+                            // ردم المعرّف الخام والشريك على السجلّات القديمة (لا يُستبدَل إن كان موجوداً)
+                            if (string.IsNullOrEmpty(existing.OperatorUsername) && !string.IsNullOrEmpty(tx.CreatedBy))
+                            { existing.OperatorUsername = tx.CreatedBy; needsUpdate = true; }
+                            if (string.IsNullOrEmpty(existing.PartnerId) && !string.IsNullOrEmpty(tx.PartnerId))
+                            { existing.PartnerId = tx.PartnerId; existing.PartnerName = tx.PartnerName; needsUpdate = true; }
                             if (string.IsNullOrEmpty(existing.CollectionType) && !string.IsNullOrEmpty(tx.CollectionType))
                             {
                                 existing.CollectionType = tx.CollectionType;
@@ -2694,7 +2699,10 @@ public class FtthAccountingController : ControllerBase
                         PlanPrice = planPrice,
                         CommitmentPeriod = tx.CommitmentPeriod,
                         OperationType = operationTypeAr,
-                        ActivatedBy = activatedByValue,
+                        ActivatedBy = activatedByValue,               // اسم محلول للعرض فقط
+                        OperatorUsername = tx.CreatedBy,              // معرّف المشغّل الخام — هوية ثابتة لا تُستبدَل
+                        PartnerId = tx.PartnerId,                     // الشريك (من tx.partner)
+                        PartnerName = tx.PartnerName,
                         ActivationDate = activationDateUtc,
                         ZoneId = tx.ZoneId,
                         ZoneName = tx.ZoneName,
@@ -4484,7 +4492,10 @@ public record SyncFtthTransactionItem(
     string? ZoneName = null,
     string? TechnicianName = null,
     string? PaymentStatus = null,
-    int? CommitmentPeriod = null
+    int? CommitmentPeriod = null,
+    // الشريك (من tx.partner في FTTH) — لتخزين PartnerId/PartnerName على العملية
+    string? PartnerId = null,
+    string? PartnerName = null
 );
 
 public record QuickDeliverDto(

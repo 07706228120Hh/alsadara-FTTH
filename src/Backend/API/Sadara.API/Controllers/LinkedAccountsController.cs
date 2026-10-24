@@ -1119,6 +1119,46 @@ public class LinkedAccountsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// دخول خادمي لحساب الشريك الرئيسي ويعيد توكن الوصول (+ معرّف/اسم الشريك) ليجلب التطبيق
+    /// عمليات هذا الشريك ويوسمها. لا يُعاد أي سرّ دائم؛ محدود المعدّل ومُدقّق.
+    /// </summary>
+    [HttpPost("partners/{id}/login")]
+    [RequirePermission("linked_accounts", "manage", PermissionSystem.Second, failClosed: true)]
+    [EnableRateLimiting("credential-reveal")]
+    public async Task<IActionResult> LoginPartner(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var currentUserId, out var denied)) return denied!;
+        var partner = await _db.FtthPartners.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
+        if (partner == null || partner.CompanyId != companyId)
+            return NotFound(new { success = false, message = "الشريك غير موجود" });
+        try
+        {
+            var password = _secretProtector.Unprotect(partner.MainPasswordEncrypted);
+            var login = await FtthLoginAsync(partner.ServerUrl, partner.MainUsername, password, ct);
+            if (!login.Ok)
+                return StatusCode(502, new { success = false, message = login.Error ?? "تعذّر تسجيل الدخول لحساب الشريك الرئيسي" });
+
+            // تدقيق: من سجّل دخولاً خادمياً لأي شريك ومتى — بلا كلمة مرور ولا توكن في السجل.
+            _logger.LogWarning("AUDIT دخول خادمي لشريك FTTH: requestedByUserId={Actor} companyId={CompanyId} partnerId={PartnerId} atUtc={AtUtc}",
+                currentUserId, companyId, partner.Id, DateTime.UtcNow);
+
+            return Ok(new { success = true, data = new
+            {
+                accessToken = login.AccessToken,
+                partnerId = partner.Id,
+                partnerName = partner.Name,
+                partnerAccountId = partner.PartnerAccountId,
+                serverUrl = partner.ServerUrl
+            } });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تسجيل الدخول لحساب الشريك");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
     // ==================== مساعدات ====================
 
     /// <summary>يبني DTO حساب FTTH من الكيان — بلا أي كلمة مرور.</summary>
