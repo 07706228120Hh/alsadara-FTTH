@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../frontend/frontend.dart';
 import '../../../services/linked_accounts_service.dart';
+import '../partners_page.dart';
 
 class LinkedAccountsTab extends StatefulWidget {
   /// معرّف المستخدم (الموظف) المالك للحسابات.
@@ -254,12 +255,48 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
     bool showPass = false;
     bool saving = false;
 
+    // ربط الحساب بشريك رئيسي — حالة الإضافة فقط.
+    List<Map<String, dynamic>> partners = const [];
+    bool partnersLoading = false;
+    bool partnersLoaded = false;
+    String? selectedPartnerId;
+    List<Map<String, dynamic>> operators = const [];
+    bool operatorsLoading = false;
+    String? selectedOperator;
+
+    List<Map<String, dynamic>> unwrap(dynamic data) {
+      final List raw = data is List
+          ? data
+          : (data is Map ? (data['data'] ?? data['items'] ?? []) as List : []);
+      return raw
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) {
         final screenWidth = MediaQuery.of(ctx).size.width;
         return StatefulBuilder(
-          builder: (ctx, setD) => Directionality(
+          builder: (ctx, setD) {
+            // تحميل الشركاء مرّة واحدة (الإضافة فقط).
+            if (!isEdit && !partnersLoaded && !partnersLoading) {
+              partnersLoading = true;
+              _service.getPartners().then((res) {
+                if (!ctx.mounted) return;
+                setD(() {
+                  partnersLoaded = true;
+                  partnersLoading = false;
+                  if (res['success'] == true) {
+                    partners = unwrap(res['data'])
+                        .where((p) => (p['id'] ?? p['Id']) != null)
+                        .toList();
+                  }
+                });
+              });
+            }
+            return Directionality(
             textDirection: TextDirection.rtl,
             child: AlertDialog(
               shape:
@@ -296,7 +333,129 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
                     children: [
                       _dialogField(labelCtrl, 'التسمية', Icons.label_outline),
                       const SizedBox(height: 12),
-                      _dialogField(userCtrl, 'اسم المستخدم', Icons.person_outline),
+                      // ربط بشريك رئيسي + اختيار مشغّل (الإضافة فقط).
+                      if (!isEdit) ...[
+                        DropdownButtonFormField<String>(
+                          initialValue: selectedPartnerId,
+                          isDense: true,
+                          isExpanded: true,
+                          style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 13,
+                              color: SdColors.ink),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            labelText: partnersLoading
+                                ? 'الشريك (جارٍ التحميل…)'
+                                : 'الشريك (اختياري)',
+                            labelStyle: const TextStyle(
+                                fontFamily: 'Cairo', fontSize: 12),
+                            prefixIcon:
+                                const Icon(Icons.handshake_outlined, size: 20),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          hint: const Text('بدون شريك',
+                              style:
+                                  TextStyle(fontFamily: 'Cairo', fontSize: 13)),
+                          items: partners.map((p) {
+                            final id = (p['id'] ?? p['Id']).toString();
+                            final name = (p['name'] ?? p['Name'] ?? id)
+                                .toString();
+                            return DropdownMenuItem(
+                              value: id,
+                              child: Text(name,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontFamily: 'Cairo', fontSize: 13)),
+                            );
+                          }).toList(),
+                          onChanged: partnersLoading
+                              ? null
+                              : (v) {
+                                  setD(() {
+                                    selectedPartnerId = v;
+                                    selectedOperator = null;
+                                    operators = const [];
+                                    userCtrl.clear();
+                                    operatorsLoading = v != null;
+                                  });
+                                  if (v != null) {
+                                    _service
+                                        .getPartnerOperators(v)
+                                        .then((res) {
+                                      if (!ctx.mounted) return;
+                                      setD(() {
+                                        operatorsLoading = false;
+                                        if (res['success'] == true) {
+                                          operators = unwrap(res['data']);
+                                        }
+                                      });
+                                    });
+                                  }
+                                },
+                        ),
+                        const SizedBox(height: 12),
+                        if (selectedPartnerId != null)
+                          DropdownButtonFormField<String>(
+                            initialValue: selectedOperator,
+                            isDense: true,
+                            isExpanded: true,
+                            style: const TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 13,
+                                color: SdColors.ink),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              labelText: operatorsLoading
+                                  ? 'المشغّل (جارٍ التحميل…)'
+                                  : 'المشغّل',
+                              labelStyle: const TextStyle(
+                                  fontFamily: 'Cairo', fontSize: 12),
+                              prefixIcon: const Icon(
+                                  Icons.account_circle_outlined,
+                                  size: 20),
+                              border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
+                            items: operators.map((o) {
+                              final username =
+                                  (o['username'] ?? o['Username'] ?? '')
+                                      .toString();
+                              final display =
+                                  (o['displayName'] ?? o['DisplayName'])
+                                      ?.toString();
+                              final text = (display != null &&
+                                      display.isNotEmpty &&
+                                      display != username)
+                                  ? '$username — $display'
+                                  : username;
+                              return DropdownMenuItem(
+                                value: username,
+                                child: Text(text,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        fontFamily: 'Cairo', fontSize: 13)),
+                              );
+                            }).toList(),
+                            onChanged: operatorsLoading
+                                ? null
+                                : (v) {
+                                    setD(() {
+                                      selectedOperator = v;
+                                      if (v != null) userCtrl.text = v;
+                                    });
+                                  },
+                          ),
+                        if (selectedPartnerId != null)
+                          const SizedBox(height: 12),
+                      ],
+                      _dialogField(
+                        userCtrl,
+                        'اسم المستخدم',
+                        Icons.person_outline,
+                        readOnly: !isEdit && selectedPartnerId != null,
+                      ),
                       const SizedBox(height: 12),
                       _dialogField(
                         passCtrl,
@@ -368,6 +527,7 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
                               password: passCtrl.text,
                               serverUrl: serverCtrl.text.trim(),
                               isPrimary: isPrimary,
+                              partnerId: selectedPartnerId,
                             );
                           }
                           if (res['success'] == true) {
@@ -395,7 +555,8 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
                 ),
               ],
             ),
-          ),
+            );
+          },
         );
       },
     );
@@ -643,14 +804,18 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
     bool obscure = false,
     Widget? suffix,
     TextInputType? keyboardType,
+    bool readOnly = false,
   }) {
     return TextField(
       controller: ctrl,
       obscureText: obscure,
       keyboardType: keyboardType,
+      readOnly: readOnly,
       style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
       decoration: InputDecoration(
         isDense: true,
+        filled: readOnly,
+        fillColor: readOnly ? SdColors.surfaceAlt : null,
         labelText: label,
         labelStyle: const TextStyle(fontFamily: 'Cairo', fontSize: 12),
         prefixIcon: Icon(icon, size: 20),
@@ -695,6 +860,20 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
                     style: SdText.titleSm,
                   ),
                 ),
+                SdButton(
+                  label: 'الشركاء الرئيسيون',
+                  icon: Icons.handshake_outlined,
+                  kind: SdButtonKind.secondary,
+                  height: 44,
+                  onPressed: _busy
+                      ? null
+                      : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const PartnersPage()),
+                          ),
+                ),
+                const SizedBox(width: 8),
                 SdButton(
                   label: 'ربط حساب FTTH جديد',
                   icon: Icons.add_link_rounded,
