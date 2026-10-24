@@ -463,6 +463,11 @@ public class AccountingController : ControllerBase
                     j.ApprovedById,
                     j.ApprovedAt,
                     j.CreatedAt,
+                    // الشريك/المشغّل من العملية المصدر المرتبطة بالقيد (عرض فقط).
+                    PartnerName = _unitOfWork.SubscriptionLogs.AsQueryable()
+                        .Where(l => l.JournalEntryId == j.Id).Select(l => l.PartnerName).FirstOrDefault(),
+                    OperatorUsername = _unitOfWork.SubscriptionLogs.AsQueryable()
+                        .Where(l => l.JournalEntryId == j.Id).Select(l => l.OperatorUsername).FirstOrDefault(),
                     Lines = j.Lines.Select(l => new
                     {
                         l.Id,
