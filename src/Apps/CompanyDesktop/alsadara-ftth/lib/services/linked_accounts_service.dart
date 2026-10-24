@@ -390,4 +390,12 @@ class LinkedAccountsService {
         '/linked-accounts/partners/$id/operators', (json) => json);
     return _toMap(response);
   }
+
+  /// دخول خادمي لحساب الشريك الرئيسي؛ يعيد {accessToken, partnerId, partnerName,
+  /// partnerAccountId, serverUrl} ليجلب التطبيق عمليات هذا الشريك ويوسمها. توكن مؤقّت.
+  Future<Map<String, dynamic>> loginPartner(String id) async {
+    final response = await _client.post(
+        '/linked-accounts/partners/$id/login', {}, (json) => json);
+    return _toMap(response);
+  }
 }
