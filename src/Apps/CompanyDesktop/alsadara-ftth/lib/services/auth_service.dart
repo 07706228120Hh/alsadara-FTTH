@@ -584,6 +584,32 @@ class AuthService {
     }
   }
 
+  /// طلب FTTH بتوكن مُمرَّر (توكن شريك مؤقّت)، عبر بوّابة Cloudflare نفسها مع معالجة
+  /// تحدّي CF 403 مركزياً — دون تجديد توكن (التوكن مؤقّت). يُستخدم للجلب متعدّد الشركاء.
+  Future<http.Response> ftthRequestWithToken(
+    String method,
+    String url,
+    String token, {
+    Object? body,
+  }) async {
+    const requestTimeout = Duration(seconds: 45);
+    final headers = <String, String>{
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    };
+    var response =
+        await _send(method, url, headers: headers, body: body).timeout(requestTimeout);
+    // تحدّي Cloudflare (403 + صفحة تحقّق) ⇒ حلّ مركزي ثم إعادة محاولة واحدة.
+    if (response.statusCode == 403 && _looksLikeCfChallenge(response.body)) {
+      final solved = await _ensureCloudflareCleared();
+      if (solved) {
+        response = await _send(method, url, headers: headers, body: body)
+            .timeout(requestTimeout);
+      }
+    }
+    return response;
+  }
+
   // ─────────────────────────────────────────────────────────────────────
   // معالجة تحدّي Cloudflare (403 + صفحة تحقّق) مركزياً
   // ─────────────────────────────────────────────────────────────────────

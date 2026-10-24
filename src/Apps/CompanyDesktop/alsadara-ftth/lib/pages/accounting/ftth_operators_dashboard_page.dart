@@ -812,14 +812,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         // يبقى على authenticatedRequest كما هو تماماً (تجديد توكن/401/Cloudflare).
         final http.Response response;
         if (overrideToken != null) {
-          response = await http.get(
-            Uri.parse(url),
-            headers: {
-              'Authorization': 'Bearer $overrideToken',
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          );
+          // توكن الشريك عبر بوّابة Cloudflare نفسها (معالجة تحدّي CF 403) بدل طلب خام.
+          response = await AuthService.instance
+              .ftthRequestWithToken('GET', url, overrideToken);
         } else {
           response =
               await AuthService.instance.authenticatedRequest('GET', url);
