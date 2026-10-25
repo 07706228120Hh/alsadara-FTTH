@@ -1271,6 +1271,14 @@ class AccountingService {
     return _toMap(response);
   }
 
+  /// مناطق شريك محدّد (من عملياته المُزامَنة). يُعيد data:[{zoneName, zoneId, count}].
+  Future<Map<String, dynamic>> getPartnerZones(String partnerId, {String? companyId}) async {
+    String query = '/zone-maintenance-fees/partner-zones?partnerId=$partnerId';
+    if (companyId != null) query += '&companyId=$companyId';
+    final response = await _client.get(query, (json) => json);
+    return _toMap(response);
+  }
+
   Future<Map<String, dynamic>> updateZoneMaintenanceFee(String id, Map<String, dynamic> body) async {
     final response = await _client.put('/zone-maintenance-fees/$id', body, (json) => json);
     return _toMap(response);

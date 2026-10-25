@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/linked_accounts_service.dart';
-import '../../services/agents_auth_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
 import '../../permissions/permissions.dart';
@@ -367,48 +366,26 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
     return [];
   }
 
-  /// جلب مناطق شريك محدّد من FTTH عبر دخول خادمي مؤقّت لحسابه الرئيسي.
+  /// جلب مناطق شريك محدّد من عملياته المُزامَنة عبر خادمنا (موثوق ومُقيَّد بالشريك).
   ///
-  /// المصدر = شارت «المناطق حسب المقاولين» في لوحة FTTH (slice_id:52, dashboard_id:7)
-  /// **مُقيَّداً بصلاحية توكن الشريك** (guest token يحمل RLS الشريك) — نفس مسار صفحة تقارير الوكلاء.
-  /// ملاحظة: `api/locations/zones` يُعيد **كل** مناطق النظام لا مناطق الشريك، لذا لا يُستخدم هنا.
+  /// المصدر = endpoint `partner-zones` (ZoneName المميّزة من SubscriptionLogs لهذا الشريك).
+  /// بديل موثوق عن لوحة FTTH التي يحجبها Cloudflare (503) على dashboard.ftth.iq،
+  /// وعن `api/locations/zones` الذي يُعيد كل مناطق النظام لا مناطق الشريك.
   Future<List<Map<String, String>>> _loadPartnerZones(String partnerId) async {
-    final login = await LinkedAccountsService.instance.loginPartner(partnerId);
-    final ldata = login['data'] ?? login;
-    final token = (ldata is Map ? (ldata['accessToken'] ?? ldata['AccessToken']) : null)
-        ?.toString();
-    if (token == null || token.isEmpty) {
-      throw Exception(login['message']?.toString() ?? 'تعذّر الدخول لحساب الشريك');
+    final res = await AccountingService.instance
+        .getPartnerZones(partnerId, companyId: widget.companyId);
+    if (res['success'] != true) {
+      throw Exception(res['message']?.toString() ?? 'تعذّر جلب مناطق الشريك');
     }
-    // guest token يحمل RLS الشريك (يُشتق من توكن الشريك) ⇒ الشارت يعود بمناطق هذا الشريك فقط.
-    final guest = await AgentsAuthService.fetchGuestToken(authToken: token);
-    if (guest == null || guest.isEmpty) {
-      throw Exception('تعذّر تهيئة لوحة FTTH لهذا الشريك');
-    }
-    final result = await AgentsAuthService.fetchChartData(
-      52, 7,
-      guestToken: guest,
-      authToken: token,
-    );
-    final rows = (result?['data'] as List?) ?? const [];
-    final cols = ((result?['colnames'] as List?)?.cast<String>()) ?? const [];
-    // عمود اسم المنطقة: المفضّل name/zone، وإلا أول عمود.
-    String zoneKey = cols.firstWhere(
-      (c) {
-        final l = c.toLowerCase();
-        return l == 'name' || l.contains('zone') || c.contains('منطقة');
-      },
-      orElse: () => cols.isNotEmpty ? cols.first : 'name',
-    );
+    final data = res['data'];
+    final rows = (data is List ? data : (data is Map ? (data['data'] ?? []) : [])) as List;
     final seen = <String>{};
     final out = <Map<String, String>>[];
     for (final z in rows) {
       if (z is! Map) continue;
-      final name = (z[zoneKey] ?? z['name'] ?? z['ZoneName'] ?? z['zoneName'] ?? '')
-          .toString()
-          .trim();
+      final name = (z['zoneName'] ?? z['ZoneName'] ?? '').toString().trim();
       if (name.isEmpty || !seen.add(name)) continue;
-      out.add({'name': name, 'id': (z['id'] ?? z['zoneId'] ?? '').toString().trim()});
+      out.add({'name': name, 'id': (z['zoneId'] ?? z['ZoneId'] ?? '').toString().trim()});
     }
     out.sort((a, b) => a['name']!.compareTo(b['name']!));
     return out;
