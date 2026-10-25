@@ -523,19 +523,49 @@ public class LinkedAccountsController : ControllerBase
             var result = await FtthLoginAsync(account.ServerUrl, account.Username, password, ct);
 
             account.Status = result.Ok ? "Verified" : "Invalid";
+            string? detectedPartnerAccountId = null; // معرّف شريك FTTH من JWT
+            string? detectedPartnerName = null;      // اسم الشريك المُسنَد (إن وُجد كياناً)
+            bool partnerAutoAssigned = false;
+            bool partnerUndefined = false;
             if (result.Ok)
             {
                 account.LastVerifiedAt = DateTime.UtcNow;
-                // بعد دخول ناجح: اجلب بيانات العضو من FTTH وخزّن رقم العضو (المصدر الموحّد لمطابقة العمليات)
-                // والدور/الاسم للعرض. لا يُرمى استثناء — فشل الجلب لا يُفشل التوثيق.
+                // بعد دخول ناجح: اجلب بيانات العضو (رقم العضو/الدور). لا يُرمى استثناء.
                 var info = await FetchFtthMemberInfoAsync(account.ServerUrl, result.AccessToken!, account.Username, ct);
                 if (!string.IsNullOrWhiteSpace(info.MemberId)) account.FtthMemberId = info.MemberId;
                 if (!string.IsNullOrWhiteSpace(info.Role)) account.Role = info.Role;
+
+                // ═══ إسناد الشريك تلقائياً: AccountId من JWT = معرّف شريك FTTH ═══
+                // نقارنه بالشركاء المعرّفين (PartnerAccountId) ونُسنِد تلقائياً — بلا اختيار يدوي.
+                detectedPartnerAccountId = ExtractAccountIdFromJwt(result.AccessToken);
+                if (!string.IsNullOrWhiteSpace(detectedPartnerAccountId))
+                {
+                    var partner = await _db.FtthPartners.FirstOrDefaultAsync(p => !p.IsDeleted
+                        && p.CompanyId == account.CompanyId
+                        && p.PartnerAccountId == detectedPartnerAccountId, ct);
+                    if (partner != null)
+                    {
+                        account.PartnerId = partner.Id;       // إسناد تلقائي
+                        detectedPartnerName = partner.Name;
+                        partnerAutoAssigned = true;
+                    }
+                    else
+                    {
+                        partnerUndefined = true;              // شريك مكتشَف غير معرّف بعد
+                    }
+                }
             }
             account.UpdatedAt = DateTime.UtcNow;
             _db.FtthAccounts.Update(account);
             await _db.SaveChangesAsync(ct);
 
+            var msg = !result.Ok
+                ? "فشل التحقق من بيانات الاعتماد"
+                : partnerAutoAssigned
+                    ? $"تم التحقق وإسناد الشريك «{detectedPartnerName}» تلقائياً"
+                    : partnerUndefined
+                        ? $"تم التحقق — الشريك المكتشَف (رقم {detectedPartnerAccountId}) غير معرّف؛ أضفه من شاشة الشركاء"
+                        : "تم التحقق بنجاح";
             return Ok(new
             {
                 success = true,
@@ -545,11 +575,14 @@ public class LinkedAccountsController : ControllerBase
                     status = account.Status,
                     lastVerifiedAt = account.LastVerifiedAt,
                     ftthMemberId = account.FtthMemberId,
-                    role = account.Role
+                    role = account.Role,
+                    partnerId = account.PartnerId,
+                    partnerName = detectedPartnerName,
+                    detectedPartnerAccountId,
+                    partnerAutoAssigned,
+                    partnerUndefined
                 },
-                message = result.Ok
-                    ? (account.FtthMemberId != null ? "تم التحقق وجلب رقم العضو بنجاح" : "تم التحقق (لم يُعثر على رقم عضو مطابق)")
-                    : "فشل التحقق من بيانات الاعتماد"
+                message = msg
             });
         }
         catch (Exception ex)
