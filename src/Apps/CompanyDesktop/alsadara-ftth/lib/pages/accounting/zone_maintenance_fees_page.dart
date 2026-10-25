@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/linked_accounts_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/ftth_api_config.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
 import '../../permissions/permissions.dart';
@@ -366,22 +368,85 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
     return [];
   }
 
+  /// جلب زونات شريك محدّد من FTTH عبر دخول خادمي مؤقّت لحسابه الرئيسي.
+  /// يعيد قائمة {name, id} خاصة بذلك الشريك.
+  Future<List<Map<String, String>>> _loadPartnerZones(String partnerId) async {
+    final login = await LinkedAccountsService.instance.loginPartner(partnerId);
+    final ldata = login['data'] ?? login;
+    final token = (ldata is Map ? (ldata['accessToken'] ?? ldata['AccessToken']) : null)
+        ?.toString();
+    if (token == null || token.isEmpty) {
+      throw Exception(login['message']?.toString() ?? 'تعذّر الدخول لحساب الشريك');
+    }
+    final url = '${FtthApi.api}/locations/zones?pageSize=1000&pageNumber=1';
+    final resp = await AuthService.instance.ftthRequestWithToken('GET', url, token);
+    if (resp.statusCode != 200) {
+      throw Exception('تعذّر جلب مناطق الشريك (${resp.statusCode})');
+    }
+    return _parseZoneItems(jsonDecode(resp.body));
+  }
+
+  /// استخراج {name, id} من استجابة locations/zones بأشكالها المختلفة (مرتّبة بلا تكرار).
+  List<Map<String, String>> _parseZoneItems(dynamic data) {
+    List list = const [];
+    if (data is List) {
+      list = data;
+    } else if (data is Map) {
+      if (data['items'] is List) {
+        list = data['items'] as List;
+      } else if (data['model'] is Map && (data['model']['items'] is List)) {
+        list = data['model']['items'] as List;
+      } else if (data['data'] is List) {
+        list = data['data'] as List;
+      }
+    }
+    final seen = <String>{};
+    final out = <Map<String, String>>[];
+    for (final z in list) {
+      if (z is! Map) continue;
+      final self = z['self'] is Map ? z['self'] as Map : null;
+      final name = (self?['displayValue'] ??
+              z['displayValue'] ??
+              z['name'] ??
+              z['title'] ??
+              z['zoneName'] ??
+              self?['id'] ??
+              z['id'] ??
+              '')
+          .toString()
+          .trim();
+      final id = (self?['id'] ?? z['id'] ?? z['zoneId'] ?? '').toString().trim();
+      if (name.isEmpty || !seen.add(name)) continue;
+      out.add({'name': name, 'id': id});
+    }
+    out.sort((a, b) => a['name']!.compareTo(b['name']!));
+    return out;
+  }
+
   void _showAddDialog() {
     final amountCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
     final zoneSearchCtrl = TextEditingController();
-    String? selectedZone;
     String zoneFilter = '';
-    List<String> availableZones = [];
-    bool zonesLoaded = false;
     String? dialogPartnerId = _selectedPartnerId; // الشريك المُسنَد لهذه الأجرة (null = احتياطية لكل الشركاء)
 
-    Future<void> loadZones(void Function(void Function()) setDState) async {
-      if (zonesLoaded) return;
-      zonesLoaded = true;
+    List<Map<String, String>> zoneOptions = []; // زونات الشريك المحمّلة
+    final Set<String> selectedZones = {}; // المناطق المحدَّدة (بالاسم) — تحديد متعدّد
+    Map<String, String> zoneIdByName = {}; // اسم → معرّف الزون
+    Set<String> existingForPartner = {}; // أسماء لها أجرة أصلاً لهذا الشريك (تُعطَّل)
+    bool loadingZones = false;
+    String? zonesError;
+    String loadedForPartner = '__init__'; // مفتاح آخر شريك حُمِّلت زوناته
+
+    Future<void> loadZones(void Function(void Function()) setDState, String key) async {
       try {
-        // استثنِ فقط الزونات المُعرَّفة لنفس الشريك المختار — يسمح بأجرة شريك تتجاوز الاحتياطية.
-        final existingNames = _fees
+        // الأجور الموجودة لهذا الشريك تحديداً (لتعطيل المكرّر)
+        final feesRes = await AccountingService.instance
+            .getZoneMaintenanceFees(companyId: widget.companyId, partnerId: dialogPartnerId);
+        final fd = feesRes['data'];
+        final feeList = (fd is List ? fd : (fd is Map ? (fd['data'] ?? []) : [])) as List;
+        existingForPartner = feeList
+            .whereType<Map>()
             .where((f) {
               final pid = (f['PartnerId'] ?? f['partnerId'])?.toString();
               final norm = (pid == null || pid.isEmpty) ? null : pid;
@@ -389,22 +454,57 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
             })
             .map((f) => (f['ZoneName'] ?? f['zoneName'] ?? '').toString())
             .toSet();
-        final all = await _fetchZoneNames();
-        availableZones = all.where((n) => !existingNames.contains(n)).toList()..sort();
-        setDState(() {});
-      } catch (_) {}
+
+        List<Map<String, String>> opts;
+        if (dialogPartnerId != null) {
+          opts = await _loadPartnerZones(dialogPartnerId!);
+        } else {
+          // بلا شريك: المناطق العامة من zonestatistics
+          final names = await _fetchZoneNames();
+          opts = (names.toSet().toList()..sort())
+              .map((n) => {'name': n, 'id': ''})
+              .toList();
+        }
+        zoneIdByName = {for (final z in opts) z['name']!: z['id'] ?? ''};
+        if (loadedForPartner != key) return; // تغيّر الشريك أثناء التحميل
+        setDState(() {
+          zoneOptions = opts;
+          loadingZones = false;
+        });
+      } catch (e) {
+        if (loadedForPartner != key) return;
+        setDState(() {
+          zonesError = e.toString().replaceFirst('Exception: ', '');
+          loadingZones = false;
+        });
+      }
     }
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDState) {
-          // تحميل الزونات مرة واحدة
-          if (!zonesLoaded) loadZones(setDState);
+          // تحميل زونات الشريك الحالي (مرّة لكل شريك) — مجدوَل بعد الإطار لتفادي setState أثناء البناء
+          final wantKey = dialogPartnerId ?? '__null__';
+          if (loadedForPartner != wantKey) {
+            loadedForPartner = wantKey;
+            loadingZones = true;
+            zonesError = null;
+            zoneOptions = [];
+            selectedZones.clear();
+            WidgetsBinding.instance
+                .addPostFrameCallback((_) => loadZones(setDState, wantKey));
+          }
 
           final filtered = zoneFilter.isEmpty
-              ? <String>[]
-              : availableZones.where((n) => n.toLowerCase().contains(zoneFilter.toLowerCase())).toList();
+              ? zoneOptions
+              : zoneOptions
+                  .where((z) => z['name']!.toLowerCase().contains(zoneFilter.toLowerCase()))
+                  .toList();
+          final selectableFiltered =
+              filtered.where((z) => !existingForPartner.contains(z['name'])).toList();
+          final allFilteredSelected = selectableFiltered.isNotEmpty &&
+              selectableFiltered.every((z) => selectedZones.contains(z['name']));
 
           return Directionality(
             textDirection: TextDirection.rtl,
@@ -412,8 +512,8 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
               backgroundColor: SdColors.surface,
               title: Text('إضافة أجور صيانة', style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink)),
               content: SizedBox(
-                width: 450,
-                height: 460,
+                width: 480,
+                height: 560,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -462,37 +562,24 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                     ],
-                    // حقل بحث الزون
+                    // حقل بحث/تصفية المناطق
                     TextField(
                       controller: zoneSearchCtrl,
                       style: const TextStyle(color: SdColors.ink, fontSize: 13),
-                      onChanged: (v) => setDState(() {
-                        zoneFilter = v;
-                        // إذا كتب اسم يدوياً
-                        if (v.isNotEmpty && !availableZones.contains(selectedZone)) {
-                          selectedZone = v;
-                        }
-                      }),
+                      onChanged: (v) => setDState(() => zoneFilter = v),
                       decoration: InputDecoration(
-                        labelText: 'بحث أو كتابة اسم الزون',
+                        labelText: 'بحث وتصفية المناطق',
                         labelStyle: const TextStyle(color: SdColors.faint, fontSize: 12),
                         prefixIcon: const Icon(Icons.search, size: 18, color: SdColors.faint),
-                        suffixIcon: selectedZone != null && selectedZone!.isNotEmpty
-                            ? Padding(
-                                padding: const EdgeInsets.only(left: 8),
-                                child: Chip(
-                                  label: Text(selectedZone!, style: const TextStyle(fontSize: 11, color: Colors.white)),
-                                  backgroundColor: SdColors.success,
-                                  deleteIcon: const Icon(Icons.close, size: 14, color: Colors.white),
-                                  onDeleted: () => setDState(() {
-                                    selectedZone = null;
-                                    zoneSearchCtrl.clear();
-                                    zoneFilter = '';
-                                  }),
-                                  visualDensity: VisualDensity.compact,
-                                ),
+                        suffixIcon: zoneFilter.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.close, size: 16, color: SdColors.faint),
+                                onPressed: () => setDState(() {
+                                  zoneFilter = '';
+                                  zoneSearchCtrl.clear();
+                                }),
                               )
                             : null,
                         filled: true,
@@ -502,8 +589,35 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    // قائمة الزونات
+                    const SizedBox(height: 6),
+                    // شريط: عدد المحدَّد + تحديد الكل
+                    Row(
+                      children: [
+                        Text('المحدَّد: ${selectedZones.length}',
+                            style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.muted)),
+                        const Spacer(),
+                        if (selectableFiltered.isNotEmpty)
+                          TextButton.icon(
+                            onPressed: () => setDState(() {
+                              if (allFilteredSelected) {
+                                for (final z in selectableFiltered) {
+                                  selectedZones.remove(z['name']);
+                                }
+                              } else {
+                                for (final z in selectableFiltered) {
+                                  selectedZones.add(z['name']!);
+                                }
+                              }
+                            }),
+                            icon: Icon(allFilteredSelected ? Icons.deselect : Icons.select_all,
+                                size: 16, color: SdColors.info),
+                            label: Text(allFilteredSelected ? 'إلغاء الكل' : 'تحديد الكل',
+                                style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.info)),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    // قائمة المناطق (تحديد متعدّد)
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
@@ -511,42 +625,91 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: SdColors.divider),
                         ),
-                        child: filtered.isEmpty
-                            ? Center(child: Text(
-                                zoneFilter.isEmpty ? 'اكتب اسم الزون للبحث...' : 'لا توجد نتائج — اضغط إضافة لاستخدام "$zoneFilter"',
-                                style: TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 11),
-                                textAlign: TextAlign.center,
-                              ))
-                            : ListView.builder(
-                                itemCount: filtered.length,
-                                itemBuilder: (_, i) {
-                                  final name = filtered[i];
-                                  final isSelected = selectedZone == name;
-                                  return ListTile(
-                                    dense: true,
-                                    visualDensity: VisualDensity.compact,
-                                    selected: isSelected,
-                                    selectedTileColor: SdColors.success.withOpacity(0.1),
-                                    leading: Icon(
-                                      isSelected ? Icons.check_circle : Icons.circle_outlined,
-                                      size: 18,
-                                      color: isSelected ? SdColors.success : SdColors.faint,
+                        child: loadingZones
+                            ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                            : zonesError != null
+                                ? Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.error_outline, color: SdColors.danger, size: 28),
+                                          const SizedBox(height: 6),
+                                          Text(zonesError!,
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(fontFamily: 'Cairo', color: SdColors.danger, fontSize: 12)),
+                                          const SizedBox(height: 6),
+                                          TextButton(
+                                            onPressed: () => setDState(() {
+                                              loadedForPartner = '__retry__';
+                                            }),
+                                            child: const Text('إعادة المحاولة',
+                                                style: TextStyle(fontFamily: 'Cairo', fontSize: 12)),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    title: Text(name, style: TextStyle(
-                                      color: isSelected ? SdColors.success : SdColors.ink,
-                                      fontSize: 13,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                    )),
-                                    onTap: () => setDState(() {
-                                      selectedZone = name;
-                                      zoneSearchCtrl.text = name;
-                                    }),
-                                  );
-                                },
-                              ),
+                                  )
+                                : filtered.isEmpty
+                                    ? Center(
+                                        child: Text(
+                                          zoneOptions.isEmpty
+                                              ? (dialogPartnerId == null
+                                                  ? 'لا توجد مناطق'
+                                                  : 'لا توجد مناطق لهذا الشريك')
+                                              : 'لا نتائج للبحث',
+                                          style: const TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 12),
+                                        ),
+                                      )
+                                    : ListView.builder(
+                                        itemCount: filtered.length,
+                                        itemBuilder: (_, i) {
+                                          final name = filtered[i]['name']!;
+                                          final already = existingForPartner.contains(name);
+                                          final isSelected = selectedZones.contains(name);
+                                          return ListTile(
+                                            dense: true,
+                                            visualDensity: VisualDensity.compact,
+                                            enabled: !already,
+                                            selected: isSelected,
+                                            selectedTileColor: SdColors.success.withOpacity(0.08),
+                                            leading: Icon(
+                                              already
+                                                  ? Icons.check_circle
+                                                  : (isSelected
+                                                      ? Icons.check_box
+                                                      : Icons.check_box_outline_blank),
+                                              size: 20,
+                                              color: already
+                                                  ? SdColors.muted
+                                                  : (isSelected ? SdColors.success : SdColors.faint),
+                                            ),
+                                            title: Text(name,
+                                                style: TextStyle(
+                                                  color: already ? SdColors.faint : SdColors.ink,
+                                                  fontSize: 13,
+                                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                )),
+                                            trailing: already
+                                                ? const Text('مضافة',
+                                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: SdColors.muted))
+                                                : null,
+                                            onTap: already
+                                                ? null
+                                                : () => setDState(() {
+                                                      if (isSelected) {
+                                                        selectedZones.remove(name);
+                                                      } else {
+                                                        selectedZones.add(name);
+                                                      }
+                                                    }),
+                                          );
+                                        },
+                                      ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     TextField(
                       controller: amountCtrl,
                       keyboardType: TextInputType.number,
@@ -556,14 +719,14 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                       ],
                       style: const TextStyle(color: SdColors.ink),
                       decoration: InputDecoration(
-                        labelText: 'مبلغ الصيانة (د.ع)',
-                        labelStyle: const TextStyle(color: SdColors.faint),
+                        labelText: 'مبلغ الصيانة (د.ع) — يُطبَّق على كل المحدَّد',
+                        labelStyle: const TextStyle(color: SdColors.faint, fontSize: 12),
                         filled: true,
                         fillColor: SdColors.surfaceAlt,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     TextField(
                       controller: notesCtrl,
                       style: const TextStyle(color: SdColors.ink),
@@ -587,27 +750,34 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                   style: ElevatedButton.styleFrom(
                       backgroundColor: SdColors.success, foregroundColor: Colors.white),
                   onPressed: () async {
-                    // استخدام النص المكتوب إذا لم يتم اختيار من القائمة
-                    final zoneName = selectedZone?.isNotEmpty == true
-                        ? selectedZone!
-                        : zoneSearchCtrl.text.trim();
-                    if (zoneName.isEmpty || amountCtrl.text.isEmpty) {
-                      _snack('يجب تحديد الزون والمبلغ', SdColors.warning);
+                    if (selectedZones.isEmpty) {
+                      _snack('اختر منطقة واحدة على الأقل', SdColors.warning);
+                      return;
+                    }
+                    final amount = double.tryParse(amountCtrl.text.replaceAll(',', '')) ?? 0;
+                    if (amount <= 0) {
+                      _snack('أدخل مبلغ صيانة صحيحاً', SdColors.warning);
                       return;
                     }
                     Navigator.pop(ctx);
-                    final result = await AccountingService.instance.createZoneMaintenanceFee({
-                      'ZoneName': zoneName,
-                      'MaintenanceAmount': double.tryParse(amountCtrl.text.replaceAll(',', '')) ?? 0,
-                      'Notes': notesCtrl.text.isEmpty ? null : notesCtrl.text,
+                    final zones = selectedZones.map((n) {
+                      final zid = zoneIdByName[n] ?? '';
+                      return {
+                        'ZoneName': n,
+                        'ZoneId': zid.isEmpty ? null : zid,
+                        'MaintenanceAmount': amount,
+                        'Notes': notesCtrl.text.isEmpty ? null : notesCtrl.text,
+                      };
+                    }).toList();
+                    final result = await AccountingService.instance.bulkCreateZoneMaintenanceFees({
                       'CompanyId': widget.companyId ?? VpsAuthService.instance.currentCompanyId ?? '',
                       'PartnerId': dialogPartnerId,
+                      'Zones': zones,
                     });
-                    if (result['success'] == true) {
-                      _snack('تم إضافة أجور صيانة $zoneName', SdColors.success);
-                    } else {
-                      _snack(result['message'] ?? 'خطأ في الإضافة', SdColors.danger);
-                    }
+                    _snack(
+                        result['message']?.toString() ??
+                            (result['success'] == true ? 'تم إضافة الأجور' : 'خطأ في الإضافة'),
+                        result['success'] == true ? SdColors.success : SdColors.danger);
                     _loadData();
                   },
                   child: Text('إضافة', style: TextStyle(fontFamily: 'Cairo')),

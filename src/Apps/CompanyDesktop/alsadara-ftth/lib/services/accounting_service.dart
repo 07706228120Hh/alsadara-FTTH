@@ -1265,6 +1265,12 @@ class AccountingService {
     return _toMap(response);
   }
 
+  /// إضافة أجور صيانة لعدّة زونات دفعة واحدة. body: {CompanyId, PartnerId?, Zones:[{ZoneName, ZoneId?, MaintenanceAmount, Notes?}]}
+  Future<Map<String, dynamic>> bulkCreateZoneMaintenanceFees(Map<String, dynamic> body) async {
+    final response = await _client.post('/zone-maintenance-fees/bulk', body, (json) => json);
+    return _toMap(response);
+  }
+
   Future<Map<String, dynamic>> updateZoneMaintenanceFee(String id, Map<String, dynamic> body) async {
     final response = await _client.put('/zone-maintenance-fees/$id', body, (json) => json);
     return _toMap(response);
