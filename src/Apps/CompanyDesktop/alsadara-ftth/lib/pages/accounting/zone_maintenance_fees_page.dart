@@ -415,7 +415,7 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
       }
     } catch (_) {/* نسقط للاحتياطي */}
 
-    // 3) احتياطي: مناطق الشريك من عملياته المُزامَنة عندنا.
+    // 3) احتياطي أول: مناطق الشريك من عملياته المُزامَنة عندنا (دقيق لكل شريك نشِط).
     final res = await AccountingService.instance
         .getPartnerZones(partnerId, companyId: widget.companyId);
     final data = res['success'] == true ? res['data'] : null;
@@ -428,8 +428,17 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
       if (name.isEmpty || !seen.add(name)) continue;
       out.add({'name': name, 'id': (z['zoneId'] ?? z['ZoneId'] ?? '').toString().trim()});
     }
-    out.sort((a, b) => a['name']!.compareTo(b['name']!));
-    return out;
+    if (out.isNotEmpty) {
+      out.sort((a, b) => a['name']!.compareTo(b['name']!));
+      return out;
+    }
+
+    // 4) احتياطي عام: كاتالوج المناطق المُصدَّر من صفحة «الزونات» إلى خادمنا (ZoneStatistics).
+    //    يُستخدم للشركاء بلا عمليات مُزامَنة (مثل مكتب 11) حتى تُختار مناطقهم منه.
+    final names = await _fetchZoneNames();
+    return (names.toSet().toList()..sort())
+        .map((n) => {'name': n, 'id': ''})
+        .toList();
   }
 
   /// استخراج {name, id} من استجابة locations/zones بأشكالها (items/model.items/قائمة).
