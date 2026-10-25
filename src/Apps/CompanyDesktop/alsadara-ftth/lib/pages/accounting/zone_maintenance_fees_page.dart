@@ -241,6 +241,7 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: SdSpace.md, vertical: 4),
+            isThreeLine: notes.toString().isNotEmpty,
             leading: Container(
               width: 40,
               height: 40,
