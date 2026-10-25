@@ -1465,13 +1465,25 @@ public class LinkedAccountsController : ControllerBase
             client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
             client.DefaultRequestHeaders.Add("x-client-app", "53d57a7f-3f89-4e9d-873b-3d071bc6dd9f");
             client.DefaultRequestHeaders.Add("x-user-role", "0");
+            client.DefaultRequestHeaders.Add("Accept", "application/json, text/plain, */*");
             client.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-            var response = await client.GetAsync($"{baseUrl}/api/locations/zones?pageSize=2000&pageNumber=1", ct);
-            if (!response.IsSuccessStatusCode) return result;
-            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
-            if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
+            var response = await client.GetAsync($"{baseUrl}/api/locations/zones?pageSize=1000&pageNumber=1", ct);
+            var rawBody = await response.Content.ReadAsStringAsync(ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("ZONES fetch non-success: status={Status} bodyLen={Len} snippet={Snippet}",
+                    (int)response.StatusCode, rawBody.Length,
+                    rawBody.Length > 180 ? rawBody.Substring(0, 180) : rawBody);
                 return result;
+            }
+            using var doc = JsonDocument.Parse(rawBody);
+            if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
+            {
+                _logger.LogWarning("ZONES fetch no items: bodyLen={Len} snippet={Snippet}",
+                    rawBody.Length, rawBody.Length > 180 ? rawBody.Substring(0, 180) : rawBody);
+                return result;
+            }
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var z in items.EnumerateArray())
             {
