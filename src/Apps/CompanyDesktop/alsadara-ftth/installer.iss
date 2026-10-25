@@ -1,12 +1,12 @@
-[Setup]
-AppName=الصدارة - Alsadara
-AppVersion=2.4.25
+﻿[Setup]
+AppName=ط§ظ„طµط¯ط§ط±ط© - Alsadara
+AppVersion=2.4.26
 AppPublisher=Alsadara Platform
 AppPublisherURL=https://github.com/07706228120Hh/alsadara-FTTH
 DefaultDirName={autopf}\Alsadara
-DefaultGroupName=الصدارة
+DefaultGroupName=ط§ظ„طµط¯ط§ط±ط©
 OutputDir=build\installer
-OutputBaseFilename=Alsadara-Setup-v2.4.25
+OutputBaseFilename=Alsadara-Setup-v2.4.26
 SetupIconFile=windows\runner\resources\app_icon.ico
 Compression=lzma2
 SolidCompression=yes
@@ -28,31 +28,31 @@ Name: "desktopicon"; Description: "Create desktop shortcut"; GroupDescription: "
 
 [Files]
 Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.lib,*.exp,*.pdb"
-; شهادة جذر Let's Encrypt (ISRG Root X1) — تُثبّت في مخزن الجذر الموثوق ليثق الجهاز بخادم n8n
+; ط´ظ‡ط§ط¯ط© ط¬ط°ط± Let's Encrypt (ISRG Root X1) â€” طھظڈط«ط¨ظ‘طھ ظپظٹ ظ…ط®ط²ظ† ط§ظ„ط¬ط°ط± ط§ظ„ظ…ظˆط«ظˆظ‚ ظ„ظٹط«ظ‚ ط§ظ„ط¬ظ‡ط§ط² ط¨ط®ط§ط¯ظ… n8n
 Source: "certs\isrgrootx1.der"; DestDir: "{app}"; Flags: ignoreversion
-; خادم واتساب المحلي المدمج (Node محمول + الحزم) → {app}\whatsapp-server
-; يُستثنى كاش الويب وملفات التطوير؛ جلسات الواتساب تُحفظ في %LOCALAPPDATA% لا هنا.
+; ط®ط§ط¯ظ… ظˆط§طھط³ط§ط¨ ط§ظ„ظ…ط­ظ„ظٹ ط§ظ„ظ…ط¯ظ…ط¬ (Node ظ…ط­ظ…ظˆظ„ + ط§ظ„ط­ط²ظ…) â†’ {app}\whatsapp-server
+; ظٹظڈط³طھط«ظ†ظ‰ ظƒط§ط´ ط§ظ„ظˆظٹط¨ ظˆظ…ظ„ظپط§طھ ط§ظ„طھط·ظˆظٹط±ط› ط¬ظ„ط³ط§طھ ط§ظ„ظˆط§طھط³ط§ط¨ طھظڈط­ظپط¸ ظپظٹ %LOCALAPPDATA% ظ„ط§ ظ‡ظ†ط§.
 Source: "..\..\..\..\modules\sas-agent\whatsapp-server\*"; DestDir: "{app}\whatsapp-server"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: ".wwebjs_cache,.wwebjs_auth,.data,.gitignore,prepare_bundle.ps1,README.md,*.log"
 
 [Icons]
-Name: "{group}\الصدارة"; Filename: "{app}\Alsadara.exe"
-Name: "{group}\إزالة الصدارة"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\الصدارة - Alsadara"; Filename: "{app}\Alsadara.exe"; Tasks: desktopicon
+Name: "{group}\ط§ظ„طµط¯ط§ط±ط©"; Filename: "{app}\Alsadara.exe"
+Name: "{group}\ط¥ط²ط§ظ„ط© ط§ظ„طµط¯ط§ط±ط©"; Filename: "{uninstallexe}"
+Name: "{autodesktop}\ط§ظ„طµط¯ط§ط±ط© - Alsadara"; Filename: "{app}\Alsadara.exe"; Tasks: desktopicon
 
 [InstallDelete]
 Type: files; Name: "{app}\*.old"
 
 [Run]
-; تثبيت جذر ISRG Root X1 في مخزن الشهادات الموثوقة (يعمل لأن المُثبِّت يشتغل بصلاحيات admin)
-Filename: "{sys}\certutil.exe"; Parameters: "-addstore -f Root ""{app}\isrgrootx1.der"""; Flags: runhidden waituntilterminated; StatusMsg: "تثبيت شهادة أمان Let's Encrypt..."
-Filename: "{app}\Alsadara.exe"; Description: "تشغيل الصدارة"; Flags: nowait postinstall skipifsilent
+; طھط«ط¨ظٹطھ ط¬ط°ط± ISRG Root X1 ظپظٹ ظ…ط®ط²ظ† ط§ظ„ط´ظ‡ط§ط¯ط§طھ ط§ظ„ظ…ظˆط«ظˆظ‚ط© (ظٹط¹ظ…ظ„ ظ„ط£ظ† ط§ظ„ظ…ظڈط«ط¨ظگظ‘طھ ظٹط´طھط؛ظ„ ط¨طµظ„ط§ط­ظٹط§طھ admin)
+Filename: "{sys}\certutil.exe"; Parameters: "-addstore -f Root ""{app}\isrgrootx1.der"""; Flags: runhidden waituntilterminated; StatusMsg: "طھط«ط¨ظٹطھ ط´ظ‡ط§ط¯ط© ط£ظ…ط§ظ† Let's Encrypt..."
+Filename: "{app}\Alsadara.exe"; Description: "طھط´ط؛ظٹظ„ ط§ظ„طµط¯ط§ط±ط©"; Flags: nowait postinstall skipifsilent
 
 [Code]
 function InitializeSetup(): Boolean;
 var
   ResultCode: Integer;
 begin
-  // إغلاق التطبيق القديم إذا كان يعمل
+  // ط¥ط؛ظ„ط§ظ‚ ط§ظ„طھط·ط¨ظٹظ‚ ط§ظ„ظ‚ط¯ظٹظ… ط¥ط°ط§ ظƒط§ظ† ظٹط¹ظ…ظ„
   Exec('taskkill', '/F /IM Alsadara.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Sleep(1000);
   Result := True;

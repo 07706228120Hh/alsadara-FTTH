@@ -1,8 +1,8 @@
-name: alsadara
-description: "Alsadara Flutter application - تطبيق الصدارة لإدارة شبكات FTTH"
+﻿name: alsadara
+description: "Alsadara Flutter application - طھط·ط¨ظٹظ‚ ط§ظ„طµط¯ط§ط±ط© ظ„ط¥ط¯ط§ط±ط© ط´ط¨ظƒط§طھ FTTH"
 publish_to: 'none'
 
-version: 2.4.25+340
+version: 2.4.26+341
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -11,34 +11,34 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # كاميرا مباشرة (لضمان فتح الكاميرا الأمامية)
+  # ظƒط§ظ…ظٹط±ط§ ظ…ط¨ط§ط´ط±ط© (ظ„ط¶ظ…ط§ظ† ظپطھط­ ط§ظ„ظƒط§ظ…ظٹط±ط§ ط§ظ„ط£ظ…ط§ظ…ظٹط©)
   camera: ^0.11.0+2
 
-  # فكّ تشفير رموز QR من صور الكاميرا (Dart خالص — يعمل على ويندوز/أندرويد/iOS)
+  # ظپظƒظ‘ طھط´ظپظٹط± ط±ظ…ظˆط² QR ظ…ظ† طµظˆط± ط§ظ„ظƒط§ظ…ظٹط±ط§ (Dart ط®ط§ظ„طµ â€” ظٹط¹ظ…ظ„ ط¹ظ„ظ‰ ظˆظٹظ†ط¯ظˆط²/ط£ظ†ط¯ط±ظˆظٹط¯/iOS)
   zxing2: ^0.2.3
   image: ^4.3.0
 
-  # إدارة متغيرات البيئة بشكل آمن
+  # ط¥ط¯ط§ط±ط© ظ…طھط؛ظٹط±ط§طھ ط§ظ„ط¨ظٹط¦ط© ط¨ط´ظƒظ„ ط¢ظ…ظ†
   flutter_dotenv: ^5.2.1
 
-  # مكتبات UI ضرورية
+  # ظ…ظƒطھط¨ط§طھ UI ط¶ط±ظˆط±ظٹط©
   multiselect_formfield: ^0.1.7
   multi_select_flutter: ^4.1.3
   cupertino_icons: ^1.0.8
 
-  # مكتبات الشبكة والـ API
+  # ظ…ظƒطھط¨ط§طھ ط§ظ„ط´ط¨ظƒط© ظˆط§ظ„ظ€ API
   http: ^1.2.2
   dio: ^5.7.0
   url_launcher: ^6.3.1
 
-  # مكتبات الملفات والتخزين
+  # ظ…ظƒطھط¨ط§طھ ط§ظ„ظ…ظ„ظپط§طھ ظˆط§ظ„طھط®ط²ظٹظ†
   file_picker: ^8.1.7
   path_provider: ^2.1.5
   flutter_secure_storage: ^9.2.2
   shared_preferences: ^2.3.3
   excel: ^4.0.6
 
-  # مكتبات الخرائط والـ GIS
+  # ظ…ظƒطھط¨ط§طھ ط§ظ„ط®ط±ط§ط¦ط· ظˆط§ظ„ظ€ GIS
   google_maps_flutter: ^2.12.2
   google_fonts: ^6.1.0
   flutter_map: ^7.0.2
@@ -46,59 +46,59 @@ dependencies:
   latlong2: ^0.9.1
   xml: ^6.5.0
 
-  # مكتبات الأمان والمصادقة
-  crypto: ^3.0.3  # ✅ للتشفير SHA-256
-  pointycastle: 3.9.1  # RSA/AES نقيّ-Dart لدخول Mercusys/TP-Link (network_quality)
+  # ظ…ظƒطھط¨ط§طھ ط§ظ„ط£ظ…ط§ظ† ظˆط§ظ„ظ…طµط§ط¯ظ‚ط©
+  crypto: ^3.0.3  # âœ… ظ„ظ„طھط´ظپظٹط± SHA-256
+  pointycastle: 3.9.1  # RSA/AES ظ†ظ‚ظٹظ‘-Dart ظ„ط¯ط®ظˆظ„ Mercusys/TP-Link (network_quality)
   jwt_decoder: ^2.0.1
   oauth2: ^2.0.2
   local_auth: ^2.3.0
   flutter_web_auth_2: ^4.1.0
 
-  # مكتبات الواجهة والتصميم
+  # ظ…ظƒطھط¨ط§طھ ط§ظ„ظˆط§ط¬ظ‡ط© ظˆط§ظ„طھطµظ…ظٹظ…
   provider: ^6.1.2
   flutter_screenutil: ^5.9.3
   fl_chart: ^0.70.1
 
-  # مكتبات النظام والأجهزة
+  # ظ…ظƒطھط¨ط§طھ ط§ظ„ظ†ط¸ط§ظ… ظˆط§ظ„ط£ط¬ظ‡ط²ط©
   webview_flutter: ^4.10.0
   webview_windows: ^0.4.0
-  # قراءة كوكيز WebView (بما فيها HttpOnly) على Android/iOS — لتجاوز Cloudflare
+  # ظ‚ط±ط§ط،ط© ظƒظˆظƒظٹط² WebView (ط¨ظ…ط§ ظپظٹظ‡ط§ HttpOnly) ط¹ظ„ظ‰ Android/iOS â€” ظ„طھط¬ط§ظˆط² Cloudflare
   webview_cookie_manager: ^2.0.6
   window_manager: ^0.5.1
   permission_handler: ^11.3.1
   connectivity_plus: ^6.1.1
   geolocator: ^13.0.2
   device_info_plus: ^11.2.0
-  package_info_plus: ^8.1.0  # للحصول على معلومات إصدار التطبيق
+  package_info_plus: ^8.1.0  # ظ„ظ„ط­طµظˆظ„ ط¹ظ„ظ‰ ظ…ط¹ظ„ظˆظ…ط§طھ ط¥طµط¯ط§ط± ط§ظ„طھط·ط¨ظٹظ‚
   win32: ^5.9.0
   ffi: ^2.1.3
 
-  # مكتبات الإشعارات والطباعة
+  # ظ…ظƒطھط¨ط§طھ ط§ظ„ط¥ط´ط¹ط§ط±ط§طھ ظˆط§ظ„ط·ط¨ط§ط¹ط©
   flutter_local_notifications: ^18.0.1
   firebase_messaging: ^15.1.5
   firebase_core: ^3.8.1
-  firebase_auth: ^5.7.0  # ✅ تحديث لأحدث إصدار متوافق
+  firebase_auth: ^5.7.0  # âœ… طھط­ط¯ظٹط« ظ„ط£ط­ط¯ط« ط¥طµط¯ط§ط± ظ…طھظˆط§ظپظ‚
   cloud_firestore: ^5.5.0
   printing: ^5.13.4
   windows_taskbar: ^1.1.2
 
-  # مكتبات المشاركة والتصدير
+  # ظ…ظƒطھط¨ط§طھ ط§ظ„ظ…ط´ط§ط±ظƒط© ظˆط§ظ„طھطµط¯ظٹط±
   pdf: ^3.11.1
   share_plus: ^11.0.0
   image_picker: ^1.1.2
-  # رسم رموز QR (وحدة العقارات — العنوان الوطني)
+  # ط±ط³ظ… ط±ظ…ظˆط² QR (ظˆط­ط¯ط© ط§ظ„ط¹ظ‚ط§ط±ط§طھ â€” ط§ظ„ط¹ظ†ظˆط§ظ† ط§ظ„ظˆط·ظ†ظٹ)
   qr_flutter: ^4.1.0
-  # google_mlkit_text_recognition: ^0.14.0  # يُفعّل عند بناء Android
+  # google_mlkit_text_recognition: ^0.14.0  # ظٹظڈظپط¹ظ‘ظ„ ط¹ظ†ط¯ ط¨ظ†ط§ط، Android
 
-  # مكتبات الأدوات المساعدة
+  # ظ…ظƒطھط¨ط§طھ ط§ظ„ط£ط¯ظˆط§طھ ط§ظ„ظ…ط³ط§ط¹ط¯ط©
   validators: ^3.0.0
   intl: ^0.20.2
   logger: ^2.5.0
 
-  # مكتبات التخزين المحلي
+  # ظ…ظƒطھط¨ط§طھ ط§ظ„طھط®ط²ظٹظ† ط§ظ„ظ…ط­ظ„ظٹ
   path: ^1.9.0
 
-  # دعم اللغات المتعددة
+  # ط¯ط¹ظ… ط§ظ„ظ„ط؛ط§طھ ط§ظ„ظ…طھط¹ط¯ط¯ط©
   flutter_localizations:
     sdk: flutter
   iconsax_plus: ^1.0.0
@@ -110,11 +110,11 @@ dependencies:
   local_notifier: ^0.1.6
 
 dependency_overrides:
-  # نسخة محلية معدّلة: أُضيفت getCookies (قراءة cf_clearance HttpOnly عبر DevTools)
+  # ظ†ط³ط®ط© ظ…ط­ظ„ظٹط© ظ…ط¹ط¯ظ‘ظ„ط©: ط£ظڈط¶ظٹظپطھ getCookies (ظ‚ط±ط§ط،ط© cf_clearance HttpOnly ط¹ط¨ط± DevTools)
   webview_windows:
     path: third_party/webview_windows
-  # نسخة محلية معدّلة: إزالة PluginRegistry.Registrar (embedding v1 مُزال) + namespace/compileSdk
-  # لبناء أندرويد على AGP 8+ / Flutter الحديث (الإصدار الأصلي 2.0.6 يكسر البناء)
+  # ظ†ط³ط®ط© ظ…ط­ظ„ظٹط© ظ…ط¹ط¯ظ‘ظ„ط©: ط¥ط²ط§ظ„ط© PluginRegistry.Registrar (embedding v1 ظ…ظڈط²ط§ظ„) + namespace/compileSdk
+  # ظ„ط¨ظ†ط§ط، ط£ظ†ط¯ط±ظˆظٹط¯ ط¹ظ„ظ‰ AGP 8+ / Flutter ط§ظ„ط­ط¯ظٹط« (ط§ظ„ط¥طµط¯ط§ط± ط§ظ„ط£طµظ„ظٹ 2.0.6 ظٹظƒط³ط± ط§ظ„ط¨ظ†ط§ط،)
   webview_cookie_manager:
     path: third_party/webview_cookie_manager
 
@@ -124,11 +124,11 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.3
 
-# إعداد flutter_launcher_icons لتوليد الأيقونات من نفس صورة شاشة تسجيل الدخول
+# ط¥ط¹ط¯ط§ط¯ flutter_launcher_icons ظ„طھظˆظ„ظٹط¯ ط§ظ„ط£ظٹظ‚ظˆظ†ط§طھ ظ…ظ† ظ†ظپط³ طµظˆط±ط© ط´ط§ط´ط© طھط³ط¬ظٹظ„ ط§ظ„ط¯ط®ظˆظ„
 flutter_launcher_icons:
-  image_path: assets/app_icon.png # سيتم إنشاؤه تلقائياً من assets/splash_background.jpg عبر سكربت PowerShell
+  image_path: assets/app_icon.png # ط³ظٹطھظ… ط¥ظ†ط´ط§ط¤ظ‡ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ظ…ظ† assets/splash_background.jpg ط¹ط¨ط± ط³ظƒط±ط¨طھ PowerShell
   android: true
-  adaptive_icon_background: "#FFFFFFFF" # يمكنك وضع لون أو صورة مثل assets/app_icon_bg.png
+  adaptive_icon_background: "#FFFFFFFF" # ظٹظ…ظƒظ†ظƒ ظˆط¶ط¹ ظ„ظˆظ† ط£ظˆ طµظˆط±ط© ظ…ط«ظ„ assets/app_icon_bg.png
   adaptive_icon_foreground: assets/app_icon.png
   min_sdk_android: 21
   ios: true
@@ -146,7 +146,7 @@ flutter_launcher_icons:
 flutter:
   uses-material-design: true
 
-  # إضافة الصور والأصول
+  # ط¥ط¶ط§ظپط© ط§ظ„طµظˆط± ظˆط§ظ„ط£طµظˆظ„
   assets:
   - assets/splash_background.jpg
   - assets/login_hero.jpg
@@ -161,7 +161,7 @@ flutter:
   - assets/login3d/
   - .env
 
-  # خط Cairo مضمَّن محلياً (يعمل بلا إنترنت) — ترخيص OFL: assets/fonts/cairo/OFL.txt
+  # ط®ط· Cairo ظ…ط¶ظ…ظژظ‘ظ† ظ…ط­ظ„ظٹط§ظ‹ (ظٹط¹ظ…ظ„ ط¨ظ„ط§ ط¥ظ†طھط±ظ†طھ) â€” طھط±ط®ظٹطµ OFL: assets/fonts/cairo/OFL.txt
   fonts:
     - family: Cairo
       fonts:
@@ -180,7 +180,7 @@ flutter:
         - asset: assets/fonts/cairo/Cairo-Black.ttf
           weight: 900
 
-# ⚠️ SECURITY WARNING
+# âڑ ï¸ڈ SECURITY WARNING
 # Do NOT commit the following files to Git:
 # - .env (environment variables with API keys)
 # - assets/config.json (may contain sensitive data)
