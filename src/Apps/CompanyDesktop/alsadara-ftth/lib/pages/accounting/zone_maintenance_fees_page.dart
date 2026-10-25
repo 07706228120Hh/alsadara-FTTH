@@ -5,8 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/linked_accounts_service.dart';
-import '../../services/auth_service.dart';
-import '../../services/ftth_api_config.dart';
+import '../../services/agents_auth_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
 import '../../permissions/permissions.dart';
@@ -368,8 +367,11 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
     return [];
   }
 
-  /// جلب زونات شريك محدّد من FTTH عبر دخول خادمي مؤقّت لحسابه الرئيسي.
-  /// يعيد قائمة {name, id} خاصة بذلك الشريك.
+  /// جلب مناطق شريك محدّد من FTTH عبر دخول خادمي مؤقّت لحسابه الرئيسي.
+  ///
+  /// المصدر = شارت «المناطق حسب المقاولين» في لوحة FTTH (slice_id:52, dashboard_id:7)
+  /// **مُقيَّداً بصلاحية توكن الشريك** (guest token يحمل RLS الشريك) — نفس مسار صفحة تقارير الوكلاء.
+  /// ملاحظة: `api/locations/zones` يُعيد **كل** مناطق النظام لا مناطق الشريك، لذا لا يُستخدم هنا.
   Future<List<Map<String, String>>> _loadPartnerZones(String partnerId) async {
     final login = await LinkedAccountsService.instance.loginPartner(partnerId);
     final ldata = login['data'] ?? login;
@@ -378,46 +380,35 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
     if (token == null || token.isEmpty) {
       throw Exception(login['message']?.toString() ?? 'تعذّر الدخول لحساب الشريك');
     }
-    final url = '${FtthApi.api}/locations/zones?pageSize=1000&pageNumber=1';
-    final resp = await AuthService.instance.ftthRequestWithToken('GET', url, token);
-    if (resp.statusCode != 200) {
-      throw Exception('تعذّر جلب مناطق الشريك (${resp.statusCode})');
+    // guest token يحمل RLS الشريك (يُشتق من توكن الشريك) ⇒ الشارت يعود بمناطق هذا الشريك فقط.
+    final guest = await AgentsAuthService.fetchGuestToken(authToken: token);
+    if (guest == null || guest.isEmpty) {
+      throw Exception('تعذّر تهيئة لوحة FTTH لهذا الشريك');
     }
-    return _parseZoneItems(jsonDecode(resp.body));
-  }
-
-  /// استخراج {name, id} من استجابة locations/zones بأشكالها المختلفة (مرتّبة بلا تكرار).
-  List<Map<String, String>> _parseZoneItems(dynamic data) {
-    List list = const [];
-    if (data is List) {
-      list = data;
-    } else if (data is Map) {
-      if (data['items'] is List) {
-        list = data['items'] as List;
-      } else if (data['model'] is Map && (data['model']['items'] is List)) {
-        list = data['model']['items'] as List;
-      } else if (data['data'] is List) {
-        list = data['data'] as List;
-      }
-    }
+    final result = await AgentsAuthService.fetchChartData(
+      52, 7,
+      guestToken: guest,
+      authToken: token,
+    );
+    final rows = (result?['data'] as List?) ?? const [];
+    final cols = ((result?['colnames'] as List?)?.cast<String>()) ?? const [];
+    // عمود اسم المنطقة: المفضّل name/zone، وإلا أول عمود.
+    String zoneKey = cols.firstWhere(
+      (c) {
+        final l = c.toLowerCase();
+        return l == 'name' || l.contains('zone') || c.contains('منطقة');
+      },
+      orElse: () => cols.isNotEmpty ? cols.first : 'name',
+    );
     final seen = <String>{};
     final out = <Map<String, String>>[];
-    for (final z in list) {
+    for (final z in rows) {
       if (z is! Map) continue;
-      final self = z['self'] is Map ? z['self'] as Map : null;
-      final name = (self?['displayValue'] ??
-              z['displayValue'] ??
-              z['name'] ??
-              z['title'] ??
-              z['zoneName'] ??
-              self?['id'] ??
-              z['id'] ??
-              '')
+      final name = (z[zoneKey] ?? z['name'] ?? z['ZoneName'] ?? z['zoneName'] ?? '')
           .toString()
           .trim();
-      final id = (self?['id'] ?? z['id'] ?? z['zoneId'] ?? '').toString().trim();
       if (name.isEmpty || !seen.add(name)) continue;
-      out.add({'name': name, 'id': id});
+      out.add({'name': name, 'id': (z['id'] ?? z['zoneId'] ?? '').toString().trim()});
     }
     out.sort((a, b) => a['name']!.compareTo(b['name']!));
     return out;
