@@ -1468,22 +1468,16 @@ public class LinkedAccountsController : ControllerBase
             client.DefaultRequestHeaders.Add("Accept", "application/json, text/plain, */*");
             client.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-            var response = await client.GetAsync($"{baseUrl}/api/locations/zones?pageSize=1000&pageNumber=1", ct);
-            var rawBody = await response.Content.ReadAsStringAsync(ct);
+            // بلا query params: WAF يرفض pageSize/pageNumber على هذا المسار بـ403. الافتراضي يعيد كل مناطق الشريك.
+            var response = await client.GetAsync($"{baseUrl}/api/locations/zones", ct);
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("ZONES fetch non-success: status={Status} bodyLen={Len} snippet={Snippet}",
-                    (int)response.StatusCode, rawBody.Length,
-                    rawBody.Length > 180 ? rawBody.Substring(0, 180) : rawBody);
+                _logger.LogWarning("ZONES fetch non-success: status={Status}", (int)response.StatusCode);
                 return result;
             }
-            using var doc = JsonDocument.Parse(rawBody);
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
             if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
-            {
-                _logger.LogWarning("ZONES fetch no items: bodyLen={Len} snippet={Snippet}",
-                    rawBody.Length, rawBody.Length > 180 ? rawBody.Substring(0, 180) : rawBody);
                 return result;
-            }
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var z in items.EnumerateArray())
             {
