@@ -5,7 +5,6 @@ import 'package:http/http.dart' as http;
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/linked_accounts_service.dart';
-import '../../services/auth_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
 import '../../permissions/permissions.dart';
@@ -367,113 +366,50 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
     return [];
   }
 
-  /// جلب مناطق شريك محدّد — المصدر الأساسي هو FTTH `admin.ftth.iq/api/locations/zones`
-  /// بتوكن الشريك (نفس مصدر صفحة «الزونات»، عبر بوّابة Cloudflare)، فيُرجِع مناطق الشريك.
-  /// احتياطي: مناطق الشريك من عملياته المُزامَنة عندنا (endpoint partner-zones).
+  /// جلب مناطق شريك محدّد.
+  /// 1) المصدر الأساسي: endpoint خادمي حيّ يدخل لحساب الشريك ويجلب مناطقه من FTTH (مقيَّدة به،
+  ///    يتجاوز حجب Cloudflare لأن الجلب يتم من خادمنا لا من جهاز العميل).
+  /// 2) احتياطي: مناطق الشريك من عملياته المُزامَنة عندنا.
+  /// 3) احتياطي عام: كاتالوج المناطق المُصدَّر إلى خادمنا (ZoneStatistics).
   Future<List<Map<String, String>>> _loadPartnerZones(String partnerId) async {
-    const zonesPath = '/locations/zones?pageSize=2000&pageNumber=1';
-    const extra = {
-      'x-user-role': '0',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    };
-    // المضيفان: admin (الموحّد) و api (يعمل أحياناً حين يُحجب admin بـCloudflare) — كصفحة الزونات.
-    const hosts = ['https://admin.ftth.iq/api', 'https://api.ftth.iq/api'];
-
-    List<Map<String, String>>? tryParse(dynamic resp) {
-      if (resp == null || resp.statusCode != 200) return null;
-      try {
-        final p = _parseZoneItems(jsonDecode(resp.body));
-        return p.isNotEmpty ? p : null;
-      } catch (_) {
-        return null;
+    List<Map<String, String>> parseRows(dynamic data) {
+      final rows = (data is List ? data : (data is Map ? (data['data'] ?? []) : [])) as List;
+      final seen = <String>{};
+      final out = <Map<String, String>>[];
+      for (final z in rows) {
+        if (z is! Map) continue;
+        final name = (z['zoneName'] ?? z['ZoneName'] ?? '').toString().trim();
+        if (name.isEmpty || !seen.add(name)) continue;
+        out.add({'name': name, 'id': (z['zoneId'] ?? z['ZoneId'] ?? '').toString().trim()});
       }
-    }
-
-    // 1) بتوكن الشريك (دخول خادمي) — مناطق هذا الشريك تحديداً. جرّب كلا المضيفين.
-    try {
-      final login = await LinkedAccountsService.instance.loginPartner(partnerId);
-      final ldata = login['data'] ?? login;
-      final token = (ldata is Map ? (ldata['accessToken'] ?? ldata['AccessToken']) : null)
-          ?.toString();
-      if (token != null && token.isNotEmpty) {
-        for (final host in hosts) {
-          final resp = await AuthService.instance
-              .ftthRequestWithToken('GET', '$host$zonesPath', token, extraHeaders: extra);
-          final p = tryParse(resp);
-          if (p != null) return p;
-        }
-      }
-    } catch (_) {/* نسقط للمصدر التالي */}
-
-    // 2) بجلسة المستخدم الحالية (كصفحة الزونات التي تعمل) — كاتالوج المناطق.
-    try {
-      for (final host in hosts) {
-        final resp = await AuthService.instance
-            .authenticatedRequest('GET', '$host$zonesPath', headers: extra);
-        final p = tryParse(resp);
-        if (p != null) return p;
-      }
-    } catch (_) {/* نسقط للاحتياطي */}
-
-    // 3) احتياطي أول: مناطق الشريك من عملياته المُزامَنة عندنا (دقيق لكل شريك نشِط).
-    final res = await AccountingService.instance
-        .getPartnerZones(partnerId, companyId: widget.companyId);
-    final data = res['success'] == true ? res['data'] : null;
-    final rows = (data is List ? data : (data is Map ? (data['data'] ?? []) : [])) as List;
-    final seen = <String>{};
-    final out = <Map<String, String>>[];
-    for (final z in rows) {
-      if (z is! Map) continue;
-      final name = (z['zoneName'] ?? z['ZoneName'] ?? '').toString().trim();
-      if (name.isEmpty || !seen.add(name)) continue;
-      out.add({'name': name, 'id': (z['zoneId'] ?? z['ZoneId'] ?? '').toString().trim()});
-    }
-    if (out.isNotEmpty) {
       out.sort((a, b) => a['name']!.compareTo(b['name']!));
       return out;
     }
 
-    // 4) احتياطي عام: كاتالوج المناطق المُصدَّر من صفحة «الزونات» إلى خادمنا (ZoneStatistics).
-    //    يُستخدم للشركاء بلا عمليات مُزامَنة (مثل مكتب 11) حتى تُختار مناطقهم منه.
+    // 1) مناطق الشريك الحيّة من FTTH عبر خادمنا (دخول خادمي لحساب الشريك).
+    try {
+      final live = await LinkedAccountsService.instance.getPartnerZones(partnerId);
+      if (live['success'] == true) {
+        final out = parseRows(live['data']);
+        if (out.isNotEmpty) return out;
+      }
+    } catch (_) {/* نسقط للاحتياطي */}
+
+    // 2) احتياطي: مناطق الشريك من عملياته المُزامَنة عندنا.
+    try {
+      final res = await AccountingService.instance
+          .getPartnerZones(partnerId, companyId: widget.companyId);
+      if (res['success'] == true) {
+        final out = parseRows(res['data']);
+        if (out.isNotEmpty) return out;
+      }
+    } catch (_) {/* نسقط للاحتياطي */}
+
+    // 3) احتياطي عام: كاتالوج المناطق المُصدَّر من صفحة «الزونات» إلى خادمنا (ZoneStatistics).
     final names = await _fetchZoneNames();
     return (names.toSet().toList()..sort())
         .map((n) => {'name': n, 'id': ''})
         .toList();
-  }
-
-  /// استخراج {name, id} من استجابة locations/zones بأشكالها (items/model.items/قائمة).
-  List<Map<String, String>> _parseZoneItems(dynamic data) {
-    List list = const [];
-    if (data is List) {
-      list = data;
-    } else if (data is Map) {
-      if (data['items'] is List) {
-        list = data['items'] as List;
-      } else if (data['model'] is Map && (data['model']['items'] is List)) {
-        list = data['model']['items'] as List;
-      } else if (data['data'] is List) {
-        list = data['data'] as List;
-      }
-    }
-    final seen = <String>{};
-    final out = <Map<String, String>>[];
-    for (final z in list) {
-      if (z is! Map) continue;
-      final self = z['self'] is Map ? z['self'] as Map : null;
-      final name = (self?['displayValue'] ??
-              z['displayValue'] ??
-              z['name'] ??
-              z['title'] ??
-              z['zoneName'] ??
-              '')
-          .toString()
-          .trim();
-      final id = (self?['id'] ?? z['id'] ?? z['zoneId'] ?? '').toString().trim();
-      if (name.isEmpty || !seen.add(name)) continue;
-      out.add({'name': name, 'id': id});
-    }
-    out.sort((a, b) => a['name']!.compareTo(b['name']!));
-    return out;
   }
 
   void _showAddDialog() {

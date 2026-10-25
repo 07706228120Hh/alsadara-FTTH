@@ -408,4 +408,11 @@ class LinkedAccountsService {
         '/linked-accounts/partners/$id/login', {}, (json) => json);
     return _toMap(response);
   }
+
+  /// مناطق الشريك الحيّة من FTTH (جلب خادمي). يعيد data:[{zoneId, zoneName}].
+  Future<Map<String, dynamic>> getPartnerZones(String id) async {
+    final response =
+        await _client.get('/linked-accounts/partners/$id/zones', (json) => json);
+    return _toMap(response);
+  }
 }
