@@ -98,19 +98,11 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
       final data = res['data'];
       final verified =
           data is Map ? (data['verified'] == true || data['Verified'] == true) : false;
-      final memberId = data is Map
-          ? (data['ftthMemberId'] ?? data['FtthMemberId'])?.toString()
-          : null;
-      final String msg;
-      if (!verified) {
-        msg = 'فشل التحقّق — تأكّد من البيانات';
-      } else if (memberId != null && memberId.isNotEmpty) {
-        msg = 'تم التوثيق وجلب رقم العضو ($memberId) بنجاح';
-      } else {
-        msg = 'تم التوثيق (لم يُعثر على رقم عضو مطابق)';
-      }
+      // رسالة الباكند تشمل الإسناد التلقائي للشريك («تم التحقق وإسناد الشريك X»).
+      final msg = res['message']?.toString() ??
+          (verified ? 'تم التوثيق' : 'فشل التحقّق — تأكّد من البيانات');
       _toast(msg, color: verified ? SdColors.success : SdColors.warning);
-      _load();
+      _load(); // يُظهر الشريك المُسنَد على البطاقة
     } else {
       _toast(res['message']?.toString() ?? 'تعذّر التحقّق', color: SdColors.danger);
     }
