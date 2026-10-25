@@ -1163,6 +1163,36 @@ public class LinkedAccountsController : ControllerBase
     }
 
     /// <summary>
+    /// مناطق (زونات) الشريك من FTTH مباشرة: دخول خادمي لحساب الشريك الرئيسي ثم
+    /// GET /api/locations/zones بتوكنه (النتيجة مقيَّدة بمناطق هذا الشريك). خادمي بالكامل —
+    /// لا يُعاد أي سرّ، والاعتماد يُفكّ في الذاكرة فقط.
+    /// </summary>
+    [HttpGet("partners/{id}/zones")]
+    [RequirePermission("linked_accounts", "manage", PermissionSystem.Second, failClosed: true)]
+    [EnableRateLimiting("credential-reveal")]
+    public async Task<IActionResult> GetPartnerZones(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var partner = await _db.FtthPartners.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
+        if (partner == null || partner.CompanyId != companyId)
+            return NotFound(new { success = false, message = "الشريك غير موجود" });
+        try
+        {
+            var password = _secretProtector.Unprotect(partner.MainPasswordEncrypted);
+            var login = await FtthLoginAsync(partner.ServerUrl, partner.MainUsername, password, ct);
+            if (!login.Ok)
+                return StatusCode(502, new { success = false, message = login.Error ?? "تعذّر تسجيل الدخول لحساب الشريك الرئيسي" });
+            var zones = await FetchPartnerZonesAsync(partner.ServerUrl, login.AccessToken!, ct);
+            return Ok(new { success = true, data = zones, total = zones.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب مناطق الشريك");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
     /// دخول خادمي لحساب الشريك الرئيسي ويعيد توكن الوصول (+ معرّف/اسم الشريك) ليجلب التطبيق
     /// عمليات هذا الشريك ويوسمها. لا يُعاد أي سرّ دائم؛ محدود المعدّل ومُدقّق.
     /// </summary>
@@ -1414,6 +1444,51 @@ public class LinkedAccountsController : ControllerBase
             }
         }
         catch (Exception ex) { _logger.LogWarning(ex, "تعذّر جلب مشغّلي الشريك"); }
+        return result;
+    }
+
+    /// <summary>
+    /// يجلب مناطق الشريك من FTTH بتوكنه عبر GET /api/locations/zones (بترويسات WAF + x-client-app).
+    /// يعيد قائمة {zoneId, zoneName} (self.displayValue/id)، مقيَّدة بمناطق هذا الشريك.
+    /// </summary>
+    private async Task<List<object>> FetchPartnerZonesAsync(string serverUrl, string accessToken, CancellationToken ct)
+    {
+        var result = new List<object>();
+        var baseUrl = string.IsNullOrWhiteSpace(serverUrl) ? DefaultFtthBaseUrl : serverUrl.TrimEnd('/');
+        if (!IsAllowedFtthServerUrl(baseUrl)) return result;
+        try
+        {
+            using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(20) };
+            client.DefaultRequestHeaders.Add("Origin", "https://admin.ftth.iq");
+            client.DefaultRequestHeaders.Add("Referer", "https://admin.ftth.iq/");
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            client.DefaultRequestHeaders.Add("x-client-app", "53d57a7f-3f89-4e9d-873b-3d071bc6dd9f");
+            client.DefaultRequestHeaders.Add("x-user-role", "0");
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            var response = await client.GetAsync($"{baseUrl}/api/locations/zones?pageSize=2000&pageNumber=1", ct);
+            if (!response.IsSuccessStatusCode) return result;
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
+                return result;
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var z in items.EnumerateArray())
+            {
+                if (z.ValueKind != JsonValueKind.Object) continue;
+                string? name = null, zid = null;
+                if (z.TryGetProperty("self", out var self) && self.ValueKind == JsonValueKind.Object)
+                {
+                    name = GetJsonString(self, "displayValue");
+                    zid = GetJsonString(self, "id");
+                }
+                name ??= GetJsonString(z, "displayValue") ?? GetJsonString(z, "name") ?? zid;
+                zid ??= GetJsonString(z, "id");
+                if (string.IsNullOrWhiteSpace(name) || !seen.Add(name)) continue;
+                result.Add(new { zoneId = zid ?? "", zoneName = name });
+            }
+        }
+        catch (Exception ex) { _logger.LogWarning(ex, "تعذّر جلب مناطق الشريك"); }
         return result;
     }
 }
