@@ -473,6 +473,23 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
               filtered.where((z) => !existingForPartner.contains(z['name'])).toList();
           final allFilteredSelected = selectableFiltered.isNotEmpty &&
               selectableFiltered.every((z) => selectedZones.contains(z['name']));
+          // إدخال يدوي: اسم منطقة غير موجود في القائمة (للشركاء بلا مناطق مُزامَنة).
+          final manualTerm = zoneFilter.trim();
+          final canAddManual = manualTerm.isNotEmpty &&
+              !zoneOptions.any((z) => z['name']!.toLowerCase() == manualTerm.toLowerCase());
+          void addManualZone() {
+            if (manualTerm.isEmpty) return;
+            if (!zoneOptions.any((z) => z['name'] == manualTerm)) {
+              zoneOptions = [
+                {'name': manualTerm, 'id': ''},
+                ...zoneOptions,
+              ];
+              zoneIdByName[manualTerm] = '';
+            }
+            selectedZones.add(manualTerm);
+            zoneFilter = '';
+            zoneSearchCtrl.clear();
+          }
 
           return Directionality(
             textDirection: TextDirection.rtl,
@@ -619,62 +636,96 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                                       ),
                                     ),
                                   )
-                                : filtered.isEmpty
-                                    ? Center(
-                                        child: Text(
-                                          zoneOptions.isEmpty
-                                              ? (dialogPartnerId == null
-                                                  ? 'لا توجد مناطق'
-                                                  : 'لا توجد مناطق لهذا الشريك')
-                                              : 'لا نتائج للبحث',
-                                          style: const TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 12),
-                                        ),
-                                      )
-                                    : ListView.builder(
-                                        itemCount: filtered.length,
-                                        itemBuilder: (_, i) {
-                                          final name = filtered[i]['name']!;
-                                          final already = existingForPartner.contains(name);
-                                          final isSelected = selectedZones.contains(name);
-                                          return ListTile(
-                                            dense: true,
-                                            visualDensity: VisualDensity.compact,
-                                            enabled: !already,
-                                            selected: isSelected,
-                                            selectedTileColor: SdColors.success.withOpacity(0.08),
-                                            leading: Icon(
-                                              already
-                                                  ? Icons.check_circle
-                                                  : (isSelected
-                                                      ? Icons.check_box
-                                                      : Icons.check_box_outline_blank),
-                                              size: 20,
-                                              color: already
-                                                  ? SdColors.muted
-                                                  : (isSelected ? SdColors.success : SdColors.faint),
+                                : Column(
+                                    children: [
+                                      if (canAddManual)
+                                        InkWell(
+                                          onTap: () => setDState(addManualZone),
+                                          child: Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                            decoration: BoxDecoration(
+                                              color: SdColors.info.withOpacity(0.08),
+                                              border: const Border(bottom: BorderSide(color: SdColors.divider)),
                                             ),
-                                            title: Text(name,
-                                                style: TextStyle(
-                                                  color: already ? SdColors.faint : SdColors.ink,
-                                                  fontSize: 13,
-                                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                                )),
-                                            trailing: already
-                                                ? const Text('مضافة',
-                                                    style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: SdColors.muted))
-                                                : null,
-                                            onTap: already
-                                                ? null
-                                                : () => setDState(() {
-                                                      if (isSelected) {
-                                                        selectedZones.remove(name);
-                                                      } else {
-                                                        selectedZones.add(name);
-                                                      }
-                                                    }),
-                                          );
-                                        },
+                                            child: Row(
+                                              children: [
+                                                const Icon(Icons.add_circle, size: 18, color: SdColors.info),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text('إضافة «$manualTerm» كمنطقة يدوية',
+                                                      style: const TextStyle(fontFamily: 'Cairo', fontSize: 12, color: SdColors.info)),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      Expanded(
+                                        child: filtered.isEmpty
+                                            ? Center(
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(12),
+                                                  child: Text(
+                                                    canAddManual
+                                                        ? 'اضغط «إضافة «$manualTerm»» بالأعلى لإضافتها'
+                                                        : (zoneOptions.isEmpty
+                                                            ? (dialogPartnerId == null
+                                                                ? 'لا توجد مناطق'
+                                                                : 'لا مناطق مُزامَنة لهذا الشريك — اكتب اسم المنطقة لإضافتها يدوياً')
+                                                            : 'لا نتائج للبحث'),
+                                                    textAlign: TextAlign.center,
+                                                    style: const TextStyle(fontFamily: 'Cairo', color: SdColors.faint, fontSize: 12),
+                                                  ),
+                                                ),
+                                              )
+                                            : ListView.builder(
+                                                itemCount: filtered.length,
+                                                itemBuilder: (_, i) {
+                                                  final name = filtered[i]['name']!;
+                                                  final already = existingForPartner.contains(name);
+                                                  final isSelected = selectedZones.contains(name);
+                                                  return ListTile(
+                                                    dense: true,
+                                                    visualDensity: VisualDensity.compact,
+                                                    enabled: !already,
+                                                    selected: isSelected,
+                                                    selectedTileColor: SdColors.success.withOpacity(0.08),
+                                                    leading: Icon(
+                                                      already
+                                                          ? Icons.check_circle
+                                                          : (isSelected
+                                                              ? Icons.check_box
+                                                              : Icons.check_box_outline_blank),
+                                                      size: 20,
+                                                      color: already
+                                                          ? SdColors.muted
+                                                          : (isSelected ? SdColors.success : SdColors.faint),
+                                                    ),
+                                                    title: Text(name,
+                                                        style: TextStyle(
+                                                          color: already ? SdColors.faint : SdColors.ink,
+                                                          fontSize: 13,
+                                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                        )),
+                                                    trailing: already
+                                                        ? const Text('مضافة',
+                                                            style: TextStyle(fontFamily: 'Cairo', fontSize: 10, color: SdColors.muted))
+                                                        : null,
+                                                    onTap: already
+                                                        ? null
+                                                        : () => setDState(() {
+                                                              if (isSelected) {
+                                                                selectedZones.remove(name);
+                                                              } else {
+                                                                selectedZones.add(name);
+                                                              }
+                                                            }),
+                                                  );
+                                                },
+                                              ),
                                       ),
+                                    ],
+                                  ),
                       ),
                     ),
                     const SizedBox(height: 10),
