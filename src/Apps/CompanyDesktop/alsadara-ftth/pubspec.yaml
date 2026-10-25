@@ -2,7 +2,7 @@
 description: "Alsadara Flutter application - طھط·ط¨ظٹظ‚ ط§ظ„طµط¯ط§ط±ط© ظ„ط¥ط¯ط§ط±ط© ط´ط¨ظƒط§طھ FTTH"
 publish_to: 'none'
 
-version: 2.4.26+341
+version: 2.4.27+342
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
