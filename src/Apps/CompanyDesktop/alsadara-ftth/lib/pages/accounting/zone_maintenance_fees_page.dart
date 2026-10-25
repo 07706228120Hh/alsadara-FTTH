@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
 import '../../services/linked_accounts_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/ftth_api_config.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
 import '../../permissions/permissions.dart';
@@ -366,18 +368,37 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
     return [];
   }
 
-  /// جلب مناطق شريك محدّد من عملياته المُزامَنة عبر خادمنا (موثوق ومُقيَّد بالشريك).
-  ///
-  /// المصدر = endpoint `partner-zones` (ZoneName المميّزة من SubscriptionLogs لهذا الشريك).
-  /// بديل موثوق عن لوحة FTTH التي يحجبها Cloudflare (503) على dashboard.ftth.iq،
-  /// وعن `api/locations/zones` الذي يُعيد كل مناطق النظام لا مناطق الشريك.
+  /// جلب مناطق شريك محدّد — المصدر الأساسي هو FTTH `admin.ftth.iq/api/locations/zones`
+  /// بتوكن الشريك (نفس مصدر صفحة «الزونات»، عبر بوّابة Cloudflare)، فيُرجِع مناطق الشريك.
+  /// احتياطي: مناطق الشريك من عملياته المُزامَنة عندنا (endpoint partner-zones).
   Future<List<Map<String, String>>> _loadPartnerZones(String partnerId) async {
+    // 1) المصدر الأساسي: FTTH locations/zones بتوكن الشريك (كما في صفحة الزونات).
+    try {
+      final login = await LinkedAccountsService.instance.loginPartner(partnerId);
+      final ldata = login['data'] ?? login;
+      final token = (ldata is Map ? (ldata['accessToken'] ?? ldata['AccessToken']) : null)
+          ?.toString();
+      if (token != null && token.isNotEmpty) {
+        final url = '${FtthApi.api}/locations/zones?pageSize=2000&pageNumber=1';
+        final resp = await AuthService.instance.ftthRequestWithToken(
+          'GET', url, token,
+          extraHeaders: const {
+            'x-user-role': '0',
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+        );
+        if (resp.statusCode == 200) {
+          final parsed = _parseZoneItems(jsonDecode(resp.body));
+          if (parsed.isNotEmpty) return parsed;
+        }
+      }
+    } catch (_) {/* نسقط للمصدر الاحتياطي */}
+
+    // 2) احتياطي: مناطق الشريك من عملياته المُزامَنة عندنا.
     final res = await AccountingService.instance
         .getPartnerZones(partnerId, companyId: widget.companyId);
-    if (res['success'] != true) {
-      throw Exception(res['message']?.toString() ?? 'تعذّر جلب مناطق الشريك');
-    }
-    final data = res['data'];
+    final data = res['success'] == true ? res['data'] : null;
     final rows = (data is List ? data : (data is Map ? (data['data'] ?? []) : [])) as List;
     final seen = <String>{};
     final out = <Map<String, String>>[];
@@ -386,6 +407,41 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
       final name = (z['zoneName'] ?? z['ZoneName'] ?? '').toString().trim();
       if (name.isEmpty || !seen.add(name)) continue;
       out.add({'name': name, 'id': (z['zoneId'] ?? z['ZoneId'] ?? '').toString().trim()});
+    }
+    out.sort((a, b) => a['name']!.compareTo(b['name']!));
+    return out;
+  }
+
+  /// استخراج {name, id} من استجابة locations/zones بأشكالها (items/model.items/قائمة).
+  List<Map<String, String>> _parseZoneItems(dynamic data) {
+    List list = const [];
+    if (data is List) {
+      list = data;
+    } else if (data is Map) {
+      if (data['items'] is List) {
+        list = data['items'] as List;
+      } else if (data['model'] is Map && (data['model']['items'] is List)) {
+        list = data['model']['items'] as List;
+      } else if (data['data'] is List) {
+        list = data['data'] as List;
+      }
+    }
+    final seen = <String>{};
+    final out = <Map<String, String>>[];
+    for (final z in list) {
+      if (z is! Map) continue;
+      final self = z['self'] is Map ? z['self'] as Map : null;
+      final name = (self?['displayValue'] ??
+              z['displayValue'] ??
+              z['name'] ??
+              z['title'] ??
+              z['zoneName'] ??
+              '')
+          .toString()
+          .trim();
+      final id = (self?['id'] ?? z['id'] ?? z['zoneId'] ?? '').toString().trim();
+      if (name.isEmpty || !seen.add(name)) continue;
+      out.add({'name': name, 'id': id});
     }
     out.sort((a, b) => a['name']!.compareTo(b['name']!));
     return out;

@@ -591,11 +591,13 @@ class AuthService {
     String url,
     String token, {
     Object? body,
+    Map<String, String>? extraHeaders,
   }) async {
     const requestTimeout = Duration(seconds: 45);
     final headers = <String, String>{
       'Authorization': 'Bearer $token',
       'Accept': 'application/json',
+      if (extraHeaders != null) ...extraHeaders,
     };
     var response =
         await _send(method, url, headers: headers, body: body).timeout(requestTimeout);
