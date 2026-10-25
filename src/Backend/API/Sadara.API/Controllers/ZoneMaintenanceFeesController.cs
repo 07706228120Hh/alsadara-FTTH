@@ -4,37 +4,59 @@ using Microsoft.EntityFrameworkCore;
 using Sadara.API.Authorization;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
+using Sadara.Infrastructure.Data;
 
 namespace Sadara.API.Controllers;
 
 /// <summary>إدارة أجور صيانة الزونات</summary>
 [ApiController]
 [Route("api/zone-maintenance-fees")]
-public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork) : ControllerBase
+public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork, SadaraDbContext db) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly SadaraDbContext _db = db;
 
     /// <summary>جلب كل أجور الصيانة</summary>
     [HttpGet]
     [Authorize]
     [RequirePermission("accounting.ftth_operators", "view")]
-    public async Task<IActionResult> GetAll([FromQuery] Guid? companyId)
+    public async Task<IActionResult> GetAll([FromQuery] Guid? companyId, [FromQuery] Guid? partnerId)
     {
         var query = _unitOfWork.ZoneMaintenanceFees.AsQueryable();
         if (companyId.HasValue)
             query = query.Where(z => z.CompanyId == companyId.Value);
+        // فلتر الشريك: المحدّد + الاحتياطية (بلا شريك) عند اختيار شريك.
+        if (partnerId.HasValue)
+            query = query.Where(z => z.PartnerId == partnerId.Value || z.PartnerId == null);
 
         var fees = await query.OrderBy(z => z.ZoneName).ToListAsync();
         return Ok(new { success = true, data = fees });
     }
 
-    /// <summary>جلب أجور صيانة زون محدد بالاسم — يُستخدم من شاشة التفعيل</summary>
+    /// <summary>
+    /// جلب أجور صيانة زون محدد بالاسم — يُستخدم من شاشة التفعيل.
+    /// عند تمرير ftthPartnerId (معرّف شريك FTTH، مثل "2261175") يُحلّ لكيان الشريك
+    /// وتُرجَّح أجرة ذلك الشريك على الأجرة الاحتياطية (بلا شريك).
+    /// </summary>
     [HttpGet("check")]
     [AllowAnonymous]
-    public async Task<IActionResult> CheckZone([FromQuery] string zoneName, [FromQuery] Guid? companyId)
+    public async Task<IActionResult> CheckZone(
+        [FromQuery] string zoneName,
+        [FromQuery] Guid? companyId,
+        [FromQuery] string? ftthPartnerId)
     {
         if (string.IsNullOrWhiteSpace(zoneName))
             return Ok(new { success = true, hasMaintenanceFee = false, amount = 0 });
+
+        // حلّ معرّف شريك FTTH → معرّف كيان الشريك عندنا (إن وُجد).
+        Guid? partnerEntityId = null;
+        if (!string.IsNullOrWhiteSpace(ftthPartnerId))
+        {
+            var pq = _db.FtthPartners.Where(p => !p.IsDeleted && p.PartnerAccountId == ftthPartnerId);
+            if (companyId.HasValue)
+                pq = pq.Where(p => p.CompanyId == companyId.Value);
+            partnerEntityId = await pq.Select(p => (Guid?)p.Id).FirstOrDefaultAsync();
+        }
 
         var query = _unitOfWork.ZoneMaintenanceFees.AsQueryable()
             .Where(z => z.IsEnabled && z.ZoneName == zoneName);
@@ -42,9 +64,18 @@ public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork) : ControllerB
         if (companyId.HasValue)
             query = query.Where(z => z.CompanyId == companyId.Value);
 
-        var fee = await query.FirstOrDefaultAsync();
-        if (fee == null)
+        // فلتر الشريك: المحدّد + الاحتياطية (بلا شريك) عند حلّ شريك.
+        if (partnerEntityId.HasValue)
+            query = query.Where(z => z.PartnerId == partnerEntityId.Value || z.PartnerId == null);
+
+        var fees = await query.ToListAsync();
+        if (fees.Count == 0)
             return Ok(new { success = true, hasMaintenanceFee = false, amount = 0 });
+
+        // ترجيح أجرة الشريك المحلول على الأجرة الاحتياطية (بلا شريك).
+        var fee = partnerEntityId.HasValue
+            ? (fees.FirstOrDefault(f => f.PartnerId == partnerEntityId.Value) ?? fees[0])
+            : fees[0];
 
         return Ok(new
         {
@@ -62,11 +93,12 @@ public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork) : ControllerB
     [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> Create([FromBody] CreateZoneMaintenanceFeeDto dto)
     {
-        // تحقق من عدم التكرار
+        // تحقق من عدم التكرار — لكل (شركة + شريك + زون): نفس الزون مسموح لشركاء مختلفين.
         var exists = await _unitOfWork.ZoneMaintenanceFees.AsQueryable()
-            .AnyAsync(z => z.ZoneName == dto.ZoneName && z.CompanyId == dto.CompanyId);
+            .AnyAsync(z => z.ZoneName == dto.ZoneName && z.CompanyId == dto.CompanyId
+                && z.PartnerId == dto.PartnerId);
         if (exists)
-            return BadRequest(new { success = false, message = $"أجور صيانة للزون '{dto.ZoneName}' موجودة مسبقاً" });
+            return BadRequest(new { success = false, message = $"أجور صيانة للزون '{dto.ZoneName}' موجودة مسبقاً لهذا الشريك" });
 
         var fee = new ZoneMaintenanceFee
         {
@@ -76,6 +108,7 @@ public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork) : ControllerB
             MaintenanceAmount = dto.MaintenanceAmount,
             Notes = dto.Notes,
             IsEnabled = dto.IsEnabled ?? true,
+            PartnerId = dto.PartnerId,
             CompanyId = dto.CompanyId
         };
 
@@ -95,7 +128,8 @@ public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork) : ControllerB
         foreach (var zone in dto.Zones)
         {
             var exists = await _unitOfWork.ZoneMaintenanceFees.AsQueryable()
-                .AnyAsync(z => z.ZoneName == zone.ZoneName && z.CompanyId == dto.CompanyId);
+                .AnyAsync(z => z.ZoneName == zone.ZoneName && z.CompanyId == dto.CompanyId
+                    && z.PartnerId == dto.PartnerId);
             if (exists) { skipped++; continue; }
 
             var fee = new ZoneMaintenanceFee
@@ -106,6 +140,7 @@ public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork) : ControllerB
                 MaintenanceAmount = zone.MaintenanceAmount,
                 Notes = zone.Notes,
                 IsEnabled = true,
+                PartnerId = dto.PartnerId,
                 CompanyId = dto.CompanyId
             };
             await _unitOfWork.ZoneMaintenanceFees.AddAsync(fee);
@@ -160,7 +195,8 @@ public record CreateZoneMaintenanceFeeDto(
     decimal MaintenanceAmount,
     string? Notes,
     bool? IsEnabled,
-    Guid CompanyId
+    Guid CompanyId,
+    Guid? PartnerId = null
 );
 
 public record UpdateZoneMaintenanceFeeDto(
@@ -172,7 +208,8 @@ public record UpdateZoneMaintenanceFeeDto(
 
 public record BulkZoneMaintenanceFeeDto(
     Guid CompanyId,
-    List<BulkZoneItem> Zones
+    List<BulkZoneItem> Zones,
+    Guid? PartnerId = null
 );
 
 public record BulkZoneItem(

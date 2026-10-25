@@ -2478,19 +2478,45 @@ public class FtthAccountingController : ControllerBase
                 planPriceMap.TryAdd(p.Name, p.MonthlyPrice);
             }
 
+            // خريطة شريك: معرّف الكيان → معرّف شريك FTTH (PartnerAccountId) — لمطابقة أجرة الزون بالشريك.
+            var partnerFtthIdMap = await _db.FtthPartners
+                .Where(p => !p.IsDeleted && (syncCompanyId == null || p.CompanyId == syncCompanyId))
+                .Select(p => new { p.Id, p.PartnerAccountId })
+                .ToDictionaryAsync(x => x.Id, x => x.PartnerAccountId);
+
             var allZoneFees = await _unitOfWork.ZoneMaintenanceFees.AsQueryable()
-                .Where(z => !z.IsDeleted && z.IsEnabled)
-                .Select(z => new { z.ZoneName, z.ZoneId, z.MaintenanceAmount })
+                .Where(z => !z.IsDeleted && z.IsEnabled
+                    && (syncCompanyId == null || z.CompanyId == syncCompanyId))
+                .Select(z => new { z.ZoneName, z.ZoneId, z.MaintenanceAmount, z.PartnerId })
                 .ToListAsync();
-            // خريطة: اسم الزون أو معرفه → مبلغ الصيانة
-            var zoneFeeByName = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-            var zoneFeeById = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+            // مفتاح أجرة الزون = (معرّف شريك FTTH أو "" للاحتياطي بلا شريك) + الزون.
+            string ZoneFeeKey(string? partnerKey, string? zone)
+                => $"{(partnerKey ?? "").Trim().ToLower()}\u0001{(zone ?? "").Trim().ToLower()}";
+            var zoneFeeMap = new Dictionary<string, decimal>();
             foreach (var z in allZoneFees)
             {
+                // أجرة بشريك: مفتاحها معرّف FTTH للشريك؛ بلا شريك: "" (احتياطي لكل الشركاء).
+                string pkey = "";
+                if (z.PartnerId.HasValue)
+                    pkey = (partnerFtthIdMap.TryGetValue(z.PartnerId.Value, out var fid) && !string.IsNullOrWhiteSpace(fid))
+                        ? fid! : z.PartnerId.Value.ToString();
                 if (!string.IsNullOrWhiteSpace(z.ZoneName))
-                    zoneFeeByName.TryAdd(z.ZoneName, z.MaintenanceAmount);
+                    zoneFeeMap.TryAdd(ZoneFeeKey(pkey, z.ZoneName), z.MaintenanceAmount);
                 if (!string.IsNullOrWhiteSpace(z.ZoneId))
-                    zoneFeeById.TryAdd(z.ZoneId, z.MaintenanceAmount);
+                    zoneFeeMap.TryAdd(ZoneFeeKey(pkey, z.ZoneId), z.MaintenanceAmount);
+            }
+            // بحث أجرة الزون: جرّب أجرة شريك العملية أولاً ثم الاحتياطية.
+            decimal LookupZoneFee(string? txPartnerFtthId, string? zoneName, string? zoneId)
+            {
+                foreach (var zone in new[] { zoneName, zoneId })
+                {
+                    if (string.IsNullOrWhiteSpace(zone)) continue;
+                    if (!string.IsNullOrWhiteSpace(txPartnerFtthId)
+                        && zoneFeeMap.TryGetValue(ZoneFeeKey(txPartnerFtthId, zone), out var pf)) return pf;
+                    if (zoneFeeMap.TryGetValue(ZoneFeeKey("", zone), out var bf)) return bf;
+                }
+                return 0;
             }
 
             int saved = 0, skipped = 0, failed = 0, updated = 0;
@@ -2701,14 +2727,8 @@ public class FtthAccountingController : ControllerBase
                         }
                     }
 
-                    // 2. أجور الصيانة = من جدول أجور الزونات حسب المنطقة
-                    decimal autoMaintenanceFee = 0;
-                    if (!string.IsNullOrEmpty(tx.ZoneName) && zoneFeeByName.TryGetValue(tx.ZoneName, out var feeByName))
-                        autoMaintenanceFee = feeByName;
-                    else if (!string.IsNullOrEmpty(tx.ZoneId) && zoneFeeById.TryGetValue(tx.ZoneId, out var feeById))
-                        autoMaintenanceFee = feeById;
-                    else if (!string.IsNullOrEmpty(tx.ZoneId) && zoneFeeByName.TryGetValue(tx.ZoneId, out var feeByZoneIdInName))
-                        autoMaintenanceFee = feeByZoneIdInName;
+                    // 2. أجور الصيانة = من جدول أجور الزونات حسب المنطقة + شريك العملية (مع احتياطي بلا شريك)
+                    decimal autoMaintenanceFee = LookupZoneFee(tx.PartnerId, tx.ZoneName, tx.ZoneId);
 
                     // تحديد ActivatedBy: أولوية FullName > CreatedBy
                     var activatedByValue = tx.CreatedBy;
@@ -3058,21 +3078,47 @@ public class FtthAccountingController : ControllerBase
             foreach (var p in allPlans)
                 planPriceMap.TryAdd(p.Name, p.MonthlyPrice);
 
+            // خريطة شريك: معرّف الكيان → معرّف شريك FTTH (PartnerAccountId) — لمطابقة أجرة الزون بالشريك.
+            var partnerFtthIdMap = await _db.FtthPartners
+                .Where(p => !p.IsDeleted && (companyId == null || p.CompanyId == companyId))
+                .Select(p => new { p.Id, p.PartnerAccountId })
+                .ToDictionaryAsync(x => x.Id, x => x.PartnerAccountId);
+
             var allZoneFees = await _unitOfWork.ZoneMaintenanceFees.AsQueryable()
-                .Where(z => !z.IsDeleted && z.IsEnabled)
-                .Select(z => new { z.ZoneName, z.ZoneId, z.MaintenanceAmount })
+                .Where(z => !z.IsDeleted && z.IsEnabled
+                    && (companyId == null || z.CompanyId == companyId))
+                .Select(z => new { z.ZoneName, z.ZoneId, z.MaintenanceAmount, z.PartnerId })
                 .ToListAsync();
-            var zoneFeeByName = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-            var zoneFeeById = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+            // مفتاح أجرة الزون = (معرّف شريك FTTH أو "" للاحتياطي بلا شريك) + الزون.
+            string ZoneFeeKey(string? partnerKey, string? zone)
+                => $"{(partnerKey ?? "").Trim().ToLower()}\u0001{(zone ?? "").Trim().ToLower()}";
+            var zoneFeeMap = new Dictionary<string, decimal>();
             foreach (var z in allZoneFees)
             {
+                string pkey = "";
+                if (z.PartnerId.HasValue)
+                    pkey = (partnerFtthIdMap.TryGetValue(z.PartnerId.Value, out var fid) && !string.IsNullOrWhiteSpace(fid))
+                        ? fid! : z.PartnerId.Value.ToString();
                 if (!string.IsNullOrWhiteSpace(z.ZoneName))
-                    zoneFeeByName.TryAdd(z.ZoneName, z.MaintenanceAmount);
+                    zoneFeeMap.TryAdd(ZoneFeeKey(pkey, z.ZoneName), z.MaintenanceAmount);
                 if (!string.IsNullOrWhiteSpace(z.ZoneId))
-                    zoneFeeById.TryAdd(z.ZoneId, z.MaintenanceAmount);
+                    zoneFeeMap.TryAdd(ZoneFeeKey(pkey, z.ZoneId), z.MaintenanceAmount);
+            }
+            // بحث أجرة الزون: جرّب أجرة شريك العملية أولاً ثم الاحتياطية.
+            decimal LookupZoneFee(string? txPartnerFtthId, string? zoneName, string? zoneId)
+            {
+                foreach (var zone in new[] { zoneName, zoneId })
+                {
+                    if (string.IsNullOrWhiteSpace(zone)) continue;
+                    if (!string.IsNullOrWhiteSpace(txPartnerFtthId)
+                        && zoneFeeMap.TryGetValue(ZoneFeeKey(txPartnerFtthId, zone), out var pf)) return pf;
+                    if (zoneFeeMap.TryGetValue(ZoneFeeKey("", zone), out var bf)) return bf;
+                }
+                return 0;
             }
 
-            if (!planPriceMap.Any() && !zoneFeeByName.Any())
+            if (!planPriceMap.Any() && !zoneFeeMap.Any())
                 return BadRequest(new { success = false, message = "لا توجد أسعار باقات أو أجور صيانة مُعرّفة — أضفها أولاً" });
 
             // 2. جلب العمليات
@@ -3157,14 +3203,8 @@ public class FtthAccountingController : ControllerBase
                         }
                     }
 
-                    // حساب أجور الصيانة
-                    decimal autoMaintenanceFee = 0;
-                    if (!string.IsNullOrEmpty(log.ZoneName) && zoneFeeByName.TryGetValue(log.ZoneName, out var feeByName))
-                        autoMaintenanceFee = feeByName;
-                    else if (!string.IsNullOrEmpty(log.ZoneId) && zoneFeeById.TryGetValue(log.ZoneId, out var feeById))
-                        autoMaintenanceFee = feeById;
-                    else if (!string.IsNullOrEmpty(log.ZoneId) && zoneFeeByName.TryGetValue(log.ZoneId, out var feeByZoneIdInName))
-                        autoMaintenanceFee = feeByZoneIdInName;
+                    // حساب أجور الصيانة — حسب شريك العملية (مع احتياطي بلا شريك)
+                    decimal autoMaintenanceFee = LookupZoneFee(log.PartnerId, log.ZoneName, log.ZoneId);
 
                     // تخطي إذا لا يوجد أي تغيير (لا إيرادات ولا تصحيح BasePrice) — ما لم يكن بدون قيد
                     var basePriceChanged = autoBasePrice != (log.BasePrice ?? 0) && autoBasePrice > 0;
