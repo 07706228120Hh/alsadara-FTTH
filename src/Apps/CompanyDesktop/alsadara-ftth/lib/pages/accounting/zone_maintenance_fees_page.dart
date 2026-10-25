@@ -6,7 +6,6 @@ import '../../frontend/frontend.dart'; // نظام تصميم الصدارة ا�
 import '../../services/accounting_service.dart';
 import '../../services/linked_accounts_service.dart';
 import '../../services/auth_service.dart';
-import '../../services/ftth_api_config.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
 import '../../permissions/permissions.dart';
@@ -372,30 +371,51 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
   /// بتوكن الشريك (نفس مصدر صفحة «الزونات»، عبر بوّابة Cloudflare)، فيُرجِع مناطق الشريك.
   /// احتياطي: مناطق الشريك من عملياته المُزامَنة عندنا (endpoint partner-zones).
   Future<List<Map<String, String>>> _loadPartnerZones(String partnerId) async {
-    // 1) المصدر الأساسي: FTTH locations/zones بتوكن الشريك (كما في صفحة الزونات).
+    const zonesPath = '/locations/zones?pageSize=2000&pageNumber=1';
+    const extra = {
+      'x-user-role': '0',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    };
+    // المضيفان: admin (الموحّد) و api (يعمل أحياناً حين يُحجب admin بـCloudflare) — كصفحة الزونات.
+    const hosts = ['https://admin.ftth.iq/api', 'https://api.ftth.iq/api'];
+
+    List<Map<String, String>>? tryParse(dynamic resp) {
+      if (resp == null || resp.statusCode != 200) return null;
+      try {
+        final p = _parseZoneItems(jsonDecode(resp.body));
+        return p.isNotEmpty ? p : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    // 1) بتوكن الشريك (دخول خادمي) — مناطق هذا الشريك تحديداً. جرّب كلا المضيفين.
     try {
       final login = await LinkedAccountsService.instance.loginPartner(partnerId);
       final ldata = login['data'] ?? login;
       final token = (ldata is Map ? (ldata['accessToken'] ?? ldata['AccessToken']) : null)
           ?.toString();
       if (token != null && token.isNotEmpty) {
-        final url = '${FtthApi.api}/locations/zones?pageSize=2000&pageNumber=1';
-        final resp = await AuthService.instance.ftthRequestWithToken(
-          'GET', url, token,
-          extraHeaders: const {
-            'x-user-role': '0',
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          },
-        );
-        if (resp.statusCode == 200) {
-          final parsed = _parseZoneItems(jsonDecode(resp.body));
-          if (parsed.isNotEmpty) return parsed;
+        for (final host in hosts) {
+          final resp = await AuthService.instance
+              .ftthRequestWithToken('GET', '$host$zonesPath', token, extraHeaders: extra);
+          final p = tryParse(resp);
+          if (p != null) return p;
         }
       }
-    } catch (_) {/* نسقط للمصدر الاحتياطي */}
+    } catch (_) {/* نسقط للمصدر التالي */}
 
-    // 2) احتياطي: مناطق الشريك من عملياته المُزامَنة عندنا.
+    // 2) بجلسة المستخدم الحالية (كصفحة الزونات التي تعمل) — كاتالوج المناطق.
+    try {
+      for (final host in hosts) {
+        final resp = await AuthService.instance
+            .authenticatedRequest('GET', '$host$zonesPath', headers: extra);
+        final p = tryParse(resp);
+        if (p != null) return p;
+      }
+    } catch (_) {/* نسقط للاحتياطي */}
+
+    // 3) احتياطي: مناطق الشريك من عملياته المُزامَنة عندنا.
     final res = await AccountingService.instance
         .getPartnerZones(partnerId, companyId: widget.companyId);
     final data = res['success'] == true ? res['data'] : null;
