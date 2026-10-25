@@ -1241,16 +1241,21 @@ class AccountingService {
   // أجور صيانة الزونات - Zone Maintenance Fees
   // ═══════════════════════════════════════════
 
-  Future<Map<String, dynamic>> getZoneMaintenanceFees({String? companyId}) async {
+  Future<Map<String, dynamic>> getZoneMaintenanceFees({String? companyId, String? partnerId}) async {
+    final params = <String>[];
+    if (companyId != null) params.add('companyId=$companyId');
+    if (partnerId != null) params.add('partnerId=$partnerId');
     String query = '/zone-maintenance-fees';
-    if (companyId != null) query += '?companyId=$companyId';
+    if (params.isNotEmpty) query += '?${params.join('&')}';
     final response = await _client.get(query, (json) => json);
     return _toMap(response);
   }
 
-  Future<Map<String, dynamic>> checkZoneMaintenanceFee(String zoneName, {String? companyId}) async {
+  /// [ftthPartnerId] = معرّف شريك FTTH للعملية (مثل "2261175") — يحلّه الخادم لأجرة الشريك مع احتياطي بلا شريك.
+  Future<Map<String, dynamic>> checkZoneMaintenanceFee(String zoneName, {String? companyId, String? ftthPartnerId}) async {
     String query = '/zone-maintenance-fees/check?zoneName=${Uri.encodeComponent(zoneName)}';
     if (companyId != null) query += '&companyId=$companyId';
+    if (ftthPartnerId != null && ftthPartnerId.isNotEmpty) query += '&ftthPartnerId=$ftthPartnerId';
     final response = await _client.get(query, (json) => json);
     return _toMap(response);
   }

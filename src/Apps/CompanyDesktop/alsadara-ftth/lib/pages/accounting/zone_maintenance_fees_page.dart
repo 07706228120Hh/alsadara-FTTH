@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/accounting_service.dart';
+import '../../services/linked_accounts_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/api/api_config.dart';
 import '../../permissions/permissions.dart';
@@ -21,16 +22,53 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
   List<Map<String, dynamic>> _fees = [];
   String _search = '';
 
+  // الشركاء الرئيسيون — لفلترة/إسناد أجور الزونات لكل شريك.
+  List<Map<String, dynamic>> _partners = [];
+  String? _selectedPartnerId; // null = كل الشركاء (يشمل الاحتياطية بلا شريك)
+
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _loadPartners();
+    await _loadData();
+  }
+
+  Future<void> _loadPartners() async {
+    try {
+      final res = await LinkedAccountsService.instance.getPartners();
+      if (res['success'] == true) {
+        final data = res['data'];
+        final List raw = data is List
+            ? data
+            : (data is Map ? (data['data'] ?? data['items'] ?? []) as List : []);
+        _partners = raw
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+    } catch (_) {}
+  }
+
+  /// اسم الشريك من معرّفه (لعرضه على البطاقة).
+  String _partnerNameOf(String? id) {
+    if (id == null || id.isEmpty) return 'لكل الشركاء';
+    final p = _partners.firstWhere(
+      (e) => (e['id'] ?? e['Id'])?.toString() == id,
+      orElse: () => const {},
+    );
+    final name = (p['name'] ?? p['Name'] ?? '').toString();
+    return name.isEmpty ? 'شريك محذوف' : name;
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final feesResult = await AccountingService.instance.getZoneMaintenanceFees(companyId: widget.companyId);
+      final feesResult = await AccountingService.instance
+          .getZoneMaintenanceFees(companyId: widget.companyId, partnerId: _selectedPartnerId);
       if (feesResult['success'] == true) {
         final data = feesResult['data'];
         _fees = (data is List ? data : (data is Map ? (data['data'] ?? []) : []))
@@ -76,6 +114,7 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
           top: false,
           child: Column(
             children: [
+              _buildPartnerSelector(),
               _buildSearchBar(),
               Expanded(
                 child: _isLoading
@@ -94,6 +133,55 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// شريط اختيار الشريك — يفلتر الأجور ويحدّد الشريك الافتراضي عند الإضافة.
+  Widget _buildPartnerSelector() {
+    if (_partners.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: SdSpace.md, vertical: SdSpace.xs),
+      color: SdColors.surface,
+      child: Row(
+        children: [
+          const Icon(Icons.handshake_outlined, size: 18, color: SdColors.muted),
+          const SizedBox(width: 8),
+          Text('الشريك:', style: SdText.caption),
+          const SizedBox(width: 8),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                value: _selectedPartnerId,
+                isExpanded: true,
+                isDense: true,
+                dropdownColor: SdColors.surface,
+                style: const TextStyle(
+                    fontFamily: SdText.family, color: SdColors.ink, fontSize: 13),
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('كل الشركاء (يشمل الاحتياطية)',
+                        style: TextStyle(fontFamily: SdText.family, fontSize: 13)),
+                  ),
+                  ..._partners.map((p) {
+                    final id = (p['id'] ?? p['Id'])?.toString();
+                    final name = (p['name'] ?? p['Name'] ?? '').toString();
+                    return DropdownMenuItem<String?>(
+                      value: id,
+                      child: Text(name.isEmpty ? '—' : name,
+                          style: const TextStyle(fontFamily: SdText.family, fontSize: 13)),
+                    );
+                  }),
+                ],
+                onChanged: (v) {
+                  setState(() => _selectedPartnerId = v);
+                  _loadData();
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -138,6 +226,9 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
         final enabled = f['IsEnabled'] ?? f['isEnabled'] ?? true;
         final notes = f['Notes'] ?? f['notes'] ?? '';
         final id = (f['Id'] ?? f['id'])?.toString() ?? '';
+        final partnerId = (f['PartnerId'] ?? f['partnerId'])?.toString();
+        final hasPartner = partnerId != null && partnerId.isNotEmpty;
+        final partnerLabel = _partnerNameOf(partnerId);
         final tone = enabled ? SdStatus.success.tone : SdGroup.neutral.tone;
 
         return Container(
@@ -165,9 +256,40 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
               ),
             ),
             title: Text(name, style: SdText.label),
-            subtitle: notes.isNotEmpty
-                ? Text(notes, style: SdText.caption)
-                : null,
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: hasPartner
+                        ? SdColors.info.withOpacity(0.12)
+                        : SdColors.surfaceAlt,
+                    borderRadius: BorderRadius.circular(SdRadius.xs),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(hasPartner ? Icons.handshake : Icons.public,
+                          size: 11,
+                          color: hasPartner ? SdColors.info : SdColors.muted),
+                      const SizedBox(width: 3),
+                      Text(partnerLabel,
+                          style: TextStyle(
+                              fontFamily: SdText.family,
+                              fontSize: 10,
+                              color: hasPartner ? SdColors.info : SdColors.muted)),
+                    ],
+                  ),
+                ),
+                if (notes.toString().isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(notes, style: SdText.caption),
+                ],
+              ],
+            ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -251,12 +373,21 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
     String zoneFilter = '';
     List<String> availableZones = [];
     bool zonesLoaded = false;
+    String? dialogPartnerId = _selectedPartnerId; // الشريك المُسنَد لهذه الأجرة (null = احتياطية لكل الشركاء)
 
     Future<void> loadZones(void Function(void Function()) setDState) async {
       if (zonesLoaded) return;
       zonesLoaded = true;
       try {
-        final existingNames = _fees.map((f) => (f['ZoneName'] ?? f['zoneName'] ?? '').toString()).toSet();
+        // استثنِ فقط الزونات المُعرَّفة لنفس الشريك المختار — يسمح بأجرة شريك تتجاوز الاحتياطية.
+        final existingNames = _fees
+            .where((f) {
+              final pid = (f['PartnerId'] ?? f['partnerId'])?.toString();
+              final norm = (pid == null || pid.isEmpty) ? null : pid;
+              return norm == dialogPartnerId;
+            })
+            .map((f) => (f['ZoneName'] ?? f['zoneName'] ?? '').toString())
+            .toSet();
         final all = await _fetchZoneNames();
         availableZones = all.where((n) => !existingNames.contains(n)).toList()..sort();
         setDState(() {});
@@ -281,10 +412,57 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
               title: Text('إضافة أجور صيانة', style: TextStyle(fontFamily: 'Cairo', color: SdColors.ink)),
               content: SizedBox(
                 width: 450,
-                height: 400,
+                height: 460,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // اختيار الشريك الذي تتبعه هذه الأجرة
+                    if (_partners.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: SdColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.handshake_outlined, size: 18, color: SdColors.faint),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String?>(
+                                  value: dialogPartnerId,
+                                  isExpanded: true,
+                                  isDense: true,
+                                  dropdownColor: SdColors.surface,
+                                  hint: const Text('لكل الشركاء (احتياطية)',
+                                      style: TextStyle(fontFamily: 'Cairo', fontSize: 13, color: SdColors.faint)),
+                                  style: const TextStyle(fontFamily: 'Cairo', color: SdColors.ink, fontSize: 13),
+                                  items: [
+                                    const DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text('لكل الشركاء (احتياطية)',
+                                          style: TextStyle(fontFamily: 'Cairo', fontSize: 13)),
+                                    ),
+                                    ..._partners.map((p) {
+                                      final id = (p['id'] ?? p['Id'])?.toString();
+                                      final name = (p['name'] ?? p['Name'] ?? '').toString();
+                                      return DropdownMenuItem<String?>(
+                                        value: id,
+                                        child: Text(name.isEmpty ? '—' : name,
+                                            style: const TextStyle(fontFamily: 'Cairo', fontSize: 13)),
+                                      );
+                                    }),
+                                  ],
+                                  onChanged: (v) => setDState(() => dialogPartnerId = v),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     // حقل بحث الزون
                     TextField(
                       controller: zoneSearchCtrl,
@@ -422,6 +600,7 @@ class _ZoneMaintenanceFeesPageState extends State<ZoneMaintenanceFeesPage> {
                       'MaintenanceAmount': double.tryParse(amountCtrl.text.replaceAll(',', '')) ?? 0,
                       'Notes': notesCtrl.text.isEmpty ? null : notesCtrl.text,
                       'CompanyId': widget.companyId ?? VpsAuthService.instance.currentCompanyId ?? '',
+                      'PartnerId': dialogPartnerId,
                     });
                     if (result['success'] == true) {
                       _snack('تم إضافة أجور صيانة $zoneName', SdColors.success);

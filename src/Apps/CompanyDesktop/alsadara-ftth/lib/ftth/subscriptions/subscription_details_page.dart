@@ -9042,9 +9042,11 @@ ${isNewSubscription ? "- تم تحويل الاشتراك من تجريبي إل
     if (zoneName.isEmpty) return;
     try {
       final companyId = VpsAuthService.instance.currentCompanyId;
+      // معرّف شريك FTTH للمشترك — ليجلب الخادم أجرة صيانة الشريك التابع له (مع احتياطي بلا شريك).
       final result = await AccountingService.instance.checkZoneMaintenanceFee(
         zoneName,
         companyId: companyId,
+        ftthPartnerId: subscriptionInfo!.partnerId,
       );
       debugPrint('🔧 فحص صيانة الزون "$zoneName": $result');
       // الـ API يرجع: {success, data: {success, hasMaintenanceFee, amount}}
