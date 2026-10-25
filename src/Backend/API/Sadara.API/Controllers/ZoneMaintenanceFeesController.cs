@@ -34,6 +34,42 @@ public class ZoneMaintenanceFeesController(IUnitOfWork unitOfWork, SadaraDbConte
     }
 
     /// <summary>
+    /// مناطق شريك محدّد — مستخرَجة من عمليات الشريك المُزامَنة (SubscriptionLogs).
+    /// مصدر موثوق ومُقيَّد بالشريك (بعكس locations/zones العام)، بلا اعتماد على لوحة FTTH.
+    /// </summary>
+    [HttpGet("partner-zones")]
+    [Authorize]
+    [RequirePermission("accounting.ftth_operators", "view")]
+    public async Task<IActionResult> GetPartnerZones([FromQuery] Guid partnerId, [FromQuery] Guid? companyId)
+    {
+        // حلّ معرّف شريك FTTH (PartnerAccountId) — العمليات قد تحمله أو تحمل معرّف الكيان.
+        var ftthPid = await _db.FtthPartners
+            .Where(p => p.Id == partnerId && !p.IsDeleted)
+            .Select(p => p.PartnerAccountId)
+            .FirstOrDefaultAsync();
+        var entityId = partnerId.ToString();
+
+        var q = _db.SubscriptionLogs.Where(l => !l.IsDeleted
+            && l.ZoneName != null && l.ZoneName != ""
+            && (l.PartnerId == entityId || (ftthPid != null && l.PartnerId == ftthPid)));
+        if (companyId.HasValue)
+            q = q.Where(l => l.CompanyId == companyId.Value);
+
+        var zones = await q
+            .GroupBy(l => l.ZoneName!)
+            .Select(g => new
+            {
+                zoneName = g.Key,
+                zoneId = g.Max(x => x.ZoneId),
+                count = g.Count()
+            })
+            .OrderByDescending(x => x.count)
+            .ToListAsync();
+
+        return Ok(new { success = true, data = zones });
+    }
+
+    /// <summary>
     /// جلب أجور صيانة زون محدد بالاسم — يُستخدم من شاشة التفعيل.
     /// عند تمرير ftthPartnerId (معرّف شريك FTTH، مثل "2261175") يُحلّ لكيان الشريك
     /// وتُرجَّح أجرة ذلك الشريك على الأجرة الاحتياطية (بلا شريك).
