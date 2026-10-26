@@ -329,6 +329,41 @@ public class ServiceRequestsTaskFiltersTests
     }
 
     [SkippableFact]
+    public async Task Create_Ignores_Client_CreatedById_And_Stamps_Caller()
+    {
+        _fx.SkipIfUnavailable();
+        Reset();
+        SeedCompanies(_fx);
+        var (svc, op) = SeedServiceAndOperation(_fx);
+        var foreign = SeedUser(CompanyB, "ضحية");
+        var caller = SeedUser(CompanyA, "منشئ");
+
+        var tenant = new TestTenant { CompanyId = CompanyA };
+        Guid createdId;
+        await using (var db = _fx.CreateContext(tenant))
+        {
+            var res = await Build(db, tenant, caller).Create(new CreateServiceRequestDto
+            {
+                ServiceId = svc,
+                OperationTypeId = op,
+                Details = new Dictionary<string, object>
+                {
+                    ["taskType"] = "شراء اشتراك",
+                    ["createdById"] = foreign.ToString(), // forged
+                },
+            });
+            var created = Assert.IsType<CreatedAtActionResult>(res);
+            var data = created.Value!.GetType().GetProperty("data")!.GetValue(created.Value)!;
+            createdId = (Guid)data.GetType().GetProperty("Id")!.GetValue(data)!;
+        }
+
+        await using var check = _fx.CreateContext(PostgresFixture.SystemTenant);
+        var task = await check.Set<ServiceRequest>().AsNoTracking().SingleAsync(r => r.Id == createdId);
+        Assert.Contains($"\"createdById\":\"{caller}\"", task.Details);
+        Assert.DoesNotContain(foreign.ToString(), task.Details);
+    }
+
+    [SkippableFact]
     public async Task OutOfRange_Date_Returns_400()
     {
         _fx.SkipIfUnavailable();

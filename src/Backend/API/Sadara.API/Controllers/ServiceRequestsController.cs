@@ -725,6 +725,17 @@ ORDER BY ""TotalCollected"" DESC;";
         if (opType == null)
             return BadRequest(new { success = false, message = "نوع العملية غير صالح" });
 
+        // createdById decides who is charged the installation fee on completion. Never
+        // trust the client value: a forged id could charge (or notify) a user of another
+        // company. Stamp it from the token; no user in the token ⇒ drop it.
+        if (dto.Details != null)
+        {
+            var callerId = GetCurrentUserId();
+            dto.Details.Remove("createdById");
+            if (callerId != Guid.Empty)
+                dto.Details["createdById"] = callerId.ToString();
+        }
+
         var request = new ServiceRequest
         {
             Id = Guid.NewGuid(),
@@ -1027,6 +1038,15 @@ ORDER BY ""TotalCollected"" DESC;";
 
                 var user = await _unitOfWork.Users.GetByIdAsync(userId);
                 if (user == null) return false;
+                // Defense in depth: only an employee of the task's own company can be charged
+                // (the target id may come from Details, which older rows took from the client).
+                if (request.CompanyId.HasValue && user.CompanyId != request.CompanyId)
+                {
+                    _logger.LogWarning(
+                        "تخطّي شحن {Category} على مستخدم من شركة أخرى {UserId} للطلب {RequestNumber}",
+                        category, userId, request.RequestNumber);
+                    return false;
+                }
 
                 // تحقق من عدم التكرار
                 var exists = await _unitOfWork.TechnicianTransactions.AsQueryable()
@@ -2643,7 +2663,12 @@ ORDER BY ""TotalCollected"" DESC;";
                         if (!string.IsNullOrEmpty(creatorIdStr) && Guid.TryParse(creatorIdStr, out var creatorId))
                         {
                             // لا ترسل إشعار مزدوج إذا كان المنشئ هو نفسه المعيّن أو الفني
-                            if (creatorId != request.AssignedToId && creatorId != request.TechnicianId)
+                            // + never notify a user outside the task's company (forged createdById).
+                            var creatorUser = creatorId != request.AssignedToId && creatorId != request.TechnicianId
+                                ? await _unitOfWork.Users.GetByIdAsync(creatorId)
+                                : null;
+                            if (creatorUser != null &&
+                                (!request.CompanyId.HasValue || creatorUser.CompanyId == request.CompanyId))
                             {
                                 var creatorName = details.TryGetValue("createdByName", out var nameEl) ? nameEl.GetString() : null;
                                 var taskType = details.TryGetValue("taskType", out var typeEl) ? typeEl.GetString() : null;
