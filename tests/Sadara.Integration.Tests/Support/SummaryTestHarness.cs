@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Sadara.API.Controllers;
 using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
@@ -120,6 +121,7 @@ public static class SummaryTestHarness
     {
         using var ctx = fx.CreateContext(PostgresFixture.SystemTenant);
         var n = 0;
+        var createdAts = new List<(Guid Id, DateTime CreatedAt)>();
         foreach (var s in specs)
         {
             string? details = s.RawDetails;
@@ -136,9 +138,11 @@ public static class SummaryTestHarness
             var department = NormalizeDetailValue(s.Details, "department");
             var technicianName = NormalizeDetailValue(s.Details, "technician");
 
+            var id = Guid.NewGuid();
+            createdAts.Add((id, DateTime.SpecifyKind(s.CreatedAt, DateTimeKind.Utc)));
             ctx.Set<ServiceRequest>().Add(new ServiceRequest
             {
-                Id = Guid.NewGuid(),
+                Id = id,
                 RequestNumber = $"SR-TEST-{Guid.NewGuid():N}".Substring(0, 20) + (n++),
                 ServiceId = serviceId,
                 OperationTypeId = operationTypeId,
@@ -155,6 +159,12 @@ public static class SummaryTestHarness
             });
         }
         ctx.SaveChanges();
+
+        // SaveChanges (ApplyTenantAndAudit) stamps CreatedAt = UtcNow on every insert,
+        // which silently erased the seeded dates — the date-filter tests never tested dates.
+        foreach (var (id, createdAt) in createdAts)
+            ctx.Database.ExecuteSqlInterpolated(
+                $"UPDATE \"ServiceRequests\" SET \"CreatedAt\" = {createdAt} WHERE \"Id\" = {id}");
     }
 
     /// <summary>

@@ -71,8 +71,14 @@ public class ServiceRequestsController : ControllerBase
         [FromQuery] string? createdByName = null,
         [FromQuery] string? search = null,
         [FromQuery] DateTime? fromDate = null,
-        [FromQuery] DateTime? toDate = null)
+        [FromQuery] DateTime? toDate = null,
+        [FromQuery] Guid? assignedTo = null)
     {
+        // Out-of-range dates would overflow AddHours/AddDays (500) — reject them.
+        if ((fromDate.HasValue && (fromDate.Value.Year < 2000 || fromDate.Value.Year > 2100)) ||
+            (toDate.HasValue && (toDate.Value.Year < 2000 || toDate.Value.Year > 2100)))
+            return BadRequest(new { success = false, message = "نطاق التاريخ غير صالح" });
+
         var query = _unitOfWork.ServiceRequests.AsQueryable();
 
         // ═══ عزل المستأجر ═══
@@ -84,10 +90,24 @@ public class ServiceRequestsController : ControllerBase
             query = query.Where(r => r.CompanyId == effectiveCompanyId.Value);
 
         // فلتر التاريخ: من - إلى (حسب تاريخ الإنشاء)
+        // A date-only value ("2026-10-26") is a Baghdad calendar day. It binds as
+        // Kind=Unspecified, which Npgsql refuses for timestamptz (the request failed
+        // and the reports page showed 0 tasks); and .Date alone would start the day at
+        // 03:00 Baghdad. A full timestamp is used as an exact instant.
         if (fromDate.HasValue)
-            query = query.Where(r => r.CreatedAt >= fromDate.Value.Date);
+        {
+            var from = IsDateOnly(fromDate.Value)
+                ? BaghdadDayStartUtc(fromDate.Value)
+                : NormalizeToUtc(fromDate)!.Value;
+            query = query.Where(r => r.CreatedAt >= from);
+        }
         if (toDate.HasValue)
-            query = query.Where(r => r.CreatedAt < toDate.Value.Date.AddDays(1));
+        {
+            var to = IsDateOnly(toDate.Value)
+                ? BaghdadDayStartUtc(toDate.Value).AddDays(1)
+                : NormalizeToUtc(toDate)!.Value;
+            query = query.Where(r => r.CreatedAt < to);
+        }
 
         if (!string.IsNullOrEmpty(status) && Enum.TryParse<ServiceRequestStatus>(status, true, out var statusEnum))
             query = query.Where(r => r.Status == statusEnum);
@@ -108,38 +128,52 @@ public class ServiceRequestsController : ControllerBase
         // (مرحلة ب) يقرأ من العمود المطبّع Department بدل استخراج Details JSON.
         if (!string.IsNullOrEmpty(department))
         {
-            var depts = department.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (depts.Length == 1)
-            {
-                var singleDept = depts[0];
-                query = query.Where(r => r.Department == singleDept);
-            }
-            else
-            {
-                query = query.Where(r => r.Department != null && depts.Contains(r.Department));
-            }
+            // Capped: each department adds LIKE patterns over Details.
+            var depts = department.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(20).ToArray();
+            // The Department column is only partly backfilled, so also match the
+            // department stored in Details (otherwise leaders miss part of their tasks).
+            var deptLikes = DetailsLikePatterns("department", depts);
+            query = query.Where(r =>
+                (r.Department != null && depts.Contains(r.Department)) ||
+                (r.Details != null && deptLikes.Any(p => EF.Functions.Like(r.Details, p))));
         }
 
         // فلتر الفني أو المنشئ: إذا وُجد كلاهما يُستخدم OR بينهما
-        // (مرحلة ب) الفني يُقرأ من العمود المطبّع TechnicianName مع إبقاء fallback (Technician.FullName)؛
-        // createdByName يبقى على Details JSON (لا عمود مطبّع له).
+        // الفني: العمود المطبّع TechnicianName + علاقة الفني + قيمة "technician" في Details
+        // (العمود ممتلئ جزئياً). المنشئ: قيمة "createdByName" في Details.
+        // Exact key/value match — Details.Contains(name) also matched customer names,
+        // notes and longer names, filling the technician's page with other people's tasks.
         if (!string.IsNullOrEmpty(technician) && !string.IsNullOrEmpty(createdByName))
         {
+            var (tc, ts) = DetailsKeyPatterns("technician", technician);
+            var (cc, cs) = DetailsKeyPatterns("createdByName", createdByName);
             query = query.Where(r =>
                 r.TechnicianName == technician ||
                 (r.Technician != null && r.Technician.FullName == technician) ||
-                (r.Details != null && r.Details.Contains(createdByName)));
+                (r.Details != null && (r.Details.Contains(tc) || r.Details.Contains(ts) ||
+                                       r.Details.Contains(cc) || r.Details.Contains(cs))));
         }
         else if (!string.IsNullOrEmpty(technician))
         {
+            var (tc, ts) = DetailsKeyPatterns("technician", technician);
             query = query.Where(r =>
                 r.TechnicianName == technician ||
-                (r.Technician != null && r.Technician.FullName == technician));
+                (r.Technician != null && r.Technician.FullName == technician) ||
+                (r.Details != null && (r.Details.Contains(tc) || r.Details.Contains(ts))));
         }
         else if (!string.IsNullOrEmpty(createdByName))
         {
+            var (cc, cs) = DetailsKeyPatterns("createdByName", createdByName);
             query = query.Where(r =>
-                r.Details != null && r.Details.Contains(createdByName));
+                r.Details != null && (r.Details.Contains(cc) || r.Details.Contains(cs)));
+        }
+
+        // Tasks of one employee by id (HR employee profile tab sends ?assignedTo=<userId>;
+        // the parameter was ignored, so the tab listed the company's first tasks).
+        if (assignedTo.HasValue)
+        {
+            var empId = assignedTo.Value;
+            query = query.Where(r => r.TechnicianId == empId || r.AssignedToId == empId);
         }
 
         // فلتر رقم هاتف العميل (بحث في Details JSON أو في PhoneNumber للمواطن)
@@ -206,13 +240,16 @@ public class ServiceRequestsController : ControllerBase
                 AssignedToId = r.AssignedToId,
                 AssignedToName = r.AssignedTo != null ? r.AssignedTo.FullName : null,
                 TechnicianId = r.TechnicianId,
-                TechnicianName = r.Technician != null ? r.Technician.FullName : null,
+                TechnicianName = r.Technician != null ? r.Technician.FullName : r.TechnicianName,
                 FinalCost = r.FinalCost,
                 Address = r.Address,
                 ContactPhone = r.ContactPhone,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt,
-                CompletedAt = r.CompletedAt
+                CompletedAt = r.CompletedAt,
+                AssignedAt = r.AssignedAt,
+                StartedAt = r.StartedAt,
+                CancelledAt = r.CancelledAt
             })
             .ToListAsync();
 
@@ -506,6 +543,61 @@ ORDER BY ""TotalCollected"" DESC;";
         => string.IsNullOrWhiteSpace(value)
             ? null
             : System.Text.RegularExpressions.Regex.Replace(value.Trim(), @"\s+", " ");
+
+    /// Finds an active employee by full name inside <paramref name="companyId"/> only.
+    /// The lookup used to be global: with many companies sharing common names, a
+    /// same-named user of another company could be linked, notified or charged
+    /// instead of the real technician. No company ⇒ only SuperAdmin may look up.
+    private async Task<User?> FindCompanyUserByNameAsync(string? name, Guid? companyId)
+    {
+        var normalized = NormalizeName(name);
+        if (normalized == null) return null;
+        var raw = name!.Trim();
+        var scope = companyId ?? _tenant.CompanyId;
+        if (!scope.HasValue && !_tenant.IsSuperAdmin) return null;
+
+        var q = _unitOfWork.Users.AsQueryable()
+            .Where(u => !u.IsDeleted && (u.FullName == normalized || u.FullName == raw));
+        if (scope.HasValue)
+            q = q.Where(u => u.CompanyId == scope.Value);
+        // Deterministic pick when a name repeats inside the company: active, then oldest.
+        var matches = await q.OrderByDescending(u => u.IsActive).ThenBy(u => u.CreatedAt)
+            .Take(2).ToListAsync();
+        if (matches.Count > 1)
+            _logger.LogWarning("Employee name {Name} is not unique in company {CompanyId}", normalized, scope);
+        return matches.FirstOrDefault();
+    }
+
+    /// True when <paramref name="user"/> belongs to the task's company (SuperAdmin: any).
+    private bool IsUserInTaskCompany(User user, Guid? taskCompanyId)
+    {
+        if (_tenant.IsSuperAdmin) return true;
+        var scope = taskCompanyId ?? _tenant.CompanyId;
+        return scope.HasValue && user.CompanyId == scope.Value;
+    }
+
+    /// Iraq is UTC+3 all year (no DST).
+    private const int BaghdadUtcOffsetHours = 3;
+
+    /// UTC instant of 00:00 Baghdad on the calendar day of <paramref name="baghdadDate"/>.
+    private static DateTime BaghdadDayStartUtc(DateTime baghdadDate)
+        => DateTime.SpecifyKind(baghdadDate.Date, DateTimeKind.Utc).AddHours(-BaghdadUtcOffsetHours);
+
+    /// A query value like "2026-10-26" (no time, no offset) — a calendar day, not an instant.
+    private static bool IsDateOnly(DateTime value)
+        => value.Kind == DateTimeKind.Unspecified && value.TimeOfDay == TimeSpan.Zero;
+
+    /// Exact key/value substrings for Details JSON. Details is written compact
+    /// (<c>"k":"v"</c>); ~1% of legacy rows use <c>"k": "v"</c>.
+    private static (string Compact, string Spaced) DetailsKeyPatterns(string key, string value)
+        => ($"\"{key}\":\"{value}\"", $"\"{key}\": \"{value}\"");
+
+    /// LIKE patterns (both spacings, LIKE wildcards escaped) for any of <paramref name="values"/>.
+    private static string[] DetailsLikePatterns(string key, IEnumerable<string> values)
+        => values
+            .Select(v => v.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_"))
+            .SelectMany(v => new[] { $"%\"{key}\":\"{v}\"%", $"%\"{key}\": \"{v}\"%" })
+            .ToArray();
 
     /// <summary>
     /// يحوّل تاريخاً (قد يكون Local/Unspecified) إلى UTC صريح لأن Npgsql timestamptz يتطلب UTC.
@@ -863,8 +955,7 @@ ORDER BY ""TotalCollected"" DESC;";
             Guid? chargeTargetId = null;
             if (!string.IsNullOrEmpty(originalTechnicianName))
             {
-                var originalTech = await _unitOfWork.Users.AsQueryable()
-                    .FirstOrDefaultAsync(u => u.FullName == originalTechnicianName && !u.IsDeleted);
+                var originalTech = await FindCompanyUserByNameAsync(originalTechnicianName, request.CompanyId);
                 if (originalTech != null)
                     chargeTargetId = originalTech.Id;
             }
@@ -1221,7 +1312,8 @@ ORDER BY ""TotalCollected"" DESC;";
             return NotFound(new { success = false, message = "الطلب غير موجود" });
 
         var employee = await _unitOfWork.Users.GetByIdAsync(dto.EmployeeId);
-        if (employee == null)
+        // Same answer for "missing" and "other company" — don't reveal foreign users.
+        if (employee == null || !IsUserInTaskCompany(employee, request.CompanyId))
             return BadRequest(new { success = false, message = "الموظف غير موجود" });
 
         var oldStatus = request.Status;
@@ -1434,15 +1526,27 @@ ORDER BY ""TotalCollected"" DESC;";
             query = query.Where(r => r.CompanyId == effectiveCompanyId.Value);
 
         // (مرحلة ب) الفلترة من الأعمدة المطبّعة بدل استخراج Details JSON.
+        // + Details fallback: the columns are only partly backfilled (counters were low).
         if (!string.IsNullOrEmpty(department))
         {
-            var depts = department.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            query = query.Where(r => r.Department != null && depts.Contains(r.Department));
+            // Capped: each department adds LIKE patterns over Details.
+            var depts = department.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Take(20).ToArray();
+            var deptLikes = DetailsLikePatterns("department", depts);
+            query = query.Where(r =>
+                (r.Department != null && depts.Contains(r.Department)) ||
+                (r.Details != null && deptLikes.Any(p => EF.Functions.Like(r.Details, p))));
         }
         if (!string.IsNullOrEmpty(technician))
+        {
+            var (tc, ts) = DetailsKeyPatterns("technician", technician);
             query = query.Where(r =>
                 r.TechnicianName == technician ||
-                (r.Technician != null && r.Technician.FullName == technician));
+                (r.Technician != null && r.Technician.FullName == technician) ||
+                (r.Details != null && (r.Details.Contains(tc) || r.Details.Contains(ts))));
+        }
+
+        // Start of today in Baghdad, as UTC (UtcNow.AddHours(3).Date alone is 03:00 Baghdad).
+        var todayStart = BaghdadDayStartUtc(DateTime.UtcNow.AddHours(BaghdadUtcOffsetHours));
 
         var stats = new
         {
@@ -1456,8 +1560,8 @@ ORDER BY ""TotalCollected"" DESC;";
             Cancelled = await query.CountAsync(r => r.Status == ServiceRequestStatus.Cancelled),
             Rejected = await query.CountAsync(r => r.Status == ServiceRequestStatus.Rejected),
             OnHold = await query.CountAsync(r => r.Status == ServiceRequestStatus.OnHold),
-            TodayCreated = await query.CountAsync(r => r.CreatedAt >= DateTime.UtcNow.AddHours(3).Date),
-            TodayCompleted = await query.CountAsync(r => r.CompletedAt >= DateTime.UtcNow.AddHours(3).Date)
+            TodayCreated = await query.CountAsync(r => r.CreatedAt >= todayStart),
+            TodayCompleted = await query.CountAsync(r => r.CompletedAt >= todayStart)
         };
 
         return Ok(new { success = true, data = stats });
@@ -1562,13 +1666,16 @@ ORDER BY ""TotalCollected"" DESC;";
                 AssignedToId = r.AssignedToId,
                 AssignedToName = r.AssignedTo != null ? r.AssignedTo.FullName : null,
                 TechnicianId = r.TechnicianId,
-                TechnicianName = r.Technician != null ? r.Technician.FullName : null,
+                TechnicianName = r.Technician != null ? r.Technician.FullName : r.TechnicianName,
                 FinalCost = r.FinalCost,
                 Address = r.Address,
                 ContactPhone = r.ContactPhone,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt,
-                CompletedAt = r.CompletedAt
+                CompletedAt = r.CompletedAt,
+                AssignedAt = r.AssignedAt,
+                StartedAt = r.StartedAt,
+                CancelledAt = r.CancelledAt
             })
             .ToListAsync();
 
@@ -1707,7 +1814,8 @@ ORDER BY ""TotalCollected"" DESC;";
             // مهمة "تركيب" لا تمنع "شراء اشتراك" — فقط نفس النوع يُمنع
             if (!string.IsNullOrWhiteSpace(dto.CustomerPhone))
             {
-                var todayUtc = DateTime.UtcNow.AddHours(3).Date;
+                // Start of today in Baghdad, as UTC (was 03:00 Baghdad → check off before 3am).
+                var todayUtc = BaghdadDayStartUtc(DateTime.UtcNow.AddHours(BaghdadUtcOffsetHours));
                 var taskType = dto.TaskType ?? "";
                 var duplicate = await _unitOfWork.ServiceRequests.FirstOrDefaultAsync(r =>
                     r.ContactPhone == dto.CustomerPhone &&
@@ -1761,9 +1869,11 @@ ORDER BY ""TotalCollected"" DESC;";
             var details = new Dictionary<string, object?>
             {
                 ["taskType"] = dto.TaskType,
-                ["department"] = dto.Department,
+                // Normalized like the assign/update paths, so one technician never
+                // splits into two report rows ("علي  حسن" vs "علي حسن").
+                ["department"] = NormalizeName(dto.Department),
                 ["leader"] = dto.Leader,
-                ["technician"] = dto.Technician,
+                ["technician"] = NormalizeName(dto.Technician),
                 ["technicianPhone"] = dto.TechnicianPhone,
                 ["customerName"] = dto.CustomerName,
                 ["customerPhone"] = dto.CustomerPhone,
@@ -1807,8 +1917,8 @@ ORDER BY ""TotalCollected"" DESC;";
                 CompanyId = ResolveWriteCompanyId(null),
                 Details = JsonSerializer.Serialize(details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }),
                 // dual-write (مرحلة ب): تعبئة العمودين المطبّعين بالتوازي مع Details JSON (توافق خلفي)
-                Department = string.IsNullOrWhiteSpace(dto.Department) ? null : dto.Department.Trim(),
-                TechnicianName = string.IsNullOrWhiteSpace(dto.Technician) ? null : dto.Technician.Trim(),
+                Department = NormalizeName(dto.Department),
+                TechnicianName = NormalizeName(dto.Technician),
                 Address = dto.Location,
                 ContactPhone = dto.CustomerPhone,
                 Status = ServiceRequestStatus.Pending,
@@ -1821,8 +1931,7 @@ ORDER BY ""TotalCollected"" DESC;";
             // تعيين تلقائي: إذا تم تحديد فني، ابحث عنه وعيّنه مباشرة
             if (!string.IsNullOrEmpty(dto.Technician))
             {
-                var technicianUser = await _unitOfWork.Users.AsQueryable()
-                    .FirstOrDefaultAsync(u => u.FullName == dto.Technician && !u.IsDeleted);
+                var technicianUser = await FindCompanyUserByNameAsync(dto.Technician, request.CompanyId);
                 if (technicianUser != null)
                 {
                     request.TechnicianId = technicianUser.Id;
@@ -1936,17 +2045,17 @@ ORDER BY ""TotalCollected"" DESC;";
         if (dto.EmployeeId.HasValue)
         {
             var employee = await _unitOfWork.Users.GetByIdAsync(dto.EmployeeId.Value);
-            if (employee != null)
+            // Only an employee of the task's company can be assigned.
+            if (employee != null && IsUserInTaskCompany(employee, request.CompanyId))
             {
                 request.AssignedToId = dto.EmployeeId;
             }
         }
 
-        // البحث عن الفني وتعيين TechnicianId
+        // البحث عن الفني وتعيين TechnicianId (داخل شركة المهمة فقط)
         if (!string.IsNullOrEmpty(dto.Technician))
         {
-            var techUser = await _unitOfWork.Users.AsQueryable()
-                .FirstOrDefaultAsync(u => u.FullName == dto.Technician && !u.IsDeleted);
+            var techUser = await FindCompanyUserByNameAsync(dto.Technician, request.CompanyId);
             if (techUser != null)
             {
                 request.TechnicianId = techUser.Id;
@@ -2051,13 +2160,17 @@ ORDER BY ""TotalCollected"" DESC;";
             await ApplyStatusChange(request, newStatus, dto.Notes ?? "تعديل المهمة");
         }
 
-        // تحديث الفني
+        // تحديث الفني (داخل شركة المهمة فقط). AssignedToId follows the technician
+        // like in assign-task — it was never updated here, so the two ids drifted apart.
         if (!string.IsNullOrEmpty(dto.Technician))
         {
-            var techUser = await _unitOfWork.Users.AsQueryable()
-                .FirstOrDefaultAsync(u => u.FullName == dto.Technician && !u.IsDeleted);
-            if (techUser != null)
+            var techUser = await FindCompanyUserByNameAsync(dto.Technician, request.CompanyId);
+            // The edit dialog always sends the technician: touch the ids only on a real change.
+            if (techUser != null && request.TechnicianId != techUser.Id)
+            {
                 request.TechnicianId = techUser.Id;
+                request.AssignedToId = techUser.Id;
+            }
         }
 
         request.Details = JsonSerializer.Serialize(details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
@@ -2425,6 +2538,13 @@ ORDER BY ""TotalCollected"" DESC;";
                 break;
         }
 
+        // Reopened task: drop the stale close time (it showed an old "execution time"
+        // and sorted the open task by its previous completion date).
+        if (newStatus != ServiceRequestStatus.Completed)
+            request.CompletedAt = null;
+        if (newStatus != ServiceRequestStatus.Cancelled)
+            request.CancelledAt = null;
+
         // سجل التغيير
         var history = new ServiceRequestStatusHistory
         {
@@ -2666,12 +2786,16 @@ ORDER BY ""TotalCollected"" DESC;";
             Status = r.Status.ToString(),
             Priority = r.Priority,
             TechnicianId = r.TechnicianId,
-            TechnicianName = r.Technician?.FullName,
+            TechnicianName = r.Technician?.FullName ?? r.TechnicianName,
             FinalCost = r.FinalCost,
             Address = r.Address,
             ContactPhone = r.ContactPhone,
             CreatedAt = r.CreatedAt,
-            UpdatedAt = r.UpdatedAt
+            UpdatedAt = r.UpdatedAt,
+            CompletedAt = r.CompletedAt,
+            AssignedAt = r.AssignedAt,
+            StartedAt = r.StartedAt,
+            CancelledAt = r.CancelledAt
         };
     }
 
@@ -2708,10 +2832,13 @@ ORDER BY ""TotalCollected"" DESC;";
             AssignedToId = r.AssignedToId,
             AssignedToName = r.AssignedTo?.FullName,
             TechnicianId = r.TechnicianId,
-            TechnicianName = r.Technician?.FullName,
+            TechnicianName = r.Technician?.FullName ?? r.TechnicianName,
             CreatedAt = r.CreatedAt,
             UpdatedAt = r.UpdatedAt,
             CompletedAt = r.CompletedAt,
+            AssignedAt = r.AssignedAt,
+            StartedAt = r.StartedAt,
+            CancelledAt = r.CancelledAt,
             Comments = r.Comments?.Select(c => new CommentResponse
             {
                 Id = c.Id,
@@ -2779,6 +2906,9 @@ public class ServiceRequestResponse
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public DateTime? AssignedAt { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? CancelledAt { get; set; }
 }
 
 public class ServiceRequestDetailResponse : ServiceRequestResponse
