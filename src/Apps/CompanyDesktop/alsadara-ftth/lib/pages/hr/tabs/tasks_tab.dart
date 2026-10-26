@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../../../models/task.dart' show Task;
 import '../../../services/employee_profile_service.dart';
 import '../../../frontend/tokens/sd_colors.dart' show SdColors;
 
@@ -359,7 +360,8 @@ class _TasksTabState extends State<TasksTab> {
   }
 
   String _formatDate(String raw) {
-    final dt = DateTime.tryParse(raw);
+    // UTC → local, otherwise tasks created after midnight Baghdad show the previous day
+    final dt = Task.parseServerDate(raw);
     if (dt == null) return raw;
     return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
   }

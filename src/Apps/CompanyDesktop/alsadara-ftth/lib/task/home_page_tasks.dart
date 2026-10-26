@@ -278,7 +278,8 @@ class HomePageTasksState extends State<HomePageTasks> {
       _filteredTasks = _applyRoleFilter(collectionTasks);
       _myTasksOnly = savedMyOnly;
       _sortByRecency(_filteredTasks);
-      _filteredTasks = _applyDateFilter(_filteredTasks);
+      // Pending collections stay visible regardless of creation date.
+      _filteredTasks = _applyDateFilter(_filteredTasks, keepActive: true);
     } else {
       // فلتر الحالة ثم فلتر الصلاحيات (منطق موحّد)
       final statusFilteredTasks =
@@ -307,17 +308,28 @@ class HomePageTasksState extends State<HomePageTasks> {
         }).toList();
       }
 
-      _filteredTasks = _applyDateFilter(_filteredTasks);
+      // «مفتوحة» / «قيد التنفيذ» tabs: show every active task, not only the
+      // ones created in the selected period.
+      _filteredTasks =
+          _applyDateFilter(_filteredTasks, keepActive: _isActiveStatus(status));
     }
   }
 
+  static bool _isActiveStatus(String status) =>
+      status == 'مفتوحة' || status == 'قيد التنفيذ';
+
   /// تطبيق فلتر التاريخ على قائمة المهام
-  List<Task> _applyDateFilter(List<Task> tasks) {
+  ///
+  /// [keepActive]: open/in-progress tasks bypass the date filter. The filter is
+  /// on the creation date, so an old task still waiting for the technician (or
+  /// reassigned today) disappeared from the "open" lists under «اليوم».
+  List<Task> _applyDateFilter(List<Task> tasks, {bool keepActive = false}) {
     List<Task> result = tasks;
     final now = DateTime.now();
     if (_dateFilter == 'all') {
       // «الكل» = عمليات هذا الشهر فقط (بطلب المستخدم) — نفس السنة والشهر الحاليين.
       result = result.where((t) {
+        if (keepActive && _isActiveStatus(t.status)) return true;
         final d = t.createdAt;
         return d.year == now.year && d.month == now.month;
       }).toList();
@@ -326,6 +338,7 @@ class HomePageTasksState extends State<HomePageTasks> {
           ? now.subtract(const Duration(days: 1))
           : now; // today
       result = result.where((t) {
+        if (keepActive && _isActiveStatus(t.status)) return true;
         final d = t.createdAt;
         return d.year == targetDate.year &&
             d.month == targetDate.month &&
@@ -861,21 +874,39 @@ class HomePageTasksState extends State<HomePageTasks> {
     // المصدر المعتمد: تجميع الخادم — _summary!['byTechnician']
     final byTech = _summary?['byTechnician'];
     if (byTech is List) {
+      // The server groups by (technician, department), so one technician can
+      // arrive as several rows. Sum them per normalized name — assigning here
+      // let the last (smallest) row overwrite the others.
+      final Map<String, int> deptTotals = {};
       for (final row in byTech) {
         if (row is! Map) continue;
-        final name = (row['technician'] ?? '').toString().trim();
+        final name = normalizeName((row['technician'] ?? '').toString());
         if (name.isEmpty) continue;
-        techStats[name] = {
-          'total': _asInt(row['total']),
-          'open': _asInt(row['open']),
-          // الخادم: inProgress → العميل: progress
-          'progress': _asInt(row['inProgress']),
-          // الخادم: completed → العميل: done
-          'done': _asInt(row['completed']),
-          // الخادم: cancelled → العميل: canceled
-          'canceled': _asInt(row['cancelled']),
-          'department': (row['department'] ?? '').toString().trim(),
-        };
+        final dept = (row['department'] ?? '').toString().trim();
+        final rowTotal = _asInt(row['total']);
+        final s = techStats.putIfAbsent(
+            name,
+            () => {
+                  'total': 0,
+                  'open': 0,
+                  'progress': 0,
+                  'done': 0,
+                  'canceled': 0,
+                  'department': dept,
+                });
+        s['total'] = (s['total'] as int) + rowTotal;
+        s['open'] = (s['open'] as int) + _asInt(row['open']);
+        // الخادم: inProgress → العميل: progress
+        s['progress'] = (s['progress'] as int) + _asInt(row['inProgress']);
+        // الخادم: completed → العميل: done
+        s['done'] = (s['done'] as int) + _asInt(row['completed']);
+        // الخادم: cancelled → العميل: canceled
+        s['canceled'] = (s['canceled'] as int) + _asInt(row['cancelled']);
+        // Show the department holding most of this technician's tasks.
+        if (dept.isNotEmpty && rowTotal > (deptTotals[name] ?? -1)) {
+          deptTotals[name] = rowTotal;
+          s['department'] = dept;
+        }
       }
     } else {
       // fallback: حساب عميلي من _filteredTasks
@@ -1794,15 +1825,31 @@ class HomePageTasksState extends State<HomePageTasks> {
 
   /// بناء قائمة المهام
   Widget _buildTaskListView() {
+    // Loading more was scroll-triggered only, so an empty or short filtered
+    // list (nothing to scroll) could never reach older pages.
+    final loadOlderButton = TextButton.icon(
+      onPressed: widget.onLoadMore,
+      icon: const Icon(Icons.history, size: 18),
+      label: const Text('تحميل مهام أقدم'),
+    );
     final listContent = _filteredTasks.isEmpty
-        ? const Expanded(
+        ? Expanded(
             child: Center(
-              child: Text(
-                'لا توجد مهام حاليا',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: SdColors.faint),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'لا توجد مهام حاليا',
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: SdColors.faint),
+                  ),
+                  if (widget.hasMorePages && _serverSearchResults == null) ...[
+                    const SizedBox(height: 8),
+                    loadOlderButton,
+                  ],
+                ],
               ),
             ),
           )
@@ -1818,19 +1865,14 @@ class HomePageTasksState extends State<HomePageTasks> {
                 return false;
               },
               child: ListView.builder(
-                itemCount:
-                    _filteredTasks.length + (widget.hasMorePages && _filteredTasks.length == _currentTasks.length ? 1 : 0),
+                itemCount: _filteredTasks.length +
+                    (widget.hasMorePages && _serverSearchResults == null ? 1 : 0),
                 itemBuilder: (context, index) {
-                  // مؤشر تحميل المزيد
+                  // زر تحميل المزيد (يعمل أيضاً حين لا تكفي القائمة للتمرير)
                   if (index >= _filteredTasks.length) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(
-                          child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2))),
+                    return Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Center(child: loadOlderButton),
                     );
                   }
                   final task = _filteredTasks[index];

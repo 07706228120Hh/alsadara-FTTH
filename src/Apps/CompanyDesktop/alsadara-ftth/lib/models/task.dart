@@ -240,7 +240,8 @@ class Task {
           toStatus: mapApiStatusToArabic(h['ToStatus']?.toString() ?? ''),
           notes: h['Note']?.toString() ?? '',
           changedBy: h['ChangedBy']?.toString() ?? '',
-          changedAt: DateTime.tryParse(h['ChangedAt']?.toString() ?? ''),
+          // UTC → local (was shown 3h behind for Baghdad)
+          changedAt: _parseUtcDate(h['ChangedAt']?.toString()),
         ));
       }
     }
@@ -365,7 +366,10 @@ class Task {
     }
   }
 
-  /// تحويل حالة عربية إلى API
+  /// Parses a server timestamp (UTC, with or without a trailing Z) into local time.
+  /// Use this for every server date shown to the user (comments, history, tabs).
+  static DateTime? parseServerDate(String? dateStr) => _parseUtcDate(dateStr);
+
   /// تحويل تاريخ من السيرفر (UTC بدون Z) إلى توقيت محلي
   static DateTime? _parseUtcDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return null;
@@ -375,6 +379,7 @@ class Task {
     return DateTime.tryParse(s)?.toLocal();
   }
 
+  /// تحويل حالة عربية إلى API
   static String mapArabicStatusToApi(String status) {
     switch (status) {
       case 'مفتوحة':

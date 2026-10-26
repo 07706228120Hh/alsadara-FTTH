@@ -1099,13 +1099,21 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         priority: _selectedPriority,
         amount: double.tryParse(_amountController.text.replaceAll(',', '').trim()),
         deliveryFee: double.tryParse(_deliveryFeeController.text.replaceAll(',', '').trim()),
-        closedAt: (_selectedStatus == 'مكتملة' || _selectedStatus == 'ملغية')
-            ? DateTime.now()
-            : null,
+        // Keep the original close time when the status was not changed.
+        closedAt: _selectedStatus == widget.task.status
+            ? widget.task.closedAt
+            : (_selectedStatus == 'مكتملة' || _selectedStatus == 'ملغية')
+                ? DateTime.now()
+                : null,
       );
 
       // حفظ التغييرات عبر API — تعديل كامل لكل الحقول
-      final apiStatus = Task.mapArabicStatusToApi(updatedTask.status);
+      // Send status only when the user actually changed it. The Arabic bucket
+      // ("مفتوحة") maps back to Pending, so always sending it silently reset
+      // Assigned/OnHold/Reviewing tasks (and Rejected → Cancelled) on every save.
+      final statusChanged = _selectedStatus != widget.task.status;
+      final apiStatus =
+          statusChanged ? Task.mapArabicStatusToApi(updatedTask.status) : null;
       final amountText = _amountController.text.replaceAll(',', '').trim();
       final parsedAmount = double.tryParse(amountText);
       final taskId = updatedTask.guid.isNotEmpty ? updatedTask.guid : updatedTask.id;

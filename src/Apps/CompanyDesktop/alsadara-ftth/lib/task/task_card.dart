@@ -1137,7 +1137,8 @@ class _TaskCardState extends State<TaskCard> {
     final dateStr = comment['CreatedAt']?.toString() ??
         comment['createdAt']?.toString() ??
         '';
-    final date = DateTime.tryParse(dateStr);
+    // UTC → local (comments were shown 3h behind for Baghdad)
+    final date = Task.parseServerDate(dateStr);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),

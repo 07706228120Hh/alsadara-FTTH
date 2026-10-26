@@ -50,6 +50,30 @@ class _TaskListScreenState extends State<TaskListScreen>
   bool _hasMorePages = true;
   bool _isLoadingMore = false;
 
+  /// Server statuses of the «مفتوحة» + «قيد التنفيذ» buckets. Page 1 holds only
+  /// the newest 50 tasks by creation date, so an older task that is still open
+  /// (or was reassigned today) never reached the technician's list. These are
+  /// fetched separately and merged. The API filters one status per request.
+  static const List<String> _activeStatuses = [
+    'Pending',
+    'Reviewing',
+    'Approved',
+    'Assigned',
+    'InProgress',
+    'OnHold',
+  ];
+  static const int _activePageSize = 200;
+  static const Duration _activeRefreshInterval = Duration(minutes: 3);
+  List<Task> _activeCache = [];
+  DateTime? _lastActiveFetch;
+
+  // Refresh coalescing
+  bool _fetchInFlight = false;
+  bool _refetchQueued = false;
+  bool _queuedForceActive = false;
+  bool _fetchErrorShown = false;
+  Timer? _signalRDebounce;
+
   // إعدادات التحديث
   static const Duration _refreshInterval =
       Duration(seconds: 60); // fallback — SignalR يتكفل بالتحديث الفوري
@@ -64,7 +88,11 @@ class _TaskListScreenState extends State<TaskListScreen>
     // SignalR — تحديث فوري عند أي تغيير
     TaskSignalRService.instance.connect();
     _signalRSubscription = TaskSignalRService.instance.onAnyChange.listen((_) {
-      if (mounted) _fetchTasks(showLoadingIndicator: false);
+      // Debounce bursts of events into one refresh.
+      _signalRDebounce?.cancel();
+      _signalRDebounce = Timer(const Duration(seconds: 2), () {
+        if (mounted) _fetchTasks(showLoadingIndicator: false);
+      });
     });
   }
 
@@ -72,6 +100,7 @@ class _TaskListScreenState extends State<TaskListScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this); // إزالة المراقب
     _refreshTimer?.cancel(); // إلغاء المؤقت عند إغلاق الشاشة
+    _signalRDebounce?.cancel();
     _signalRSubscription?.cancel();
     super.dispose();
   }
@@ -143,8 +172,70 @@ class _TaskListScreenState extends State<TaskListScreen>
     return widget.department.isNotEmpty ? widget.department : null;
   }
 
+  /// Fetches every active task for the current role filter (see [_activeStatuses]).
+  /// Returns the tasks and whether every status request succeeded.
+  Future<(List<Task>, bool)> _fetchActiveTasks() async {
+    final responses = await Future.wait(_activeStatuses.map((s) async {
+      try {
+        return await TaskApiService.instance.getRequests(
+          page: 1,
+          pageSize: _activePageSize,
+          status: s,
+          technician: _techFilter,
+          department: _deptFilter,
+          createdByName: _createdByFilter,
+        );
+      } catch (_) {
+        return const <String, dynamic>{};
+      }
+    }));
+    final result = <Task>[];
+    var allOk = true;
+    for (final r in responses) {
+      if (r['success'] != true) {
+        allOk = false;
+        continue;
+      }
+      final List<dynamic> items = r['data'] ?? r['Items'] ?? r['items'] ?? [];
+      result.addAll(
+          items.map((i) => Task.fromApiResponse(i as Map<String, dynamic>)));
+    }
+    return (result, allOk);
+  }
+
+  /// Returns the active tasks, hitting the server at most every
+  /// [_activeRefreshInterval] unless [force] (first load, pull-to-refresh,
+  /// after a status change). The 60s timer and SignalR reuse the cache so a
+  /// refresh stays one request instead of seven.
+  Future<List<Task>> _getActiveTasks({required bool force}) async {
+    final now = DateTime.now();
+    final due = force ||
+        _lastActiveFetch == null ||
+        now.difference(_lastActiveFetch!) >= _activeRefreshInterval;
+    if (!due) return _activeCache;
+    final (fetched, allOk) = await _fetchActiveTasks();
+    if (allOk) {
+      _activeCache = fetched;
+      _lastActiveFetch = now;
+    } else {
+      // Keep previously known active tasks of the failed statuses instead of
+      // letting them vanish (and later re-appear as "new" notifications).
+      final ids = fetched.map((t) => t.guid).toSet();
+      _activeCache = [...fetched, ..._activeCache.where((t) => ids.add(t.guid))];
+    }
+    return _activeCache;
+  }
+
   /// جلب المهام من الخادم (الصفحة الأولى أو تحديث)
-  Future<void> _fetchTasks({bool showLoadingIndicator = true}) async {
+  Future<void> _fetchTasks(
+      {bool showLoadingIndicator = true, bool forceActive = false}) async {
+    // Coalesce overlapping refreshes (timer + SignalR + resume + actions).
+    if (_fetchInFlight) {
+      _refetchQueued = true;
+      _queuedForceActive = _queuedForceActive || forceActive;
+      return;
+    }
+    _fetchInFlight = true;
     try {
       if (showLoadingIndicator && mounted) {
         setState(() => _isLoading = true);
@@ -157,21 +248,54 @@ class _TaskListScreenState extends State<TaskListScreen>
       debugPrint('📡 جلب المهام: tech=$_techFilter, created=$_createdByFilter, dept=$_deptFilter, token=${ApiClient.instance.authToken != null ? "موجود" : "❌ غير موجود"}');
       // اللوحة تأخذ أرقامها من الخادم (getSummary) → لا داعي لتحميل كل المهام دفعة.
       // القوائم تعمل عبر الترقيم + التحميل الكسول (loadMoreTasks عند 80% تمرير).
-      final response = await TaskApiService.instance.getRequests(
+      final pageFuture = TaskApiService.instance.getRequests(
         page: 1,
         pageSize: _pageSize,
         technician: _techFilter,
         department: _deptFilter,
         createdByName: _createdByFilter,
       );
-      debugPrint('📡 استجابة المهام: success=${response['success']}, items=${(response['data'] as List?)?.length ?? 0}');
-      final List<dynamic> items =
-          response['data'] ?? response['Items'] ?? response['items'] ?? [];
-      final tasks = items
-          .map((item) => Task.fromApiResponse(item as Map<String, dynamic>))
-          .toList();
+      final activeFuture =
+          _getActiveTasks(force: forceActive || _isFirstLoad);
+      final response = await pageFuture;
+      final activeTasks = await activeFuture;
+      debugPrint('📡 استجابة المهام: success=${response['success']}, items=${(response['data'] as List?)?.length ?? 0}, active=${activeTasks.length}');
 
       if (!mounted) return;
+
+      // A rejected request (e.g. 403 missing «tasks.view») used to show
+      // «لا توجد مهام حاليا» as if the technician had no tasks. Keep the
+      // current list and tell the user why.
+      if (response['success'] != true) {
+        setState(() {
+          _isLoading = false;
+          _isRefreshing = false;
+        });
+        // Once per failure streak — not on every 60s timer tick.
+        if (showLoadingIndicator || !_fetchErrorShown) {
+          _fetchErrorShown = true;
+          final code = response['statusCode'];
+          final msg = code == 403
+              ? 'لا تملك صلاحية عرض المهام — راجع مدير النظام'
+              : (response['message']?.toString() ?? 'تعذّر جلب المهام');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg), backgroundColor: SdColors.danger),
+          );
+        }
+        return;
+      }
+      _fetchErrorShown = false;
+
+      final List<dynamic> items =
+          response['data'] ?? response['Items'] ?? response['items'] ?? [];
+      final pageTasks = items
+          .map((item) => Task.fromApiResponse(item as Map<String, dynamic>))
+          .toList();
+      final pageIds = pageTasks.map((t) => t.guid).toSet();
+      final tasks = [
+        ...pageTasks,
+        ...activeTasks.where((t) => pageIds.add(t.guid)),
+      ];
 
       // كشف المهام الجديدة وإرسال إشعار محلي مفصّل
       if (!_isFirstLoad) {
@@ -191,13 +315,15 @@ class _TaskListScreenState extends State<TaskListScreen>
           );
         }
       }
-      _knownTaskIds = tasks.map((t) => t.guid).toSet();
+      // Cumulative: a task that drops out of one fetch (failed request, page
+      // window) must not be announced as "new" again when it comes back.
+      _knownTaskIds.addAll(tasks.map((t) => t.guid));
       _isFirstLoad = false;
 
       setState(() {
         _tasks = tasks;
         _currentPage = 1;
-        _hasMorePages = tasks.length >= _pageSize;
+        _hasMorePages = pageTasks.length >= _pageSize;
         _tasks.sort((a, b) {
           final da = a.closedAt ?? a.createdAt;
           final db = b.closedAt ?? b.createdAt;
@@ -215,6 +341,14 @@ class _TaskListScreenState extends State<TaskListScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('حدث خطأ أثناء جلب المهام'), backgroundColor: SdColors.danger),
         );
+      }
+    } finally {
+      _fetchInFlight = false;
+      if (_refetchQueued && mounted) {
+        final force = _queuedForceActive;
+        _refetchQueued = false;
+        _queuedForceActive = false;
+        _fetchTasks(showLoadingIndicator: false, forceActive: force);
       }
     }
   }
@@ -246,7 +380,9 @@ class _TaskListScreenState extends State<TaskListScreen>
       final uniqueNew = newTasks.where((t) => !existingIds.contains(t.guid)).toList();
 
       setState(() {
-        _tasks.addAll(uniqueNew);
+        // New list instance: HomePageTasks.didUpdateWidget only recomputes when
+        // the list reference changes, so in-place addAll never showed page 2+.
+        _tasks = [..._tasks, ...uniqueNew];
         _currentPage = nextPage;
         _hasMorePages = newTasks.length >= _pageSize;
         _tasks.sort((a, b) {
@@ -303,7 +439,8 @@ class _TaskListScreenState extends State<TaskListScreen>
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: () async {
-                await _fetchTasks(showLoadingIndicator: false);
+                await _fetchTasks(
+                    showLoadingIndicator: false, forceActive: true);
                 debugPrint('🔄 تم التحديث اليدوي للمهام');
               },
               child: HomePageTasks(
@@ -318,7 +455,10 @@ class _TaskListScreenState extends State<TaskListScreen>
                     _handleTaskStatusChanged, // تمرير دالة تحديث المهمة
                 onShowMenu: _showMenu,
                 onShowFilter: _showFilter,
-                onRefresh: () => _fetchTasks(showLoadingIndicator: false),
+                // After a status change: refresh the active cache too, or a
+                // just-completed old task would come back as open from it.
+                onRefresh: () =>
+                    _fetchTasks(showLoadingIndicator: false, forceActive: true),
                 onLoadMore: loadMoreTasks,
                 hasMorePages: _hasMorePages,
               ),
@@ -338,7 +478,7 @@ class _TaskListScreenState extends State<TaskListScreen>
           currentUserDepartment: widget.department,
           onTaskCreated: (taskData) {
             // تحديث القائمة بعد إضافة مهمة
-            _fetchTasks(showLoadingIndicator: false);
+            _fetchTasks(showLoadingIndicator: false, forceActive: true);
 
             scaffoldMessenger.showSnackBar(
               const SnackBar(
