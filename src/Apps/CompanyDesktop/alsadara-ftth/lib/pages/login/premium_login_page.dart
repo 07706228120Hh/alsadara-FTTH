@@ -554,10 +554,12 @@ class _PremiumLoginPageState extends State<PremiumLoginPage>
         if (!mounted) return;
         _showSnackBar('أنت على أحدث إصدار (v$current)', SdColors.success);
       }
+    } on UpdateCheckException catch (e) {
+      // رسالة دقيقة حسب السبب (حدّ معدّل / حجب / لا إنترنت) بدل جملة عامة مضلِّلة.
+      if (mounted) _showSnackBar(e.userMessage, SdColors.danger);
     } catch (_) {
       if (mounted) {
-        _showSnackBar('تعذّر التحقق من التحديثات. تأكد من اتصال الإنترنت',
-            SdColors.danger);
+        _showSnackBar('تعذّر التحقق من التحديثات — حاول لاحقاً', SdColors.danger);
       }
     } finally {
       if (mounted) setState(() => _checkingUpdate = false);

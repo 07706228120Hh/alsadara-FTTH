@@ -3,6 +3,7 @@
 /// يدعم Windows (EXE/MSIX) و Android (APK)
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -12,6 +13,52 @@ import 'package:path_provider/path_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// تصنيف سبب فشل فحص التحديث — كي تُظهر الواجهة رسالة دقيقة بدل
+/// «لا يوجد اتصال بالإنترنت» العامة المضلِّلة.
+enum UpdateCheckErrorKind {
+  /// لا اتصال فعلي بالشبكة (SocketException / مهلة).
+  network,
+
+  /// تجاوز حدّ معدّل GitHub (403/429) — شائع على شبكة مكتب بـ IP مشترك.
+  rateLimited,
+
+  /// تعذّر الوصول لخادم التحديث تحديداً (حجب/TLS/شهادة) رغم وجود إنترنت.
+  blocked,
+
+  /// الخادم ردّ بخطأ (5xx أو رد غير متوقع).
+  server,
+
+  /// سبب غير معروف.
+  unknown,
+}
+
+/// استثناء فحص التحديث يحمل التصنيف + رسالة عربية جاهزة للعرض.
+class UpdateCheckException implements Exception {
+  final UpdateCheckErrorKind kind;
+  final String technical;
+  UpdateCheckException(this.kind, [this.technical = '']);
+
+  /// رسالة عربية مناسبة للمستخدم حسب نوع الخطأ.
+  String get userMessage {
+    switch (kind) {
+      case UpdateCheckErrorKind.network:
+        return 'تعذّر التحقق من التحديثات — تأكد من اتصال الإنترنت';
+      case UpdateCheckErrorKind.rateLimited:
+        return 'تم تجاوز حدّ فحص التحديثات مؤقتاً على هذه الشبكة.\n'
+            'التطبيق سيُحدَّث تلقائياً لاحقاً — أو حاول بعد قليل.';
+      case UpdateCheckErrorKind.blocked:
+        return 'تعذّر الوصول إلى خادم التحديثات (قد يكون محجوباً على هذه الشبكة).';
+      case UpdateCheckErrorKind.server:
+        return 'خادم التحديثات لا يستجيب حالياً — حاول لاحقاً.';
+      case UpdateCheckErrorKind.unknown:
+        return 'تعذّر التحقق من التحديثات — حاول لاحقاً.';
+    }
+  }
+
+  @override
+  String toString() => 'UpdateCheckException($kind): $technical';
+}
 
 /// معلومات التحديث
 class UpdateInfo {
@@ -30,66 +77,69 @@ class UpdateInfo {
   });
 
   factory UpdateInfo.fromGitHubRelease(Map<String, dynamic> json) {
-    String downloadUrl = '';
-    int downloadSize = 0;
+    final assets = (json['assets'] as List<dynamic>? ?? [])
+        .map((a) => (
+              name: (a['name']?.toString() ?? ''),
+              url: (a['browser_download_url']?.toString() ?? ''),
+              size: (a['size'] is int ? a['size'] as int : 0),
+            ))
+        .where((a) => a.url.isNotEmpty)
+        .toList();
 
-    final assets = json['assets'] as List<dynamic>? ?? [];
-
-    if (Platform.isAndroid) {
-      // === Android: البحث عن ملف APK ===
-      for (var asset in assets) {
-        final name = asset['name']?.toString().toLowerCase() ?? '';
-        if (name.endsWith('.apk')) {
-          downloadUrl = asset['browser_download_url'] ?? '';
-          downloadSize = asset['size'] ?? 0;
-          break;
-        }
-      }
-    } else {
-      // === Windows: الأولوية: Setup.exe → أي .exe → .zip ===
-
-      // المرحلة 1: البحث عن ملف Setup.exe (المثبّت)
-      for (var asset in assets) {
-        final name = asset['name']?.toString().toLowerCase() ?? '';
-        if (name.contains('setup') && name.endsWith('.exe')) {
-          downloadUrl = asset['browser_download_url'] ?? '';
-          downloadSize = asset['size'] ?? 0;
-          break;
-        }
-      }
-
-      // المرحلة 2: إذا لم نجد Setup، نبحث عن أي .exe
-      if (downloadUrl.isEmpty) {
-        for (var asset in assets) {
-          final name = asset['name']?.toString().toLowerCase() ?? '';
-          if (name.endsWith('.exe')) {
-            downloadUrl = asset['browser_download_url'] ?? '';
-            downloadSize = asset['size'] ?? 0;
-            break;
-          }
-        }
-      }
-
-      // المرحلة 3: zip كخيار أخير
-      if (downloadUrl.isEmpty) {
-        for (var asset in assets) {
-          final name = asset['name']?.toString().toLowerCase() ?? '';
-          if (name.endsWith('.zip')) {
-            downloadUrl = asset['browser_download_url'] ?? '';
-            downloadSize = asset['size'] ?? 0;
-            break;
-          }
-        }
-      }
-    }
+    final selected = selectAsset(assets);
 
     return UpdateInfo(
       version: (json['tag_name'] ?? '').toString().replaceAll('v', ''),
-      downloadUrl: downloadUrl,
+      downloadUrl: selected?.url ?? '',
       releaseNotes: json['body'] ?? 'لا توجد ملاحظات',
       publishedAt: json['published_at'] ?? '',
-      downloadSize: downloadSize,
+      downloadSize: selected?.size ?? 0,
     );
+  }
+
+  /// بناء من بيانات صفحة إصدارات GitHub (مسار fallback بلا حدّ معدّل).
+  /// الحجم غير معروف من HTML (0) — كود التحميل يعتمد `contentLength` من الرد.
+  factory UpdateInfo.fromHtmlAssets({
+    required String version,
+    required List<String> downloadUrls,
+  }) {
+    final assets = downloadUrls
+        .map((u) => (name: u.split('/').last, url: u, size: 0))
+        .toList();
+    final selected = selectAsset(assets);
+    return UpdateInfo(
+      version: version.replaceAll('v', ''),
+      downloadUrl: selected?.url ?? '',
+      releaseNotes: 'لا توجد ملاحظات',
+      publishedAt: '',
+      downloadSize: 0,
+    );
+  }
+
+  /// اختيار الأصل المناسب للمنصّة الحالية بأولوية:
+  /// Android: `.apk` · Windows: Setup.exe → أي .exe → .zip.
+  static ({String name, String url, int size})? selectAsset(
+      List<({String name, String url, int size})> assets) {
+    bool ok(({String name, String url, int size}) a, bool Function(String) f) =>
+        f(a.name.toLowerCase());
+
+    if (Platform.isAndroid) {
+      for (final a in assets) {
+        if (ok(a, (n) => n.endsWith('.apk'))) return a;
+      }
+      return null;
+    }
+    // Windows (وغيره): Setup.exe أولاً
+    for (final a in assets) {
+      if (ok(a, (n) => n.contains('setup') && n.endsWith('.exe'))) return a;
+    }
+    for (final a in assets) {
+      if (ok(a, (n) => n.endsWith('.exe'))) return a;
+    }
+    for (final a in assets) {
+      if (ok(a, (n) => n.endsWith('.zip'))) return a;
+    }
+    return null;
   }
 }
 
@@ -154,34 +204,37 @@ class AutoUpdateService {
     }
   }
 
-  /// التحقق من وجود تحديث جديد
+  // GitHub يتطلب User-Agent وإلا ردّ 403؛ وبعض الشبكات بطيئة ⇒ مهلة صريحة.
+  static const String _userAgent = 'Alsadara-FTTH-Updater';
+  static const Duration _httpTimeout = Duration(seconds: 20);
+  static const Map<String, String> _apiHeaders = {
+    'Accept': 'application/vnd.github+json',
+    'User-Agent': _userAgent,
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+
+  /// صفحة «آخر إصدار» على github.com (ليست API ⇒ بلا حدّ 60/ساعة).
+  static const String _releasesLatestUrl =
+      'https://github.com/$githubOwner/$githubRepo/releases/latest';
+
+  /// التحقق من وجود تحديث جديد (تلقائي عند بدء التطبيق).
+  /// يبتلع الأخطاء بصمت (يرجع null) لأنه خلفي؛ التشخيص عبر debugPrint فقط.
   Future<UpdateInfo?> checkForUpdate() async {
     try {
-      final response = await http.get(
-        Uri.parse(githubApiUrl),
-        headers: {'Accept': 'application/vnd.github.v3+json'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final updateInfo = UpdateInfo.fromGitHubRelease(data);
-
-        // مقارنة الإصدارات
-        final packageInfo = await PackageInfo.fromPlatform();
-        final currentVersion = packageInfo.version;
-
-        if (_isNewerVersion(updateInfo.version, currentVersion)) {
-          // تحقق إذا كان هذا الإصدار في فترة التخطي
-          if (await _isSnoozed(updateInfo.version)) {
-            debugPrint(
-                '⏸️ [AutoUpdate] الإصدار ${updateInfo.version} في فترة snooze — تم التخطي');
-            return null;
-          }
-          return updateInfo;
+      final updateInfo = await _resolveLatest();
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (_isNewerVersion(updateInfo.version, packageInfo.version)) {
+        if (await _isSnoozed(updateInfo.version)) {
+          debugPrint(
+              '⏸️ [AutoUpdate] الإصدار ${updateInfo.version} في فترة snooze — تم التخطي');
+          return null;
         }
+        return updateInfo;
       }
+    } on UpdateCheckException catch (e) {
+      debugPrint('❌ [AutoUpdate] تعذّر الفحص التلقائي: $e');
     } catch (e) {
-      debugPrint('❌ خطأ في التحقق من التحديثات');
+      debugPrint('❌ [AutoUpdate] خطأ غير متوقع في الفحص التلقائي: $e');
     }
     return null;
   }
@@ -190,25 +243,150 @@ class AutoUpdateService {
   ///
   /// يختلف عن [checkForUpdate] التلقائي في أنه:
   ///   * يتجاوز آلية snooze (المستخدم طلب الفحص صراحةً).
-  ///   * يرمي استثناءً عند فشل الشبكة بدل ابتلاعه، كي يميّز المستدعي
-  ///     بين «أنت على أحدث إصدار» (يرجع null) و«تعذّر الفحص» (استثناء).
+  ///   * يرمي [UpdateCheckException] مصنَّفاً عند الفشل بدل ابتلاعه، كي تعرض
+  ///     الواجهة سبباً دقيقاً (حدّ معدّل / حجب / لا إنترنت) لا رسالة عامة.
   ///
   /// يرجع [UpdateInfo] إن توفّر إصدار أحدث، أو null إن كان المستخدم على الأحدث.
   Future<UpdateInfo?> checkForUpdateManual() async {
-    final response = await http.get(
-      Uri.parse(githubApiUrl),
-      headers: {'Accept': 'application/vnd.github.v3+json'},
-    );
-    if (response.statusCode != 200) {
-      throw Exception('GitHub API returned ${response.statusCode}');
-    }
-    final data = json.decode(response.body);
-    final updateInfo = UpdateInfo.fromGitHubRelease(data);
+    final updateInfo = await _resolveLatest();
     final packageInfo = await PackageInfo.fromPlatform();
     if (_isNewerVersion(updateInfo.version, packageInfo.version)) {
       return updateInfo;
     }
     return null;
+  }
+
+  /// يحاول عبر GitHub API أولاً؛ وعند حدّ المعدّل (403/429) أو فشل الوصول
+  /// للـ API يسقط تلقائياً إلى صفحة github.com (بلا حدّ معدّل).
+  /// يرمي [UpdateCheckException] مصنَّفاً إن فشل المساران.
+  Future<UpdateInfo> _resolveLatest() async {
+    try {
+      return await _fetchViaApi();
+    } on UpdateCheckException catch (apiErr) {
+      // الـ fallback مفيد لحدّ المعدّل أو خطأ الخادم أو حجب api.github.com.
+      // لا فائدة منه عند خطأ تنسيق فقط، لكن المحاولة آمنة.
+      debugPrint('ℹ️ [AutoUpdate] API فشل (${apiErr.kind}) — fallback إلى github.com');
+      try {
+        return await _fetchViaHtml();
+      } on UpdateCheckException catch (htmlErr) {
+        // إن كان الفشل الثاني شبكياً، أعطِ الأولوية لتصنيف API الأدق.
+        if (htmlErr.kind == UpdateCheckErrorKind.network &&
+            apiErr.kind != UpdateCheckErrorKind.network) {
+          throw apiErr;
+        }
+        rethrow;
+      }
+    }
+  }
+
+  /// المسار الأساسي: GitHub REST API.
+  Future<UpdateInfo> _fetchViaApi() async {
+    final http.Response response;
+    try {
+      response = await http
+          .get(Uri.parse(githubApiUrl), headers: _apiHeaders)
+          .timeout(_httpTimeout);
+    } catch (e) {
+      throw _classifyNetworkError(e);
+    }
+
+    if (response.statusCode == 200) {
+      try {
+        return UpdateInfo.fromGitHubRelease(json.decode(response.body));
+      } catch (e) {
+        throw UpdateCheckException(
+            UpdateCheckErrorKind.server, 'bad JSON: $e');
+      }
+    }
+    if (response.statusCode == 403 || response.statusCode == 429) {
+      // حدّ معدّل GitHub (شائع على IP مكتب مشترك).
+      throw UpdateCheckException(
+          UpdateCheckErrorKind.rateLimited, 'API ${response.statusCode}');
+    }
+    if (response.statusCode >= 500) {
+      throw UpdateCheckException(
+          UpdateCheckErrorKind.server, 'API ${response.statusCode}');
+    }
+    throw UpdateCheckException(
+        UpdateCheckErrorKind.unknown, 'API ${response.statusCode}');
+  }
+
+  /// مسار احتياطي بلا حدّ معدّل: نقرأ وسم الإصدار من إعادة توجيه
+  /// `releases/latest` ثم روابط الأصول من `expanded_assets/<tag>`.
+  Future<UpdateInfo> _fetchViaHtml() async {
+    final client = http.Client();
+    try {
+      // 1) حلّ الوسم عبر إعادة التوجيه (بلا متابعة) → Location: .../tag/vX.Y.Z
+      String? tag;
+      try {
+        final req = http.Request('GET', Uri.parse(_releasesLatestUrl))
+          ..followRedirects = false
+          ..headers['User-Agent'] = _userAgent;
+        final resp = await client.send(req).timeout(_httpTimeout);
+        final location = resp.headers['location'];
+        await resp.stream.drain<void>(); // تحرير الاتصال
+        if (location != null) {
+          tag = RegExp(r'/tag/([^/?#]+)').firstMatch(location)?.group(1);
+        }
+      } catch (e) {
+        throw _classifyNetworkError(e);
+      }
+      if (tag == null || tag.isEmpty) {
+        throw UpdateCheckException(
+            UpdateCheckErrorKind.server, 'no tag in redirect');
+      }
+
+      // 2) روابط التحميل من جزء الأصول الموسّع.
+      final assetsUrl =
+          'https://github.com/$githubOwner/$githubRepo/releases/expanded_assets/$tag';
+      final http.Response assetsResp;
+      try {
+        assetsResp = await http.get(Uri.parse(assetsUrl),
+            headers: {'User-Agent': _userAgent}).timeout(_httpTimeout);
+      } catch (e) {
+        throw _classifyNetworkError(e);
+      }
+      if (assetsResp.statusCode != 200) {
+        throw UpdateCheckException(
+            UpdateCheckErrorKind.server, 'assets ${assetsResp.statusCode}');
+      }
+
+      final links = RegExp(r'href="(/[^"]+/releases/download/[^"]+)"')
+          .allMatches(assetsResp.body)
+          .map((m) => 'https://github.com${m.group(1)}')
+          .toSet()
+          .toList();
+
+      final info =
+          UpdateInfo.fromHtmlAssets(version: tag, downloadUrls: links);
+      if (info.downloadUrl.isEmpty) {
+        throw UpdateCheckException(
+            UpdateCheckErrorKind.server, 'no matching asset for platform');
+      }
+      return info;
+    } finally {
+      client.close();
+    }
+  }
+
+  /// تحويل خطأ شبكة خام إلى تصنيف مفهوم للمستخدم.
+  UpdateCheckException _classifyNetworkError(Object e) {
+    if (e is UpdateCheckException) return e;
+    if (e is TimeoutException) {
+      return UpdateCheckException(UpdateCheckErrorKind.network, 'timeout');
+    }
+    if (e is SocketException) {
+      // فشل DNS/الاتصال: لا شبكة أو الخادم محجوب على هذه الشبكة.
+      return UpdateCheckException(UpdateCheckErrorKind.network, 'socket: ${e.osError?.message ?? e.message}');
+    }
+    if (e is HandshakeException || e is TlsException) {
+      // فشل TLS (شهادة/بروتوكول) على ويندوز قديم ⇒ وصول محجوب عملياً.
+      return UpdateCheckException(UpdateCheckErrorKind.blocked, 'tls: $e');
+    }
+    if (e is HttpException) {
+      return UpdateCheckException(UpdateCheckErrorKind.blocked, 'http: $e');
+    }
+    return UpdateCheckException(UpdateCheckErrorKind.unknown, e.toString());
   }
 
   /// مقارنة الإصدارات
