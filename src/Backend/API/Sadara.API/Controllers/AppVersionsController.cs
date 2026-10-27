@@ -20,6 +20,11 @@ public class AppVersionsController : ControllerBase
     private const string GithubLatestApi =
         "https://api.github.com/repos/" + GithubOwner + "/" + GithubRepo + "/releases/latest";
     private const string ManifestCacheKey = "app_update_manifest_latest";
+    // علَم تخزين سلبي قصير أثناء انقطاع GitHub (يمنع عاصفة مكالمات صادرة).
+    private const string ManifestNegKey = "app_update_manifest_neg";
+    // قفل مشترك (static لأن الكنترولر transient) لتجميع الطلبات المتزامنة
+    // ومنع cache stampede عند انتهاء الصلاحية.
+    private static readonly SemaphoreSlim _manifestLock = new(1, 1);
 
     public AppVersionsController(
         IUnitOfWork unitOfWork,
@@ -134,6 +139,8 @@ public class AppVersionsController : ControllerBase
     }
 
     /// جلب أحدث إصدار من GitHub مع cache 10 دقائق (نصّ JSON خام).
+    /// يستخدم قفلاً مشتركاً لتجميع الطلبات المتزامنة، وتخزيناً سلبياً قصيراً
+    /// أثناء انقطاع GitHub كيلا يُطلق كل طلب وارد مكالمة صادرة جديدة.
     private async Task<string?> GetLatestReleaseJsonCachedAsync()
     {
         if (_cache.TryGetValue(ManifestCacheKey, out string? cached) &&
@@ -141,25 +148,58 @@ public class AppVersionsController : ControllerBase
         {
             return cached;
         }
-
-        var client = _httpClientFactory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(15);
-
-        using var req = new HttpRequestMessage(HttpMethod.Get, GithubLatestApi);
-        // GitHub يرفض الطلبات بلا User-Agent بـ403.
-        req.Headers.Add("User-Agent", "Sadara-Update-Manifest");
-        req.Headers.Add("Accept", "application/vnd.github+json");
-        req.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
-
-        var resp = await client.SendAsync(req);
-        if (!resp.IsSuccessStatusCode)
+        if (_cache.TryGetValue(ManifestNegKey, out bool _))
         {
-            return null;
+            return null; // في فترة التهدئة بعد فشل حديث
         }
 
-        var body = await resp.Content.ReadAsStringAsync();
-        _cache.Set(ManifestCacheKey, body, TimeSpan.FromMinutes(10));
-        return body;
+        await _manifestLock.WaitAsync();
+        try
+        {
+            // فحص ثانٍ بعد القفل: قد يكون طلب سابق ملأ الـcache أثناء الانتظار.
+            if (_cache.TryGetValue(ManifestCacheKey, out string? again) &&
+                !string.IsNullOrEmpty(again))
+            {
+                return again;
+            }
+            if (_cache.TryGetValue(ManifestNegKey, out bool _))
+            {
+                return null;
+            }
+
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
+
+            using var req = new HttpRequestMessage(HttpMethod.Get, GithubLatestApi);
+            // GitHub يرفض الطلبات بلا User-Agent بـ403.
+            req.Headers.Add("User-Agent", "Sadara-Update-Manifest");
+            req.Headers.Add("Accept", "application/vnd.github+json");
+            req.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
+
+            try
+            {
+                var resp = await client.SendAsync(req);
+                if (!resp.IsSuccessStatusCode)
+                {
+                    _cache.Set(ManifestNegKey, true, TimeSpan.FromSeconds(45));
+                    return null;
+                }
+
+                var body = await resp.Content.ReadAsStringAsync();
+                _cache.Set(ManifestCacheKey, body, TimeSpan.FromMinutes(10));
+                return body;
+            }
+            catch
+            {
+                // فشل شبكي/مهلة: تهدئة قصيرة تمنع العاصفة أثناء انقطاع GitHub.
+                _cache.Set(ManifestNegKey, true, TimeSpan.FromSeconds(45));
+                return null;
+            }
+        }
+        finally
+        {
+            _manifestLock.Release();
+        }
     }
 
     /// اختيار أصل التحميل حسب المنصّة بنفس أولوية التطبيق:
