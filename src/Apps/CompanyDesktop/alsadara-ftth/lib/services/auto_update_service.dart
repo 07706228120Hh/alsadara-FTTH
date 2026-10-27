@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'api/api_config.dart';
 
 /// تصنيف سبب فشل فحص التحديث — كي تُظهر الواجهة رسالة دقيقة بدل
 /// «لا يوجد اتصال بالإنترنت» العامة المضلِّلة.
@@ -256,10 +257,21 @@ class AutoUpdateService {
     return null;
   }
 
-  /// يحاول عبر GitHub API أولاً؛ وعند حدّ المعدّل (403/429) أو فشل الوصول
-  /// للـ API يسقط تلقائياً إلى صفحة github.com (بلا حدّ معدّل).
-  /// يرمي [UpdateCheckException] مصنَّفاً إن فشل المساران.
+  /// يحاول بثلاث طبقات بالترتيب:
+  ///   1) خادمنا (`/appversions/manifest`) — بلا حدّ معدّل، ومضمون الوصول إن
+  ///      كان التطبيق يعمل أصلاً (نفس نطاق الدخول/FTTH).
+  ///   2) GitHub REST API.
+  ///   3) صفحة github.com (بلا حدّ معدّل) عبر redirect + expanded_assets.
+  /// يرمي [UpdateCheckException] مصنَّفاً إن فشلت الطبقات الثلاث.
   Future<UpdateInfo> _resolveLatest() async {
+    // الطبقة 1: خادمنا أولاً.
+    try {
+      return await _fetchViaOwnServer();
+    } on UpdateCheckException catch (serverErr) {
+      debugPrint(
+          'ℹ️ [AutoUpdate] manifest الخادم فشل (${serverErr.kind}) — fallback إلى GitHub');
+    }
+    // الطبقة 2: GitHub API، ثم الطبقة 3: github.com HTML.
     try {
       return await _fetchViaApi();
     } on UpdateCheckException catch (apiErr) {
@@ -279,7 +291,49 @@ class AutoUpdateService {
     }
   }
 
-  /// المسار الأساسي: GitHub REST API.
+  /// الطبقة الأساسية: manifest على خادمنا (يُخزِّن آخر إصدار من GitHub مؤقتاً
+  /// جهة الخادم ⇒ IP واحد يسأل GitHub ⇒ لا حدّ معدّل ولا حجب على الأجهزة).
+  Future<UpdateInfo> _fetchViaOwnServer() async {
+    final platform = Platform.isAndroid ? 'android' : 'windows';
+    final url = '${ApiConfig.baseUrl}/appversions/manifest?platform=$platform';
+    final http.Response resp;
+    try {
+      resp = await http.get(Uri.parse(url),
+          headers: {'Accept': 'application/json'}).timeout(_httpTimeout);
+    } catch (e) {
+      throw _classifyNetworkError(e);
+    }
+
+    if (resp.statusCode == 200) {
+      final body = json.decode(resp.body);
+      if (body is Map && body['success'] == true && body['data'] is Map) {
+        final data = body['data'] as Map;
+        final version = (data['version'] ?? '').toString();
+        final downloadUrl = (data['downloadUrl'] ?? '').toString();
+        if (version.isNotEmpty && downloadUrl.isNotEmpty) {
+          return UpdateInfo(
+            version: version.replaceAll('v', ''),
+            downloadUrl: downloadUrl,
+            releaseNotes: (data['releaseNotes'] ?? 'لا توجد ملاحظات').toString(),
+            publishedAt: (data['publishedAt'] ?? '').toString(),
+            downloadSize: data['downloadSize'] is int ? data['downloadSize'] as int : 0,
+          );
+        }
+      }
+      // رد غير متوقع أو بلا أصل مناسب لهذه المنصّة ⇒ fallback.
+      throw UpdateCheckException(
+          UpdateCheckErrorKind.server, 'manifest: unexpected body');
+    }
+    // الخادم يرد 502 عند تعذّر جلب GitHub ⇒ عامله كخطأ خادم ليُفعِّل fallback.
+    if (resp.statusCode >= 500) {
+      throw UpdateCheckException(
+          UpdateCheckErrorKind.server, 'manifest ${resp.statusCode}');
+    }
+    throw UpdateCheckException(
+        UpdateCheckErrorKind.unknown, 'manifest ${resp.statusCode}');
+  }
+
+  /// المسار الاحتياطي الأول: GitHub REST API.
   Future<UpdateInfo> _fetchViaApi() async {
     final http.Response response;
     try {
