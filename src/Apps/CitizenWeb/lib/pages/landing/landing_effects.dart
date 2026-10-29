@@ -107,7 +107,11 @@ class Press3D extends StatefulWidget {
 
 class _Press3DState extends State<Press3D> with SingleTickerProviderStateMixin {
   bool _down = false, _hover = false;
-  late final AnimationController _sheen = AnimationController(vsync: this, duration: const Duration(milliseconds: 3600));
+  // يُنشأ فقط عند الحاجة (sheen)؛ الإنشاء الكسول داخل late final كان يُهيّئه
+  // لأول مرة في dispose() عند sheen=false ⇒ createTicker على context مُفكَّك.
+  AnimationController? _sheenCtrl;
+  AnimationController get _sheen =>
+      _sheenCtrl ??= AnimationController(vsync: this, duration: const Duration(milliseconds: 3600));
 
   @override
   void initState() {
@@ -117,7 +121,7 @@ class _Press3DState extends State<Press3D> with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
-    _sheen.dispose();
+    _sheenCtrl?.dispose();
     super.dispose();
   }
 
@@ -419,6 +423,10 @@ class _MarqueeState extends State<Marquee> with SingleTickerProviderStateMixin {
       final dt = (now - _last).inMicroseconds / 1e6;
       _last = now;
       if (_hover || !_sc.hasClients || reduceMotion(context)) return;
+      // أبعاد ScrollView قد لا تكون جاهزة في أول إطار بعد الربط ⇒ jumpTo ينهار
+      // بـ«Null check» عبر minScrollExtent. ننتظر حتى تُحسب الأبعاد والبكسلات.
+      final pos = _sc.position;
+      if (!pos.hasPixels || !pos.hasContentDimensions) return;
       _sc.jumpTo(_sc.offset + dt * 40);
     })
       ..start();
