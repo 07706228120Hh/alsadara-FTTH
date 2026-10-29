@@ -111,6 +111,10 @@ whatsapp_server_v*.js
 .secrets/
 *.credentials*
 
+# Encrypted credential blobs (DPAPI / AES) - NEVER COMMIT
+*.enc
+*.dpapi.enc
+
 # ═══════════════════════════════════════════
 # إضافات جديدة - 2026-03-29
 # ═══════════════════════════════════════════

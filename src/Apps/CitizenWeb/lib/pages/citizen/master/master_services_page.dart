@@ -1,257 +1,136 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../config/app_theme.dart';
+import 'package:sadara_design/sadara_design.dart';
 
-/// صفحة خدمات الماستر كارد
+/// خدمات بطاقات الماستر — موحّدة على نظام تصميم الصدارة (3D).
 class MasterServicesPage extends StatelessWidget {
   const MasterServicesPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final services = [
-      {
-        'title': 'شحن رصيد',
-        'description': 'شحن رصيد بطاقتك الحالية',
-        'icon': Icons.account_balance_wallet,
-        'color': AppTheme.masterCardColor,
-        'route': '/citizen/master/recharge',
-      },
-      {
-        'title': 'طلب سحب ديلفري',
-        'description': 'اطلب سحب رصيد مع توصيل',
-        'icon': Icons.delivery_dining,
-        'color': Colors.orange,
-        'route': '/citizen/master/delivery-withdraw',
-      },
-      {
-        'title': 'كشف حساب',
-        'description': 'عرض سجل المعاملات والأرصدة',
-        'icon': Icons.receipt_long,
-        'color': Colors.purple,
-        'route': '/citizen/master/statement',
-      },
-    ];
-
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.backgroundColor,
-        appBar: AppBar(
-          title: const Text('خدمات الماستر'),
-          backgroundColor: AppTheme.masterCardColor,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.go('/citizen/home'),
-          ),
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return SdPage(
+      appBar: SdAppBar(
+        title: 'خدمات الماستر',
+        onBack: () => context.go('/citizen/home'),
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _cardBalance(),
+          const SizedBox(height: SdSpace.lg),
+          const SdSectionHeader(title: 'الخدمات المتاحة'),
+          const SizedBox(height: SdSpace.sm),
+          SdTileGrid(
+            phoneColumns: 2,
+            maxColumns: 4,
             children: [
-              // بطاقتي
-              _buildMyCardSection(),
-
-              const SizedBox(height: 24),
-
-              // الخدمات
-              const Text(
-                'الخدمات المتاحة',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textDark,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              ...services.map(
-                (service) => _buildServiceCard(
-                  context,
-                  title: service['title'] as String,
-                  description: service['description'] as String,
-                  icon: service['icon'] as IconData,
-                  color: service['color'] as Color,
-                  route: service['route'] as String,
-                ),
-              ),
+              _tile(context,
+                  icon: Icons.add_card_rounded,
+                  title: 'بطاقة جديدة',
+                  subtitle: 'اطلب وتسلّم',
+                  tone: SdStatus.success.tone,
+                  route: '/citizen/master/new-card'),
+              _tile(context,
+                  icon: Icons.account_balance_wallet_rounded,
+                  title: 'شحن رصيد',
+                  subtitle: 'عبّئ بطاقتك',
+                  group: SdGroup.platform,
+                  route: '/citizen/master/recharge'),
+              _tile(context,
+                  icon: Icons.delivery_dining_rounded,
+                  title: 'سحب ديلفري',
+                  subtitle: 'نقداً إلى بابك',
+                  tone: SdStatus.warning.tone,
+                  route: '/citizen/master/delivery-withdraw'),
+              _tile(context,
+                  icon: Icons.receipt_long_rounded,
+                  title: 'كشف حساب',
+                  subtitle: 'سجل المعاملات',
+                  group: SdGroup.admin,
+                  route: '/citizen/master/statement'),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildMyCardSection() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.masterCardColor,
-            AppTheme.masterCardColor.withOpacity(0.8),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.masterCardColor.withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+  Widget _cardBalance() {
+    return SdRaised(
+      radius: SdRadius.xl,
+      depth: SdDepth.hero,
+      padding: const EdgeInsets.all(SdSpace.lg),
+      gradient: const LinearGradient(
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        colors: [SdColors.platformEdge, SdColors.platformMid],
       ),
+      edgeColor: SdColors.platformEdge,
+      glowColor: const Color(0x805B21B6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'بطاقتي',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: Colors.greenAccent,
-                      size: 14,
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      'نشطة',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            '**** **** **** 4532',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              letterSpacing: 2,
-              fontFamily: 'monospace',
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'الرصيد المتاح',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '2,450.00 د.ع',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.credit_card,
+          const Text('الرصيد المتاح',
+              style: TextStyle(
+                  fontFamily: SdText.family,
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          const Text('320,000 د.ع',
+              style: TextStyle(
+                  fontFamily: SdText.family,
                   color: Colors.white,
-                  size: 32,
-                ),
-              ),
-            ],
-          ),
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900)),
+          const SizedBox(height: SdSpace.sm),
+          const Text('•••• •••• •••• 4821',
+              style: TextStyle(
+                  fontFamily: SdText.family,
+                  color: Colors.white70,
+                  fontSize: 13,
+                  letterSpacing: 3,
+                  fontWeight: FontWeight.w700)),
         ],
       ),
     );
   }
 
-  Widget _buildServiceCard(
+  Widget _tile(
     BuildContext context, {
-    required String title,
-    required String description,
     required IconData icon,
-    required Color color,
+    required String title,
+    required String subtitle,
+    SdTone? tone,
+    SdGroup group = SdGroup.admin,
     required String route,
   }) {
-    return GestureDetector(
+    return SdRaised(
       onTap: () => context.go(route),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black26, width: 1),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 28),
+      tilt: true,
+      radius: SdRadius.lg,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+      child: Row(
+        children: [
+          SdIconCube(icon: icon, tone: tone, group: group, size: 46),
+          const SizedBox(width: SdSpace.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: SdText.titleSm.copyWith(fontSize: 14.5)),
+                Text(subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: SdText.caption),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textDark,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      color: AppTheme.textGrey,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              color: AppTheme.textGrey,
-              size: 16,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

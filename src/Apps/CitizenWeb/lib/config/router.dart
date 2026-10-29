@@ -7,6 +7,7 @@ import '../providers/agent_auth_provider.dart';
 // الصفحات العامة
 // ═══════════════════════════════════════════════════════════════
 import '../pages/landing_page.dart';
+import '../pages/landing/sadara_landing_page.dart';
 import '../pages/login_selector_page.dart';
 import '../pages/home_page.dart';
 import '../pages/login_page.dart';
@@ -135,7 +136,10 @@ GoRouter createRouter({
       // ═══════════════════════════════════════════════════════════════
 
       /// الصفحة الرئيسية (Landing Page)
-      GoRoute(path: '/', builder: (context, state) => const LandingPage()),
+      GoRoute(path: '/', builder: (context, state) => const SadaraLandingPage()),
+
+      /// الواجهة القديمة (للمقارنة — يمكن حذفها لاحقاً)
+      GoRoute(path: '/landing-old', builder: (context, state) => const LandingPage()),
 
       /// صفحة اختيار نوع المستخدم
       GoRoute(

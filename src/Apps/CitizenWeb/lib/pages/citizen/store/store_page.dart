@@ -1,11 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../config/app_theme.dart';
+import 'package:sadara_design/sadara_design.dart';
 
-/// صفحة المتجر الإلكتروني
+/// المتجر الإلكتروني — موحّد على نظام تصميم الصدارة (3D).
 class StorePage extends StatefulWidget {
   const StorePage({super.key});
-
   @override
   State<StorePage> createState() => _StorePageState();
 }
@@ -77,8 +76,16 @@ class _StorePageState extends State<StorePage> {
   ];
 
   List<Map<String, dynamic>> get _filteredProducts {
-    if (_selectedCategory == 'all') return _products;
-    return _products.where((p) => p['category'] == _selectedCategory).toList();
+    final q = _searchController.text.trim();
+    var list = _selectedCategory == 'all'
+        ? _products
+        : _products.where((p) => p['category'] == _selectedCategory).toList();
+    if (q.isNotEmpty) {
+      list = list
+          .where((p) => (p['name'] as String).contains(q))
+          .toList();
+    }
+    return list;
   }
 
   @override
@@ -90,269 +97,182 @@ class _StorePageState extends State<StorePage> {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 900;
-
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.backgroundColor,
-        appBar: AppBar(
-          title: const Text('المتجر'),
-          backgroundColor: AppTheme.storeColor,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.go('/citizen/home'),
+    return SdPage(
+      scrollable: false,
+      padding: EdgeInsets.zero,
+      appBar: SdAppBar(
+        title: 'المتجر',
+        onBack: () => context.go('/citizen/home'),
+        actions: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart_rounded),
+                onPressed: () => context.go('/citizen/store/cart'),
+              ),
+              const Positioned(right: 4, top: 4, child: SdBadge(count: 2)),
+            ],
           ),
-          actions: [
-            Stack(
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(SdSpace.gutter, SdSpace.sm, SdSpace.gutter, 0),
+            child: Column(
               children: [
-                IconButton(
-                  icon: const Icon(Icons.shopping_cart),
-                  onPressed: () => context.go('/citizen/store/cart'),
+                TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    hintText: 'ابحث عن منتج…',
+                    prefixIcon: Icon(Icons.search_rounded),
+                  ),
                 ),
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Text(
-                      '2',
-                      style: TextStyle(color: Colors.white, fontSize: 10),
-                    ),
+                const SizedBox(height: SdSpace.sm),
+                SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: _categories.map((cat) {
+                      final sel = _selectedCategory == cat['id'];
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: ChoiceChip(
+                          label: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(cat['icon'] as IconData,
+                                  size: 16,
+                                  color: sel ? Colors.white : SdColors.muted),
+                              const SizedBox(width: 4),
+                              Text(cat['name'] as String),
+                            ],
+                          ),
+                          selected: sel,
+                          onSelected: (_) =>
+                              setState(() => _selectedCategory = cat['id'] as String),
+                          selectedColor: SdColors.primary,
+                          labelStyle: TextStyle(
+                            fontFamily: SdText.family,
+                            fontWeight: FontWeight.w700,
+                            color: sel ? Colors.white : SdColors.ink,
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
               ],
             ),
-          ],
-        ),
-        body: Column(
-          children: [
-            // Search & Categories
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.white,
-              child: Column(
-                children: [
-                  // Search
-                  TextFormField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'ابحث عن منتج...',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: AppTheme.backgroundColor,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Categories
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _categories.map((cat) {
-                        final isSelected = _selectedCategory == cat['id'];
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: ChoiceChip(
-                            label: Row(
-                              children: [
-                                Icon(
-                                  cat['icon'] as IconData,
-                                  size: 16,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : AppTheme.textGrey,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(cat['name']),
-                              ],
-                            ),
-                            selected: isSelected,
-                            onSelected: (_) =>
-                                setState(() => _selectedCategory = cat['id']),
-                            selectedColor: AppTheme.storeColor,
-                            labelStyle: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : AppTheme.textDark,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
+          ),
+          const SizedBox(height: SdSpace.sm),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.fromLTRB(SdSpace.gutter, 0, SdSpace.gutter, SdSpace.lg),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isWide ? 4 : 2,
+                childAspectRatio: 0.68,
+                crossAxisSpacing: SdSpace.sm,
+                mainAxisSpacing: SdSpace.sm,
               ),
+              itemCount: _filteredProducts.length,
+              itemBuilder: (context, i) => _productCard(_filteredProducts[i]),
             ),
-
-            // Products Grid
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: GridView.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: isWide ? 4 : 2,
-                    childAspectRatio: 0.7,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: _filteredProducts.length,
-                  itemBuilder: (context, index) {
-                    final product = _filteredProducts[index];
-                    return _buildProductCard(product);
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildProductCard(Map<String, dynamic> product) {
-    final hasDiscount = product['oldPrice'] != null;
-
-    return GestureDetector(
-      onTap: () => context.go('/citizen/store/product/${product['id']}'),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image
-            Expanded(
-              flex: 3,
-              child: Stack(
-                children: [
-                  Container(
+  Widget _productCard(Map<String, dynamic> p) {
+    final hasDiscount = p['oldPrice'] != null;
+    return SdRaised(
+      onTap: () => context.go('/citizen/store/product/${p['id']}'),
+      radius: SdRadius.lg,
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(SdRadius.lg)),
+                  child: Container(
                     width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16),
-                      ),
+                    color: SdColors.surfaceAlt,
+                    child: Image.network(
+                      p['imageUrl'] ?? '',
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Center(
+                          child: Icon(Icons.image_rounded, size: 48, color: SdColors.faint)),
                     ),
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16),
+                  ),
+                ),
+                if (hasDiscount)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: SdColors.danger,
+                        borderRadius: BorderRadius.circular(SdRadius.xs),
                       ),
-                      child: Image.network(
-                        product['imageUrl'] ?? '',
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.image,
-                          size: 60,
-                          color: Colors.grey,
-                        ),
+                      child: Text(
+                        '-${(((p['oldPrice'] - p['price']) / p['oldPrice']) * 100).round()}%',
+                        style: const TextStyle(
+                            fontFamily: SdText.family,
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900),
                       ),
                     ),
                   ),
-                  if (hasDiscount)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '-${(((product['oldPrice'] - product['price']) / product['oldPrice']) * 100).round()}%',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(SdSpace.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(p['name'] as String,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: SdText.label),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      const Icon(Icons.star_rounded, color: SdColors.gold, size: 15),
+                      const SizedBox(width: 2),
+                      Text('${p['rating']}', style: SdText.caption),
+                      Text(' (${p['reviews']})', style: SdText.caption),
+                    ],
+                  ),
+                  const Spacer(),
+                  Row(
+                    children: [
+                      Text('${p['price']} د.ع',
+                          style: SdText.label.copyWith(color: SdColors.success)),
+                      if (hasDiscount) ...[
+                        const SizedBox(width: 4),
+                        Text('${p['oldPrice']}',
+                            style: SdText.caption.copyWith(
+                                decoration: TextDecoration.lineThrough)),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),
-            // Info
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product['name'],
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textDark,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 14),
-                        const SizedBox(width: 2),
-                        Text(
-                          '${product['rating']}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textGrey,
-                          ),
-                        ),
-                        Text(
-                          ' (${product['reviews']})',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppTheme.textGrey,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Row(
-                      children: [
-                        Text(
-                          '${product['price']} د.ع',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.storeColor,
-                          ),
-                        ),
-                        if (hasDiscount) ...[
-                          const SizedBox(width: 4),
-                          Text(
-                            '${product['oldPrice']}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textGrey,
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../../config/app_theme.dart';
+import 'package:go_router/go_router.dart';
+import 'package:sadara_design/sadara_design.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../services/api_service.dart';
 
-/// صفحة الملف الشخصي
+/// الملف الشخصي — موحّد على نظام تصميم الصدارة (3D).
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
-
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
@@ -17,7 +16,6 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isEditing = false;
   bool _isSaving = false;
   final _apiService = ApiService();
-
   final Map<String, dynamic> _userData = {};
 
   late TextEditingController _nameController;
@@ -35,11 +33,9 @@ class _ProfilePageState extends State<ProfilePage> {
       'name': citizen?.fullName ?? '',
       'phone': citizen?.phoneNumber ?? '',
       'email': citizen?.email ?? '',
-      'nationalId': '',
       'address': citizen?.fullAddress ?? '',
       'city': citizen?.city ?? '',
       'postalCode': citizen?.district ?? '',
-      'joinDate': '',
     });
     _nameController = TextEditingController(text: _userData['name']);
     _phoneController = TextEditingController(text: _userData['phone']);
@@ -60,398 +56,17 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 900;
-
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.backgroundColor,
-        appBar: AppBar(
-          title: const Text('الملف الشخصي'),
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.go('/citizen/home'),
-          ),
-          actions: [
-            IconButton(
-              icon: Icon(_isEditing ? Icons.close : Icons.edit),
-              onPressed: () {
-                setState(() {
-                  if (_isEditing) {
-                    // إلغاء التعديل
-                    _nameController.text = _userData['name'];
-                    _phoneController.text = _userData['phone'];
-                    _emailController.text = _userData['email'];
-                    _addressController.text = _userData['address'];
-                    _cityController.text = _userData['city'];
-                    _postalCodeController.text = _userData['postalCode'];
-                  }
-                  _isEditing = !_isEditing;
-                });
-              },
-            ),
-          ],
-        ),
-        body: SingleChildScrollView(
-          padding: EdgeInsets.all(isWide ? 32 : 16),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Column(
-                children: [
-                  // صورة الملف الشخصي
-                  _buildProfileHeader(),
-                  const SizedBox(height: 24),
-
-                  // البيانات الشخصية
-                  _buildInfoCard(
-                    title: 'البيانات الشخصية',
-                    icon: Icons.person,
-                    children: [
-                      _buildInfoRow(
-                        'الاسم الكامل',
-                        _userData['name'],
-                        Icons.person_outline,
-                        controller: _nameController,
-                        editable: true,
-                      ),
-                      if (_userData['nationalId']?.isNotEmpty ?? false)
-                        _buildInfoRow(
-                          'رقم الهوية',
-                          _userData['nationalId'],
-                          Icons.badge_outlined,
-                        ),
-                      if (_userData['joinDate']?.isNotEmpty ?? false)
-                        _buildInfoRow(
-                          'تاريخ الانضمام',
-                          _formatDate(_userData['joinDate']),
-                          Icons.calendar_today_outlined,
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // معلومات الاتصال
-                  _buildInfoCard(
-                    title: 'معلومات الاتصال',
-                    icon: Icons.contact_phone,
-                    children: [
-                      _buildInfoRow(
-                        'رقم الجوال',
-                        _userData['phone'],
-                        Icons.phone_outlined,
-                        controller: _phoneController,
-                        editable: true,
-                      ),
-                      _buildInfoRow(
-                        'البريد الإلكتروني',
-                        _userData['email'],
-                        Icons.email_outlined,
-                        controller: _emailController,
-                        editable: true,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // العنوان
-                  _buildInfoCard(
-                    title: 'العنوان',
-                    icon: Icons.location_on,
-                    children: [
-                      _buildInfoRow(
-                        'العنوان التفصيلي',
-                        _userData['address'],
-                        Icons.home_outlined,
-                        controller: _addressController,
-                        editable: true,
-                      ),
-                      _buildInfoRow(
-                        'المدينة',
-                        _userData['city'],
-                        Icons.location_city_outlined,
-                        controller: _cityController,
-                        editable: true,
-                      ),
-                      _buildInfoRow(
-                        'الرمز البريدي',
-                        _userData['postalCode'],
-                        Icons.markunread_mailbox_outlined,
-                        controller: _postalCodeController,
-                        editable: true,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // الإجراءات
-                  _buildActionsCard(),
-                  const SizedBox(height: 24),
-
-                  // زر الحفظ
-                  if (_isEditing) _buildSaveButton(),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileHeader() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      child: Column(
-        children: [
-          Stack(
-            alignment: Alignment.bottomLeft,
-            children: [
-              CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.white,
-                child: Text(
-                  _userData['name'].toString().substring(0, 2),
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-              ),
-              if (_isEditing)
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: AppTheme.accentColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _userData['name'],
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _userData['phone'],
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.white.withOpacity(0.9),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.verified, color: Colors.greenAccent, size: 18),
-                SizedBox(width: 8),
-                Text(
-                  'حساب موثق',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoCard({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(icon, color: AppTheme.primaryColor),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textDark,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(
-    String label,
-    String value,
-    IconData icon, {
-    TextEditingController? controller,
-    bool editable = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Icon(icon, color: AppTheme.textGrey, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textGrey,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (_isEditing && editable && controller != null)
-                  TextField(
-                    controller: controller,
-                    decoration: InputDecoration(
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  )
-                else
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: AppTheme.textDark,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionsCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      child: Column(
-        children: [
-          _buildActionTile(
-            'تغيير كلمة المرور',
-            Icons.lock_outline,
-            () => _showChangePasswordDialog(),
-          ),
-          const Divider(height: 1),
-          _buildActionTile(
-            'إعدادات الإشعارات',
-            Icons.notifications_outlined,
-            () => context.go('/citizen/notifications'),
-          ),
-          const Divider(height: 1),
-          _buildActionTile('الخصوصية والأمان', Icons.security_outlined, () {}),
-          const Divider(height: 1),
-          _buildActionTile(
-            'تسجيل الخروج',
-            Icons.logout,
-            () => _showLogoutDialog(),
-            isDestructive: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionTile(
-    String title,
-    IconData icon,
-    VoidCallback onTap, {
-    bool isDestructive = false,
-  }) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: isDestructive ? AppTheme.errorColor : AppTheme.primaryColor,
-      ),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: isDestructive ? AppTheme.errorColor : AppTheme.textDark,
-        ),
-      ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-      onTap: onTap,
-    );
-  }
-
-  Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _saveChanges,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.successColor,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: const Text(
-          'حفظ التغييرات',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
+  void _toggleEdit() {
+    setState(() {
+      if (_isEditing) {
+        _nameController.text = _userData['name'];
+        _emailController.text = _userData['email'];
+        _addressController.text = _userData['address'];
+        _cityController.text = _userData['city'];
+        _postalCodeController.text = _userData['postalCode'];
+      }
+      _isEditing = !_isEditing;
+    });
   }
 
   Future<void> _saveChanges() async {
@@ -469,7 +84,6 @@ class _ProfilePageState extends State<ProfilePage> {
       }
       setState(() {
         _userData['name'] = _nameController.text;
-        _userData['phone'] = _phoneController.text;
         _userData['email'] = _emailController.text;
         _userData['address'] = _addressController.text;
         _userData['city'] = _cityController.text;
@@ -477,81 +91,183 @@ class _ProfilePageState extends State<ProfilePage> {
         _isEditing = false;
         _isSaving = false;
       });
-      // إعادة تحميل البروفايل
+      if (mounted) await context.read<AuthProvider>().loadProfile();
       if (mounted) {
-        await context.read<AuthProvider>().loadProfile();
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('تم حفظ التغييرات بنجاح'),
-            backgroundColor: AppTheme.successColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('تم حفظ التغييرات بنجاح'),
+          backgroundColor: SdColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
       }
     } catch (e) {
       setState(() => _isSaving = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('خطأ: ${e.toString().replaceAll("Exception: ", "")}'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('خطأ: ${e.toString().replaceAll("Exception: ", "")}'),
+          backgroundColor: SdColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ));
       }
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = _nameController.text.isEmpty ? 'مستخدم' : _nameController.text;
+    return SdPage(
+      maxWidth: 640,
+      appBar: SdAppBar(
+        title: 'الملف الشخصي',
+        onBack: () => context.go('/citizen/home'),
+        actions: [
+          IconButton(
+            tooltip: _isEditing ? 'إلغاء' : 'تعديل',
+            icon: Icon(_isEditing ? Icons.close_rounded : Icons.edit_rounded),
+            onPressed: _toggleEdit,
+          ),
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _header(name),
+          const SizedBox(height: SdSpace.lg),
+          SdCard(
+            title: 'البيانات الشخصية',
+            child: Column(
+              children: [
+                _field('الاسم الكامل', _nameController, Icons.person_rounded),
+                _field('رقم الهاتف', _phoneController, Icons.phone_rounded, editable: false),
+                _field('البريد الإلكتروني', _emailController, Icons.email_rounded),
+                _field('المدينة', _cityController, Icons.location_city_rounded),
+                _field('المنطقة', _postalCodeController, Icons.map_rounded),
+                _field('العنوان', _addressController, Icons.home_rounded),
+              ],
+            ),
+          ),
+          if (_isEditing) ...[
+            const SizedBox(height: SdSpace.md),
+            SdButton(
+              label: 'حفظ التغييرات',
+              icon: Icons.save_rounded,
+              expand: true,
+              isLoading: _isSaving,
+              onPressed: _saveChanges,
+            ),
+          ],
+          const SizedBox(height: SdSpace.lg),
+          SdCard(
+            title: 'الإعدادات',
+            child: Column(
+              children: [
+                _option('تغيير كلمة المرور', Icons.lock_outline_rounded, _showChangePasswordDialog),
+                _option('إعدادات الإشعارات', Icons.notifications_outlined,
+                    () => context.go('/citizen/notifications')),
+                _option('الخصوصية والأمان', Icons.security_outlined, () {}),
+                _option('تسجيل الخروج', Icons.logout_rounded, _showLogoutDialog,
+                    destructive: true),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _header(String name) {
+    final initial = name.isNotEmpty ? name.characters.first : 'م';
+    return Row(
+      children: [
+        Container(
+          width: 64,
+          height: 64,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [SdColors.primarySoft, SdColors.primaryEdge],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: SdColors.goldLight, width: 1.4),
+            boxShadow: const [
+              BoxShadow(color: Color(0x55132A5E), blurRadius: 18, offset: Offset(0, 8)),
+            ],
+          ),
+          child: Text(initial,
+              style: const TextStyle(
+                  fontFamily: SdText.family,
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900)),
+        ),
+        const SizedBox(width: SdSpace.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name, style: SdText.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              Text(_phoneController.text.isEmpty ? '—' : _phoneController.text,
+                  style: SdText.bodySm),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _field(String label, TextEditingController c, IconData icon,
+      {bool editable = true}) {
+    if (_isEditing && editable) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: SdSpace.sm),
+        child: TextField(
+          controller: c,
+          decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
+        ),
+      );
+    }
+    return SdInfoRow(
+      label: label,
+      value: c.text.isEmpty ? '—' : c.text,
+      icon: icon,
+    );
+  }
+
+  Widget _option(String title, IconData icon, VoidCallback onTap,
+      {bool destructive = false}) {
+    final color = destructive ? SdColors.danger : SdColors.primary;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: color),
+      title: Text(title,
+          style: SdText.label
+              .copyWith(color: destructive ? SdColors.danger : SdColors.ink)),
+      trailing: const Icon(Icons.chevron_left_rounded, color: SdColors.faint),
+      onTap: onTap,
+    );
   }
 
   void _showChangePasswordDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('تغيير كلمة المرور'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'كلمة المرور الحالية',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'كلمة المرور الجديدة',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'تأكيد كلمة المرور الجديدة',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
+          children: const [
+            TextField(obscureText: true, decoration: InputDecoration(labelText: 'كلمة المرور الحالية')),
+            SizedBox(height: SdSpace.sm),
+            TextField(obscureText: true, decoration: InputDecoration(labelText: 'كلمة المرور الجديدة')),
+            SizedBox(height: SdSpace.sm),
+            TextField(obscureText: true, decoration: InputDecoration(labelText: 'تأكيد كلمة المرور الجديدة')),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          FilledButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('تم تغيير كلمة المرور بنجاح')),
               );
@@ -566,31 +282,22 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showLogoutDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: const Text('تسجيل الخروج'),
         content: const Text('هل أنت متأكد من تسجيل الخروج؟'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.go('/');
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: SdColors.danger),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await context.read<AuthProvider>().logout();
+              if (context.mounted) context.go('/');
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.errorColor,
-            ),
             child: const Text('تسجيل الخروج'),
           ),
         ],
       ),
     );
-  }
-
-  String _formatDate(String dateStr) {
-    final date = DateTime.parse(dateStr);
-    return '${date.day}/${date.month}/${date.year}';
   }
 }

@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.10.3
@@ -29,6 +29,12 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
+    sdk: flutter
+
+  # النظام الموحّد المشترك + تعريب Flutter (RTL/عربي)
+  sadara_design:
+    path: ../../packages/sadara_design
+  flutter_localizations:
     sdk: flutter
 
   # The following adds the Cupertino Icons font to your application.
@@ -45,6 +51,11 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
   xml: ^6.5.0
+
+  # الواجهة الرئيسية الجديدة (lib/pages/landing)
+  video_player: ^2.9.2
+  visibility_detector: ^0.4.0+2
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
@@ -68,11 +79,69 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # خط Cairo مُضمّن محلياً (موحّد مع التطبيق الرئيسي)
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/cairo/Cairo-Light.ttf
+          weight: 300
+        - asset: assets/fonts/cairo/Cairo-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/cairo/Cairo-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/cairo/Cairo-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/cairo/Cairo-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/cairo/Cairo-ExtraBold.ttf
+          weight: 800
+        - asset: assets/fonts/cairo/Cairo-Black.ttf
+          weight: 900
+
+    # خطوط الواجهة الرئيسية الجديدة (مقسّمة عربي/لاتيني — انظر landing_style.dart)
+    - family: Alexandria
+      fonts:
+        - asset: assets/fonts/alexandria/Alexandria-arabic-500.ttf
+          weight: 500
+        - asset: assets/fonts/alexandria/Alexandria-arabic-700.ttf
+          weight: 700
+        - asset: assets/fonts/alexandria/Alexandria-arabic-800.ttf
+          weight: 800
+    - family: AlexandriaLatin
+      fonts:
+        - asset: assets/fonts/alexandria/Alexandria-latin-500.ttf
+          weight: 500
+        - asset: assets/fonts/alexandria/Alexandria-latin-700.ttf
+          weight: 700
+        - asset: assets/fonts/alexandria/Alexandria-latin-800.ttf
+          weight: 800
+    - family: PlexArabic
+      fonts:
+        - asset: assets/fonts/ibm_plex_arabic/PlexArabic-arabic-400.ttf
+          weight: 400
+        - asset: assets/fonts/ibm_plex_arabic/PlexArabic-arabic-500.ttf
+          weight: 500
+        - asset: assets/fonts/ibm_plex_arabic/PlexArabic-arabic-600.ttf
+          weight: 600
+        - asset: assets/fonts/ibm_plex_arabic/PlexArabic-arabic-700.ttf
+          weight: 700
+    - family: PlexLatin
+      fonts:
+        - asset: assets/fonts/ibm_plex_arabic/PlexArabic-latin-400.ttf
+          weight: 400
+        - asset: assets/fonts/ibm_plex_arabic/PlexArabic-latin-500.ttf
+          weight: 500
+        - asset: assets/fonts/ibm_plex_arabic/PlexArabic-latin-600.ttf
+          weight: 600
+        - asset: assets/fonts/ibm_plex_arabic/PlexArabic-latin-700.ttf
+          weight: 700
+
   # Rive animations assets
   assets:
     - assets/animations/
     - assets/kml/
     - assets/images/
+    - assets/videos/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -6,6 +6,7 @@ import 'providers/agent_auth_provider.dart';
 import 'providers/theme_provider.dart';
 import 'config/router.dart';
 import 'config/app_theme.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,6 +72,17 @@ class _MyAppState extends State<MyApp> {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
+            locale: const Locale('ar'),
+            supportedLocales: const [Locale('ar'), Locale('en')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            builder: (context, child) => Directionality(
+              textDirection: TextDirection.rtl,
+              child: child!,
+            ),
             routerConfig: _router,
           );
         },
