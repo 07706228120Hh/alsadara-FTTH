@@ -3885,7 +3885,7 @@ public class InventoryController : ControllerBase
                 Address = req.Address,
                 CustomerType = req.CustomerType,
                 PriceTier = req.PriceTier,
-                CreditLimit = req.CreditLimit,
+                CreditLimit = req.CreditLimit ?? 0,
                 TaxNumber = req.TaxNumber,
                 Notes = req.Notes,
                 CompanyId = req.CompanyId
@@ -5351,7 +5351,7 @@ public class CreateInventoryCustomerRequest
     public string? Address { get; set; }
     public InventoryCustomerType CustomerType { get; set; } = InventoryCustomerType.Cash;
     public PriceTier PriceTier { get; set; } = PriceTier.Retail;
-    public decimal CreditLimit { get; set; } = 0;
+    public decimal? CreditLimit { get; set; } = 0;
     public string? TaxNumber { get; set; }
     public string? Notes { get; set; }
     public Guid CompanyId { get; set; }
