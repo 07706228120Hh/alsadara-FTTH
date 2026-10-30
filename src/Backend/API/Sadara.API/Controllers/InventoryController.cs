@@ -3516,23 +3516,7 @@ public class InventoryController : ControllerBase
         try
         {
             companyId = EffectiveReadCompanyId(companyId);
-            var valuation = await _unitOfWork.InventoryItems.AsQueryable()
-                .Where(i => i.CompanyId == companyId && !i.IsDeleted && i.IsActive)
-                .Select(i => new
-                {
-                    i.Id,
-                    i.Name,
-                    i.NameEn,
-                    i.SKU,
-                    CategoryName = i.Category != null ? i.Category.Name : null,
-                    Unit = i.Unit.ToString(),
-                    TotalQuantity = i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity),
-                    AverageCost = i.Stocks.Where(s => !s.IsDeleted && s.CurrentQuantity > 0)
-                        .Select(s => s.AverageCost).FirstOrDefault(),
-                    TotalValue = i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity * s.AverageCost)
-                })
-                .OrderBy(i => i.Name)
-                .ToListAsync();
+            var valuation = await GetValuationRowsAsync(companyId);
 
             var grandTotal = valuation.Sum(v => v.TotalValue);
 
@@ -3546,8 +3530,45 @@ public class InventoryController : ControllerBase
     }
 
     /// <summary>
+    /// إسقاط صفوف تقرير التقييم لشركة معيّنة (مصدر مشترك لتقرير JSON وتصدير Excel).
+    /// على المستدعي تمرير companyId مفلتراً مسبقاً عبر EffectiveReadCompanyId.
+    /// </summary>
+    private async Task<List<ValuationRow>> GetValuationRowsAsync(Guid companyId) =>
+        await _unitOfWork.InventoryItems.AsQueryable()
+            .Where(i => i.CompanyId == companyId && !i.IsDeleted && i.IsActive)
+            .Select(i => new ValuationRow
+            {
+                Id = i.Id,
+                Name = i.Name,
+                NameEn = i.NameEn,
+                SKU = i.SKU,
+                CategoryName = i.Category != null ? i.Category.Name : null,
+                Unit = i.Unit.ToString(),
+                TotalQuantity = i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity),
+                AverageCost = i.Stocks.Where(s => !s.IsDeleted && s.CurrentQuantity > 0)
+                    .Select(s => s.AverageCost).FirstOrDefault(),
+                TotalValue = i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity * s.AverageCost)
+            })
+            .OrderBy(i => i.Name)
+            .ToListAsync();
+
+    /// <summary>صفّ إسقاط تقرير التقييم (مشترك بين تقرير JSON وتصدير Excel).</summary>
+    private sealed class ValuationRow
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = "";
+        public string? NameEn { get; set; }
+        public string SKU { get; set; } = "";
+        public string? CategoryName { get; set; }
+        public string Unit { get; set; } = "";
+        public int TotalQuantity { get; set; }
+        public decimal AverageCost { get; set; }
+        public decimal TotalValue { get; set; }
+    }
+
+    /// <summary>
     /// تصدير تقرير تقييم المخزون إلى Excel (.xlsx) — معزول بشركة التوكن.
-    /// يعيد استخدام منطق تقرير التقييم نفسه ويضيف صفّ إجمالي كلّي.
+    /// يعيد استخدام GetValuationRowsAsync نفسه ويضيف صفّ إجمالي كلّي.
     /// </summary>
     [HttpGet("reports/valuation/export")]
     public async Task<IActionResult> ExportInventoryValuation([FromQuery] Guid companyId)
@@ -3555,21 +3576,7 @@ public class InventoryController : ControllerBase
         try
         {
             companyId = EffectiveReadCompanyId(companyId);
-            var valuation = await _unitOfWork.InventoryItems.AsQueryable()
-                .Where(i => i.CompanyId == companyId && !i.IsDeleted && i.IsActive)
-                .Select(i => new
-                {
-                    i.Name,
-                    i.SKU,
-                    CategoryName = i.Category != null ? i.Category.Name : null,
-                    Unit = i.Unit.ToString(),
-                    TotalQuantity = i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity),
-                    AverageCost = i.Stocks.Where(s => !s.IsDeleted && s.CurrentQuantity > 0)
-                        .Select(s => s.AverageCost).FirstOrDefault(),
-                    TotalValue = i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity * s.AverageCost)
-                })
-                .OrderBy(i => i.Name)
-                .ToListAsync();
+            var valuation = await GetValuationRowsAsync(companyId);
 
             using var workbook = new XLWorkbook();
             var ws = workbook.AddWorksheet("تقييم المخزون");
