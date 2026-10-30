@@ -37,6 +37,71 @@ public class InventoryController : ControllerBase
         return Guid.Empty;
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // حُرّاس عزل المستأجر (Tenant isolation guards) — مستقلة عن علَم EnforceIsolation.
+    // سبب الوجود: GetByIdAsync يستخدم FindAsync الذي يتجاوز الـGlobal Query Filter،
+    // فلا يكفي العلَم وحده لحماية نقاط «التحميل بالـId». SuperAdmin يُستثنى (عابر للشركات).
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>هل المستخدم الحالي SuperAdmin (يعمل عبر كل الشركات)؟</summary>
+    private bool IsSuperAdmin()
+    {
+        var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                     ?? User.FindFirst("role")?.Value;
+        return roleClaim == "SuperAdmin"
+            || (int.TryParse(roleClaim, out var roleInt) && roleInt >= (int)UserRole.SuperAdmin);
+    }
+
+    /// <summary>شركة التوكن (claim company_id)، أو null إن غابت/فسدت.</summary>
+    private Guid? TokenCompanyId()
+    {
+        var claim = User.FindFirst("company_id")?.Value;
+        return Guid.TryParse(claim, out var cid) ? cid : (Guid?)null;
+    }
+
+    /// <summary>
+    /// هل الكيان المُحمَّل يخصّ شركة التوكن؟ (أو المستخدم SuperAdmin.) تُستخدم بعد GetByIdAsync
+    /// في نقاط «التحميل بالـId» (النوع A). عند false يعيد المستدعي NotFound(404) كي لا يكشف
+    /// وجود صفّ شركة أخرى.
+    /// </summary>
+    private bool OwnedByTenant(Guid entityCompanyId)
+        => IsSuperAdmin() || (TokenCompanyId() is Guid t && t == entityCompanyId);
+
+    /// <summary>
+    /// حارس الكتابة بالجسم (النوع B): يعيد 403 إن لم يكن SuperAdmin و CompanyId القادم من
+    /// الجسم لا يطابق شركة التوكن. يُرجع null عند السماح.
+    /// </summary>
+    private IActionResult? DenyIfForeignCompany(Guid bodyCompanyId)
+    {
+        if (IsSuperAdmin()) return null;
+        var t = TokenCompanyId();
+        if (t.HasValue && t.Value == bodyCompanyId) return null;
+        return StatusCode(403, new { success = false, message = "غير مصرح: الشركة لا تطابق جلستك." });
+    }
+
+    /// <summary>الشركة الفعلية للقراءة: لغير SuperAdmin تُفرض شركة التوكن؛ وعند غيابها Guid.Empty (لا صفوف) بدل دمب كل الشركات.</summary>
+    private Guid EffectiveReadCompanyId(Guid requested)
+        => IsSuperAdmin() ? requested : (TokenCompanyId() ?? Guid.Empty);
+
+    /// <summary>نسخة nullable من EffectiveReadCompanyId لنقاط القوائم ذات companyId الاختياري.</summary>
+    private Guid? EffectiveReadCompanyId(Guid? requested)
+        => IsSuperAdmin() ? requested : (TokenCompanyId() ?? (Guid?)Guid.Empty);
+
+    /// <summary>
+    /// يتحقّق أن كل معرّفات المواد في بنود السطور تخصّ الشركة (يمنع إدراج بند بمادة شركة أخرى:
+    /// تسريب اسم / جرد شبح). يُرجع نتيجة خطأ (400) عند الفشل، أو null عند السلامة.
+    /// </summary>
+    private async Task<IActionResult?> EnsureItemsOwnedAsync(IEnumerable<Guid> itemIds, Guid companyId)
+    {
+        var ids = itemIds.Where(id => id != Guid.Empty).Distinct().ToList();
+        if (ids.Count == 0) return null;
+        var ownedCount = await _unitOfWork.InventoryItems.AsQueryable()
+            .CountAsync(i => ids.Contains(i.Id) && i.CompanyId == companyId && !i.IsDeleted);
+        if (ownedCount != ids.Count)
+            return BadRequest(new { success = false, message = "بعض المواد غير موجودة أو لا تخص شركتك." });
+        return null;
+    }
+
     private async Task<string> GenerateOrderNumber(string prefix, Guid companyId)
     {
         var year = DateTime.UtcNow.Year;
@@ -100,6 +165,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.Warehouses.AsQueryable().Where(w => !w.IsDeleted);
             if (companyId.HasValue)
                 query = query.Where(w => w.CompanyId == companyId);
@@ -138,6 +204,9 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(request.CompanyId);
+            if (deny != null) return deny;
+
             var warehouse = new Warehouse
             {
                 Id = Guid.NewGuid(),
@@ -186,6 +255,8 @@ public class InventoryController : ControllerBase
         {
             var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(id);
             if (warehouse == null || warehouse.IsDeleted)
+                return NotFound(new { success = false, message = "المستودع غير موجود" });
+            if (!OwnedByTenant(warehouse.CompanyId))
                 return NotFound(new { success = false, message = "المستودع غير موجود" });
 
             warehouse.Name = request.Name ?? warehouse.Name;
@@ -236,6 +307,8 @@ public class InventoryController : ControllerBase
             var warehouse = await _unitOfWork.Warehouses.GetByIdAsync(id);
             if (warehouse == null || warehouse.IsDeleted)
                 return NotFound(new { success = false, message = "المستودع غير موجود" });
+            if (!OwnedByTenant(warehouse.CompanyId))
+                return NotFound(new { success = false, message = "المستودع غير موجود" });
 
             // التحقق من عدم وجود مخزون
             var hasStock = await _unitOfWork.WarehouseStocks.AnyAsync(
@@ -268,6 +341,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.InventoryCategories.AsQueryable().Where(c => !c.IsDeleted);
             if (companyId.HasValue)
                 query = query.Where(c => c.CompanyId == companyId);
@@ -304,6 +378,9 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(request.CompanyId);
+            if (deny != null) return deny;
+
             var category = new InventoryCategory
             {
                 Name = request.Name,
@@ -338,6 +415,8 @@ public class InventoryController : ControllerBase
             var category = await _unitOfWork.InventoryCategories.GetByIdAsync(id);
             if (category == null || category.IsDeleted)
                 return NotFound(new { success = false, message = "التصنيف غير موجود" });
+            if (!OwnedByTenant(category.CompanyId))
+                return NotFound(new { success = false, message = "التصنيف غير موجود" });
 
             category.Name = request.Name ?? category.Name;
             category.NameEn = request.NameEn ?? category.NameEn;
@@ -369,6 +448,8 @@ public class InventoryController : ControllerBase
         {
             var category = await _unitOfWork.InventoryCategories.GetByIdAsync(id);
             if (category == null || category.IsDeleted)
+                return NotFound(new { success = false, message = "التصنيف غير موجود" });
+            if (!OwnedByTenant(category.CompanyId))
                 return NotFound(new { success = false, message = "التصنيف غير موجود" });
 
             // التحقق من عدم وجود مواد مرتبطة
@@ -407,6 +488,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.InventoryItems.AsQueryable().Where(i => !i.IsDeleted);
 
             if (companyId.HasValue)
@@ -525,6 +607,8 @@ public class InventoryController : ControllerBase
 
             if (item == null)
                 return NotFound(new { success = false, message = "المادة غير موجودة" });
+            if (!OwnedByTenant(item.CompanyId))
+                return NotFound(new { success = false, message = "المادة غير موجودة" });
 
             return Ok(new { success = true, data = item });
         }
@@ -543,6 +627,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.InventoryItems.AsQueryable()
                 .Where(i => !i.IsDeleted && i.IsActive);
 
@@ -584,6 +669,9 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(request.CompanyId);
+            if (deny != null) return deny;
+
             // التحقق من عدم تكرار SKU
             var exists = await _unitOfWork.InventoryItems.AnyAsync(
                 i => i.SKU == request.SKU && i.CompanyId == request.CompanyId && !i.IsDeleted);
@@ -640,6 +728,8 @@ public class InventoryController : ControllerBase
         {
             var item = await _unitOfWork.InventoryItems.GetByIdAsync(id);
             if (item == null || item.IsDeleted)
+                return NotFound(new { success = false, message = "المادة غير موجودة" });
+            if (!OwnedByTenant(item.CompanyId))
                 return NotFound(new { success = false, message = "المادة غير موجودة" });
 
             // التحقق من عدم تكرار SKU
@@ -700,6 +790,8 @@ public class InventoryController : ControllerBase
             var item = await _unitOfWork.InventoryItems.GetByIdAsync(id);
             if (item == null || item.IsDeleted)
                 return NotFound(new { success = false, message = "المادة غير موجودة" });
+            if (!OwnedByTenant(item.CompanyId))
+                return NotFound(new { success = false, message = "المادة غير موجودة" });
 
             // التحقق من عدم وجود مخزون
             var hasStock = await _unitOfWork.WarehouseStocks.AnyAsync(
@@ -734,6 +826,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.Suppliers.AsQueryable().Where(s => !s.IsDeleted);
             if (companyId.HasValue)
                 query = query.Where(s => s.CompanyId == companyId);
@@ -798,6 +891,8 @@ public class InventoryController : ControllerBase
 
             if (supplier == null)
                 return NotFound(new { success = false, message = "المورد غير موجود" });
+            if (!OwnedByTenant(supplier.CompanyId))
+                return NotFound(new { success = false, message = "المورد غير موجود" });
 
             return Ok(new { success = true, data = supplier });
         }
@@ -817,6 +912,9 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(request.CompanyId);
+            if (deny != null) return deny;
+
             var supplier = new Supplier
             {
                 Id = Guid.NewGuid(),
@@ -855,6 +953,8 @@ public class InventoryController : ControllerBase
             var supplier = await _unitOfWork.Suppliers.GetByIdAsync(id);
             if (supplier == null || supplier.IsDeleted)
                 return NotFound(new { success = false, message = "المورد غير موجود" });
+            if (!OwnedByTenant(supplier.CompanyId))
+                return NotFound(new { success = false, message = "المورد غير موجود" });
 
             supplier.Name = request.Name ?? supplier.Name;
             supplier.ContactPerson = request.ContactPerson ?? supplier.ContactPerson;
@@ -890,6 +990,8 @@ public class InventoryController : ControllerBase
             var supplier = await _unitOfWork.Suppliers.GetByIdAsync(id);
             if (supplier == null || supplier.IsDeleted)
                 return NotFound(new { success = false, message = "المورد غير موجود" });
+            if (!OwnedByTenant(supplier.CompanyId))
+                return NotFound(new { success = false, message = "المورد غير موجود" });
 
             supplier.IsDeleted = true;
             supplier.DeletedAt = DateTime.UtcNow;
@@ -923,6 +1025,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.PurchaseOrders.AsQueryable().Where(po => !po.IsDeleted);
 
             if (companyId.HasValue)
@@ -1021,6 +1124,8 @@ public class InventoryController : ControllerBase
 
             if (order == null)
                 return NotFound(new { success = false, message = "أمر الشراء غير موجود" });
+            if (!OwnedByTenant(order.CompanyId))
+                return NotFound(new { success = false, message = "أمر الشراء غير موجود" });
 
             return Ok(new { success = true, data = order });
         }
@@ -1040,6 +1145,19 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(request.CompanyId);
+            if (deny != null) return deny;
+
+            // حارس ملكية FK: المستودع يجب أن يخصّ نفس الشركة (يُستخدم لإنشاء المخزون والحركات).
+            var warehouseOwned = await _unitOfWork.Warehouses.AnyAsync(
+                w => w.Id == request.WarehouseId && w.CompanyId == request.CompanyId && !w.IsDeleted);
+            if (!warehouseOwned)
+                return BadRequest(new { success = false, message = "المستودع غير موجود أو لا يخصّ الشركة" });
+
+            // حارس ملكية بنود السطور: كل مادة يجب أن تخصّ الشركة (يمنع جرد شبح لمادة أجنبية).
+            var itemsDeny = await EnsureItemsOwnedAsync(request.Items.Select(i => i.InventoryItemId), request.CompanyId);
+            if (itemsDeny != null) return itemsDeny;
+
             var orderNumber = await GenerateOrderNumber("PO", request.CompanyId);
             var currentUserId = GetCurrentUserId();
 
@@ -1170,6 +1288,8 @@ public class InventoryController : ControllerBase
             var order = await _unitOfWork.PurchaseOrders.GetByIdAsync(id);
             if (order == null || order.IsDeleted)
                 return NotFound(new { success = false, message = "أمر الشراء غير موجود" });
+            if (!OwnedByTenant(order.CompanyId))
+                return NotFound(new { success = false, message = "أمر الشراء غير موجود" });
 
             // السماح بتعديل المسودة والمستلمة
             if (order.Status == PurchaseOrderStatus.Cancelled)
@@ -1184,6 +1304,10 @@ public class InventoryController : ControllerBase
             // إعادة بناء البنود إذا تم تمريرها
             if (request.Items != null && request.Items.Count > 0)
             {
+                // حارس ملكية بنود السطور الجديدة: كل مادة يجب أن تخصّ شركة الأمر المملوك.
+                var itemsDeny = await EnsureItemsOwnedAsync(request.Items.Select(i => i.InventoryItemId), order.CompanyId);
+                if (itemsDeny != null) return itemsDeny;
+
                 // حذف البنود القديمة
                 var oldItems = await _unitOfWork.PurchaseOrderItems.FindAsync(
                     poi => poi.PurchaseOrderId == id);
@@ -1236,6 +1360,8 @@ public class InventoryController : ControllerBase
             var order = await _unitOfWork.PurchaseOrders.GetByIdAsync(id);
             if (order == null || order.IsDeleted)
                 return NotFound(new { success = false, message = "أمر الشراء غير موجود" });
+            if (!OwnedByTenant(order.CompanyId))
+                return NotFound(new { success = false, message = "أمر الشراء غير موجود" });
 
             if (order.Status != PurchaseOrderStatus.Draft)
                 return BadRequest(new { success = false, message = "لا يمكن اعتماد أمر شراء غير مسودة" });
@@ -1267,6 +1393,8 @@ public class InventoryController : ControllerBase
         {
             var order = await _unitOfWork.PurchaseOrders.GetByIdAsync(id);
             if (order == null || order.IsDeleted)
+                return NotFound(new { success = false, message = "أمر الشراء غير موجود" });
+            if (!OwnedByTenant(order.CompanyId))
                 return NotFound(new { success = false, message = "أمر الشراء غير موجود" });
 
             if (order.Status != PurchaseOrderStatus.Approved && order.Status != PurchaseOrderStatus.PartiallyReceived)
@@ -1408,6 +1536,8 @@ public class InventoryController : ControllerBase
             var order = await _unitOfWork.PurchaseOrders.GetByIdAsync(id);
             if (order == null || order.IsDeleted)
                 return NotFound(new { success = false, message = "أمر الشراء غير موجود" });
+            if (!OwnedByTenant(order.CompanyId))
+                return NotFound(new { success = false, message = "أمر الشراء غير موجود" });
 
             if (order.Status == PurchaseOrderStatus.Cancelled)
                 return BadRequest(new { success = false, message = "أمر الشراء ملغي مسبقاً" });
@@ -1507,6 +1637,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.SalesOrders.AsQueryable().Where(so => !so.IsDeleted);
 
             if (companyId.HasValue)
@@ -1597,6 +1728,8 @@ public class InventoryController : ControllerBase
 
             if (order == null)
                 return NotFound(new { success = false, message = "عملية البيع غير موجودة" });
+            if (!OwnedByTenant(order.CompanyId))
+                return NotFound(new { success = false, message = "عملية البيع غير موجودة" });
 
             return Ok(new { success = true, data = order });
         }
@@ -1616,6 +1749,19 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(request.CompanyId);
+            if (deny != null) return deny;
+
+            // حارس ملكية FK: المستودع يجب أن يخصّ نفس الشركة.
+            var warehouseOwned = await _unitOfWork.Warehouses.AnyAsync(
+                w => w.Id == request.WarehouseId && w.CompanyId == request.CompanyId && !w.IsDeleted);
+            if (!warehouseOwned)
+                return BadRequest(new { success = false, message = "المستودع غير موجود أو لا يخصّ الشركة" });
+
+            // حارس ملكية بنود السطور: كل مادة يجب أن تخصّ الشركة.
+            var itemsDeny = await EnsureItemsOwnedAsync(request.Items.Select(i => i.InventoryItemId), request.CompanyId);
+            if (itemsDeny != null) return itemsDeny;
+
             // التحقق من توفر المخزون
             foreach (var itemDto in request.Items)
             {
@@ -1694,9 +1840,15 @@ public class InventoryController : ControllerBase
             var order = await _unitOfWork.SalesOrders.GetByIdAsync(id);
             if (order == null || order.IsDeleted)
                 return NotFound(new { success = false, message = "أمر البيع غير موجود" });
+            if (!OwnedByTenant(order.CompanyId))
+                return NotFound(new { success = false, message = "أمر البيع غير موجود" });
 
             if (order.Status != SalesOrderStatus.Draft)
                 return BadRequest(new { success = false, message = "لا يمكن تعديل أمر بيع مؤكد أو ملغي" });
+
+            // حارس ملكية بنود السطور الجديدة: كل مادة يجب أن تخصّ شركة الأمر المملوك.
+            var itemsDeny = await EnsureItemsOwnedAsync(request.Items.Select(i => i.InventoryItemId), order.CompanyId);
+            if (itemsDeny != null) return itemsDeny;
 
             // حذف البنود القديمة
             var oldItems = (await _unitOfWork.SalesOrderItems.FindAsync(
@@ -1752,6 +1904,8 @@ public class InventoryController : ControllerBase
         {
             var order = await _unitOfWork.SalesOrders.GetByIdAsync(id);
             if (order == null || order.IsDeleted)
+                return NotFound(new { success = false, message = "عملية البيع غير موجودة" });
+            if (!OwnedByTenant(order.CompanyId))
                 return NotFound(new { success = false, message = "عملية البيع غير موجودة" });
 
             if (order.Status != SalesOrderStatus.Draft)
@@ -1836,6 +1990,8 @@ public class InventoryController : ControllerBase
         {
             var order = await _unitOfWork.SalesOrders.GetByIdAsync(id);
             if (order == null || order.IsDeleted)
+                return NotFound(new { success = false, message = "عملية البيع غير موجودة" });
+            if (!OwnedByTenant(order.CompanyId))
                 return NotFound(new { success = false, message = "عملية البيع غير موجودة" });
 
             if (order.Status == SalesOrderStatus.Cancelled)
@@ -1925,6 +2081,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.TechnicianDispensings.AsQueryable().Where(td => !td.IsDeleted);
 
             if (companyId.HasValue)
@@ -2021,6 +2178,8 @@ public class InventoryController : ControllerBase
 
             if (dispensing == null)
                 return NotFound(new { success = false, message = "عملية الصرف غير موجودة" });
+            if (!OwnedByTenant(dispensing.CompanyId))
+                return NotFound(new { success = false, message = "عملية الصرف غير موجودة" });
 
             return Ok(new { success = true, data = dispensing });
         }
@@ -2040,6 +2199,25 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(request.CompanyId);
+            if (deny != null) return deny;
+
+            // حارس ملكية FK: المستودع يجب أن يخصّ نفس الشركة.
+            var warehouseOwned = await _unitOfWork.Warehouses.AnyAsync(
+                w => w.Id == request.WarehouseId && w.CompanyId == request.CompanyId && !w.IsDeleted);
+            if (!warehouseOwned)
+                return BadRequest(new { success = false, message = "المستودع غير موجود أو لا يخصّ الشركة" });
+
+            // حارس ملكية الفني: يجب أن يخصّ نفس الشركة (User.CompanyId nullable).
+            var technicianOwned = await _unitOfWork.Users.AnyAsync(
+                u => u.Id == request.TechnicianId && u.CompanyId == request.CompanyId);
+            if (!technicianOwned)
+                return BadRequest(new { success = false, message = "الفني غير موجود أو لا يخصّ الشركة" });
+
+            // حارس ملكية بنود السطور: كل مادة يجب أن تخصّ الشركة.
+            var itemsDeny = await EnsureItemsOwnedAsync(request.Items.Select(i => i.InventoryItemId), request.CompanyId);
+            if (itemsDeny != null) return itemsDeny;
+
             var voucherNumber = await GenerateOrderNumber("TD", request.CompanyId);
             var currentUserId = GetCurrentUserId();
 
@@ -2126,6 +2304,8 @@ public class InventoryController : ControllerBase
         {
             var dispensing = await _unitOfWork.TechnicianDispensings.GetByIdAsync(id);
             if (dispensing == null || dispensing.IsDeleted)
+                return NotFound(new { success = false, message = "سند الصرف غير موجود" });
+            if (!OwnedByTenant(dispensing.CompanyId))
                 return NotFound(new { success = false, message = "سند الصرف غير موجود" });
 
             // حارس سلامة الجرد: سند الاستخدام المرتبط بمهمة (ServiceRequestId != null) خُصم من
@@ -2221,6 +2401,8 @@ public class InventoryController : ControllerBase
             var dispensing = await _unitOfWork.TechnicianDispensings.GetByIdAsync(id);
             if (dispensing == null || dispensing.IsDeleted)
                 return NotFound(new { success = false, message = "سند الصرف غير موجود" });
+            if (!OwnedByTenant(dispensing.CompanyId))
+                return NotFound(new { success = false, message = "سند الصرف غير موجود" });
 
             // حارس سلامة الجرد: سند الاستخدام المرتبط بمهمة (ServiceRequestId != null) يعكس
             // كمياته القديمة إلى المستودع رغم أنه لم يُخصم منه ⇒ نفخ جرد. يُمنع تعديله من هنا.
@@ -2228,6 +2410,10 @@ public class InventoryController : ControllerBase
             {
                 return BadRequest(new { success = false, message = "هذا سند استخدام مرتبط بمهمة ولا يمكن تعديله من إدارة المخزون." });
             }
+
+            // حارس ملكية بنود السطور الجديدة: كل مادة يجب أن تخصّ شركة السند المملوك.
+            var itemsDeny = await EnsureItemsOwnedAsync(request.Items.Select(i => i.InventoryItemId), dispensing.CompanyId);
+            if (itemsDeny != null) return itemsDeny;
 
             await _unitOfWork.BeginTransactionAsync();
             try
@@ -2375,6 +2561,8 @@ public class InventoryController : ControllerBase
             var dispensing = await _unitOfWork.TechnicianDispensings.GetByIdAsync(id);
             if (dispensing == null || dispensing.IsDeleted)
                 return NotFound(new { success = false, message = "عملية الصرف غير موجودة" });
+            if (!OwnedByTenant(dispensing.CompanyId))
+                return NotFound(new { success = false, message = "عملية الصرف غير موجودة" });
 
             if (dispensing.Status != DispensingStatus.Pending)
                 return BadRequest(new { success = false, message = "لا يمكن الموافقة على عملية ليست بانتظار الموافقة" });
@@ -2505,6 +2693,8 @@ public class InventoryController : ControllerBase
             var dispensing = await _unitOfWork.TechnicianDispensings.GetByIdAsync(id);
             if (dispensing == null || dispensing.IsDeleted)
                 return NotFound(new { success = false, message = "عملية الصرف غير موجودة" });
+            if (!OwnedByTenant(dispensing.CompanyId))
+                return NotFound(new { success = false, message = "عملية الصرف غير موجودة" });
 
             // حارس سلامة الجرد: سند الاستخدام المرتبط بمهمة (ServiceRequestId != null) لم يُخصم
             // من المستودع، فإرجاعه عبر منطق المستودع يَنفخ الرصيد (جرد مزدوج فاسد).
@@ -2625,9 +2815,15 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            // حارس عزل: عُهدة الفني مقيّدة بشركة التوكن لغير SuperAdmin (technicianId قد يخصّ شركة أخرى).
+            if (!IsSuperAdmin() && TokenCompanyId() is null)
+                return StatusCode(403, new { success = false, message = "غير مصرح: الشركة لا تطابق جلستك." });
+            var holdingsScope = IsSuperAdmin() ? (Guid?)null : TokenCompanyId();
+
             var holdings = await _unitOfWork.TechnicianDispensingItems.AsQueryable()
                 .Where(tdi => tdi.TechnicianDispensing != null
                     && tdi.TechnicianDispensing.TechnicianId == technicianId
+                    && (holdingsScope == null || tdi.TechnicianDispensing.CompanyId == holdingsScope)
                     && tdi.TechnicianDispensing.Status == DispensingStatus.Approved
                     && tdi.TechnicianDispensing.Type == DispensingType.Dispensing
                     && !tdi.TechnicianDispensing.IsDeleted
@@ -2827,6 +3023,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.WarehouseStocks.AsQueryable().Where(ws => !ws.IsDeleted);
 
             if (companyId.HasValue)
@@ -2870,6 +3067,11 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            // حارس عزل: المستودع يجب أن يخصّ شركة التوكن (warehouseId قادم من العميل).
+            var warehouse = await _unitOfWork.Warehouses.FirstOrDefaultAsync(w => w.Id == warehouseId && !w.IsDeleted);
+            if (warehouse == null || !OwnedByTenant(warehouse.CompanyId))
+                return NotFound(new { success = false, message = "المستودع غير موجود" });
+
             var stock = await _unitOfWork.WarehouseStocks.AsQueryable()
                 .Where(ws => ws.WarehouseId == warehouseId && !ws.IsDeleted)
                 .Select(ws => new
@@ -2909,6 +3111,19 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(request.CompanyId);
+            if (deny != null) return deny;
+
+            // حارس ملكية FK: المستودع والمادة يجب أن يخصّا نفس الشركة.
+            var warehouseOwned = await _unitOfWork.Warehouses.AnyAsync(
+                w => w.Id == request.WarehouseId && w.CompanyId == request.CompanyId && !w.IsDeleted);
+            if (!warehouseOwned)
+                return BadRequest(new { success = false, message = "المستودع غير موجود أو لا يخصّ الشركة" });
+            var itemOwned = await _unitOfWork.InventoryItems.AnyAsync(
+                i => i.Id == request.InventoryItemId && i.CompanyId == request.CompanyId && !i.IsDeleted);
+            if (!itemOwned)
+                return BadRequest(new { success = false, message = "المادة غير موجودة أو لا تخصّ الشركة" });
+
             var currentUserId = GetCurrentUserId();
 
             var stock = await _unitOfWork.WarehouseStocks.FirstOrDefaultAsync(
@@ -2975,6 +3190,14 @@ public class InventoryController : ControllerBase
         {
             if (request.FromWarehouseId == request.ToWarehouseId)
                 return BadRequest(new { success = false, message = "لا يمكن التحويل من وإلى نفس المستودع" });
+
+            // حارس عزل: كلا المستودعين يجب أن يخصّا شركة التوكن (لا CompanyId في الطلب).
+            var fromWh = await _unitOfWork.Warehouses.FirstOrDefaultAsync(w => w.Id == request.FromWarehouseId && !w.IsDeleted);
+            if (fromWh == null || !OwnedByTenant(fromWh.CompanyId))
+                return NotFound(new { success = false, message = "المستودع المصدر غير موجود" });
+            var toWh = await _unitOfWork.Warehouses.FirstOrDefaultAsync(w => w.Id == request.ToWarehouseId && !w.IsDeleted);
+            if (toWh == null || !OwnedByTenant(toWh.CompanyId))
+                return NotFound(new { success = false, message = "المستودع الوجهة غير موجود" });
 
             await _unitOfWork.BeginTransactionAsync();
             try
@@ -3098,6 +3321,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.StockMovements.AsQueryable().Where(sm => !sm.IsDeleted);
 
             if (companyId.HasValue)
@@ -3160,6 +3384,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var totalItems = await _unitOfWork.InventoryItems.CountAsync(
                 i => i.CompanyId == companyId && !i.IsDeleted && i.IsActive);
 
@@ -3229,6 +3454,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var valuation = await _unitOfWork.InventoryItems.AsQueryable()
                 .Where(i => i.CompanyId == companyId && !i.IsDeleted && i.IsActive)
                 .Select(i => new
@@ -3266,6 +3492,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var holdings = await _unitOfWork.TechnicianDispensingItems.AsQueryable()
                 .Include(tdi => tdi.TechnicianDispensing!).ThenInclude(td => td.Technician)
                 .Include(tdi => tdi.InventoryItem)
@@ -3334,6 +3561,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.InvoiceItems.AsQueryable()
                 .Where(ii => ii.Invoice != null && ii.Invoice.CompanyId == companyId
                     && ii.Invoice.InvoiceType == InvoiceType.Sales
@@ -3376,6 +3604,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var now = DateTime.UtcNow;
             var invoices = await _unitOfWork.Invoices.AsQueryable()
                 .Where(i => i.CompanyId == companyId && i.InvoiceType == InvoiceType.Sales
@@ -3411,6 +3640,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var now = DateTime.UtcNow;
             var invoices = await _unitOfWork.Invoices.AsQueryable()
                 .Where(i => i.CompanyId == companyId && i.InvoiceType == InvoiceType.Purchase
@@ -3447,6 +3677,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.InvoiceItems.AsQueryable()
                 .Where(ii => ii.Invoice != null && ii.Invoice.CompanyId == companyId
                     && ii.Invoice.InvoiceType == InvoiceType.Sales
@@ -3478,6 +3709,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var cutoff = DateTime.UtcNow.AddDays(-days);
             var items = await _unitOfWork.InventoryItems.AsQueryable()
                 .Where(i => i.CompanyId == companyId && i.IsActive)
@@ -3506,6 +3738,7 @@ public class InventoryController : ControllerBase
         {
             var item = await _unitOfWork.InventoryItems.GetByIdAsync(itemId);
             if (item == null) return NotFound(new { success = false, message = "المادة غير موجودة" });
+            if (!OwnedByTenant(item.CompanyId)) return NotFound(new { success = false, message = "المادة غير موجودة" });
 
             var query = _unitOfWork.StockMovements.AsQueryable().Where(m => m.InventoryItemId == itemId);
             if (from.HasValue) query = query.Where(m => m.CreatedAt >= from.Value);
@@ -3532,6 +3765,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var today = DateTime.UtcNow.Date;
             var invoices = await _unitOfWork.Invoices.AsQueryable()
                 .Where(i => i.CompanyId == companyId && i.InvoiceType == InvoiceType.Sales
@@ -3709,6 +3943,9 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(request.CompanyId);
+            if (deny != null) return deny;
+
             // التحقق من عدم البذر المسبق
             var existing = await _unitOfWork.InventoryAccountMappings.AsQueryable()
                 .AnyAsync(m => m.CompanyId == request.CompanyId);
@@ -3788,6 +4025,7 @@ public class InventoryController : ControllerBase
     [HttpGet("accounts/mappings")]
     public async Task<IActionResult> GetAccountMappings([FromQuery] Guid companyId)
     {
+        companyId = EffectiveReadCompanyId(companyId);
         var mappings = await _unitOfWork.InventoryAccountMappings.AsQueryable()
             .Where(m => m.CompanyId == companyId)
             .Select(m => new
@@ -3811,6 +4049,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.InventoryCustomers.AsQueryable()
                 .Where(c => c.CompanyId == companyId);
 
@@ -3858,6 +4097,7 @@ public class InventoryController : ControllerBase
                 }).FirstOrDefaultAsync();
 
             if (c == null) return NotFound(new { success = false, message = "العميل غير موجود" });
+            if (!OwnedByTenant(c.CompanyId)) return NotFound(new { success = false, message = "العميل غير موجود" });
             return Ok(new { success = true, data = c });
         }
         catch (Exception ex)
@@ -3873,6 +4113,9 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(req.CompanyId);
+            if (deny != null) return deny;
+
             var code = await GenerateOrderNumber("CU", req.CompanyId);
             var customer = new InventoryCustomer
             {
@@ -3913,6 +4156,7 @@ public class InventoryController : ControllerBase
         {
             var customer = await _unitOfWork.InventoryCustomers.GetByIdAsync(id);
             if (customer == null) return NotFound(new { success = false, message = "العميل غير موجود" });
+            if (!OwnedByTenant(customer.CompanyId)) return NotFound(new { success = false, message = "العميل غير موجود" });
 
             if (req.FullName != null) customer.FullName = req.FullName;
             if (req.Phone != null) customer.Phone = req.Phone;
@@ -3948,6 +4192,7 @@ public class InventoryController : ControllerBase
         {
             var customer = await _unitOfWork.InventoryCustomers.GetByIdAsync(id);
             if (customer == null) return NotFound(new { success = false, message = "العميل غير موجود" });
+            if (!OwnedByTenant(customer.CompanyId)) return NotFound(new { success = false, message = "العميل غير موجود" });
             if (customer.Balance != 0)
                 return BadRequest(new { success = false, message = $"لا يمكن حذف العميل — رصيده {customer.Balance:N0}" });
 
@@ -3972,6 +4217,7 @@ public class InventoryController : ControllerBase
         {
             var customer = await _unitOfWork.InventoryCustomers.GetByIdAsync(id);
             if (customer == null) return NotFound(new { success = false, message = "العميل غير موجود" });
+            if (!OwnedByTenant(customer.CompanyId)) return NotFound(new { success = false, message = "العميل غير موجود" });
 
             // فواتير
             var invoicesQuery = _unitOfWork.Invoices.AsQueryable()
@@ -4045,6 +4291,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.Invoices.AsQueryable().Where(i => i.CompanyId == companyId);
 
             if (type.HasValue) query = query.Where(i => i.InvoiceType == type);
@@ -4109,6 +4356,7 @@ public class InventoryController : ControllerBase
                 }).FirstOrDefaultAsync();
 
             if (invoice == null) return NotFound(new { success = false, message = "الفاتورة غير موجودة" });
+            if (!OwnedByTenant(invoice.CompanyId)) return NotFound(new { success = false, message = "الفاتورة غير موجودة" });
             return Ok(new { success = true, data = invoice });
         }
         catch (Exception ex)
@@ -4124,6 +4372,36 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(req.CompanyId);
+            if (deny != null) return deny;
+
+            // حارس ملكية FK: المستودع/العميل/المورد/الصندوق يجب أن يخصّوا نفس الشركة.
+            var warehouseOwned = await _unitOfWork.Warehouses.AnyAsync(
+                w => w.Id == req.WarehouseId && w.CompanyId == req.CompanyId && !w.IsDeleted);
+            if (!warehouseOwned)
+                return BadRequest(new { success = false, message = "المستودع غير موجود أو لا يخصّ الشركة" });
+            if (req.CustomerId.HasValue)
+            {
+                var custOwned = await _unitOfWork.InventoryCustomers.AnyAsync(
+                    c => c.Id == req.CustomerId.Value && c.CompanyId == req.CompanyId && !c.IsDeleted);
+                if (!custOwned)
+                    return BadRequest(new { success = false, message = "العميل غير موجود أو لا يخصّ الشركة" });
+            }
+            if (req.SupplierId.HasValue)
+            {
+                var supOwned = await _unitOfWork.Suppliers.AnyAsync(
+                    s => s.Id == req.SupplierId.Value && s.CompanyId == req.CompanyId && !s.IsDeleted);
+                if (!supOwned)
+                    return BadRequest(new { success = false, message = "المورد غير موجود أو لا يخصّ الشركة" });
+            }
+            if (req.CashBoxId.HasValue)
+            {
+                var boxOwned = await _unitOfWork.CashBoxes.AnyAsync(
+                    b => b.Id == req.CashBoxId.Value && b.CompanyId == req.CompanyId && !b.IsDeleted);
+                if (!boxOwned)
+                    return BadRequest(new { success = false, message = "الصندوق غير موجود أو لا يخصّ الشركة" });
+            }
+
             var prefix = req.InvoiceType == InvoiceType.Sales ? "INV" : "PINV";
             var invoiceNumber = await GenerateOrderNumber(prefix, req.CompanyId);
             var userId = GetCurrentUserId();
@@ -4163,11 +4441,16 @@ public class InventoryController : ControllerBase
                 CompanyId = req.CompanyId
             };
 
+            // حارس ملكية بنود السطور: كل مادة يجب أن تخصّ الشركة (يمنع تسريب اسم مادة أجنبية).
+            var itemsDeny = await EnsureItemsOwnedAsync(req.Items.Select(i => i.InventoryItemId), req.CompanyId);
+            if (itemsDeny != null) return itemsDeny;
+
             // حساب البنود
             decimal subTotal = 0;
             foreach (var itemDto in req.Items)
             {
-                var invItem = await _unitOfWork.InventoryItems.GetByIdAsync(itemDto.InventoryItemId);
+                var invItem = await _unitOfWork.InventoryItems.FirstOrDefaultAsync(
+                    i => i.Id == itemDto.InventoryItemId && i.CompanyId == req.CompanyId && !i.IsDeleted);
                 var lineDiscount = itemDto.DiscountPercent > 0
                     ? (itemDto.UnitPrice * itemDto.Quantity * itemDto.DiscountPercent / 100m)
                     : 0;
@@ -4252,6 +4535,7 @@ public class InventoryController : ControllerBase
                 .FirstOrDefaultAsync(i => i.Id == id);
 
             if (invoice == null) return NotFound(new { success = false, message = "الفاتورة غير موجودة" });
+            if (!OwnedByTenant(invoice.CompanyId)) return NotFound(new { success = false, message = "الفاتورة غير موجودة" });
             if (invoice.Status != InvoiceStatus.Draft)
                 return BadRequest(new { success = false, message = "الفاتورة ليست مسودة" });
 
@@ -4463,6 +4747,7 @@ public class InventoryController : ControllerBase
         {
             var invoice = await _unitOfWork.Invoices.GetByIdAsync(id);
             if (invoice == null) return NotFound(new { success = false, message = "الفاتورة غير موجودة" });
+            if (!OwnedByTenant(invoice.CompanyId)) return NotFound(new { success = false, message = "الفاتورة غير موجودة" });
             if (invoice.Status == InvoiceStatus.Cancelled)
                 return BadRequest(new { success = false, message = "الفاتورة ملغاة مسبقاً" });
 
@@ -4570,6 +4855,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.PaymentVouchers.AsQueryable().Where(v => v.CompanyId == companyId);
             if (type.HasValue) query = query.Where(v => v.VoucherType == type);
             if (entityId.HasValue) query = query.Where(v => v.EntityId == entityId);
@@ -4600,6 +4886,39 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(req.CompanyId);
+            if (deny != null) return deny;
+
+            // حارس ملكية FK: الكيان (عميل/مورد)/الصندوق/الفاتورة يجب أن يخصّوا نفس الشركة.
+            if (req.VoucherType == VoucherType.Receipt)
+            {
+                var custOwned = await _unitOfWork.InventoryCustomers.AnyAsync(
+                    c => c.Id == req.EntityId && c.CompanyId == req.CompanyId && !c.IsDeleted);
+                if (!custOwned)
+                    return BadRequest(new { success = false, message = "العميل غير موجود أو لا يخصّ الشركة" });
+            }
+            else
+            {
+                var supOwned = await _unitOfWork.Suppliers.AnyAsync(
+                    s => s.Id == req.EntityId && s.CompanyId == req.CompanyId && !s.IsDeleted);
+                if (!supOwned)
+                    return BadRequest(new { success = false, message = "المورد غير موجود أو لا يخصّ الشركة" });
+            }
+            if (req.CashBoxId.HasValue)
+            {
+                var boxOwned = await _unitOfWork.CashBoxes.AnyAsync(
+                    b => b.Id == req.CashBoxId.Value && b.CompanyId == req.CompanyId && !b.IsDeleted);
+                if (!boxOwned)
+                    return BadRequest(new { success = false, message = "الصندوق غير موجود أو لا يخصّ الشركة" });
+            }
+            if (req.InvoiceId.HasValue)
+            {
+                var invOwned = await _unitOfWork.Invoices.AnyAsync(
+                    i => i.Id == req.InvoiceId.Value && i.CompanyId == req.CompanyId && !i.IsDeleted);
+                if (!invOwned)
+                    return BadRequest(new { success = false, message = "الفاتورة غير موجودة أو لا تخصّ الشركة" });
+            }
+
             var prefix = req.VoucherType == VoucherType.Receipt ? "RV" : "PV";
             var voucherNumber = await GenerateOrderNumber(prefix, req.CompanyId);
             var userId = GetCurrentUserId();
@@ -4727,6 +5046,8 @@ public class InventoryController : ControllerBase
             var voucher = await _unitOfWork.PaymentVouchers.GetByIdAsync(id);
             if (voucher == null || voucher.IsDeleted)
                 return NotFound(new { success = false, message = "السند غير موجود" });
+            if (!OwnedByTenant(voucher.CompanyId))
+                return NotFound(new { success = false, message = "السند غير موجود" });
 
             await _unitOfWork.BeginTransactionAsync();
             try
@@ -4803,6 +5124,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            companyId = EffectiveReadCompanyId(companyId);
             var query = _unitOfWork.ReturnOrders.AsQueryable().Where(r => r.CompanyId == companyId);
             if (type.HasValue) query = query.Where(r => r.ReturnType == type);
             if (status.HasValue) query = query.Where(r => r.Status == status);
@@ -4836,6 +5158,47 @@ public class InventoryController : ControllerBase
     {
         try
         {
+            var deny = DenyIfForeignCompany(req.CompanyId);
+            if (deny != null) return deny;
+
+            // حارس ملكية FK: المستودع/العميل/المورد/الصندوق/الفاتورة الأصلية يجب أن يخصّوا نفس الشركة.
+            var warehouseOwned = await _unitOfWork.Warehouses.AnyAsync(
+                w => w.Id == req.WarehouseId && w.CompanyId == req.CompanyId && !w.IsDeleted);
+            if (!warehouseOwned)
+                return BadRequest(new { success = false, message = "المستودع غير موجود أو لا يخصّ الشركة" });
+            if (req.CustomerId.HasValue)
+            {
+                var custOwned = await _unitOfWork.InventoryCustomers.AnyAsync(
+                    c => c.Id == req.CustomerId.Value && c.CompanyId == req.CompanyId && !c.IsDeleted);
+                if (!custOwned)
+                    return BadRequest(new { success = false, message = "العميل غير موجود أو لا يخصّ الشركة" });
+            }
+            if (req.SupplierId.HasValue)
+            {
+                var supOwned = await _unitOfWork.Suppliers.AnyAsync(
+                    s => s.Id == req.SupplierId.Value && s.CompanyId == req.CompanyId && !s.IsDeleted);
+                if (!supOwned)
+                    return BadRequest(new { success = false, message = "المورد غير موجود أو لا يخصّ الشركة" });
+            }
+            if (req.CashBoxId.HasValue)
+            {
+                var boxOwned = await _unitOfWork.CashBoxes.AnyAsync(
+                    b => b.Id == req.CashBoxId.Value && b.CompanyId == req.CompanyId && !b.IsDeleted);
+                if (!boxOwned)
+                    return BadRequest(new { success = false, message = "الصندوق غير موجود أو لا يخصّ الشركة" });
+            }
+            if (req.OriginalInvoiceId != Guid.Empty)
+            {
+                var invOwned = await _unitOfWork.Invoices.AnyAsync(
+                    i => i.Id == req.OriginalInvoiceId && i.CompanyId == req.CompanyId && !i.IsDeleted);
+                if (!invOwned)
+                    return BadRequest(new { success = false, message = "الفاتورة الأصلية غير موجودة أو لا تخصّ الشركة" });
+            }
+
+            // حارس ملكية بنود السطور: كل مادة يجب أن تخصّ الشركة.
+            var itemsDeny = await EnsureItemsOwnedAsync(req.Items.Select(i => i.InventoryItemId), req.CompanyId);
+            if (itemsDeny != null) return itemsDeny;
+
             var prefix = req.ReturnType == ReturnType.SalesReturn ? "SR" : "PR";
             var returnNumber = await GenerateOrderNumber(prefix, req.CompanyId);
             var userId = GetCurrentUserId();
@@ -4901,6 +5264,7 @@ public class InventoryController : ControllerBase
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (ret == null) return NotFound(new { success = false, message = "المرتجع غير موجود" });
+            if (!OwnedByTenant(ret.CompanyId)) return NotFound(new { success = false, message = "المرتجع غير موجود" });
             if (ret.Status != ReturnStatus.Draft)
                 return BadRequest(new { success = false, message = "المرتجع ليس مسودة" });
 
@@ -5047,6 +5411,8 @@ public class InventoryController : ControllerBase
             var ret = await _unitOfWork.ReturnOrders.GetByIdAsync(id);
             if (ret == null || ret.IsDeleted)
                 return NotFound(new { success = false, message = "المرتجع غير موجود" });
+            if (!OwnedByTenant(ret.CompanyId))
+                return NotFound(new { success = false, message = "المرتجع غير موجود" });
 
             if (ret.Status != ReturnStatus.Draft)
                 return BadRequest(new { success = false, message = "لا يمكن إلغاء مرتجع مؤكد — يمكن فقط إلغاء المسودات" });
@@ -5076,6 +5442,8 @@ public class InventoryController : ControllerBase
         {
             var ret = await _unitOfWork.ReturnOrders.GetByIdAsync(id);
             if (ret == null || ret.IsDeleted)
+                return NotFound(new { success = false, message = "المرتجع غير موجود" });
+            if (!OwnedByTenant(ret.CompanyId))
                 return NotFound(new { success = false, message = "المرتجع غير موجود" });
 
             if (ret.Status != ReturnStatus.Draft)
