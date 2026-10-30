@@ -3822,7 +3822,8 @@ public class InventoryController : ControllerBase
             var customers = await query.OrderBy(c => c.FullName)
                 .Select(c => new
                 {
-                    c.Id, c.CustomerCode, c.FullName, c.Phone, c.Phone2, c.Email,
+                    c.Id, c.CustomerCode, c.FullName, Name = c.FullName,
+                    c.Phone, c.Phone2, c.Email,
                     c.City, c.Area, CustomerType = c.CustomerType.ToString(),
                     PriceTier = (int)c.PriceTier,
                     c.CreditLimit, c.TotalSales, c.TotalPayments, c.Balance,
@@ -3847,7 +3848,8 @@ public class InventoryController : ControllerBase
                 .Where(x => x.Id == id)
                 .Select(x => new
                 {
-                    x.Id, x.CustomerCode, x.FullName, x.Phone, x.Phone2, x.Email,
+                    x.Id, x.CustomerCode, x.FullName, Name = x.FullName,
+                    x.Phone, x.Phone2, x.Email,
                     x.City, x.Area, x.Address, CustomerType = x.CustomerType.ToString(),
                     PriceTier = (int)x.PriceTier,
                     x.CreditLimit, x.TotalSales, x.TotalPayments, x.Balance,
