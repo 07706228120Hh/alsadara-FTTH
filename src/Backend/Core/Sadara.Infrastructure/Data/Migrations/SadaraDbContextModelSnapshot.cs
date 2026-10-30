@@ -3702,6 +3702,9 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<int>("PriceTier")
+                        .HasColumnType("integer");
+
                     b.Property<string>("TaxNumber")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
@@ -3740,6 +3743,14 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<string>("Barcode")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<decimal?>("BulkWholesaleMarginPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal?>("BulkWholesalePrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<int?>("CategoryId")
                         .HasColumnType("integer");
@@ -3786,6 +3797,10 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<decimal?>("RetailMarginPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
                     b.Property<string>("SKU")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -3800,6 +3815,10 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("WholesaleMarginPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
 
                     b.Property<decimal?>("WholesalePrice")
                         .HasPrecision(18, 2)

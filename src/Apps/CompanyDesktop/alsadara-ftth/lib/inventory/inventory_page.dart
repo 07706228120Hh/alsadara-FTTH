@@ -1,6 +1,7 @@
 import 'utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../frontend/frontend.dart';
+import 'widgets/inv_frame.dart';
 import 'services/inventory_api_service.dart';
 import 'pages/warehouses_page.dart';
 import 'pages/materials_page.dart';
@@ -270,7 +271,7 @@ class _InventoryPageState extends State<InventoryPage> {
 
   Widget _buildRecentMovements() {
     if (_recentMovements.isEmpty) {
-      return const SdCard(
+      return const InvCard(
         child: SdEmptyState(
           title: 'لا توجد حركات حديثة',
           icon: Icons.inbox_rounded,
@@ -365,7 +366,7 @@ class _InventoryPageState extends State<InventoryPage> {
     final qty = map['Quantity'] ?? map['quantity'] ?? 0;
     final userName = (map['UserName'] ?? map['userName'] ?? '-').toString();
 
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

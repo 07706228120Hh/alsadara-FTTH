@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 import '../../services/sadara_api_service.dart';
@@ -156,7 +157,7 @@ class _DispensingFormPageState extends State<DispensingFormPage> {
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)),
                 onPressed: selected.isEmpty ? null : () {
                   for (final id in selected) {
                     final item = _inventoryItems.firstWhere((i) => i.id == id);
@@ -262,7 +263,7 @@ class _DispensingFormPageState extends State<DispensingFormPage> {
   Widget build(BuildContext context) {
     return SdPage(
       scrollable: false,
-      maxWidth: SdSpace.formMax,
+      maxWidth: double.infinity, // عرض كامل الشاشة (كصفحات المحاسبة/FTTH)
       appBar: SdAppBar(title: _isEdit ? 'تعديل سند صرف' : 'صرف مواد'),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
@@ -316,7 +317,7 @@ class _DispensingFormPageState extends State<DispensingFormPage> {
   }
 
   Widget _buildHeader() {
-    return SdCard(
+    return InvCard(
       title: 'بيانات الصرف',
       icon: Icons.outbox_rounded,
       child: Wrap(
@@ -370,13 +371,13 @@ class _DispensingFormPageState extends State<DispensingFormPage> {
 
   Widget _buildItemsSection() {
     final phone = context.sd.isPhone;
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const SdSectionHeader(title: 'المواد'),
-            const Spacer(),
+            // Expanded: SdSectionHeader يحوي Spacer داخلياً فيلزمه عرض محدود (تفادي انهيار التخطيط).
+            const Expanded(child: SdSectionHeader(title: 'المواد')),
             _toolbarBtn(Icons.checklist_rounded, 'تحديد متعدد', _showMultiSelectDialog),
             const SizedBox(width: 8),
             _toolbarBtn(Icons.add, 'إضافة مادة', _addItem),
@@ -470,7 +471,7 @@ class _DispensingFormPageState extends State<DispensingFormPage> {
       decoration: BoxDecoration(
         color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(SdRadius.md),
-        border: Border.all(color: SdColors.divider),
+        border: Border.all(color: kInvFrameEdge, width: kInvFrameWidth),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

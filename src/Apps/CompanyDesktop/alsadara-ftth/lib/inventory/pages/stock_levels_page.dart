@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 
@@ -136,7 +137,7 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-              FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary), onPressed: () => Navigator.pop(ctx, true), child: const Text('حفظ')),
+              FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)), onPressed: () => Navigator.pop(ctx, true), child: const Text('حفظ')),
             ],
           ),
         );
@@ -211,7 +212,7 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-              FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary), onPressed: () => Navigator.pop(ctx, true), child: const Text('تحويل')),
+              FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)), onPressed: () => Navigator.pop(ctx, true), child: const Text('تحويل')),
             ],
           ),
         );
@@ -391,7 +392,7 @@ class _StockLevelsPageState extends State<StockLevelsPage> {
     final avgCost = (row['averageCost'] as num?)?.toDouble() ?? 0.0;
     final value = current * avgCost;
 
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

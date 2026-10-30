@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 
@@ -409,7 +410,7 @@ class _MovementsPageState extends State<MovementsPage> {
     final isIn = _inTypes.contains(mv.movementType);
     final qtyText = isIn ? '+${mv.quantity}' : '-${mv.quantity}';
     final qtyColor = isIn ? SdColors.success : SdColors.danger;
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

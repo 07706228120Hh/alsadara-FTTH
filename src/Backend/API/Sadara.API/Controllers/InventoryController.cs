@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.Application.Inventory;
 using Sadara.API.Authorization;
 
 namespace Sadara.API.Controllers;
@@ -430,6 +431,10 @@ public class InventoryController : ControllerBase
                 i.CostPrice,
                 i.SellingPrice,
                 i.WholesalePrice,
+                i.BulkWholesalePrice,
+                i.RetailMarginPercent,
+                i.WholesaleMarginPercent,
+                i.BulkWholesaleMarginPercent,
                 i.MinStockLevel,
                 i.MaxStockLevel,
                 i.ImageUrl,
@@ -481,6 +486,11 @@ public class InventoryController : ControllerBase
                     Unit = i.Unit.ToString(),
                     i.CostPrice,
                     i.SellingPrice,
+                    i.WholesalePrice,
+                    i.BulkWholesalePrice,
+                    i.RetailMarginPercent,
+                    i.WholesaleMarginPercent,
+                    i.BulkWholesaleMarginPercent,
                     i.MinStockLevel,
                     i.MaxStockLevel,
                     i.ImageUrl,
@@ -489,6 +499,17 @@ public class InventoryController : ControllerBase
                     i.CreatedAt,
                     i.UpdatedAt,
                     TotalStock = i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity),
+                    // آخر سعر/تاريخ شراء فعلي: أحدث حركة إدخال شراء (PurchaseIn) لهذه المادة.
+                    LastPurchasePrice = i.Movements
+                        .Where(m => !m.IsDeleted && m.MovementType == StockMovementType.PurchaseIn)
+                        .OrderByDescending(m => m.CreatedAt)
+                        .Select(m => (decimal?)m.UnitCost)
+                        .FirstOrDefault(),
+                    LastPurchaseDate = i.Movements
+                        .Where(m => !m.IsDeleted && m.MovementType == StockMovementType.PurchaseIn)
+                        .OrderByDescending(m => m.CreatedAt)
+                        .Select(m => (DateTime?)m.CreatedAt)
+                        .FirstOrDefault(),
                     Stocks = i.Stocks.Where(s => !s.IsDeleted).Select(s => new
                     {
                         s.Id,
@@ -582,12 +603,19 @@ public class InventoryController : ControllerBase
                 CostPrice = request.CostPrice,
                 SellingPrice = request.SellingPrice,
                 WholesalePrice = request.WholesalePrice,
+                BulkWholesalePrice = request.BulkWholesalePrice,
+                RetailMarginPercent = request.RetailMarginPercent,
+                WholesaleMarginPercent = request.WholesaleMarginPercent,
+                BulkWholesaleMarginPercent = request.BulkWholesaleMarginPercent,
                 MinStockLevel = request.MinStockLevel,
                 MaxStockLevel = request.MaxStockLevel,
                 ImageUrl = request.ImageUrl,
                 IsActive = true,
                 CompanyId = request.CompanyId
             };
+
+            // اشتقاق أسعار الشرائح من الكلفة للهوامش المُدخلة (اليدوي يبقى كما هو)
+            PricingCalculator.RecomputeTierPrices(item);
 
             await _unitOfWork.InventoryItems.AddAsync(item);
             await _unitOfWork.SaveChangesAsync();
@@ -633,11 +661,20 @@ public class InventoryController : ControllerBase
             item.CostPrice = request.CostPrice ?? item.CostPrice;
             item.SellingPrice = request.SellingPrice ?? item.SellingPrice;
             item.WholesalePrice = request.WholesalePrice ?? item.WholesalePrice;
+            item.BulkWholesalePrice = request.BulkWholesalePrice ?? item.BulkWholesalePrice;
+            // الهوامش: إسناد مباشر (بديل كامل) حتى يمكن تصفيرها للعودة للتسعير اليدوي.
+            // الحوار (المستدعي الوحيد) يرسل القيمة الحالية أو null دائماً.
+            item.RetailMarginPercent = request.RetailMarginPercent;
+            item.WholesaleMarginPercent = request.WholesaleMarginPercent;
+            item.BulkWholesaleMarginPercent = request.BulkWholesaleMarginPercent;
             item.MinStockLevel = request.MinStockLevel ?? item.MinStockLevel;
             item.MaxStockLevel = request.MaxStockLevel ?? item.MaxStockLevel;
             item.ImageUrl = request.ImageUrl ?? item.ImageUrl;
             item.IsActive = request.IsActive ?? item.IsActive;
             item.UpdatedAt = DateTime.UtcNow;
+
+            // إعادة اشتقاق أسعار الشرائح من الكلفة للهوامش الموجودة (اليدوي يبقى كما هو)
+            PricingCalculator.RecomputeTierPrices(item);
 
             _unitOfWork.InventoryItems.Update(item);
             await _unitOfWork.SaveChangesAsync();
@@ -1066,6 +1103,17 @@ public class InventoryController : ControllerBase
                 stock.CurrentQuantity = newQty;
                 stock.LastStockInDate = DateTime.UtcNow;
 
+                // ── تحديث كلفة المادة من آخر سعر شراء + إعادة اشتقاق أسعار الشرائح ذات الهامش ──
+                var purchasedItem = await _unitOfWork.InventoryItems.FirstOrDefaultAsync(
+                    i => i.Id == itemDto.InventoryItemId && i.CompanyId == request.CompanyId && !i.IsDeleted);
+                if (purchasedItem != null)
+                {
+                    purchasedItem.CostPrice = itemDto.UnitPrice;
+                    PricingCalculator.RecomputeTierPrices(purchasedItem);
+                    purchasedItem.UpdatedAt = DateTime.UtcNow;
+                    _unitOfWork.InventoryItems.Update(purchasedItem);
+                }
+
                 if (isNewStock)
                     await _unitOfWork.WarehouseStocks.AddAsync(stock);
                 else
@@ -1284,6 +1332,17 @@ public class InventoryController : ControllerBase
                     stock.LastStockInDate = DateTime.UtcNow;
                     stock.UpdatedAt = DateTime.UtcNow;
                     _unitOfWork.WarehouseStocks.Update(stock);
+
+                    // ── تحديث كلفة المادة من آخر سعر شراء + إعادة اشتقاق أسعار الشرائح ذات الهامش ──
+                    var receivedItem = await _unitOfWork.InventoryItems.FirstOrDefaultAsync(
+                        i => i.Id == poItem.InventoryItemId && i.CompanyId == order.CompanyId && !i.IsDeleted);
+                    if (receivedItem != null)
+                    {
+                        receivedItem.CostPrice = poItem.UnitPrice;
+                        PricingCalculator.RecomputeTierPrices(receivedItem);
+                        receivedItem.UpdatedAt = DateTime.UtcNow;
+                        _unitOfWork.InventoryItems.Update(receivedItem);
+                    }
 
                     // إنشاء حركة مخزنية
                     var movement = new StockMovement
@@ -1898,7 +1957,16 @@ public class InventoryController : ControllerBase
                     td.Notes,
                     td.CompanyId,
                     td.CreatedAt,
-                    ItemsCount = td.Items.Count
+                    ItemsCount = td.Items.Count,
+                    // بنود السند (المواد المصروفة) — تقرؤها الواجهة من d['items'].
+                    Items = td.Items.Select(i => new
+                    {
+                        i.InventoryItemId,
+                        ItemName = i.InventoryItem != null ? i.InventoryItem.Name : null,
+                        ItemSku = i.InventoryItem != null ? i.InventoryItem.SKU : null,
+                        i.Quantity,
+                        i.ReturnedQuantity
+                    }).ToList()
                 }).ToListAsync();
 
             return Ok(new { success = true, data = dispensings, total = dispensings.Count });
@@ -2060,6 +2128,14 @@ public class InventoryController : ControllerBase
             if (dispensing == null || dispensing.IsDeleted)
                 return NotFound(new { success = false, message = "سند الصرف غير موجود" });
 
+            // حارس سلامة الجرد: سند الاستخدام المرتبط بمهمة (ServiceRequestId != null) خُصم من
+            // عُهدة الفني لا من المستودع، فعكسه عبر منطق المستودع يَنفخ الرصيد بكمية لم تُخصم منه
+            // (جرد مزدوج فاسد). يُعالَج عكسه من تدفّق المهمة لاحقاً، لا من إدارة المخزون هنا.
+            if (dispensing.ServiceRequestId != null)
+            {
+                return BadRequest(new { success = false, message = "هذا سند استخدام مرتبط بمهمة ولا يمكن حذفه من إدارة المخزون." });
+            }
+
             await _unitOfWork.BeginTransactionAsync();
             try
             {
@@ -2145,6 +2221,13 @@ public class InventoryController : ControllerBase
             var dispensing = await _unitOfWork.TechnicianDispensings.GetByIdAsync(id);
             if (dispensing == null || dispensing.IsDeleted)
                 return NotFound(new { success = false, message = "سند الصرف غير موجود" });
+
+            // حارس سلامة الجرد: سند الاستخدام المرتبط بمهمة (ServiceRequestId != null) يعكس
+            // كمياته القديمة إلى المستودع رغم أنه لم يُخصم منه ⇒ نفخ جرد. يُمنع تعديله من هنا.
+            if (dispensing.ServiceRequestId != null)
+            {
+                return BadRequest(new { success = false, message = "هذا سند استخدام مرتبط بمهمة ولا يمكن تعديله من إدارة المخزون." });
+            }
 
             await _unitOfWork.BeginTransactionAsync();
             try
@@ -2423,6 +2506,13 @@ public class InventoryController : ControllerBase
             if (dispensing == null || dispensing.IsDeleted)
                 return NotFound(new { success = false, message = "عملية الصرف غير موجودة" });
 
+            // حارس سلامة الجرد: سند الاستخدام المرتبط بمهمة (ServiceRequestId != null) لم يُخصم
+            // من المستودع، فإرجاعه عبر منطق المستودع يَنفخ الرصيد (جرد مزدوج فاسد).
+            if (dispensing.ServiceRequestId != null)
+            {
+                return BadRequest(new { success = false, message = "هذا سند استخدام مرتبط بمهمة ولا يمكن إرجاعه من إدارة المخزون." });
+            }
+
             if (dispensing.Status != DispensingStatus.Approved && dispensing.Status != DispensingStatus.PartialReturn)
                 return BadRequest(new { success = false, message = "لا يمكن إرجاع مواد من عملية لم تتم الموافقة عليها" });
 
@@ -2541,6 +2631,8 @@ public class InventoryController : ControllerBase
                     && tdi.TechnicianDispensing.Status == DispensingStatus.Approved
                     && tdi.TechnicianDispensing.Type == DispensingType.Dispensing
                     && !tdi.TechnicianDispensing.IsDeleted
+                    // العُهدة الحقيقية فقط؛ نستبعد سجلات الاستخدام المرتبطة بمهمة.
+                    && tdi.TechnicianDispensing.ServiceRequestId == null
                     && tdi.Quantity > tdi.ReturnedQuantity)
                 .Select(tdi => new
                 {
@@ -2577,12 +2669,69 @@ public class InventoryController : ControllerBase
         {
             var currentUserId = GetCurrentUserId();
 
+            // حارس عزل: لا نثق بـ CompanyId من جسم الطلب لغير SuperAdmin — يجب أن يطابق
+            // شركة التوكن. يُغلق دَيْن الثقة بالجسم بعد إحياء هذه النقطة، بصرف النظر عن علَم
+            // العزل العام. (SuperAdmin يعمل عبر الشركات فيُستثنى.)
+            var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                         ?? User.FindFirst("role")?.Value;
+            var isSuperAdmin = roleClaim == "SuperAdmin"
+                || (int.TryParse(roleClaim, out var roleInt) && roleInt >= (int)UserRole.SuperAdmin);
+            if (!isSuperAdmin)
+            {
+                var companyIdClaim = User.FindFirst("company_id")?.Value;
+                if (!Guid.TryParse(companyIdClaim, out var tokenCompanyId) || tokenCompanyId != request.CompanyId)
+                {
+                    return StatusCode(403, new { success = false, message = "غير مصرح: الشركة لا تطابق جلستك." });
+                }
+            }
+
+            // حُرّاس الإدخال (رخيصة، قبل ضرب القاعدة):
+            // حارس الربط بالمهمة: هذه النقطة مخصّصة للصرف «من عُهدة الفني للعميل - مهمة».
+            // سندٌ بلا ServiceRequestId يُحتسب عُهدةً (شرط العُهدة ServiceRequestId == null)
+            // فيُنشئ سند عُهدة شبح يلوّث الرصيد. نرفض بوضوح بدل إنشاء بيانات فاسدة.
+            if (request.ServiceRequestId == null || request.ServiceRequestId == Guid.Empty)
+            {
+                return BadRequest(new { success = false, message = "معرّف المهمة مطلوب للصرف من العُهدة." });
+            }
+
+            // حارس المدخلات: لا بنود فارغة، ولا كميات غير موجبة (تمنع سندات/حركات بكمية ≤ 0).
+            if (request.Items == null || request.Items.Count == 0)
+            {
+                return BadRequest(new { success = false, message = "لا توجد مواد للصرف." });
+            }
+            if (request.Items.Any(i => i.Quantity <= 0))
+            {
+                return BadRequest(new { success = false, message = "كمية الصرف يجب أن تكون أكبر من صفر." });
+            }
+
+            // استنتاج مستودع صالح للحركة المخزنية التوثيقية وسجلّ العجز بدل Guid.Empty.
+            // (المعرّف الفارغ ينتهك مفتاح المستودع الأجنبي ⇒ كان يسبّب خطأ 500 في كل صرف.)
+            // نُفضّل المستودع الافتراضي للشركة ثم أي مستودع نشط — بنفس CompanyId المستخدَم في
+            // هذه الدالة أصلاً (بلا أي مساس بمنطق العزل).
+            var warehouseId = await _unitOfWork.Warehouses.AsQueryable()
+                .Where(w => !w.IsDeleted && w.CompanyId == request.CompanyId)
+                .OrderByDescending(w => w.IsDefault)
+                .ThenByDescending(w => w.IsActive)
+                .ThenBy(w => w.CreatedAt)
+                .Select(w => (Guid?)w.Id)
+                .FirstOrDefaultAsync();
+            if (warehouseId == null)
+            {
+                return BadRequest(new { success = false, message = "لا يوجد مستودع للشركة لتسجيل حركة الصرف. أنشئ مستودعاً أولاً." });
+            }
+
             foreach (var itemReq in request.Items)
             {
                 // نبحث عن بنود الصرف المعتمدة للفني لهذه المادة
                 var holdingItems = await _unitOfWork.TechnicianDispensingItems.AsQueryable()
                     .Where(tdi => tdi.TechnicianDispensing != null
                         && tdi.TechnicianDispensing.TechnicianId == request.TechnicianId
+                        // عزل: نحصر خصم العُهدة بعُهدة نفس الشركة (request.CompanyId مُتحقَّق
+                        // أعلاه أنه = شركة التوكن) ⇒ يمنع تعديل عُهدة فني شركة أخرى.
+                        && tdi.TechnicianDispensing.CompanyId == request.CompanyId
+                        // العُهدة الحقيقية فقط (صرف المستودع→الفني بلا مهمة)؛ نستبعد سجلات
+                        // الاستخدام المرتبطة بمهمة (ServiceRequestId != null) فلا تُحسب رصيداً.
+                        && tdi.TechnicianDispensing.ServiceRequestId == null
                         && tdi.TechnicianDispensing.Status == DispensingStatus.Approved
                         && tdi.TechnicianDispensing.Type == DispensingType.Dispensing
                         && !tdi.TechnicianDispensing.IsDeleted
@@ -2605,42 +2754,43 @@ public class InventoryController : ControllerBase
                     _unitOfWork.TechnicianDispensingItems.Update(h);
                 }
 
-                // إذا الكمية المطلوبة أكبر من المتوفرة → إنشاء سجل سالب (عجز)
-                // سيُستقطع تلقائياً عند تعزيز الفني من المستودع لاحقاً
-                if (remaining > 0)
+                // سجلّ صرف مرتبط بالمهمة — يُنشأ في كل صرف (ليظهر في «المواد المصروفة»
+                // على بطاقة المهمة). بالكمية الكاملة المصروفة وReturnedQuantity = 0 (الواجهة
+                // تعرض net = Quantity − Returned). مُسنَد بـ ServiceRequestId، ولذلك تستبعده
+                // استعلامات العُهدة (شرط ServiceRequestId == null) فلا يتضخّم رصيد العُهدة.
+                // عند العجز (remaining > 0) نوثّقه في الملاحظة.
+                var usageDispensing = new TechnicianDispensing
                 {
-                    // إنشاء سجل صرف جديد بكمية سالبة (عجز) للفني
-                    var deficitDispensing = new TechnicianDispensing
+                    Id = Guid.NewGuid(),
+                    VoucherNumber = $"TD-USE-{DateTime.UtcNow:yyMMddHHmmssfff}",
+                    TechnicianId = request.TechnicianId,
+                    WarehouseId = warehouseId.Value,
+                    ServiceRequestId = request.ServiceRequestId,
+                    DispensingDate = DateTime.UtcNow,
+                    Status = DispensingStatus.Approved,
+                    Type = DispensingType.Dispensing,
+                    Notes = remaining > 0
+                        ? $"صرف من عُهدة الفني للعميل - مهمة (عجز: {remaining})"
+                        : "صرف من عُهدة الفني للعميل - مهمة",
+                    CreatedById = currentUserId,
+                    CompanyId = request.CompanyId,
+                    Items = new List<TechnicianDispensingItem>
                     {
-                        Id = Guid.NewGuid(),
-                        VoucherNumber = $"TD-DEF-{DateTime.UtcNow:yyMMddHHmmss}",
-                        TechnicianId = request.TechnicianId,
-                        WarehouseId = Guid.Empty,
-                        ServiceRequestId = request.ServiceRequestId,
-                        DispensingDate = DateTime.UtcNow,
-                        Status = DispensingStatus.Approved,
-                        Type = DispensingType.Dispensing,
-                        Notes = $"صرف بعجز — الفني لا يملك رصيد كافٍ (عجز: {remaining})",
-                        CreatedById = currentUserId,
-                        CompanyId = request.CompanyId,
-                        Items = new List<TechnicianDispensingItem>
+                        new TechnicianDispensingItem
                         {
-                            new TechnicianDispensingItem
-                            {
-                                InventoryItemId = itemReq.InventoryItemId,
-                                Quantity = remaining,
-                                ReturnedQuantity = remaining, // مصروف بالكامل
-                            }
+                            InventoryItemId = itemReq.InventoryItemId,
+                            Quantity = itemReq.Quantity,
+                            ReturnedQuantity = 0,
                         }
-                    };
-                    await _unitOfWork.TechnicianDispensings.AddAsync(deficitDispensing);
-                }
+                    }
+                };
+                await _unitOfWork.TechnicianDispensings.AddAsync(usageDispensing);
 
                 // حركة مخزنية للتوثيق
                 await _unitOfWork.StockMovements.AddAsync(new StockMovement
                 {
                     InventoryItemId = itemReq.InventoryItemId,
-                    WarehouseId = Guid.Empty,
+                    WarehouseId = warehouseId.Value,
                     MovementType = StockMovementType.TechnicianDispensing,
                     Quantity = itemReq.Quantity,
                     StockBefore = totalAvailable,
@@ -3124,6 +3274,8 @@ public class InventoryController : ControllerBase
                     && tdi.TechnicianDispensing.Status == DispensingStatus.Approved
                     && tdi.TechnicianDispensing.Type == DispensingType.Dispensing
                     && !tdi.TechnicianDispensing.IsDeleted
+                    // العُهدة الحقيقية فقط؛ نستبعد سجلات الاستخدام المرتبطة بمهمة.
+                    && tdi.TechnicianDispensing.ServiceRequestId == null
                     && tdi.Quantity > tdi.ReturnedQuantity)
                 .Select(tdi => new
                 {
@@ -3672,6 +3824,7 @@ public class InventoryController : ControllerBase
                 {
                     c.Id, c.CustomerCode, c.FullName, c.Phone, c.Phone2, c.Email,
                     c.City, c.Area, CustomerType = c.CustomerType.ToString(),
+                    PriceTier = (int)c.PriceTier,
                     c.CreditLimit, c.TotalSales, c.TotalPayments, c.Balance,
                     c.IsActive, c.CreatedAt
                 }).ToListAsync();
@@ -3696,6 +3849,7 @@ public class InventoryController : ControllerBase
                 {
                     x.Id, x.CustomerCode, x.FullName, x.Phone, x.Phone2, x.Email,
                     x.City, x.Area, x.Address, CustomerType = x.CustomerType.ToString(),
+                    PriceTier = (int)x.PriceTier,
                     x.CreditLimit, x.TotalSales, x.TotalPayments, x.Balance,
                     x.TaxNumber, x.Notes, x.IsActive, x.AccountId, x.CompanyId, x.CreatedAt,
                     InvoiceCount = x.Invoices.Count(i => !i.IsDeleted)
@@ -3730,6 +3884,7 @@ public class InventoryController : ControllerBase
                 Area = req.Area,
                 Address = req.Address,
                 CustomerType = req.CustomerType,
+                PriceTier = req.PriceTier,
                 CreditLimit = req.CreditLimit,
                 TaxNumber = req.TaxNumber,
                 Notes = req.Notes,
@@ -3765,6 +3920,7 @@ public class InventoryController : ControllerBase
             if (req.Area != null) customer.Area = req.Area;
             if (req.Address != null) customer.Address = req.Address;
             if (req.CustomerType.HasValue) customer.CustomerType = req.CustomerType.Value;
+            if (req.PriceTier.HasValue) customer.PriceTier = req.PriceTier.Value;
             if (req.CreditLimit.HasValue) customer.CreditLimit = req.CreditLimit.Value;
             if (req.TaxNumber != null) customer.TaxNumber = req.TaxNumber;
             if (req.Notes != null) customer.Notes = req.Notes;
@@ -4140,6 +4296,17 @@ public class InventoryController : ControllerBase
                             LastStockInDate = DateTime.UtcNow,
                             CompanyId = invoice.CompanyId
                         });
+                    }
+
+                    // ── تحديث كلفة المادة من سعر الشراء + إعادة اشتقاق أسعار الشرائح ذات الهامش ──
+                    var purchasedInvItem = await _unitOfWork.InventoryItems.FirstOrDefaultAsync(
+                        i => i.Id == item.InventoryItemId && i.CompanyId == invoice.CompanyId && !i.IsDeleted);
+                    if (purchasedInvItem != null)
+                    {
+                        purchasedInvItem.CostPrice = item.UnitPrice;
+                        PricingCalculator.RecomputeTierPrices(purchasedInvItem);
+                        purchasedInvItem.UpdatedAt = DateTime.UtcNow;
+                        _unitOfWork.InventoryItems.Update(purchasedInvItem);
                     }
                 }
 
@@ -4981,6 +5148,10 @@ public class CreateItemRequest
     public decimal CostPrice { get; set; }
     public decimal? SellingPrice { get; set; }
     public decimal? WholesalePrice { get; set; }
+    public decimal? BulkWholesalePrice { get; set; }
+    public decimal? RetailMarginPercent { get; set; }
+    public decimal? WholesaleMarginPercent { get; set; }
+    public decimal? BulkWholesaleMarginPercent { get; set; }
     public int MinStockLevel { get; set; }
     public int MaxStockLevel { get; set; }
     public string? ImageUrl { get; set; }
@@ -4999,6 +5170,10 @@ public class UpdateItemRequest
     public decimal? CostPrice { get; set; }
     public decimal? SellingPrice { get; set; }
     public decimal? WholesalePrice { get; set; }
+    public decimal? BulkWholesalePrice { get; set; }
+    public decimal? RetailMarginPercent { get; set; }
+    public decimal? WholesaleMarginPercent { get; set; }
+    public decimal? BulkWholesaleMarginPercent { get; set; }
     public int? MinStockLevel { get; set; }
     public int? MaxStockLevel { get; set; }
     public string? ImageUrl { get; set; }
@@ -5175,6 +5350,7 @@ public class CreateInventoryCustomerRequest
     public string? Area { get; set; }
     public string? Address { get; set; }
     public InventoryCustomerType CustomerType { get; set; } = InventoryCustomerType.Cash;
+    public PriceTier PriceTier { get; set; } = PriceTier.Retail;
     public decimal CreditLimit { get; set; } = 0;
     public string? TaxNumber { get; set; }
     public string? Notes { get; set; }
@@ -5191,6 +5367,7 @@ public class UpdateInventoryCustomerRequest
     public string? Area { get; set; }
     public string? Address { get; set; }
     public InventoryCustomerType? CustomerType { get; set; }
+    public PriceTier? PriceTier { get; set; }
     public decimal? CreditLimit { get; set; }
     public string? TaxNumber { get; set; }
     public string? Notes { get; set; }

@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 
@@ -122,7 +123,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
                   onPressed: () => Navigator.pop(ctx, false),
                   child: const Text('إلغاء')),
               FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                  style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)),
                   onPressed: () => Navigator.pop(ctx, true),
                   child: const Text('حفظ')),
             ],
@@ -186,7 +187,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
                 onPressed: () => Navigator.pop(ctx, false),
                 child: const Text('إلغاء')),
             FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: SdColors.danger),
+                style: FilledButton.styleFrom(backgroundColor: SdColors.danger, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)),
                 onPressed: () => Navigator.pop(ctx, true),
                 child: const Text('حذف')),
           ],
@@ -360,7 +361,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
   }
 
   Widget _buildCard(Supplier sup) {
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

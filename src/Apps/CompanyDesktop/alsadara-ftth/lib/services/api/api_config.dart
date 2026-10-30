@@ -11,7 +11,7 @@ class ApiConfig {
   static const String prodBaseUrl = 'https://api.ramzalsadara.tech/api';
 
   /// استخدام بيئة التطوير أو الإنتاج
-  static const bool isProduction = true; // [إنتاج — فرع الإصدار release/v2.4.0]
+  static const bool isProduction = true;
 
   /// رابط API الفعلي
   static String get baseUrl => isProduction ? prodBaseUrl : devBaseUrl;

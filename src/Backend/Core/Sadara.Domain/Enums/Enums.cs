@@ -572,6 +572,21 @@ public enum InventoryCustomerType
 }
 
 /// <summary>
+/// شريحة تسعير عميل المخازن — تحدّد أي سعر بيع يُطبَّق عليه
+/// </summary>
+public enum PriceTier
+{
+    /// <summary>مفرد — سعر البيع (SellingPrice)</summary>
+    Retail = 0,
+
+    /// <summary>جملة — سعر الجملة (WholesalePrice)</summary>
+    Wholesale = 1,
+
+    /// <summary>جملة الجملة — السعر الثالث (BulkWholesalePrice)</summary>
+    BulkWholesale = 2
+}
+
+/// <summary>
 /// نوع المورد
 /// </summary>
 public enum SupplierType

@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 
 class InventoryReportsPage extends StatefulWidget {
@@ -252,7 +253,7 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
     final qty = (item['totalQuantity'] as num?)?.toInt() ?? 0;
     final avgCost = (item['averageCost'] as num?)?.toDouble() ?? 0.0;
     final totalVal = (item['totalValue'] as num?)?.toDouble() ?? 0.0;
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -404,7 +405,7 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
       decoration: BoxDecoration(
         color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(SdRadius.md),
-        border: Border.all(color: SdColors.divider),
+        border: Border.all(color: kInvFrameEdge, width: kInvFrameWidth),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

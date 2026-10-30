@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 import 'purchase_form_page.dart';
@@ -159,7 +160,7 @@ class _PurchasesPageState extends State<PurchasesPage> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: SdColors.danger),
+              style: FilledButton.styleFrom(backgroundColor: SdColors.danger, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('حذف'),
             ),
@@ -271,7 +272,7 @@ class _PurchasesPageState extends State<PurchasesPage> {
               actions: [
                 TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
                 FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                    style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)),
                     onPressed: () => Navigator.pop(ctx, true),
                     child: const Text('تأكيد')),
               ],
@@ -544,7 +545,7 @@ class _PurchasesPageState extends State<PurchasesPage> {
 
   Widget _buildCard(PurchaseOrder o) {
     final actions = _buildActions(o);
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

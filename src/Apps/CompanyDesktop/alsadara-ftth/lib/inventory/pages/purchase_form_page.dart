@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 
@@ -170,7 +171,7 @@ class _PurchaseFormPageState extends State<PurchaseFormPage> {
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)),
                 onPressed: selected.isEmpty ? null : () {
                   for (final id in selected) {
                     final item = _inventoryItems.firstWhere((i) => i.id == id);
@@ -274,7 +275,7 @@ class _PurchaseFormPageState extends State<PurchaseFormPage> {
   Widget build(BuildContext context) {
     return SdPage(
       scrollable: false,
-      maxWidth: SdSpace.formMax,
+      maxWidth: double.infinity, // عرض كامل الشاشة (كصفحات المحاسبة/FTTH)
       appBar: SdAppBar(title: _isEditing ? 'تعديل أمر شراء' : 'أمر شراء جديد'),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
@@ -330,7 +331,7 @@ class _PurchaseFormPageState extends State<PurchaseFormPage> {
   }
 
   Widget _buildHeaderFields() {
-    return SdCard(
+    return InvCard(
       title: 'بيانات أمر الشراء',
       icon: Icons.shopping_cart_rounded,
       child: Wrap(
@@ -413,13 +414,13 @@ class _PurchaseFormPageState extends State<PurchaseFormPage> {
 
   Widget _buildItemsSection() {
     final phone = context.sd.isPhone;
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const SdSectionHeader(title: 'الأصناف'),
-            const Spacer(),
+            // Expanded: SdSectionHeader يحوي Spacer داخلياً فيلزمه عرض محدود (تفادي انهيار التخطيط).
+            const Expanded(child: SdSectionHeader(title: 'الأصناف')),
             _toolbarBtn(Icons.checklist_rounded, 'تحديد متعدد', _showMultiSelectDialog),
             const SizedBox(width: 8),
             _toolbarBtn(Icons.add, 'إضافة صنف', _addItem),
@@ -540,7 +541,7 @@ class _PurchaseFormPageState extends State<PurchaseFormPage> {
       decoration: BoxDecoration(
         color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(SdRadius.md),
-        border: Border.all(color: SdColors.divider),
+        border: Border.all(color: kInvFrameEdge, width: kInvFrameWidth),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -579,7 +580,7 @@ class _PurchaseFormPageState extends State<PurchaseFormPage> {
   }
 
   Widget _buildTotalsSection() {
-    return SdCard(
+    return InvCard(
       title: 'المجاميع',
       icon: Icons.calculate_rounded,
       child: Column(children: [

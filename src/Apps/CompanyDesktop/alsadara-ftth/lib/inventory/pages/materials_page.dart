@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 
@@ -155,7 +156,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
               actions: [
                 TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
                 FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                  style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)),
                   onPressed: () async {
                     if (nameCtrl.text.trim().isEmpty) return;
                     try {
@@ -193,6 +194,51 @@ class _MaterialsPageState extends State<MaterialsPage> {
     return 'M${now.year % 100}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
   }
 
+  // يحسب سعر الشريحة من الكلفة والهامش: هامش موجود ⇒ السعر يُشتقّ؛ فارغ ⇒ لا تغيير (يدوي).
+  void _recalcTier(TextEditingController costCtrl, TextEditingController marginCtrl,
+      TextEditingController priceCtrl) {
+    if (marginCtrl.text.trim().isEmpty) return;
+    final cost = parseN(costCtrl.text);
+    if (cost <= 0) return;
+    final margin = parseN(marginCtrl.text);
+    priceCtrl.text = fmtN(cost * (1 + margin / 100));
+  }
+
+  // صف شريحة بيع: الاسم + هامش% + السعر، مترابطان.
+  Widget _tierPriceRow(String label, TextEditingController costCtrl,
+      TextEditingController marginCtrl, TextEditingController priceCtrl) {
+    return Row(
+      children: [
+        SizedBox(
+            width: 92,
+            child: Text(label,
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextField(
+            controller: marginCtrl,
+            keyboardType: TextInputType.number,
+            decoration: _dec('%'),
+            onChanged: (_) => _recalcTier(costCtrl, marginCtrl, priceCtrl),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextField(
+            controller: priceCtrl,
+            keyboardType: TextInputType.number,
+            decoration: _dec('السعر'),
+            // تعديل السعر يدوياً يُلغي الهامش فيصبح سعراً ثابتاً.
+            onChanged: (_) {
+              if (marginCtrl.text.isNotEmpty) marginCtrl.text = '';
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _showAddEditDialog([InventoryItem? item]) async {
     final isNew = item == null || item.id.isEmpty;
     final nameCtrl = TextEditingController(text: item?.name ?? '');
@@ -201,6 +247,10 @@ class _MaterialsPageState extends State<MaterialsPage> {
     final costCtrl = TextEditingController(text: item != null ? fmtN(item.costPrice) : '');
     final sellCtrl = TextEditingController(text: item?.sellingPrice != null ? fmtN(item!.sellingPrice!) : '');
     final wholesaleCtrl = TextEditingController(text: item?.wholesalePrice != null ? fmtN(item!.wholesalePrice!) : '');
+    final bulkCtrl = TextEditingController(text: item?.bulkWholesalePrice != null ? fmtN(item!.bulkWholesalePrice!) : '');
+    final retailMarginCtrl = TextEditingController(text: item?.retailMargin != null ? fmtN(item!.retailMargin!) : '');
+    final wholesaleMarginCtrl = TextEditingController(text: item?.wholesaleMargin != null ? fmtN(item!.wholesaleMargin!) : '');
+    final bulkMarginCtrl = TextEditingController(text: item?.bulkWholesaleMargin != null ? fmtN(item!.bulkWholesaleMargin!) : '');
     final minCtrl = TextEditingController(text: item != null ? '${item.minStockLevel}' : '0');
     final maxCtrl = TextEditingController(text: item != null ? '${item.maxStockLevel}' : '0');
 
@@ -267,16 +317,34 @@ class _MaterialsPageState extends State<MaterialsPage> {
                         onChanged: (v) => setD(() => unit = v ?? 'Piece'),
                       ),
                       const SizedBox(height: 10),
-                      // الأسعار: 3 حقول
+                      // سعر التكلفة — يُعاد منه حساب أسعار الشرائح ذات الهامش
+                      TextField(
+                        controller: costCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: _dec('سعر التكلفة'),
+                        onChanged: (_) {
+                          _recalcTier(costCtrl, retailMarginCtrl, sellCtrl);
+                          _recalcTier(costCtrl, wholesaleMarginCtrl, wholesaleCtrl);
+                          _recalcTier(costCtrl, bulkMarginCtrl, bulkCtrl);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      // عناوين أعمدة شرائح البيع
                       Row(
-                        children: [
-                          Expanded(child: TextField(controller: costCtrl, keyboardType: TextInputType.number, decoration: _dec('سعر التكلفة'))),
-                          const SizedBox(width: 8),
-                          Expanded(child: TextField(controller: sellCtrl, keyboardType: TextInputType.number, decoration: _dec('سعر البيع'))),
-                          const SizedBox(width: 8),
-                          Expanded(child: TextField(controller: wholesaleCtrl, keyboardType: TextInputType.number, decoration: _dec('سعر الجملة'))),
+                        children: const [
+                          SizedBox(width: 92, child: Text('الشريحة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SdColors.faint))),
+                          SizedBox(width: 8),
+                          Expanded(child: Text('هامش %', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SdColors.faint))),
+                          SizedBox(width: 8),
+                          Expanded(child: Text('السعر', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: SdColors.faint))),
                         ],
                       ),
+                      const SizedBox(height: 6),
+                      _tierPriceRow('مفرد', costCtrl, retailMarginCtrl, sellCtrl),
+                      const SizedBox(height: 8),
+                      _tierPriceRow('جملة', costCtrl, wholesaleMarginCtrl, wholesaleCtrl),
+                      const SizedBox(height: 8),
+                      _tierPriceRow('جملة الجملة', costCtrl, bulkMarginCtrl, bulkCtrl),
                       const SizedBox(height: 10),
                       Row(
                         children: [
@@ -294,7 +362,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
               actions: [
                 TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
                 FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                  style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)),
                   onPressed: () => Navigator.pop(ctx, true),
                   child: const Text('حفظ'),
                 ),
@@ -315,6 +383,10 @@ class _MaterialsPageState extends State<MaterialsPage> {
       'costPrice': parseN(costCtrl.text),
       'sellingPrice': sellCtrl.text.trim().isEmpty ? null : parseN(sellCtrl.text),
       'wholesalePrice': wholesaleCtrl.text.trim().isEmpty ? null : parseN(wholesaleCtrl.text),
+      'bulkWholesalePrice': bulkCtrl.text.trim().isEmpty ? null : parseN(bulkCtrl.text),
+      'retailMarginPercent': retailMarginCtrl.text.trim().isEmpty ? null : parseN(retailMarginCtrl.text),
+      'wholesaleMarginPercent': wholesaleMarginCtrl.text.trim().isEmpty ? null : parseN(wholesaleMarginCtrl.text),
+      'bulkWholesaleMarginPercent': bulkMarginCtrl.text.trim().isEmpty ? null : parseN(bulkMarginCtrl.text),
       'minStockLevel': int.tryParse(minCtrl.text) ?? 0,
       'maxStockLevel': int.tryParse(maxCtrl.text) ?? 0,
       'description': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
@@ -345,6 +417,10 @@ class _MaterialsPageState extends State<MaterialsPage> {
       costPrice: item.costPrice,
       sellingPrice: item.sellingPrice,
       wholesalePrice: item.wholesalePrice,
+      bulkWholesalePrice: item.bulkWholesalePrice,
+      retailMargin: item.retailMargin,
+      wholesaleMargin: item.wholesaleMargin,
+      bulkWholesaleMargin: item.bulkWholesaleMargin,
       minStockLevel: item.minStockLevel,
       maxStockLevel: item.maxStockLevel,
       categoryId: item.categoryId,
@@ -366,7 +442,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
           content: Text('هل تريد حذف "${item.name}"؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
           ],
         ),
       ),
@@ -573,7 +649,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
   Widget _buildItemCard(InventoryItem item) {
     final stock = item.totalStock ?? 0;
     final isLow = stock < item.minStockLevel && item.minStockLevel > 0;
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -705,7 +781,7 @@ class _CategoriesManagerDialogState extends State<_CategoriesManagerDialog> {
           ])),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary), onPressed: () => Navigator.pop(ctx, true), child: const Text('حفظ')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)), onPressed: () => Navigator.pop(ctx, true), child: const Text('حفظ')),
           ],
         ),
       )),
@@ -742,7 +818,7 @@ class _CategoriesManagerDialogState extends State<_CategoriesManagerDialog> {
         content: Text('هل تريد حذف "${cat.name}"؟'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-          FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+          FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
         ],
       ),
     ));

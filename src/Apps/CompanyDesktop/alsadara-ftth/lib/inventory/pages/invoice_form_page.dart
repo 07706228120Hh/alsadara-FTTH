@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 
 // ─────────────────────────────────────────────
@@ -87,6 +88,11 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
 
   // ── سطور المواد ──
   final List<_InvoiceItemEntry> _lineItems = [];
+
+  // ── بطاقة تفاصيل المادة المحددة (جانبية) ──
+  Map<String, dynamic>? _detailData; // تفاصيل آخر مادة مختارة
+  String? _detailItemId;
+  bool _detailLoading = false;
 
   // ═══════════════════════════════════════════
   //  ثوابت نوع الدفع
@@ -218,6 +224,33 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
 
   double get _netTotal => _subtotal - _discountAmount + _taxAmount;
 
+  // ── حساب الطرف (عميل للبيع / مورّد للشراء) قبل وبعد الفاتورة ──
+  Map<String, dynamic>? get _selectedParty {
+    final id = _isSales ? _selectedCustomerId : _selectedSupplierId;
+    if (id == null) return null;
+    final list = _isSales ? _customers : _suppliers;
+    final m = list.where((e) => '${e['Id'] ?? e['id']}' == id);
+    return m.isEmpty ? null : m.first;
+  }
+
+  double get _partyBalance =>
+      (_dv(_selectedParty, 'Balance') as num?)?.toDouble() ?? 0;
+
+  // المدفوع الآن حسب نوع الدفع: نقد=كامل، آجل=صفر، جزئي=المُدخَل.
+  double get _paidNow {
+    switch (_paymentType) {
+      case 0:
+        return _netTotal;
+      case 1:
+        return 0;
+      default:
+        return parseN(_paidAmountController.text);
+    }
+  }
+
+  // الرصيد بعد الفاتورة = السابق + المتبقّي غير المدفوع من هذه الفاتورة.
+  double get _balanceAfter => _partyBalance + (_netTotal - _paidNow);
+
   // ═══════════════════════════════════════════
   //  أنماط الإدخال الموحّدة
   // ═══════════════════════════════════════════
@@ -306,7 +339,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                   onPressed: () => Navigator.pop(ctx),
                   child: const Text('إلغاء')),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)),
                 onPressed: selected.isEmpty
                     ? null
                     : () {
@@ -318,9 +351,9 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                             ..inventoryItemId = id
                             ..itemName =
                                 '${item['Name'] ?? item['name'] ?? ''}';
-                          // تعبئة السعر حسب نوع الفاتورة
+                          // تعبئة السعر (بيع = حسب شريحة العميل، شراء = الكلفة)
                           if (_isSales) {
-                            entry.priceController.text = '${item['SellingPrice'] ?? item['sellingPrice'] ?? 0}';
+                            entry.priceController.text = _tierSalePrice(item);
                           } else {
                             entry.priceController.text = '${item['CostPrice'] ?? item['costPrice'] ?? 0}';
                           }
@@ -447,7 +480,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   Widget build(BuildContext context) {
     return SdPage(
       scrollable: false,
-      maxWidth: SdSpace.formMax,
+      maxWidth: double.infinity, // عرض كامل الشاشة (كصفحات المحاسبة/FTTH)
       appBar: SdAppBar(title: _isSales ? 'فاتورة بيع جديدة' : 'فاتورة شراء جديدة'),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
@@ -458,7 +491,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                 children: [
                   _buildHeaderSection(),
                   const SizedBox(height: SdSpace.lg),
-                  _buildItemsSection(),
+                  _buildItemsWithDetails(),
                   const SizedBox(height: SdSpace.lg),
                   _buildTotalsSection(),
                   const SizedBox(height: SdSpace.xl),
@@ -475,7 +508,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   // ═══════════════════════════════════════════
 
   Widget _buildHeaderSection() {
-    return SdCard(
+    return InvCard(
       title: 'بيانات الفاتورة',
       icon: Icons.description_rounded,
       child: Wrap(
@@ -500,8 +533,10 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                               overflow: TextOverflow.ellipsis),
                         ))
                     .toList(),
-                onChanged: (v) =>
-                    setState(() => _selectedCustomerId = v),
+                onChanged: (v) => setState(() {
+                  _selectedCustomerId = v;
+                  _applyTierToAllRows(); // أعِد تعبئة الأسعار حسب شريحة العميل
+                }),
               ),
             )
           else
@@ -624,45 +659,221 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   //  القسم 2: المواد
   // ═══════════════════════════════════════════
 
+  // قسم المواد + البطاقة الجانبية: جنباً إلى جنب على سطح المكتب، متراصّان على الهاتف.
+  Widget _buildItemsWithDetails() {
+    final phone = context.sd.isPhone;
+    if (phone) {
+      return Column(
+        children: [
+          _buildItemsSection(),
+          const SizedBox(height: SdSpace.lg),
+          _buildItemDetailCard(),
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: _buildItemsSection()),
+        const SizedBox(width: SdSpace.lg),
+        SizedBox(width: 320, child: _buildItemDetailCard()),
+      ],
+    );
+  }
+
+  // بطاقة تفاصيل المادة المحددة: آخر سعر شراء + المتوفر في المخزن + تكلفة/بيع…
+  Widget _buildItemDetailCard() {
+    Widget shell(Widget child) => InvCard(child: child);
+
+    if (_detailLoading && _detailData == null) {
+      return shell(const SizedBox(
+          height: 120,
+          child: Center(
+              child: CircularProgressIndicator(color: SdColors.primary))));
+    }
+    if (_detailData == null) {
+      return shell(Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SdSectionHeader(title: 'تفاصيل المادة'),
+          const SizedBox(height: 8),
+          Row(children: [
+            Icon(Icons.inventory_2_outlined, size: 18, color: SdColors.faint),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Text('اختر مادة لعرض تفاصيلها (آخر شراء، المتوفر…)',
+                    style: SdText.bodySm.copyWith(color: SdColors.faint))),
+          ]),
+        ],
+      ));
+    }
+
+    final d = _detailData!;
+    final name = (_dv(d, 'Name') ?? '').toString();
+    final sku = (_dv(d, 'SKU', 'sku') ?? '').toString();
+    final num total = (_dv(d, 'TotalStock') as num?) ?? 0;
+    final num minLvl = (_dv(d, 'MinStockLevel') as num?) ?? 0;
+    final num? lastBuy = _dv(d, 'LastPurchasePrice') as num?;
+    final lastBuyDate = (_dv(d, 'LastPurchaseDate'))?.toString();
+    final num sell = (_dv(d, 'SellingPrice') as num?) ?? 0;
+    final num cost = (_dv(d, 'CostPrice') as num?) ?? 0;
+
+    // مخزون المستودع المحدّد في الفاتورة
+    final stocks = (_dv(d, 'Stocks') as List?) ?? const [];
+    Map? whStock;
+    if (_selectedWarehouseId != null) {
+      final match = stocks.where((s) =>
+          (_dv(s as Map, 'WarehouseId'))?.toString() == _selectedWarehouseId);
+      if (match.isNotEmpty) whStock = match.first as Map;
+    }
+    final num whQty = (whStock != null
+            ? _dv(whStock, 'CurrentQuantity') as num?
+            : null) ??
+        0;
+    final num whReserved =
+        (whStock != null ? _dv(whStock, 'ReservedQuantity') as num? : null) ?? 0;
+    final num avgCost =
+        (whStock != null ? _dv(whStock, 'AverageCost') as num? : null) ?? cost;
+
+    final bool lowStock = minLvl > 0 && total < minLvl;
+
+    return shell(Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SdSectionHeader(title: 'تفاصيل المادة'),
+        const SizedBox(height: 4),
+        Text(name,
+            style: SdText.titleSm, maxLines: 2, overflow: TextOverflow.ellipsis),
+        if (sku.isNotEmpty)
+          Text('SKU: $sku',
+              style: SdText.caption.copyWith(color: SdColors.faint)),
+        const SizedBox(height: 10),
+        // شارة المتوفر في المستودع المحدّد (الأبرز)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: (lowStock ? SdColors.danger : SdColors.success)
+                .withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(SdRadius.sm),
+            border: Border.all(
+                color: (lowStock ? SdColors.danger : SdColors.success)
+                    .withValues(alpha: 0.3)),
+          ),
+          child: Row(children: [
+            Icon(lowStock ? Icons.warning_amber_rounded : Icons.inventory_2,
+                size: 18,
+                color: lowStock ? SdColors.danger : SdColors.success),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('المتوفر في المستودع المحدّد',
+                      style: SdText.caption.copyWith(color: SdColors.faint)),
+                  Text(
+                      _selectedWarehouseId == null
+                          ? 'اختر المستودع أولاً'
+                          : '${fmtN(whQty)}${whReserved > 0 ? '  (محجوز: ${fmtN(whReserved)})' : ''}',
+                      style: SdText.label.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: lowStock
+                              ? SdColors.danger
+                              : SdColors.success)),
+                ],
+              ),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 10),
+        _detailRow('إجمالي المتوفر (كل المخازن)', fmtN(total)),
+        _detailRow('آخر سعر شراء',
+            lastBuy != null ? fmtN(lastBuy) : '—',
+            hint: lastBuyDate != null && lastBuy != null
+                ? _shortDate(lastBuyDate)
+                : null),
+        _detailRow('متوسط التكلفة', fmtN(avgCost)),
+        _detailRow('سعر الشراء (افتراضي)', fmtN(cost)),
+        _detailRow('سعر البيع', fmtN(sell), strong: true),
+        _detailRow('الحد الأدنى للمخزون', fmtN(minLvl)),
+        if (lowStock) ...[
+          const SizedBox(height: 6),
+          Text('⚠️ المخزون دون الحد الأدنى',
+              style: SdText.caption.copyWith(
+                  color: SdColors.danger, fontWeight: FontWeight.w700)),
+        ],
+      ],
+    ));
+  }
+
+  Widget _detailRow(String label, String value,
+      {String? hint, bool strong = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: SdText.bodySm),
+                if (hint != null)
+                  Text(hint,
+                      style: SdText.caption.copyWith(color: SdColors.faint)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(value,
+              style: (strong ? SdText.label : SdText.body).copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: strong ? SdColors.primary : null)),
+        ],
+      ),
+    );
+  }
+
+  String _shortDate(String iso) {
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    final l = dt.toLocal();
+    return '${l.year}/${l.month.toString().padLeft(2, '0')}/${l.day.toString().padLeft(2, '0')}';
+  }
+
   Widget _buildItemsSection() {
     final phone = context.sd.isPhone;
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const SdSectionHeader(title: 'المواد'),
-              const Spacer(),
+              // Expanded: SdSectionHeader يحوي Spacer داخلياً فيلزمه عرض محدود (تفادي انهيار التخطيط).
+              const Expanded(child: SdSectionHeader(title: 'المواد')),
               _toolbarBtn(Icons.checklist_rounded, 'تحديد متعدد', _showMultiSelectDialog),
               const SizedBox(width: 8),
               _toolbarBtn(Icons.add, 'إضافة مادة', _addLineItem),
             ],
           ),
           const SizedBox(height: 12),
-          if (!phone) ...[
-            // رؤوس الأعمدة (سطح المكتب/الآيباد فقط)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                children: const [
-                  SizedBox(width: 28), // # col
-                  Expanded(flex: 4, child: Text('المادة', style: SdText.caption)),
-                  SizedBox(width: 8),
-                  SizedBox(width: 90, child: Text('الكمية', style: SdText.caption)),
-                  SizedBox(width: 8),
-                  SizedBox(width: 120, child: Text('السعر', style: SdText.caption)),
-                  SizedBox(width: 8),
-                  SizedBox(width: 80, child: Text('خصم%', style: SdText.caption)),
-                  SizedBox(width: 8),
-                  SizedBox(width: 110, child: Text('المجموع', style: SdText.caption)),
-                  SizedBox(width: 40), // delete btn
+          if (phone)
+            for (int i = 0; i < _lineItems.length; i++) _buildItemCardPhone(i)
+          else
+            // جدول فاتورة احترافي: إطار موحّد + ترويسة ملوّنة + صفوف مخطّطة بخطوط فاصلة
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: SdColors.cardEdge),
+                borderRadius: BorderRadius.circular(SdRadius.sm),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  _tableHeader(),
+                  for (int i = 0; i < _lineItems.length; i++) _buildItemRow(i),
                 ],
               ),
             ),
-          ],
-          for (int i = 0; i < _lineItems.length; i++)
-            phone ? _buildItemCardPhone(i) : _buildItemRow(i),
         ],
       ),
     );
@@ -690,11 +901,35 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
     );
   }
 
-  Widget _itemDropdown(_InvoiceItemEntry entry, int index) {
+  // مُزخرِف خلية جدول: بلا عنوان عائم (الترويسة تكفي) — تلميح رمادي فقط، مُدمج.
+  InputDecoration _cellDec(String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: SdText.caption,
+        filled: true,
+        fillColor: SdColors.surface,
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.cardEdge),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(SdRadius.sm),
+          borderSide: const BorderSide(color: SdColors.primary, width: 1.5),
+        ),
+      );
+
+  Widget _itemDropdown(_InvoiceItemEntry entry, int index,
+      {InputDecoration? decoration}) {
     return DropdownButtonFormField<String>(
       value: entry.inventoryItemId,
       isExpanded: true,
-      decoration: _dec('المادة', dense: true),
+      decoration: decoration ?? _dec('المادة', dense: true),
       items: _items
           .map((item) => DropdownMenuItem(
                 value: '${item['Id'] ?? item['id'] ?? ''}',
@@ -708,9 +943,9 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
           if (found.isNotEmpty) {
             final item = found.first;
             entry.itemName = '${item['Name'] ?? item['name'] ?? ''}';
-            // تعبئة السعر تلقائياً
+            // تعبئة السعر تلقائياً (بيع = حسب شريحة العميل، شراء = الكلفة)
             if (_isSales) {
-              entry.priceController.text = '${item['SellingPrice'] ?? item['sellingPrice'] ?? 0}';
+              entry.priceController.text = _tierSalePrice(item);
             } else {
               entry.priceController.text = '${item['CostPrice'] ?? item['costPrice'] ?? 0}';
             }
@@ -720,73 +955,198 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
             }
           }
         });
+        // تحميل تفاصيل المادة للبطاقة الجانبية (آخر سعر شراء/المتوفر…)
+        _loadItemDetail(v);
       },
     );
   }
 
-  Widget _qtyField(_InvoiceItemEntry entry) => TextFormField(
+  /// جلب تفاصيل المادة المحددة لعرضها في البطاقة الجانبية (مخزون/تكلفة/آخر شراء).
+  Future<void> _loadItemDetail(String? itemId) async {
+    if (itemId == null || itemId.isEmpty) return;
+    setState(() {
+      _detailItemId = itemId;
+      _detailLoading = true;
+    });
+    try {
+      final res = await _api.getItem(itemId);
+      if (!mounted || _detailItemId != itemId) return; // تجاهل نتيجة قديمة
+      setState(() {
+        _detailData = (res['data'] as Map?)?.cast<String, dynamic>();
+        _detailLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _detailLoading = false);
+    }
+  }
+
+  /// قراءة مفتاح بصيغتي PascalCase/camelCase (الباكند يُرجع PascalCase).
+  dynamic _dv(Map? m, String pascal, [String? camel]) =>
+      m == null ? null : (m[pascal] ?? m[camel ?? _lower(pascal)]);
+  String _lower(String s) => s.isEmpty ? s : s[0].toLowerCase() + s.substring(1);
+
+  /// شريحة تسعير العميل المختار (0=مفرد، 1=جملة، 2=جملة الجملة).
+  int get _customerTier {
+    if (_selectedCustomerId == null) return 0;
+    final c = _customers
+        .where((e) => '${e['Id'] ?? e['id']}' == _selectedCustomerId);
+    if (c.isEmpty) return 0;
+    return (_dv(c.first, 'PriceTier') as num?)?.toInt() ?? 0;
+  }
+
+  /// سعر بيع المادة حسب شريحة العميل، مع تدرّج احتياطي (الشريحة ⇐ مفرد ⇐ الكلفة).
+  String _tierSalePrice(Map item) {
+    num? pick;
+    switch (_customerTier) {
+      case 2:
+        pick = _dv(item, 'BulkWholesalePrice') as num?;
+        break;
+      case 1:
+        pick = _dv(item, 'WholesalePrice') as num?;
+        break;
+    }
+    pick ??= _dv(item, 'SellingPrice') as num?;
+    pick ??= _dv(item, 'CostPrice') as num?;
+    return '${pick ?? 0}';
+  }
+
+  /// يُعيد تعبئة أسعار كل الأسطر حسب شريحة العميل الحالي (عند تغيير العميل).
+  void _applyTierToAllRows() {
+    if (!_isSales) return;
+    for (final e in _lineItems) {
+      if (e.inventoryItemId == null) continue;
+      final found =
+          _items.where((i) => '${i['Id'] ?? i['id']}' == e.inventoryItemId);
+      if (found.isNotEmpty) e.priceController.text = _tierSalePrice(found.first);
+    }
+  }
+
+  Widget _qtyField(_InvoiceItemEntry entry,
+          {InputDecoration? decoration, TextAlign textAlign = TextAlign.start}) =>
+      TextFormField(
         controller: entry.qtyController,
-        decoration: _dec('الكمية', dense: true),
+        decoration: decoration ?? _dec('الكمية', dense: true),
+        textAlign: textAlign,
         keyboardType: TextInputType.number,
         onChanged: (_) => setState(() {}),
       );
 
-  Widget _priceField(_InvoiceItemEntry entry) => TextFormField(
+  Widget _priceField(_InvoiceItemEntry entry,
+          {InputDecoration? decoration, TextAlign textAlign = TextAlign.start}) =>
+      TextFormField(
         controller: entry.priceController,
-        decoration: _dec('السعر', dense: true),
+        decoration: decoration ?? _dec('السعر', dense: true),
+        textAlign: textAlign,
         keyboardType: TextInputType.number,
         onChanged: (_) => setState(() {}),
       );
 
-  Widget _discField(_InvoiceItemEntry entry) => TextFormField(
+  Widget _discField(_InvoiceItemEntry entry,
+          {InputDecoration? decoration, TextAlign textAlign = TextAlign.start}) =>
+      TextFormField(
         controller: entry.discountController,
-        decoration: _dec('خصم%', dense: true),
+        decoration: decoration ?? _dec('خصم%', dense: true),
+        textAlign: textAlign,
         keyboardType: TextInputType.number,
         onChanged: (_) => setState(() {}),
       );
+
+  // ترويسة الجدول — أعمدة بعناوين واضحة بعرض مطابق لصفوف البيانات تماماً.
+  Widget _tableHeader() {
+    Widget cap(String t, {TextAlign align = TextAlign.center}) => Text(
+          t,
+          style: SdText.caption.copyWith(
+              fontWeight: FontWeight.w800, color: SdColors.faint),
+          textAlign: align,
+        );
+    return Container(
+      color: SdColors.surfaceAlt,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+      child: Row(
+        children: [
+          SizedBox(width: 34, child: cap('#')),
+          const SizedBox(width: 8),
+          Expanded(flex: 5, child: cap('المادة', align: TextAlign.start)),
+          const SizedBox(width: 8),
+          SizedBox(width: 95, child: cap('الكمية')),
+          const SizedBox(width: 8),
+          SizedBox(width: 130, child: cap('السعر')),
+          const SizedBox(width: 8),
+          SizedBox(width: 90, child: cap('خصم%')),
+          const SizedBox(width: 8),
+          SizedBox(width: 140, child: cap('المجموع')),
+          const SizedBox(width: 8),
+          const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
 
   Widget _buildItemRow(int index) {
     final entry = _lineItems[index];
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+    final isLast = index == _lineItems.length - 1;
+    return Container(
+      decoration: BoxDecoration(
+        // تخطيط صفوف متناوب خفيف + خط فاصل سفلي (إلا الأخير)
+        color: index.isOdd
+            ? SdColors.surfaceAlt.withValues(alpha: 0.35)
+            : SdColors.surface,
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: SdColors.cardEdge)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // رقم السطر
           SizedBox(
-            width: 28,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text('${index + 1}.', style: SdText.label),
-            ),
-          ),
-          // المادة
-          Expanded(flex: 4, child: _itemDropdown(entry, index)),
+              width: 34,
+              child: Text('${index + 1}',
+                  style: SdText.label, textAlign: TextAlign.center)),
           const SizedBox(width: 8),
-          // الكمية
-          SizedBox(width: 90, child: _qtyField(entry)),
+          Expanded(
+              flex: 5,
+              child: _itemDropdown(entry, index,
+                  decoration: _cellDec('اختر المادة'))),
           const SizedBox(width: 8),
-          // السعر
-          SizedBox(width: 120, child: _priceField(entry)),
-          const SizedBox(width: 8),
-          // خصم%
-          SizedBox(width: 80, child: _discField(entry)),
-          const SizedBox(width: 8),
-          // المجموع (محسوب)
           SizedBox(
-            width: 110,
-            child: InputDecorator(
-              decoration: _dec('المجموع', dense: true),
-              child: Text(fmtN(entry.lineTotal), style: SdText.label),
-            ),
+              width: 95,
+              child: _qtyField(entry,
+                  decoration: _cellDec('0'), textAlign: TextAlign.center)),
+          const SizedBox(width: 8),
+          SizedBox(
+              width: 130,
+              child: _priceField(entry,
+                  decoration: _cellDec('0'), textAlign: TextAlign.center)),
+          const SizedBox(width: 8),
+          SizedBox(
+              width: 90,
+              child: _discField(entry,
+                  decoration: _cellDec('0'), textAlign: TextAlign.center)),
+          const SizedBox(width: 8),
+          // المجموع (محسوب) — نص بارز بدل حقل
+          SizedBox(
+            width: 140,
+            child: Text(fmtN(entry.lineTotal),
+                style: SdText.label.copyWith(
+                    fontWeight: FontWeight.w800, color: SdColors.primary),
+                textAlign: TextAlign.center),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 8),
           // حذف
-          IconButton(
-            icon: Icon(Icons.delete_outline,
-                color: _lineItems.length > 1 ? SdColors.danger : SdColors.faint),
-            onPressed: _lineItems.length > 1 ? () => _removeLineItem(index) : null,
-            tooltip: 'حذف',
+          SizedBox(
+            width: 48,
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              icon: Icon(Icons.delete_outline,
+                  size: 20,
+                  color: _lineItems.length > 1
+                      ? SdColors.danger
+                      : SdColors.faint),
+              onPressed:
+                  _lineItems.length > 1 ? () => _removeLineItem(index) : null,
+              tooltip: 'حذف',
+            ),
           ),
         ],
       ),
@@ -801,7 +1161,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
       decoration: BoxDecoration(
         color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(SdRadius.md),
-        border: Border.all(color: SdColors.divider),
+        border: Border.all(color: kInvFrameEdge, width: kInvFrameWidth),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -847,128 +1207,156 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
   // ═══════════════════════════════════════════
 
   Widget _buildTotalsSection() {
-    return SdCard(
+    final party = _selectedParty;
+    final partyLabel = _isSales ? 'العميل' : 'المورّد';
+    final bool afterUp = _balanceAfter > _partyBalance;
+    return InvCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // المجموع الفرعي
-          _buildTotalLine('المجموع الفرعي', fmtN(_subtotal)),
-          const SizedBox(height: 10),
-
-          // الخصم
+          // صف إجماليات مدمج واحد (يلتفّ على الشاشات الضيقة)
           Wrap(
-            alignment: WrapAlignment.end,
+            spacing: 18,
+            runSpacing: 12,
             crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 12,
-            runSpacing: 8,
             children: [
-              const Text('الخصم', style: SdText.body),
-              SizedBox(
-                width: 110,
-                child: DropdownButtonFormField<int>(
-                  value: _discountType,
-                  decoration: _dec(null, dense: true),
-                  items: _discountTypes.entries
-                      .map((e) => DropdownMenuItem(
-                          value: e.key, child: Text(e.value)))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) {
-                      setState(() => _discountType = v);
-                    }
-                  },
-                ),
-              ),
-              SizedBox(
-                width: 120,
-                child: TextFormField(
-                  controller: _discountValueController,
-                  decoration: _dec(null, dense: true),
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-              SizedBox(
-                width: 100,
-                child: Text(fmtN(_discountAmount),
-                    textAlign: TextAlign.left,
-                    style: const TextStyle(
-                        fontFamily: SdText.family, color: SdColors.danger, fontSize: 14, fontWeight: FontWeight.w700)),
-              ),
+              _miniStat('المجموع الفرعي', fmtN(_subtotal)),
+              _discountInline(),
+              _taxInline(),
+              if (party != null)
+                _miniStat('حساب $partyLabel السابق', fmtN(_partyBalance),
+                    color: SdColors.faint),
+              _netStat(),
+              if (party != null)
+                _miniStat('حساب $partyLabel بعد الفاتورة', fmtN(_balanceAfter),
+                    color: afterUp ? SdColors.danger : SdColors.success),
             ],
           ),
-          const SizedBox(height: 10),
-
-          // الضريبة
-          Wrap(
-            alignment: WrapAlignment.end,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              const Text('الضريبة %', style: SdText.body),
-              SizedBox(
-                width: 120,
-                child: TextFormField(
-                  controller: _taxRateController,
-                  decoration: _dec(null, dense: true),
-                  keyboardType: TextInputType.number,
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-              SizedBox(
-                width: 100,
-                child: Text(fmtN(_taxAmount),
-                    textAlign: TextAlign.left,
-                    style: const TextStyle(
-                        fontFamily: SdText.family, color: SdColors.info, fontSize: 14, fontWeight: FontWeight.w700)),
-              ),
-            ],
-          ),
-
-          const Divider(height: 24, color: SdColors.divider),
-
-          // الصافي النهائي
-          Wrap(
-            alignment: WrapAlignment.end,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 16,
-            runSpacing: 8,
-            children: [
-              const Text('الصافي النهائي',
-                  style: TextStyle(
-                      fontFamily: SdText.family, fontSize: 18, fontWeight: FontWeight.w900, color: SdColors.ink)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: SdColors.primaryTint,
-                  borderRadius: BorderRadius.circular(SdRadius.sm),
-                ),
-                child: Text(
-                  fmtN(_netTotal),
-                  style: const TextStyle(
-                    fontFamily: SdText.family,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: SdColors.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
+          const SizedBox(height: 12),
           // ملاحظات
           SizedBox(
             width: double.infinity,
             child: TextFormField(
               controller: _notesController,
               decoration: _dec('ملاحظات'),
-              maxLines: 3,
+              maxLines: 2,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // كتلة إحصائية مصغّرة: عنوان صغير + قيمة بارزة.
+  Widget _miniStat(String label, String value, {Color? color}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: SdText.caption.copyWith(color: SdColors.faint)),
+        const SizedBox(height: 2),
+        Text(value,
+            style: SdText.label
+                .copyWith(fontWeight: FontWeight.w800, color: color)),
+      ],
+    );
+  }
+
+  // الصافي النهائي — كتلة مميّزة.
+  Widget _netStat() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: SdColors.primaryTint,
+        borderRadius: BorderRadius.circular(SdRadius.sm),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('الصافي النهائي',
+              style: SdText.caption.copyWith(
+                  color: SdColors.primary, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
+          Text(fmtN(_netTotal),
+              style: const TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: SdColors.primary)),
+        ],
+      ),
+    );
+  }
+
+  // ارتفاع موحّد لكل حقول صف المجاميع.
+  static const double _totFieldH = 44;
+
+  // غلاف حقل موحّد: عنوان صغير أعلاه + صندوق بارتفاع ثابت.
+  Widget _totField(String label, Color labelColor, double width, Widget field) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: SdText.caption.copyWith(color: labelColor)),
+        const SizedBox(height: 4),
+        SizedBox(width: width, height: _totFieldH, child: field),
+      ],
+    );
+  }
+
+  // الخصم — نوع + قيمة، بنمط موحّد.
+  Widget _discountInline() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _totField(
+          'نوع الخصم',
+          SdColors.danger,
+          104,
+          DropdownButtonFormField<int>(
+            value: _discountType,
+            isExpanded: true,
+            decoration: _cellDec(''),
+            style: SdText.body.copyWith(color: SdColors.ink),
+            items: _discountTypes.entries
+                .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) setState(() => _discountType = v);
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        _totField(
+          'الخصم (−${fmtN(_discountAmount)})',
+          SdColors.danger,
+          88,
+          TextFormField(
+            controller: _discountValueController,
+            decoration: _cellDec('0'),
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // الضريبة % — نسبة، بنمط موحّد.
+  Widget _taxInline() {
+    return _totField(
+      'ضريبة % (+${fmtN(_taxAmount)})',
+      SdColors.info,
+      88,
+      TextFormField(
+        controller: _taxRateController,
+        decoration: _cellDec('0'),
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        onChanged: (_) => setState(() {}),
       ),
     );
   }

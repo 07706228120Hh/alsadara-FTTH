@@ -540,10 +540,11 @@ class _SasDashboardTabState extends State<SasDashboardTab> {
         if (fill) {
           final cellW = (avail - gapW * (cells.length - 1)) / cells.length;
           // سقف قطر إضافي من الارتفاع المتاح: ارتفاع البطاقة ≈ القطر + حشوات
-          // رأسية + فجوة + سطر العنوان (نحجز ~74 منطقيّة). عند توفّر ارتفاع
-          // محدود (الصف المقيّد في الشاشة الواحدة) نمنع فيضاناً رأسياً.
+          // رأسية (22+18) + فجوة (14) + سطر العنوان (~24 بخط Cairo العريض).
+          // نحجز 82 منطقيّة لتغطية العنوان كاملاً + هامش أمان ⇒ لا فيضان رأسي
+          // (كان 74 أقصر بـ~3px فظهر «BOTTOM OVERFLOWED BY 3.0 PIXELS»).
           final hCap = c.maxHeight.isFinite
-              ? (c.maxHeight - 74.0.h).clamp(0.0, double.infinity)
+              ? (c.maxHeight - 82.0.h).clamp(0.0, double.infinity)
               : double.infinity;
           return Row(
             crossAxisAlignment: CrossAxisAlignment.center,

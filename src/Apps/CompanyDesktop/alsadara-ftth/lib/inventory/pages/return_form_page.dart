@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 
 class ReturnFormPage extends StatefulWidget {
@@ -233,7 +234,7 @@ class _ReturnFormPageState extends State<ReturnFormPage> {
 
     return SdPage(
       scrollable: false,
-      maxWidth: SdSpace.formMax,
+      maxWidth: double.infinity, // عرض كامل الشاشة (كصفحات المحاسبة/FTTH)
       appBar: SdAppBar(title: title),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
@@ -248,7 +249,7 @@ class _ReturnFormPageState extends State<ReturnFormPage> {
         padding: EdgeInsets.zero,
         children: [
           // الخطوة 1: اختيار الفاتورة
-          SdCard(
+          InvCard(
             title: '1. اختر الفاتورة الأصلية',
             icon: Icons.receipt_long_rounded,
             child: DropdownButtonFormField<String>(
@@ -300,7 +301,7 @@ class _ReturnFormPageState extends State<ReturnFormPage> {
 
   Widget _buildItemsCard() {
     final phone = context.sd.isPhone;
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -391,7 +392,7 @@ class _ReturnFormPageState extends State<ReturnFormPage> {
       decoration: BoxDecoration(
         color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(SdRadius.md),
-        border: Border.all(color: SdColors.divider),
+        border: Border.all(color: kInvFrameEdge, width: kInvFrameWidth),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,7 +417,7 @@ class _ReturnFormPageState extends State<ReturnFormPage> {
   }
 
   Widget _buildDetailsCard() {
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

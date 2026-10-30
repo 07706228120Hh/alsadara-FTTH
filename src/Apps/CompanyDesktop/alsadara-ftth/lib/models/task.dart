@@ -93,6 +93,9 @@ class Task {
   /// الوقت المتبقي للـ SLA (سالب = متأخر)
   Duration? get slaRemaining => slaDeadline?.difference(DateTime.now());
 
+  /// المدة المنقضية منذ إنشاء التذكرة (عمر التذكرة)
+  Duration get ageSinceCreated => DateTime.now().difference(createdAt);
+
   /// نسبة استهلاك الوقت (0.0 → 1.0+)
   double get slaProgress {
     if (!hasSla) return 0;

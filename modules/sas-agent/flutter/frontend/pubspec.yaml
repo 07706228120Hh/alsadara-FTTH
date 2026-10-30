@@ -12,7 +12,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   platform_core:
-    path: ../packages/platform_core
+    path: ../platform_core
   phosphor_flutter: ^2.1.0
   intl: ^0.20.2
   webview_windows: ^0.4.0        # مستكشف SAS: متصفّح مدمج (WebView2) لالتقاط طلبات لوحة SAS

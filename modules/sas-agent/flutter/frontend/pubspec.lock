@@ -280,7 +280,7 @@ packages:
   platform_core:
     dependency: "direct main"
     description:
-      path: "../packages/platform_core"
+      path: "../platform_core"
       relative: true
     source: path
     version: "0.2.0"

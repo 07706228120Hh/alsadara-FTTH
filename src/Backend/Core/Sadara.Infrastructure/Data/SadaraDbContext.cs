@@ -1531,6 +1531,10 @@ public class SadaraDbContext : DbContext
             entity.Property(e => e.CostPrice).HasPrecision(18, 2);
             entity.Property(e => e.SellingPrice).HasPrecision(18, 2);
             entity.Property(e => e.WholesalePrice).HasPrecision(18, 2);
+            entity.Property(e => e.BulkWholesalePrice).HasPrecision(18, 2);
+            entity.Property(e => e.RetailMarginPercent).HasPrecision(5, 2);
+            entity.Property(e => e.WholesaleMarginPercent).HasPrecision(5, 2);
+            entity.Property(e => e.BulkWholesaleMarginPercent).HasPrecision(5, 2);
             entity.HasOne(e => e.Category).WithMany().HasForeignKey(e => e.CategoryId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
         });

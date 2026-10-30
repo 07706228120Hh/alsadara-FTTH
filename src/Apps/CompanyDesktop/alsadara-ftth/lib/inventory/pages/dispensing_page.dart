@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 import 'dispensing_form_page.dart';
@@ -208,7 +209,7 @@ class _DispensingPageState extends State<DispensingPage>
           content: Text('هل تريد حذف سند الصرف "${d.voucherNumber}"؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
           ],
         ),
       ),
@@ -309,7 +310,7 @@ class _DispensingPageState extends State<DispensingPage>
                     onPressed: () => Navigator.pop(ctx, false),
                     child: const Text('إلغاء')),
                 FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                    style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)),
                     onPressed: () => Navigator.pop(ctx, true),
                     child: const Text('تأكيد')),
               ],
@@ -568,7 +569,7 @@ class _DispensingPageState extends State<DispensingPage>
   }
 
   Widget _buildDispensingCard(TechnicianDispensingModel d) {
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

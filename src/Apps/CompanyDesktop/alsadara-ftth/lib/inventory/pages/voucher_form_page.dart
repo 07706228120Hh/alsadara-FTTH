@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 
 class VoucherFormPage extends StatefulWidget {
@@ -194,7 +195,7 @@ class _VoucherFormPageState extends State<VoucherFormPage> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          SdCard(
+          InvCard(
             title: 'بيانات السند',
             icon: Icons.receipt_long_rounded,
             child: Column(

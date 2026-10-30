@@ -102,6 +102,18 @@ public class InventoryItem : BaseEntity<Guid>
     /// <summary>سعر الجملة</summary>
     public decimal? WholesalePrice { get; set; }
 
+    /// <summary>سعر جملة الجملة (الشريحة الثالثة)</summary>
+    public decimal? BulkWholesalePrice { get; set; }
+
+    /// <summary>هامش ربح % لشريحة المفرد (إن وُجد ⇒ السعر يُشتقّ من الكلفة ويُعاد حسابه عند تغيّرها)</summary>
+    public decimal? RetailMarginPercent { get; set; }
+
+    /// <summary>هامش ربح % لشريحة الجملة</summary>
+    public decimal? WholesaleMarginPercent { get; set; }
+
+    /// <summary>هامش ربح % لشريحة جملة الجملة</summary>
+    public decimal? BulkWholesaleMarginPercent { get; set; }
+
     /// <summary>حد أدنى للتنبيه</summary>
     public int MinStockLevel { get; set; } = 0;
 
@@ -158,6 +170,9 @@ public class InventoryCustomer : BaseEntity<Guid>
 
     /// <summary>نوع العميل (نقدي / آجل / VIP)</summary>
     public InventoryCustomerType CustomerType { get; set; } = InventoryCustomerType.Cash;
+
+    /// <summary>شريحة التسعير (مفرد / جملة / جملة الجملة) — تحدّد السعر الافتراضي عند البيع</summary>
+    public PriceTier PriceTier { get; set; } = PriceTier.Retail;
 
     /// <summary>سقف الائتمان (للآجل)</summary>
     public decimal CreditLimit { get; set; } = 0;

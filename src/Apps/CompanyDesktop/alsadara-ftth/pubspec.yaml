@@ -2,7 +2,7 @@
 description: "Alsadara Flutter application - طھط·ط¨ظٹظ‚ ط§ظ„طµط¯ط§ط±ط© ظ„ط¥ط¯ط§ط±ط© ط´ط¨ظƒط§طھ FTTH"
 publish_to: 'none'
 
-version: 2.4.30+345
+version: 2.4.31+346
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -10,6 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  # نظام تصميم الصدارة الموحّد (مصدر مركزي مشترك مع تطبيق المواطن)
+  sadara_design:
+    path: ../../../packages/sadara_design
   
   # ظƒط§ظ…ظٹط±ط§ ظ…ط¨ط§ط´ط±ط© (ظ„ط¶ظ…ط§ظ† ظپطھط­ ط§ظ„ظƒط§ظ…ظٹط±ط§ ط§ظ„ط£ظ…ط§ظ…ظٹط©)
   camera: ^0.11.0+2

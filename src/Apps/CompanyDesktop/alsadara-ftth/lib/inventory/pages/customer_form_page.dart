@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 
 class CustomerFormPage extends StatefulWidget {
@@ -36,6 +37,9 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
 
   // 0=Cash, 1=Credit, 2=VIP
   int _customerType = 0;
+
+  // شريحة التسعير: 0=مفرد، 1=جملة، 2=جملة الجملة
+  int _priceTier = 0;
 
   bool get _isEditMode => widget.customerId != null;
 
@@ -77,6 +81,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
         _areaController.text = data['Area'] ?? '';
         _addressController.text = data['Address'] ?? '';
         _customerType = data['CustomerType'] ?? 0;
+      _priceTier = (data['PriceTier'] ?? data['priceTier'] ?? 0) as int;
         _creditLimitController.text =
             (data['CreditLimit'] ?? '').toString();
         _taxNumberController.text = data['TaxNumber'] ?? '';
@@ -121,6 +126,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
           ? null
           : _addressController.text.trim(),
       'customerType': _customerType,
+      'priceTier': _priceTier,
       'creditLimit': _customerType != 0
           ? (double.tryParse(_creditLimitController.text) ?? 0)
           : null,
@@ -234,7 +240,7 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
   }
 
   Widget _buildFormFields() {
-    return SdCard(
+    return InvCard(
       title: 'بيانات العميل',
       icon: Icons.person_rounded,
       child: Wrap(
@@ -323,6 +329,24 @@ class _CustomerFormPageState extends State<CustomerFormPage> {
               ],
               onChanged: (v) {
                 if (v != null) setState(() => _customerType = v);
+              },
+              validator: (v) => v == null ? 'مطلوب' : null,
+            ),
+          ),
+          // شريحة التسعير * (تحدّد سعر البيع الافتراضي: مفرد/جملة/جملة الجملة)
+          SizedBox(
+            width: 200,
+            child: DropdownButtonFormField<int>(
+              value: _priceTier,
+              style: SdText.label,
+              decoration: _dec('شريحة التسعير *'),
+              items: const [
+                DropdownMenuItem(value: 0, child: Text('مفرد')),
+                DropdownMenuItem(value: 1, child: Text('جملة')),
+                DropdownMenuItem(value: 2, child: Text('جملة الجملة')),
+              ],
+              onChanged: (v) {
+                if (v != null) setState(() => _priceTier = v);
               },
               validator: (v) => v == null ? 'مطلوب' : null,
             ),

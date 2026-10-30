@@ -21,7 +21,7 @@ class SadaraApiService {
   static String get _prodBaseUrl => '${ApiConfig.vpsBaseUrl}/api';
 
   /// استخدام بيئة التطوير أو الإنتاج
-  static const bool _isProduction = true; // [إنتاج — فرع الإصدار release/v2.4.0]
+  static const bool _isProduction = true;
 
   /// رابط API الفعلي
   static String get baseUrl => _isProduction ? _prodBaseUrl : _devBaseUrl;
@@ -255,6 +255,39 @@ class SadaraApiService {
     return headers;
   }
 
+  /// استخراج تفاصيل الخطأ الحقيقية من استجابة الخادم:
+  /// الرسالة + أخطاء التحقّق (صيغة ASP.NET errors) + أي تفاصيل إضافية + كود الحالة.
+  String _extractError(Map<String, dynamic> data, int statusCode) {
+    final parts = <String>[];
+    final msg =
+        data['message'] ?? data['error'] ?? data['title'] ?? data['detail'];
+    if (msg != null && msg.toString().trim().isNotEmpty) {
+      parts.add(msg.toString().trim());
+    }
+    // أخطاء التحقّق: {errors: {field: [msgs]}} أو قائمة.
+    final errors = data['errors'];
+    if (errors is Map && errors.isNotEmpty) {
+      errors.forEach((k, v) {
+        final vs = v is List ? v.join('، ') : v.toString();
+        parts.add('$k: $vs');
+      });
+    } else if (errors is List && errors.isNotEmpty) {
+      parts.add(errors.join('، '));
+    }
+    // تفاصيل داخلية مطوَّلة (تتبّع/استثناء) — في وضع التطوير فقط:
+    // تجنّب كشف البنية الداخلية للمستخدم، ومنع مطابقة «401/Unauthorized» الزائفة
+    // في شاشات تفحص نص الخطأ نصّياً فتُخرج المستخدم قسراً على خطأ خادم عابر.
+    if (kDebugMode) {
+      final details = data['details'] ?? data['exception'];
+      if (details != null && details.toString().trim().isNotEmpty) {
+        final d = details.toString().trim();
+        parts.add(d.length > 300 ? '${d.substring(0, 300)}…' : d);
+      }
+    }
+    final base = parts.isEmpty ? 'خطأ غير معروف' : parts.join(' — ');
+    return '$base (كود $statusCode)';
+  }
+
   /// معالجة الاستجابة
   Map<String, dynamic> _handleResponse(http.Response response) {
     try {
@@ -278,8 +311,7 @@ class SadaraApiService {
         throw Exception('انتهت صلاحية الجلسة - يرجى تسجيل الدخول مرة أخرى');
       }
 
-      throw Exception(
-          data['message'] ?? 'خطأ غير معروف (${response.statusCode})');
+      throw Exception(_extractError(data, response.statusCode));
     } catch (e) {
       if (e is FormatException) {
         // الاستجابة ليست JSON
@@ -288,11 +320,16 @@ class SadaraApiService {
           throw Exception(
               'غير مصرح - يرجى تسجيل الدخول مرة أخرى (${response.statusCode})');
         }
+        // الجسم الخام قد يحوي HTML/تتبّعاً داخلياً أو السلسلة «401» ⇒ وضع التطوير فقط.
+        final body = response.body.trim();
+        final bodySnippet = (kDebugMode && body.isNotEmpty)
+            ? ': ${body.length > 300 ? body.substring(0, 300) : body}'
+            : '';
         if (response.statusCode == 404) {
-          throw Exception('الخدمة غير متوفرة (404)');
+          throw Exception('الخدمة غير متوفرة (404)$bodySnippet');
         }
         if (response.statusCode >= 500) {
-          throw Exception('خطأ في الخادم (${response.statusCode})');
+          throw Exception('خطأ في الخادم (${response.statusCode})$bodySnippet');
         }
         throw Exception(
             'خطأ في تنسيق الاستجابة (${response.statusCode}): ${response.body.length > 200 ? response.body.substring(0, 200) : response.body}');

@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import 'return_form_page.dart';
 
@@ -110,7 +111,7 @@ class _ReturnsPageState extends State<ReturnsPage>
           content: const Text('هل تريد تأكيد هذا المرتجع؟ سيتم تعديل المخزون تلقائياً.'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary), onPressed: () => Navigator.pop(ctx, true), child: const Text('تأكيد')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)), onPressed: () => Navigator.pop(ctx, true), child: const Text('تأكيد')),
           ],
         ),
       ),
@@ -135,7 +136,7 @@ class _ReturnsPageState extends State<ReturnsPage>
           content: const Text('هل تريد حذف هذا المرتجع نهائياً؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('تراجع')),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
           ],
         ),
       ),
@@ -160,7 +161,7 @@ class _ReturnsPageState extends State<ReturnsPage>
           content: const Text('هل تريد إلغاء هذا المرتجع؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('تراجع')),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('إلغاء المرتجع')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)), onPressed: () => Navigator.pop(ctx, true), child: const Text('إلغاء المرتجع')),
           ],
         ),
       ),
@@ -343,7 +344,7 @@ class _ReturnsPageState extends State<ReturnsPage>
     final status = (m['Status'] ?? m['status'] ?? '').toString();
     final rId = (m['Id'] ?? m['id'] ?? '').toString();
     final actions = _buildReturnActions(rId, status);
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

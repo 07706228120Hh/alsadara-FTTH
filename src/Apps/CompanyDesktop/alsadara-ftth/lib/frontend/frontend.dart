@@ -1,26 +1,12 @@
-/// نظام تصميم الصدارة الموحّد (Sadara Design — sd)
+/// نظام تصميم الصدارة الموحّد — الآن مصدره حزمة sadara_design المشتركة.
 ///
-/// استيراد واحد لكل شيء:
-/// ```dart
-/// import 'package:alsadara/frontend/frontend.dart';
-/// ```
+/// الجوهر (الرموز/الثيم/المكوّنات) يعيش في `package:sadara_design`؛ هذه الملفات
+/// في `frontend/` أصبحت إعادة تصدير فقط، فيبقى كل استيراد قديم يعمل بلا تغيير،
+/// والمصدر الوحيد هو الحزمة (لا مزامنة يدوية).
 library;
 
-export 'tokens/sd_colors.dart';
-export 'tokens/sd_metrics.dart';
-export 'tokens/sd_typography.dart';
-export 'tokens/sd_responsive.dart';
-export 'theme/sd_theme.dart';
-export 'components/sd_raised.dart';
-export 'components/sd_cube.dart';
-export 'components/sd_basics.dart';
-export 'components/sd_segmented.dart';
+export 'package:sadara_design/sadara_design.dart';
+
+// مكوّنات الدخول ثلاثية الأبعاد خاصة بسطح المكتب (تعتمد webview) — تبقى محلية.
 export 'components/sd_login_scene.dart';
 export 'components/sd_login_3d.dart';
-export 'components/sd_app_bar.dart';
-export 'components/sd_menu_tile.dart';
-export 'components/sd_side_nav.dart';
-export 'components/sd_ui_kit.dart';
-export 'components/sd_dash_kit.dart';
-export 'components/sd_stat_pedestal.dart';
-export 'components/sd_page.dart';

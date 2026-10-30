@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import 'voucher_form_page.dart';
 
@@ -85,7 +86,7 @@ class _VouchersPageState extends State<VouchersPage>
           content: Text('هل تريد حذف السند "$voucherNumber"؟\nسيتم عكس الأرصدة تلقائياً.'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)), onPressed: () => Navigator.pop(ctx, true), child: const Text('حذف')),
           ],
         ),
       ),
@@ -274,7 +275,7 @@ class _VouchersPageState extends State<VouchersPage>
     final method = _paymentLabels[(m['PaymentMethod'] ?? m['paymentMethod'] ?? '').toString()] ?? '-';
     final date = _formatDate((m['Date'] ?? m['date'] ?? '').toString());
 
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

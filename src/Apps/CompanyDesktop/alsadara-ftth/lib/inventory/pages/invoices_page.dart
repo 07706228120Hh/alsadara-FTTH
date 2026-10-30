@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import 'invoice_form_page.dart';
 import 'invoice_details_page.dart';
@@ -593,7 +594,7 @@ class _InvoicesPageState extends State<InvoicesPage>
 
     return GestureDetector(
       onTap: () => _navigateToDetails(id),
-      child: SdCard(
+      child: InvCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -680,7 +681,7 @@ class _InvoicesPageState extends State<InvoicesPage>
           content: const Text('هل تريد تأكيد هذه الفاتورة؟ سيتم خصم/إضافة المخزون تلقائياً.'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary), onPressed: () => Navigator.pop(ctx, true), child: const Text('تأكيد')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)), onPressed: () => Navigator.pop(ctx, true), child: const Text('تأكيد')),
           ],
         ),
       ),
@@ -705,7 +706,7 @@ class _InvoicesPageState extends State<InvoicesPage>
           content: const Text('هل تريد إلغاء هذه الفاتورة؟'),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('تراجع')),
-            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger), onPressed: () => Navigator.pop(ctx, true), child: const Text('إلغاء الفاتورة')),
+            FilledButton(style: FilledButton.styleFrom(backgroundColor: SdColors.danger, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)), onPressed: () => Navigator.pop(ctx, true), child: const Text('إلغاء الفاتورة')),
           ],
         ),
       ),

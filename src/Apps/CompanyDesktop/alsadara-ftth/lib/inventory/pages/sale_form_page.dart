@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import '../models/inventory_models.dart';
 
@@ -235,7 +236,7 @@ class _SaleFormPageState extends State<SaleFormPage> {
   Widget build(BuildContext context) {
     return SdPage(
       scrollable: false,
-      maxWidth: SdSpace.formMax,
+      maxWidth: double.infinity, // عرض كامل الشاشة (كصفحات المحاسبة/FTTH)
       appBar: const SdAppBar(title: 'بيع جديد'),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: SdColors.primary))
@@ -291,7 +292,7 @@ class _SaleFormPageState extends State<SaleFormPage> {
   }
 
   Widget _buildHeaderFields() {
-    return SdCard(
+    return InvCard(
       title: 'بيانات البيع',
       icon: Icons.point_of_sale_rounded,
       child: Wrap(
@@ -362,14 +363,15 @@ class _SaleFormPageState extends State<SaleFormPage> {
 
   Widget _buildItemsSection() {
     final phone = context.sd.isPhone;
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const SdSectionHeader(title: 'الأصناف'),
-              const Spacer(),
+              // Expanded: SdSectionHeader يحوي Spacer داخلياً فيلزمه عرض محدود؛
+              // بلا Expanded يصله عرض لانهائي داخل Row ⇒ انهيار تخطيط وصفحة بيضاء.
+              const Expanded(child: SdSectionHeader(title: 'الأصناف')),
               _toolbarBtn(Icons.add, 'إضافة صنف', _addItem),
             ],
           ),
@@ -523,7 +525,7 @@ class _SaleFormPageState extends State<SaleFormPage> {
       decoration: BoxDecoration(
         color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(SdRadius.md),
-        border: Border.all(color: SdColors.divider),
+        border: Border.all(color: kInvFrameEdge, width: kInvFrameWidth),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,7 +570,7 @@ class _SaleFormPageState extends State<SaleFormPage> {
   }
 
   Widget _buildTotalsSection() {
-    return SdCard(
+    return InvCard(
       title: 'المجاميع',
       icon: Icons.calculate_rounded,
       child: Column(

@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import 'customer_form_page.dart';
 
@@ -559,7 +560,7 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage>
     }
 
     return SingleChildScrollView(
-      child: SdCard(
+      child: InvCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

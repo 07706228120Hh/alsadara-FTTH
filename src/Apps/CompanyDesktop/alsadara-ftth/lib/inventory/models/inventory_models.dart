@@ -182,6 +182,10 @@ class InventoryItem {
   final double costPrice;
   final double? sellingPrice;
   final double? wholesalePrice;
+  final double? bulkWholesalePrice;
+  final double? retailMargin;
+  final double? wholesaleMargin;
+  final double? bulkWholesaleMargin;
   final int minStockLevel;
   final int maxStockLevel;
   final String? imageUrl;
@@ -203,6 +207,10 @@ class InventoryItem {
     required this.costPrice,
     this.sellingPrice,
     this.wholesalePrice,
+    this.bulkWholesalePrice,
+    this.retailMargin,
+    this.wholesaleMargin,
+    this.bulkWholesaleMargin,
     required this.minStockLevel,
     required this.maxStockLevel,
     this.imageUrl,
@@ -226,6 +234,11 @@ class InventoryItem {
       costPrice: (_v(json, 'costPrice') as num?)?.toDouble() ?? 0.0,
       sellingPrice: (_v(json, 'sellingPrice') as num?)?.toDouble(),
       wholesalePrice: (_v(json, 'wholesalePrice') as num?)?.toDouble(),
+      bulkWholesalePrice: (_v(json, 'bulkWholesalePrice') as num?)?.toDouble(),
+      retailMargin: (_v(json, 'retailMarginPercent') as num?)?.toDouble(),
+      wholesaleMargin: (_v(json, 'wholesaleMarginPercent') as num?)?.toDouble(),
+      bulkWholesaleMargin:
+          (_v(json, 'bulkWholesaleMarginPercent') as num?)?.toDouble(),
       minStockLevel: _v(json, 'minStockLevel') as int? ?? 0,
       maxStockLevel: _v(json, 'maxStockLevel') as int? ?? 0,
       imageUrl: _v(json, 'imageUrl') as String?,
@@ -255,6 +268,10 @@ class InventoryItem {
       'costPrice': costPrice,
       'sellingPrice': sellingPrice,
       'wholesalePrice': wholesalePrice,
+      'bulkWholesalePrice': bulkWholesalePrice,
+      'retailMarginPercent': retailMargin,
+      'wholesaleMarginPercent': wholesaleMargin,
+      'bulkWholesaleMarginPercent': bulkWholesaleMargin,
       'minStockLevel': minStockLevel,
       'maxStockLevel': maxStockLevel,
       'imageUrl': imageUrl,
@@ -923,6 +940,7 @@ class InventoryCustomer {
   final String? area;
   final String? address;
   final String customerType;
+  final int priceTier; // 0=مفرد، 1=جملة، 2=جملة الجملة
   final double creditLimit;
   final double totalSales;
   final double totalPayments;
@@ -935,7 +953,8 @@ class InventoryCustomer {
   InventoryCustomer({
     required this.id, required this.customerCode, required this.fullName,
     this.phone, this.phone2, this.email, this.city, this.area, this.address,
-    required this.customerType, this.creditLimit = 0, this.totalSales = 0,
+    required this.customerType, this.priceTier = 0, this.creditLimit = 0,
+    this.totalSales = 0,
     this.totalPayments = 0, this.balance = 0, this.taxNumber, this.notes,
     this.isActive = true, this.invoiceCount,
   });
@@ -952,6 +971,7 @@ class InventoryCustomer {
       area: _v(j, 'area')?.toString(),
       address: _v(j, 'address')?.toString(),
       customerType: _v(j, 'customerType')?.toString() ?? 'Cash',
+      priceTier: (_v(j, 'priceTier') as num?)?.toInt() ?? 0,
       creditLimit: (_v(j, 'creditLimit') as num?)?.toDouble() ?? 0,
       totalSales: (_v(j, 'totalSales') as num?)?.toDouble() ?? 0,
       totalPayments: (_v(j, 'totalPayments') as num?)?.toDouble() ?? 0,

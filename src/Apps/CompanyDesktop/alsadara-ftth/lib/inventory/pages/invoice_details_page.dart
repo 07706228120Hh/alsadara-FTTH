@@ -1,6 +1,7 @@
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
 import '../../frontend/frontend.dart';
+import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
 import 'voucher_form_page.dart';
 import 'return_form_page.dart';
@@ -113,7 +114,7 @@ class _InvoiceDetailsPageState extends State<InvoiceDetailsPage> {
                     onPressed: () => Navigator.pop(ctx, false),
                     child: const Text('إلغاء')),
                 FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: SdColors.primary),
+                    style: FilledButton.styleFrom(backgroundColor: SdColors.primary, side: const BorderSide(color: kInvFrameEdge, width: kInvFrameWidth)),
                     onPressed: () => Navigator.pop(ctx, true),
                     child: const Text('تأكيد')),
               ],
@@ -182,7 +183,7 @@ class _InvoiceDetailsPageState extends State<InvoiceDetailsPage> {
       padding: EdgeInsets.zero,
       children: [
         // رأس الفاتورة
-        SdCard(
+        InvCard(
           title: 'بيانات الفاتورة',
           icon: Icons.description_rounded,
           trailing: _statusChip(status),
@@ -207,7 +208,7 @@ class _InvoiceDetailsPageState extends State<InvoiceDetailsPage> {
         const SizedBox(height: SdSpace.lg),
 
         // المجاميع
-        SdCard(
+        InvCard(
           title: 'المجاميع',
           icon: Icons.calculate_rounded,
           child: Column(
@@ -293,7 +294,7 @@ class _InvoiceDetailsPageState extends State<InvoiceDetailsPage> {
   // ── قسم المواد ──
   Widget _buildItemsSection(List<dynamic> items) {
     final phone = context.sd.isPhone;
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -366,7 +367,7 @@ class _InvoiceDetailsPageState extends State<InvoiceDetailsPage> {
       decoration: BoxDecoration(
         color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(SdRadius.md),
-        border: Border.all(color: SdColors.divider),
+        border: Border.all(color: kInvFrameEdge, width: kInvFrameWidth),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -385,7 +386,7 @@ class _InvoiceDetailsPageState extends State<InvoiceDetailsPage> {
   // ── قسم السندات ──
   Widget _buildVouchersSection(List<dynamic> vouchers) {
     final phone = context.sd.isPhone;
-    return SdCard(
+    return InvCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -457,7 +458,7 @@ class _InvoiceDetailsPageState extends State<InvoiceDetailsPage> {
       decoration: BoxDecoration(
         color: SdColors.surfaceAlt,
         borderRadius: BorderRadius.circular(SdRadius.md),
-        border: Border.all(color: SdColors.divider),
+        border: Border.all(color: kInvFrameEdge, width: kInvFrameWidth),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

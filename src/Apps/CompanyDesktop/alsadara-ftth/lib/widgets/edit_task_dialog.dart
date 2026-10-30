@@ -555,13 +555,19 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
       final dispensings = (result['data'] as List<dynamic>?) ?? [];
       final items = <Map<String, dynamic>>[];
       for (final d in dispensings) {
-        for (final item in (d['items'] as List<dynamic>?) ?? []) {
+        // الباكند يُرجع المفاتيح PascalCase (Items/ItemName/Quantity…) — نقرأ الحالتين دفاعياً.
+        for (final item
+            in (d['Items'] ?? d['items']) as List<dynamic>? ?? const []) {
           items.add({
-            'itemName': item['itemName'] ?? item['inventoryItemName'] ?? '',
-            'itemSku': item['itemSku'] ?? item['sku'] ?? '',
-            'quantity': item['quantity'] ?? 0,
-            'returnedQuantity': item['returnedQuantity'] ?? 0,
-            'voucherNumber': d['voucherNumber'] ?? '',
+            'itemName': item['ItemName'] ??
+                item['itemName'] ??
+                item['inventoryItemName'] ??
+                '',
+            'itemSku': item['ItemSku'] ?? item['itemSku'] ?? item['sku'] ?? '',
+            'quantity': item['Quantity'] ?? item['quantity'] ?? 0,
+            'returnedQuantity':
+                item['ReturnedQuantity'] ?? item['returnedQuantity'] ?? 0,
+            'voucherNumber': d['VoucherNumber'] ?? d['voucherNumber'] ?? '',
           });
         }
       }
