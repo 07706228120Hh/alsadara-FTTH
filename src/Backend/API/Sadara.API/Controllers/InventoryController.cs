@@ -1,3 +1,4 @@
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -3444,6 +3445,69 @@ public class InventoryController : ControllerBase
     }
 
     /// <summary>
+    /// تنبيهات المخزون الموحّدة: نفاد / انخفاض تحت الحدّ الأدنى / تجاوز الحدّ الأقصى.
+    /// معزولة بشركة التوكن عبر EffectiveReadCompanyId. تُرجع العدادات + قوائم موجزة.
+    /// </summary>
+    [HttpGet("alerts")]
+    public async Task<IActionResult> GetInventoryAlerts([FromQuery] Guid? companyId = null)
+    {
+        try
+        {
+            var company = EffectiveReadCompanyId(companyId);
+
+            // إجمالي الكمية الحالية لكل مادة (عبر كل مستودعاتها) + حدودها.
+            var items = await _unitOfWork.InventoryItems.AsQueryable()
+                .Where(i => i.CompanyId == company && !i.IsDeleted && i.IsActive)
+                .Select(i => new
+                {
+                    i.Id,
+                    i.Name,
+                    i.SKU,
+                    i.MinStockLevel,
+                    i.MaxStockLevel,
+                    Unit = i.Unit.ToString(),
+                    TotalQuantity = i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity)
+                })
+                .ToListAsync();
+
+            var outOfStock = items
+                .Where(i => i.TotalQuantity <= 0)
+                .OrderBy(i => i.Name)
+                .ToList();
+
+            var lowStock = items
+                .Where(i => i.TotalQuantity > 0 && i.MinStockLevel > 0 && i.TotalQuantity < i.MinStockLevel)
+                .OrderBy(i => i.TotalQuantity)
+                .ToList();
+
+            var overStock = items
+                .Where(i => i.MaxStockLevel > 0 && i.TotalQuantity > i.MaxStockLevel)
+                .OrderByDescending(i => i.TotalQuantity)
+                .ToList();
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    outOfStockCount = outOfStock.Count,
+                    lowStockCount = lowStock.Count,
+                    overStockCount = overStock.Count,
+                    totalAlerts = outOfStock.Count + lowStock.Count + overStock.Count,
+                    outOfStock,
+                    lowStock,
+                    overStock
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب تنبيهات المخزون");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
     /// تقرير تقييم المخزون
     /// </summary>
     [HttpGet("reports/valuation")]
@@ -3477,6 +3541,82 @@ public class InventoryController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في جلب تقرير التقييم");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// تصدير تقرير تقييم المخزون إلى Excel (.xlsx) — معزول بشركة التوكن.
+    /// يعيد استخدام منطق تقرير التقييم نفسه ويضيف صفّ إجمالي كلّي.
+    /// </summary>
+    [HttpGet("reports/valuation/export")]
+    public async Task<IActionResult> ExportInventoryValuation([FromQuery] Guid companyId)
+    {
+        try
+        {
+            companyId = EffectiveReadCompanyId(companyId);
+            var valuation = await _unitOfWork.InventoryItems.AsQueryable()
+                .Where(i => i.CompanyId == companyId && !i.IsDeleted && i.IsActive)
+                .Select(i => new
+                {
+                    i.Name,
+                    i.SKU,
+                    CategoryName = i.Category != null ? i.Category.Name : null,
+                    Unit = i.Unit.ToString(),
+                    TotalQuantity = i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity),
+                    AverageCost = i.Stocks.Where(s => !s.IsDeleted && s.CurrentQuantity > 0)
+                        .Select(s => s.AverageCost).FirstOrDefault(),
+                    TotalValue = i.Stocks.Where(s => !s.IsDeleted).Sum(s => s.CurrentQuantity * s.AverageCost)
+                })
+                .OrderBy(i => i.Name)
+                .ToListAsync();
+
+            using var workbook = new XLWorkbook();
+            var ws = workbook.AddWorksheet("تقييم المخزون");
+            ws.RightToLeft = true;
+
+            string[] headers = { "المادة", "الرمز", "التصنيف", "الوحدة", "الكمية", "متوسط الكلفة", "القيمة الإجمالية" };
+            for (int c = 0; c < headers.Length; c++)
+            {
+                var cell = ws.Cell(1, c + 1);
+                cell.Value = headers[c];
+                cell.Style.Font.Bold = true;
+                cell.Style.Fill.BackgroundColor = XLColor.LightGray;
+            }
+
+            var row = 2;
+            foreach (var v in valuation)
+            {
+                ws.Cell(row, 1).Value = v.Name;
+                ws.Cell(row, 2).Value = v.SKU;
+                ws.Cell(row, 3).Value = v.CategoryName ?? "";
+                ws.Cell(row, 4).Value = v.Unit;
+                ws.Cell(row, 5).Value = v.TotalQuantity;
+                ws.Cell(row, 6).Value = v.AverageCost;
+                ws.Cell(row, 7).Value = v.TotalValue;
+                row++;
+            }
+
+            // صفّ الإجمالي الكلّي
+            ws.Cell(row, 1).Value = "الإجمالي";
+            ws.Cell(row, 1).Style.Font.Bold = true;
+            var totalCell = ws.Cell(row, 7);
+            totalCell.Value = valuation.Sum(v => v.TotalValue);
+            totalCell.Style.Font.Bold = true;
+
+            ws.Columns().AdjustToContents();
+
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+
+            var fileName = $"inventory_valuation_{DateTime.UtcNow.AddHours(3):yyyyMMdd_HHmm}.xlsx";
+            return File(stream.ToArray(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تصدير تقرير التقييم");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
