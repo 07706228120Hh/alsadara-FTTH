@@ -1215,9 +1215,8 @@ public class InventoryController : ControllerBase
                 var oldQty = stock.CurrentQuantity;
                 var oldAvg = stock.AverageCost;
                 var newQty = oldQty + itemDto.Quantity;
-                stock.AverageCost = newQty > 0
-                    ? ((oldQty * oldAvg) + (itemDto.Quantity * itemDto.UnitPrice)) / newQty
-                    : itemDto.UnitPrice;
+                stock.AverageCost = InventoryCosting.WeightedAverageCost(
+                    oldQty, oldAvg, itemDto.Quantity, itemDto.UnitPrice);
                 stock.CurrentQuantity = newQty;
                 stock.LastStockInDate = DateTime.UtcNow;
 
@@ -1450,10 +1449,8 @@ public class InventoryController : ControllerBase
                     }
 
                     // حساب متوسط التكلفة المرجح
-                    var totalOldValue = oldQty * oldAvgCost;
-                    var newValue = receiveItem.ReceivedQuantity * poItem.UnitPrice;
-                    var newTotalQty = oldQty + receiveItem.ReceivedQuantity;
-                    stock.AverageCost = newTotalQty > 0 ? (totalOldValue + newValue) / newTotalQty : poItem.UnitPrice;
+                    stock.AverageCost = InventoryCosting.WeightedAverageCost(
+                        oldQty, oldAvgCost, receiveItem.ReceivedQuantity, poItem.UnitPrice);
 
                     var stockBefore = stock.CurrentQuantity;
                     stock.CurrentQuantity += receiveItem.ReceivedQuantity;
@@ -4565,8 +4562,8 @@ public class InventoryController : ControllerBase
                     newQty = oldQty + item.Quantity;
                     if (stock != null)
                     {
-                        var totalValue = (stock.AverageCost * oldQty) + (item.UnitPrice * item.Quantity);
-                        stock.AverageCost = newQty > 0 ? totalValue / newQty : item.UnitPrice;
+                        stock.AverageCost = InventoryCosting.WeightedAverageCost(
+                            oldQty, stock.AverageCost, item.Quantity, item.UnitPrice);
                         stock.CurrentQuantity = newQty;
                         stock.LastStockInDate = DateTime.UtcNow;
                         _unitOfWork.WarehouseStocks.Update(stock);
