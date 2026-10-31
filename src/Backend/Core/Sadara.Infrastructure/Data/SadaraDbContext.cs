@@ -1775,6 +1775,7 @@ public class SadaraDbContext : DbContext
             entity.HasIndex(e => e.InvoiceId);
             entity.Property(e => e.ItemName).HasMaxLength(200);
             entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.BatchNumber).HasMaxLength(100);
             entity.Property(e => e.UnitPrice).HasPrecision(18, 2);
             entity.Property(e => e.DiscountPercent).HasPrecision(5, 2);
             entity.Property(e => e.DiscountAmount).HasPrecision(18, 2);

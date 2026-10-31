@@ -330,4 +330,95 @@ public class InventoryBatchesTests
             Assert.Equal(20, batches.Single(b => b.BatchNumber == "FAR").Quantity);
         }
     }
+
+    // ───────── 7) فاتورة شراء بصلاحية تُنشئ دُفعة عند التأكيد (المسار الجديد) ─────────
+    [Fact]
+    public async Task PurchaseInvoice_WithExpiry_CreatesBatch_OnConfirm()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        Guid itemId, whId;
+        using (var seed = NewContext(dbName))
+        {
+            (itemId, whId) = SeedItemWarehouse(seed, CompanyA);
+            seed.SaveChanges();
+        }
+
+        var expiry = DateTime.UtcNow.Date.AddDays(120);
+        Guid invoiceId;
+        using (var ctx = NewContext(dbName))
+        {
+            var controller = NewController(ctx, CompanyA);
+            var created = await controller.CreateInvoice(new CreateInvoiceRequest
+            {
+                CompanyId = CompanyA,
+                InvoiceType = InvoiceType.Purchase,
+                WarehouseId = whId,
+                Items = new List<CreateInvoiceItemDto>
+                {
+                    new() { InventoryItemId = itemId, Quantity = 8, UnitPrice = 9, ExpiryDate = expiry, BatchNumber = "PB1" },
+                },
+            });
+            var data = DataOf(created);
+            invoiceId = data.GetProperty("Id").GetGuid();
+        }
+
+        // قبل التأكيد: لا دُفعة (مسودّة فقط). بعد التأكيد: دُفعة واحدة بالصلاحية.
+        using (var pre = NewContext(dbName))
+            Assert.Empty(ReadBatches(pre, itemId));
+
+        using (var ctx = NewContext(dbName))
+        {
+            var controller = NewController(ctx, CompanyA);
+            var confirmed = await controller.ConfirmInvoice(invoiceId);
+            Assert.IsType<OkObjectResult>(confirmed);
+        }
+
+        using (var verify = NewContext(dbName))
+        {
+            var batch = Assert.Single(ReadBatches(verify, itemId));
+            Assert.Equal(8, batch.Quantity);
+            Assert.Equal(9m, batch.UnitCost);
+            Assert.Equal("PB1", batch.BatchNumber);
+            Assert.Equal(expiry, batch.ExpiryDate);
+            Assert.Equal(CompanyA, batch.CompanyId);
+        }
+    }
+
+    // ───────── 8) فاتورة بيع لا تخزّن صلاحية على البند ولو أرسلها العميل (بوّابة النوع) ─────────
+    [Fact]
+    public async Task SalesInvoice_DoesNotStoreExpiry_OnItem()
+    {
+        var dbName = Guid.NewGuid().ToString();
+        Guid itemId, whId;
+        using (var seed = NewContext(dbName))
+        {
+            (itemId, whId) = SeedItemWarehouse(seed, CompanyA);
+            SeedStock(seed, CompanyA, whId, itemId, qty: 20);
+            seed.SaveChanges();
+        }
+
+        using (var ctx = NewContext(dbName))
+        {
+            var controller = NewController(ctx, CompanyA);
+            // العميل يرسل صلاحية/دُفعة عمداً — يجب أن يتجاهلها الباكند لأنها فاتورة بيع.
+            var created = await controller.CreateInvoice(new CreateInvoiceRequest
+            {
+                CompanyId = CompanyA,
+                InvoiceType = InvoiceType.Sales,
+                WarehouseId = whId,
+                Items = new List<CreateInvoiceItemDto>
+                {
+                    new() { InventoryItemId = itemId, Quantity = 3, UnitPrice = 12, ExpiryDate = DateTime.UtcNow.Date.AddDays(30), BatchNumber = "SHOULD_IGNORE" },
+                },
+            });
+            Assert.IsType<OkObjectResult>(created);
+        }
+
+        using (var verify = NewContext(dbName))
+        {
+            var line = verify.Set<InvoiceItem>().Single(i => i.InventoryItemId == itemId);
+            Assert.Null(line.ExpiryDate);
+            Assert.Null(line.BatchNumber);
+        }
+    }
 }

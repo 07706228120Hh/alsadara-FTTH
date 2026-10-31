@@ -766,6 +766,15 @@ public class InvoiceItem : BaseEntity<long>
     /// <summary>تكلفة الوحدة وقت البيع (لحساب الربح)</summary>
     public decimal CostAtSale { get; set; } = 0;
 
+    /// <summary>
+    /// تاريخ صلاحية بند الشراء (اختياري) — يُستخدم لإنشاء دُفعة مخزون StockBatch للتتبّع فقط
+    /// عند تأكيد فاتورة الشراء. لا أثر محاسبي (COGS/CostAtSale متوسط مرجّح بلا مسّ).
+    /// </summary>
+    public DateTime? ExpiryDate { get; set; }
+
+    /// <summary>رقم الدُّفعة/التشغيلة لبند الشراء (اختياري) — تتبّع فقط.</summary>
+    public string? BatchNumber { get; set; }
+
     /// <summary>ملاحظات</summary>
     public string? Notes { get; set; }
 }

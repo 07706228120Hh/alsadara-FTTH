@@ -461,6 +461,30 @@ class InventoryApiService {
         '/inventory/reports/technician-holdings?companyId=$companyId');
   }
 
+  /// تصدير تقرير تقييم المخزون إلى Excel (bytes)
+  Future<List<int>> exportValuation({required String companyId}) async {
+    return await _api
+        .getBytes('/inventory/reports/valuation/export?companyId=$companyId');
+  }
+
+  // ============================================================
+  //  التنبيهات والدُّفعات (Alerts & Batches)
+  // ============================================================
+
+  /// تنبيهات المخزون (نفاد/نقص/تجاوز + منتهية/قاربت الانتهاء)
+  Future<Map<String, dynamic>> getInventoryAlerts({
+    required String companyId,
+    int expiryDays = 30,
+  }) async {
+    return await _api.get(
+        '/inventory/alerts?companyId=$companyId&expiryDays=$expiryDays');
+  }
+
+  /// جلب دُفعات مادة (مرتّبة بالأقرب صلاحية)
+  Future<Map<String, dynamic>> getItemBatches(String itemId) async {
+    return await _api.get('/inventory/items/$itemId/batches');
+  }
+
   // ============================================================
   //  العملاء (Customers)
   // ============================================================

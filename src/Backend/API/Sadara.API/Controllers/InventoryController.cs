@@ -4803,7 +4803,10 @@ public class InventoryController : ControllerBase
                     DiscountAmount = lineDiscount,
                     TotalPrice = lineTotal,
                     CostAtSale = costAtSale,
-                    Notes = itemDto.Notes
+                    Notes = itemDto.Notes,
+                    // صلاحية/دُفعة الشراء (تتبّع فقط) — تُقرأ عند تأكيد الفاتورة لإنشاء StockBatch.
+                    ExpiryDate = req.InvoiceType == InvoiceType.Purchase ? itemDto.ExpiryDate : null,
+                    BatchNumber = req.InvoiceType == InvoiceType.Purchase ? itemDto.BatchNumber : null
                 };
                 await _unitOfWork.InvoiceItems.AddAsync(invoiceItem);
                 subTotal += lineTotal;
@@ -4949,9 +4952,9 @@ public class InventoryController : ControllerBase
                 }
                 else
                 {
-                    // شراء ⇒ دُفعة جديدة. لا تاريخ صلاحية عبر هذا المسار (لا عمود على InvoiceItem) ⇒ null.
+                    // شراء ⇒ دُفعة جديدة مع صلاحية/رقم دُفعة البند (اختياريان) — تتبّع فقط، صفر أثر محاسبي.
                     await AddStockBatchAsync(invoice.CompanyId, invoice.WarehouseId, item.InventoryItemId,
-                        item.Quantity, item.UnitPrice, null);
+                        item.Quantity, item.UnitPrice, item.ExpiryDate, item.BatchNumber);
                 }
             }
 
@@ -6131,6 +6134,10 @@ public class CreateInvoiceItemDto
     public decimal UnitPrice { get; set; }
     public decimal DiscountPercent { get; set; } = 0;
     public string? Notes { get; set; }
+    /// <summary>تاريخ صلاحية بند الشراء (اختياري، لفواتير الشراء فقط) — تتبّع دُفعة.</summary>
+    public DateTime? ExpiryDate { get; set; }
+    /// <summary>رقم الدُّفعة لبند الشراء (اختياري) — تتبّع فقط.</summary>
+    public string? BatchNumber { get; set; }
 }
 
 // ── Voucher DTOs ──

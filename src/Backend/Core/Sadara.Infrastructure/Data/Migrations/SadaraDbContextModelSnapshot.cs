@@ -3976,6 +3976,10 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("BatchNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<decimal>("CostAtSale")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -3993,6 +3997,9 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<decimal>("DiscountPercent")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
+
+                    b.Property<DateTime?>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("InventoryItemId")
                         .HasColumnType("uuid");

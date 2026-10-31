@@ -1,5 +1,8 @@
+import 'dart:io';
 import '../utils/format_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
 import '../../frontend/frontend.dart';
 import '../widgets/inv_frame.dart';
 import '../services/inventory_api_service.dart';
@@ -22,6 +25,7 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
   String? _valuationError;
   List<Map<String, dynamic>> _valuationData = [];
   double _totalValue = 0;
+  bool _exporting = false;
 
   // Holdings tab
   bool _holdingsLoading = true;
@@ -97,6 +101,44 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
     }
   }
 
+  /// تصدير تقرير التقييم إلى ملف Excel وفتحه.
+  Future<void> _exportValuation() async {
+    if (_exporting) return;
+    setState(() => _exporting = true);
+    try {
+      final bytes = await _api.exportValuation(companyId: widget.companyId);
+      final dir = await getApplicationDocumentsDirectory();
+      final exportDir = Directory('${dir.path}/inventory_exports');
+      if (!await exportDir.exists()) {
+        await exportDir.create(recursive: true);
+      }
+      final timestamp =
+          DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
+      final filePath = '${exportDir.path}/inventory_valuation_$timestamp.xlsx';
+      await File(filePath).writeAsBytes(bytes);
+      await OpenFilex.open(filePath);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم تصدير تقرير التقييم بنجاح'),
+            backgroundColor: SdColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('فشل التصدير: $e'),
+            backgroundColor: SdColors.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SdPage(
@@ -147,10 +189,38 @@ class _InventoryReportsPageState extends State<InventoryReportsPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildTotalBanner(),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: _buildTotalBanner()),
+            const SizedBox(width: SdSpace.sm),
+            _buildExportButton(),
+          ],
+        ),
         const SizedBox(height: SdSpace.sm),
         Expanded(child: _buildValuationListOrTable()),
       ],
+    );
+  }
+
+  Widget _buildExportButton() {
+    if (_exporting) {
+      return Container(
+        width: 48,
+        height: 44,
+        alignment: Alignment.center,
+        child: const SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(color: SdColors.primary, strokeWidth: 2.5),
+        ),
+      );
+    }
+    return SdButton(
+      label: 'تصدير Excel',
+      icon: Icons.file_download_rounded,
+      kind: SdButtonKind.secondary,
+      onPressed: _exportValuation,
     );
   }
 

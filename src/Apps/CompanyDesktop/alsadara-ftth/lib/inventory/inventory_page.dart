@@ -16,6 +16,7 @@ import 'pages/invoices_page.dart';
 import 'pages/invoice_form_page.dart';
 import 'pages/vouchers_page.dart';
 import 'pages/returns_page.dart';
+import 'pages/inventory_alerts_page.dart';
 
 class InventoryPage extends StatefulWidget {
   final String? companyId;
@@ -247,6 +248,7 @@ class _InventoryPageState extends State<InventoryPage> {
       _NavItem('صرف الفنيين', Icons.engineering_rounded, () => _go(DispensingPage(companyId: _cid))),
       _NavItem('الحركات', Icons.swap_horiz_rounded, () => _go(MovementsPage(companyId: _cid))),
       _NavItem('التقارير', Icons.analytics_rounded, () => _go(InventoryReportsPage(companyId: _cid))),
+      _NavItem('التنبيهات', Icons.warning_amber_rounded, () => _go(InventoryAlertsPage(companyId: _cid))),
     ];
 
     return SdTileGrid(

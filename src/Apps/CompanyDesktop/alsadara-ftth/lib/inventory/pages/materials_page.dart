@@ -457,6 +457,17 @@ class _MaterialsPageState extends State<MaterialsPage> {
   }
 
   // ═══════════════════════════════════════════
+  //  دُفعات المادة (Batches)
+  // ═══════════════════════════════════════════
+
+  Future<void> _showBatchesDialog(InventoryItem item) async {
+    await showDialog(
+      context: context,
+      builder: (ctx) => _BatchesDialog(api: _api, itemId: item.id, itemName: item.name),
+    );
+  }
+
+  // ═══════════════════════════════════════════
   //  Build
   // ═══════════════════════════════════════════
 
@@ -638,6 +649,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
           child: Text('$stock', style: TextStyle(color: isLow ? SdColors.danger : SdColors.ink, fontWeight: isLow ? FontWeight.w800 : FontWeight.w500)),
         )),
         DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
+          IconButton(icon: const Icon(Icons.inventory_rounded, size: 20, color: SdColors.accent), tooltip: 'الدُّفعات', onPressed: () => _showBatchesDialog(item)),
           IconButton(icon: const Icon(Icons.copy_rounded, size: 20, color: SdColors.primary), tooltip: 'نسخ وتكرار', onPressed: () => _duplicateItem(item)),
           IconButton(icon: const Icon(Icons.edit, size: 20, color: SdColors.primary), tooltip: 'تعديل', onPressed: () => _showAddEditDialog(item)),
           IconButton(icon: const Icon(Icons.delete, size: 20, color: SdColors.danger), tooltip: 'حذف', onPressed: () => _confirmDelete(item)),
@@ -670,6 +682,7 @@ class _MaterialsPageState extends State<MaterialsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              IconButton(icon: const Icon(Icons.inventory_rounded, size: 20, color: SdColors.accent), tooltip: 'الدُّفعات', onPressed: () => _showBatchesDialog(item)),
               IconButton(icon: const Icon(Icons.copy_rounded, size: 20, color: SdColors.primary), tooltip: 'نسخ وتكرار', onPressed: () => _duplicateItem(item)),
               IconButton(icon: const Icon(Icons.edit, size: 20, color: SdColors.primary), tooltip: 'تعديل', onPressed: () => _showAddEditDialog(item)),
               IconButton(icon: const Icon(Icons.delete, size: 20, color: SdColors.danger), tooltip: 'حذف', onPressed: () => _confirmDelete(item)),
@@ -897,6 +910,241 @@ class _CategoriesManagerDialogState extends State<_CategoriesManagerDialog> {
         ),
         ...children.map((child) => _buildTreeNode(child, depth + 1)),
       ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  نافذة دُفعات المادة
+// ═══════════════════════════════════════════════════════════
+
+class _BatchesDialog extends StatefulWidget {
+  final InventoryApiService api;
+  final String itemId;
+  final String itemName;
+  const _BatchesDialog({required this.api, required this.itemId, required this.itemName});
+
+  @override
+  State<_BatchesDialog> createState() => _BatchesDialogState();
+}
+
+class _BatchesDialogState extends State<_BatchesDialog> {
+  bool _loading = true;
+  String? _error;
+  List<Map<String, dynamic>> _batches = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final res = await widget.api.getItemBatches(widget.itemId);
+      final list = (res['data'] as List<dynamic>?) ?? [];
+      _batches = list.map((e) => (e as Map).cast<String, dynamic>()).toList();
+    } catch (e) {
+      _error = e.toString();
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  dynamic _v(Map m, String camel) {
+    final pascal = camel.isEmpty ? camel : camel[0].toUpperCase() + camel.substring(1);
+    return m[camel] ?? m[pascal];
+  }
+
+  String _fmtDate(dynamic raw) {
+    if (raw == null) return '-';
+    final dt = DateTime.tryParse(raw.toString());
+    if (dt == null) return raw.toString();
+    final l = dt.toLocal();
+    return '${l.year}/${l.month.toString().padLeft(2, '0')}/${l.day.toString().padLeft(2, '0')}';
+  }
+
+  // لون تاريخ الصلاحية: منتهية=أحمر، خلال 30 يوماً=برتقالي، غير ذلك=عادي.
+  Color? _expiryColor(dynamic raw) {
+    if (raw == null) return null;
+    final dt = DateTime.tryParse(raw.toString());
+    if (dt == null) return null;
+    final days = dt.toLocal().difference(DateTime.now()).inDays;
+    if (days < 0) return SdColors.danger;
+    if (days <= 30) return SdColors.warningText;
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: Row(children: [
+          const Icon(Icons.inventory_rounded, color: SdColors.accent),
+          const SizedBox(width: 8),
+          Expanded(child: Text('دُفعات: ${widget.itemName}', maxLines: 1, overflow: TextOverflow.ellipsis)),
+        ]),
+        content: SizedBox(
+          width: 640,
+          height: 420,
+          child: _buildContent(),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إغلاق')),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_loading) return const Center(child: CircularProgressIndicator(color: SdColors.primary));
+    if (_error != null) {
+      return Center(
+        child: SdEmptyState(
+          title: 'تعذّر تحميل الدُّفعات',
+          message: _error,
+          icon: Icons.error_outline_rounded,
+          status: SdStatus.danger,
+          action: SdButton(label: 'إعادة المحاولة', icon: Icons.refresh_rounded, kind: SdButtonKind.secondary, onPressed: _load),
+        ),
+      );
+    }
+    if (_batches.isEmpty) {
+      return const Center(
+        child: SdEmptyState(title: 'لا توجد دُفعات لهذه المادة', icon: Icons.inventory_2_outlined),
+      );
+    }
+
+    final phone = context.sd.isPhone;
+    if (phone) {
+      return ListView.separated(
+        itemCount: _batches.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _batchCard(_batches[i]),
+      );
+    }
+
+    return SingleChildScrollView(
+      child: Container(
+        decoration: BoxDecoration(
+          color: SdColors.surface,
+          borderRadius: BorderRadius.circular(SdRadius.lg),
+          boxShadow: SdDepth.raised(),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Table(
+          columnWidths: const {
+            0: FlexColumnWidth(2.2),
+            1: FlexColumnWidth(1.6),
+            2: FlexColumnWidth(1.2),
+            3: FlexColumnWidth(1.4),
+            4: FlexColumnWidth(1.6),
+            5: FlexColumnWidth(1.6),
+          },
+          children: [
+            TableRow(
+              decoration: const BoxDecoration(color: SdColors.primary),
+              children: ['المستودع', 'رقم الدُّفعة', 'الكمية', 'كلفة الوحدة', 'الاستلام', 'الصلاحية']
+                  .map((h) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                        child: Center(
+                          child: Text(h,
+                              style: const TextStyle(
+                                  fontFamily: SdText.family,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white)),
+                        ),
+                      ))
+                  .toList(),
+            ),
+            for (int i = 0; i < _batches.length; i++) _batchRow(_batches[i], i),
+          ],
+        ),
+      ),
+    );
+  }
+
+  TableRow _batchRow(Map<String, dynamic> b, int index) {
+    final warehouse = (_v(b, 'warehouseName') ?? '-').toString();
+    final batch = (_v(b, 'batchNumber') ?? '').toString();
+    final qty = _v(b, 'quantity');
+    final cost = _v(b, 'unitCost');
+    final received = _v(b, 'receivedAt');
+    final expiry = _v(b, 'expiryDate');
+    final expColor = _expiryColor(expiry);
+    return TableRow(
+      decoration: BoxDecoration(color: index.isEven ? SdColors.surface : SdColors.surfaceAlt),
+      children: [
+        _cell(warehouse),
+        _cell(batch.isEmpty ? '-' : batch),
+        _cell(fmtN(qty)),
+        _cell(fmtN(cost)),
+        _cell(_fmtDate(received)),
+        _cell(_fmtDate(expiry), color: expColor, bold: expColor != null),
+      ],
+    );
+  }
+
+  Widget _batchCard(Map<String, dynamic> b) {
+    final warehouse = (_v(b, 'warehouseName') ?? '-').toString();
+    final batch = (_v(b, 'batchNumber') ?? '').toString();
+    final qty = _v(b, 'quantity');
+    final cost = _v(b, 'unitCost');
+    final received = _v(b, 'receivedAt');
+    final expiry = _v(b, 'expiryDate');
+    final expColor = _expiryColor(expiry);
+    return InvCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(child: Text(warehouse, style: SdText.label, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              const SizedBox(width: 8),
+              Text('الكمية: ${fmtN(qty)}', style: SdText.bodySm),
+            ],
+          ),
+          const SizedBox(height: 4),
+          if (batch.isNotEmpty) SdInfoRow(label: 'رقم الدُّفعة', value: batch),
+          SdInfoRow(label: 'كلفة الوحدة', value: fmtN(cost)),
+          SdInfoRow(label: 'تاريخ الاستلام', value: _fmtDate(received)),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                Text('تاريخ الصلاحية', style: SdText.bodySm),
+                const Spacer(),
+                Text(_fmtDate(expiry),
+                    style: TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 13,
+                        fontWeight: expColor != null ? FontWeight.w800 : FontWeight.w500,
+                        color: expColor ?? SdColors.ink)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cell(String text, {bool bold = false, Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      child: Center(
+        child: Text(
+          text,
+          style: TextStyle(
+              fontFamily: SdText.family,
+              fontSize: 12.5,
+              fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
+              color: color ?? SdColors.ink),
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+        ),
+      ),
     );
   }
 }

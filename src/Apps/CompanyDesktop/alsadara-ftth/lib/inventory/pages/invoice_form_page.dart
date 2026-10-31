@@ -16,6 +16,10 @@ class _InvoiceItemEntry {
   final TextEditingController discountController =
       TextEditingController(text: '0');
 
+  // حقول اختيارية خاصة بفاتورة الشراء فقط (دُفعة/صلاحية).
+  DateTime? expiryDate;
+  final TextEditingController batchController = TextEditingController();
+
   double get _qty =>
       double.tryParse(qtyController.text.replaceAll(',', '')) ?? 0;
   double get _price => parseN(priceController.text);
@@ -31,6 +35,7 @@ class _InvoiceItemEntry {
     qtyController.dispose();
     priceController.dispose();
     discountController.dispose();
+    batchController.dispose();
   }
 }
 
@@ -388,6 +393,66 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
     }
   }
 
+  // اختيار تاريخ صلاحية سطر مادة (فاتورة شراء) — اختياري.
+  Future<void> _pickExpiryDate(_InvoiceItemEntry entry) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: entry.expiryDate ?? DateTime.now().add(const Duration(days: 180)),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime(2040),
+    );
+    if (picked != null && mounted) {
+      setState(() => entry.expiryDate = picked);
+    }
+  }
+
+  // حقل صلاحية + رقم دُفعة لسطر الشراء (مُدمج، RTL).
+  Widget _purchaseBatchFields(_InvoiceItemEntry entry) {
+    final expiryBox = InkWell(
+      onTap: () => _pickExpiryDate(entry),
+      child: InputDecorator(
+        decoration: _cellDec('تاريخ الصلاحية'),
+        child: Row(
+          children: [
+            const Icon(Icons.event_rounded, size: 16, color: SdColors.faint),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                entry.expiryDate != null
+                    ? '${entry.expiryDate!.year}/${entry.expiryDate!.month.toString().padLeft(2, '0')}/${entry.expiryDate!.day.toString().padLeft(2, '0')}'
+                    : 'اختياري',
+                style: TextStyle(
+                    fontFamily: SdText.family,
+                    fontSize: 12.5,
+                    color: entry.expiryDate != null ? SdColors.ink : SdColors.faint),
+              ),
+            ),
+            if (entry.expiryDate != null)
+              InkWell(
+                onTap: () => setState(() => entry.expiryDate = null),
+                child: const Icon(Icons.clear, size: 15, color: SdColors.faint),
+              ),
+          ],
+        ),
+      ),
+    );
+    final batchField = TextFormField(
+      controller: entry.batchController,
+      decoration: _cellDec('رقم الدُّفعة (اختياري)'),
+      style: SdText.body.copyWith(fontSize: 12.5),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, right: 42),
+      child: Row(
+        children: [
+          Expanded(child: expiryBox),
+          const SizedBox(width: 8),
+          Expanded(child: batchField),
+        ],
+      ),
+    );
+  }
+
   // ═══════════════════════════════════════════
   //  حفظ الفاتورة
   // ═══════════════════════════════════════════
@@ -428,7 +493,7 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
           : _notesController.text,
       'companyId': widget.companyId,
       'items': validItems.map((e) {
-        return {
+        final m = <String, dynamic>{
           'inventoryItemId': e.inventoryItemId,
           'quantity':
               int.tryParse(e.qtyController.text.replaceAll(',', '')) ??
@@ -438,6 +503,13 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
                   e.discountController.text.replaceAll(',', '')) ??
               0,
         };
+        // حقول الشراء الاختيارية فقط (دُفعة/صلاحية).
+        if (!_isSales) {
+          m['expiryDate'] = e.expiryDate?.toUtc().toIso8601String();
+          m['batchNumber'] =
+              e.batchController.text.trim().isEmpty ? null : e.batchController.text.trim();
+        }
+        return m;
       }).toList(),
     };
 
@@ -1096,7 +1168,10 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
             : const Border(bottom: BorderSide(color: SdColors.cardEdge)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
@@ -1149,6 +1224,9 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
             ),
           ),
         ],
+          ),
+          if (!_isSales) _purchaseBatchFields(entry),
+        ],
       ),
     );
   }
@@ -1197,6 +1275,51 @@ class _InvoiceFormPageState extends State<InvoiceFormPage> {
               Text(fmtN(entry.lineTotal), style: SdText.label),
             ],
           ),
+          if (!_isSales) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _pickExpiryDate(entry),
+                    child: InputDecorator(
+                      decoration: _cellDec('تاريخ الصلاحية'),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.event_rounded, size: 16, color: SdColors.faint),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              entry.expiryDate != null
+                                  ? '${entry.expiryDate!.year}/${entry.expiryDate!.month.toString().padLeft(2, '0')}/${entry.expiryDate!.day.toString().padLeft(2, '0')}'
+                                  : 'اختياري',
+                              style: TextStyle(
+                                  fontFamily: SdText.family,
+                                  fontSize: 12.5,
+                                  color: entry.expiryDate != null ? SdColors.ink : SdColors.faint),
+                            ),
+                          ),
+                          if (entry.expiryDate != null)
+                            InkWell(
+                              onTap: () => setState(() => entry.expiryDate = null),
+                              child: const Icon(Icons.clear, size: 15, color: SdColors.faint),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    controller: entry.batchController,
+                    decoration: _cellDec('رقم الدُّفعة (اختياري)'),
+                    style: SdText.body.copyWith(fontSize: 12.5),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
