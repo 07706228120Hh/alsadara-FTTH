@@ -170,6 +170,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<TechnicianDispensingItem, long> TechnicianDispensingItems { get; }
     IRepository<StockMovement, long> StockMovements { get; }
     IRepository<WarehouseStock, long> WarehouseStocks { get; }
+    IRepository<StockBatch, long> StockBatches { get; }
 
     // Inventory Upgrade
     IRepository<InventoryCustomer, Guid> InventoryCustomers { get; }

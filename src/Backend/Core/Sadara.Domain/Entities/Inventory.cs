@@ -598,6 +598,41 @@ public class WarehouseStock : BaseEntity<long>
     public Company? Company { get; set; }
 }
 
+/// <summary>
+/// دُفعة مخزون (Batch/Lot) — طبقة تتبّع موازية للكمية وتاريخ الصلاحية لكل (مستودع + مادة).
+/// **لا تمسّ المنطق المحاسبي**: WarehouseStock.AverageCost و CostAtSale/COGS تبقى بالمتوسط
+/// المرجّح. تُنشأ عند الاستلام (شراء) وتُخصَم بسياسة FEFO (الأقرب انتهاءً أولاً) عند الإخراج.
+/// </summary>
+public class StockBatch : BaseEntity<long>, ITenantScoped
+{
+    /// <summary>الشركة (عزل المستأجر) — يُشتق من الكيان الأب لا من العميل</summary>
+    public Guid CompanyId { get; set; }
+    public Company? Company { get; set; }
+
+    /// <summary>المستودع</summary>
+    public Guid WarehouseId { get; set; }
+    public Warehouse? Warehouse { get; set; }
+
+    /// <summary>المادة</summary>
+    public Guid InventoryItemId { get; set; }
+    public InventoryItem? InventoryItem { get; set; }
+
+    /// <summary>رقم الدُّفعة/التشغيلة (اختياري)</summary>
+    public string? BatchNumber { get; set; }
+
+    /// <summary>الكمية المتبقّية من هذه الدُّفعة</summary>
+    public int Quantity { get; set; }
+
+    /// <summary>كلفة الوحدة لهذه الدُّفعة تحديداً (للتتبّع فقط — لا تُستخدم في COGS)</summary>
+    public decimal UnitCost { get; set; }
+
+    /// <summary>تاريخ الاستلام</summary>
+    public DateTime ReceivedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>تاريخ انتهاء الصلاحية (nullable لمواد بلا صلاحية)</summary>
+    public DateTime? ExpiryDate { get; set; }
+}
+
 // ==================== الفواتير ====================
 
 /// <summary>

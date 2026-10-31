@@ -150,6 +150,7 @@ public class UnitOfWork : IUnitOfWork
     private IRepository<TechnicianDispensingItem, long>? _technicianDispensingItems;
     private IRepository<StockMovement, long>? _stockMovements;
     private IRepository<WarehouseStock, long>? _warehouseStocks;
+    private IRepository<StockBatch, long>? _stockBatches;
 
     // Inventory Upgrade
     private IRepository<InventoryCustomer, Guid>? _inventoryCustomers;
@@ -475,6 +476,8 @@ public class UnitOfWork : IUnitOfWork
         _stockMovements ??= new Repository<StockMovement, long>(_context);
     public IRepository<WarehouseStock, long> WarehouseStocks =>
         _warehouseStocks ??= new Repository<WarehouseStock, long>(_context);
+    public IRepository<StockBatch, long> StockBatches =>
+        _stockBatches ??= new Repository<StockBatch, long>(_context);
 
     // Inventory Upgrade
     public IRepository<InventoryCustomer, Guid> InventoryCustomers =>

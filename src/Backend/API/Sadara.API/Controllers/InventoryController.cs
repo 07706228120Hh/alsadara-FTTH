@@ -103,6 +103,68 @@ public class InventoryController : ControllerBase
         return null;
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // الدُّفعات (StockBatch) — طبقة تتبّع موازية للكمية والصلاحية فقط.
+    // ⚠️ لا تمسّ أي رقم محاسبي: AverageCost و CostAtSale/COGS تبقى بالمتوسط المرجّح.
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// ينشئ دُفعة مخزون عند استلام كمية واردة. CompanyId يُشتق دائماً من الكيان الأب (لا العميل).
+    /// يُستدعى عند نقاط الاستلام الثلاث (إنشاء/استلام أمر شراء + فرع شراء تأكيد الفاتورة).
+    /// </summary>
+    private async Task AddStockBatchAsync(Guid companyId, Guid warehouseId, Guid itemId,
+        int quantity, decimal unitCost, DateTime? expiryDate, string? batchNumber = null)
+    {
+        if (quantity <= 0) return;
+        await _unitOfWork.StockBatches.AddAsync(new StockBatch
+        {
+            CompanyId = companyId,
+            WarehouseId = warehouseId,
+            InventoryItemId = itemId,
+            BatchNumber = string.IsNullOrWhiteSpace(batchNumber) ? null : batchNumber.Trim(),
+            Quantity = quantity,
+            UnitCost = unitCost,
+            ReceivedAt = DateTime.UtcNow,
+            ExpiryDate = expiryDate.HasValue
+                ? DateTime.SpecifyKind(expiryDate.Value, DateTimeKind.Utc)
+                : null,
+        });
+    }
+
+    /// <summary>
+    /// خصم FEFO (الأقرب انتهاءً أولاً، الدُّفعات بلا صلاحية آخراً، ثم الأقدم استلاماً) من دُفعات
+    /// (مستودع + مادة) ضمن الشركة. **خصم متسامح**: إن كانت كمية الدُّفعات أقل من المطلوب (مخزون
+    /// قديم سابق لتفعيل الدُّفعات)، يخصم المتاح فقط ولا يرمي استثناء ولا يمنع العملية.
+    /// طبقة تتبّع فقط — لا أثر على AverageCost/COGS. CompanyId يُشتق من الكيان الأب.
+    /// </summary>
+    private async Task DeductFromBatchesFefoAsync(Guid companyId, Guid warehouseId, Guid itemId, int qty)
+    {
+        if (qty <= 0) return;
+
+        var batches = await _unitOfWork.StockBatches.AsQueryable()
+            .Where(b => b.CompanyId == companyId
+                     && b.WarehouseId == warehouseId
+                     && b.InventoryItemId == itemId
+                     && b.Quantity > 0
+                     && !b.IsDeleted)
+            .OrderBy(b => b.ExpiryDate == null) // false(0) أولاً ⇒ ذوات الصلاحية، ثم NULL آخراً
+            .ThenBy(b => b.ExpiryDate)
+            .ThenBy(b => b.ReceivedAt)
+            .ToListAsync();
+
+        var remaining = qty;
+        foreach (var batch in batches)
+        {
+            if (remaining <= 0) break;
+            var take = Math.Min(batch.Quantity, remaining);
+            batch.Quantity -= take;
+            batch.UpdatedAt = DateTime.UtcNow;
+            _unitOfWork.StockBatches.Update(batch);
+            remaining -= take;
+        }
+        // remaining > 0 ⇒ لا دُفعات كافية (مخزون موروث قبل الدُّفعات): تجاهل بتسامح عمداً.
+    }
+
     private async Task<string> GenerateOrderNumber(string prefix, Guid companyId)
     {
         var year = DateTime.UtcNow.Year;
@@ -1254,6 +1316,10 @@ public class InventoryController : ControllerBase
                     CreatedById = currentUserId,
                     CompanyId = request.CompanyId
                 });
+
+                // ── دُفعة مخزون (تتبّع كمية/صلاحية) — CompanyId من أمر الشراء لا من العميل ──
+                await AddStockBatchAsync(request.CompanyId, order.WarehouseId, itemDto.InventoryItemId,
+                    itemDto.Quantity, itemDto.UnitPrice, itemDto.ExpiryDate, itemDto.BatchNumber);
             }
 
             order.TotalAmount = totalAmount;
@@ -1488,6 +1554,10 @@ public class InventoryController : ControllerBase
                         CompanyId = order.CompanyId
                     };
                     await _unitOfWork.StockMovements.AddAsync(movement);
+
+                    // ── دُفعة مخزون (تتبّع كمية/صلاحية) — CompanyId من أمر الشراء ──
+                    await AddStockBatchAsync(order.CompanyId, order.WarehouseId, poItem.InventoryItemId,
+                        receiveItem.ReceivedQuantity, poItem.UnitPrice, receiveItem.ExpiryDate, receiveItem.BatchNumber);
                 }
 
                 // التحقق هل تم استلام كل البنود بالكامل
@@ -1594,6 +1664,9 @@ public class InventoryController : ControllerBase
                             CreatedById = currentUserId,
                             CompanyId = order.CompanyId
                         });
+
+                        // ── عكس الاستلام ⇒ خصم FEFO من الدُّفعات بنفس الكمية (تتبّع فقط) ──
+                        await DeductFromBatchesFefoAsync(order.CompanyId, order.WarehouseId, poItem.InventoryItemId, poItem.ReceivedQuantity);
                     }
                 }
 
@@ -1953,6 +2026,9 @@ public class InventoryController : ControllerBase
                         CompanyId = order.CompanyId
                     };
                     await _unitOfWork.StockMovements.AddAsync(movement);
+
+                    // ── خصم FEFO من الدُّفعات بنفس الكمية المخصومة (تتبّع فقط) ──
+                    await DeductFromBatchesFefoAsync(order.CompanyId, order.WarehouseId, soItem.InventoryItemId, soItem.Quantity);
                 }
 
                 order.Status = SalesOrderStatus.Confirmed;
@@ -2261,6 +2337,9 @@ public class InventoryController : ControllerBase
                     _unitOfWork.WarehouseStocks.Update(stock);
                 }
 
+                // ── خصم FEFO من الدُّفعات (تتبّع فقط) — صرف مباشر Approved لا يمرّ لاحقاً على ApproveDispensing ──
+                await DeductFromBatchesFefoAsync(request.CompanyId, request.WarehouseId, itemDto.InventoryItemId, itemDto.Quantity);
+
                 // ── حركة مخزنية ──
                 await _unitOfWork.StockMovements.AddAsync(new StockMovement
                 {
@@ -2523,6 +2602,9 @@ public class InventoryController : ControllerBase
                         CreatedById = currentUserId,
                         CompanyId = dispensing.CompanyId
                     });
+
+                    // ── خصم FEFO من الدُّفعات بنفس الكمية المخصومة (تتبّع فقط) ──
+                    await DeductFromBatchesFefoAsync(dispensing.CompanyId, targetWarehouseId, itemDto.InventoryItemId, itemDto.Quantity);
                 }
 
                 // إعادة ضبط الحالة
@@ -2612,6 +2694,9 @@ public class InventoryController : ControllerBase
                             CompanyId = dispensing.CompanyId
                         };
                         await _unitOfWork.StockMovements.AddAsync(movement);
+
+                        // ── خصم FEFO من الدُّفعات بنفس الكمية المصروفة (تتبّع فقط) ──
+                        await DeductFromBatchesFefoAsync(dispensing.CompanyId, dispensing.WarehouseId, tdItem.InventoryItemId, tdItem.Quantity);
                     }
                     else
                     {
@@ -3166,6 +3251,10 @@ public class InventoryController : ControllerBase
             };
             await _unitOfWork.StockMovements.AddAsync(movement);
 
+            // ── تسوية نقص ⇒ خصم FEFO للفرق (تتبّع فقط). الزيادة لا تُنشئ دُفعة (لا كلفة/صلاحية). ──
+            if (request.NewQuantity < oldQuantity)
+                await DeductFromBatchesFefoAsync(request.CompanyId, request.WarehouseId, request.InventoryItemId, oldQuantity - request.NewQuantity);
+
             await _unitOfWork.SaveChangesAsync();
 
             return Ok(new { success = true, message = "تم تعديل الجرد بنجاح", data = new { oldQuantity, newQuantity = request.NewQuantity } });
@@ -3240,6 +3329,11 @@ public class InventoryController : ControllerBase
                         CompanyId = sourceStock.CompanyId
                     };
                     await _unitOfWork.StockMovements.AddAsync(transferOutMovement);
+
+                    // ── خصم FEFO من دُفعات المستودع المصدر (تتبّع فقط). ملاحظة: لا نُعيد إنشاء
+                    //    دُفعة في المستودع الوجهة (نقطة إضافة لا تضبط AverageCost) ⇒ قد تقلّ
+                    //    تغطية دُفعات الوجهة عن كميتها؛ الخصم المتسامح يعالجها لاحقاً. ──
+                    await DeductFromBatchesFefoAsync(sourceStock.CompanyId, request.FromWarehouseId, transferItem.InventoryItemId, transferItem.Quantity);
 
                     // إضافة للوجهة
                     var destStock = await _unitOfWork.WarehouseStocks.FirstOrDefaultAsync(
@@ -3449,7 +3543,7 @@ public class InventoryController : ControllerBase
     /// معزولة بشركة التوكن عبر EffectiveReadCompanyId. تُرجع العدادات + قوائم موجزة.
     /// </summary>
     [HttpGet("alerts")]
-    public async Task<IActionResult> GetInventoryAlerts([FromQuery] Guid? companyId = null)
+    public async Task<IActionResult> GetInventoryAlerts([FromQuery] Guid? companyId = null, [FromQuery] int expiryDays = 30)
     {
         try
         {
@@ -3485,6 +3579,48 @@ public class InventoryController : ControllerBase
                 .OrderByDescending(i => i.TotalQuantity)
                 .ToList();
 
+            // ── تنبيهات الصلاحية من الدُّفعات (معزولة بشركة التوكن) ──
+            var today = DateTime.UtcNow.Date;
+            var daysWindow = expiryDays > 0 ? expiryDays : 30;
+            var soonThreshold = today.AddDays(daysWindow);
+
+            var batchQuery = _unitOfWork.StockBatches.AsQueryable()
+                .Where(b => b.CompanyId == company && !b.IsDeleted && b.Quantity > 0 && b.ExpiryDate != null);
+
+            var expired = await batchQuery
+                .Where(b => b.ExpiryDate < today)
+                .OrderBy(b => b.ExpiryDate)
+                .Select(b => new
+                {
+                    b.Id,
+                    b.InventoryItemId,
+                    ItemName = b.InventoryItem != null ? b.InventoryItem.Name : null,
+                    ItemSKU = b.InventoryItem != null ? b.InventoryItem.SKU : null,
+                    b.WarehouseId,
+                    WarehouseName = b.Warehouse != null ? b.Warehouse.Name : null,
+                    b.BatchNumber,
+                    b.Quantity,
+                    b.ExpiryDate
+                })
+                .ToListAsync();
+
+            var expiringSoon = await batchQuery
+                .Where(b => b.ExpiryDate >= today && b.ExpiryDate <= soonThreshold)
+                .OrderBy(b => b.ExpiryDate)
+                .Select(b => new
+                {
+                    b.Id,
+                    b.InventoryItemId,
+                    ItemName = b.InventoryItem != null ? b.InventoryItem.Name : null,
+                    ItemSKU = b.InventoryItem != null ? b.InventoryItem.SKU : null,
+                    b.WarehouseId,
+                    WarehouseName = b.Warehouse != null ? b.Warehouse.Name : null,
+                    b.BatchNumber,
+                    b.Quantity,
+                    b.ExpiryDate
+                })
+                .ToListAsync();
+
             return Ok(new
             {
                 success = true,
@@ -3493,16 +3629,63 @@ public class InventoryController : ControllerBase
                     outOfStockCount = outOfStock.Count,
                     lowStockCount = lowStock.Count,
                     overStockCount = overStock.Count,
-                    totalAlerts = outOfStock.Count + lowStock.Count + overStock.Count,
+                    expiredCount = expired.Count,
+                    expiringSoonCount = expiringSoon.Count,
+                    totalAlerts = outOfStock.Count + lowStock.Count + overStock.Count + expired.Count + expiringSoon.Count,
                     outOfStock,
                     lowStock,
-                    overStock
+                    overStock,
+                    expired,
+                    expiringSoon
                 }
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في جلب تنبيهات المخزون");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// دُفعات مادة محددة (الكمية المتبقّية > 0) مرتّبة بالصلاحية (الأقرب أولاً، بلا صلاحية آخراً).
+    /// معزولة: OwnedByTenant على المادة + فلتر CompanyId على الدُّفعات.
+    /// </summary>
+    [HttpGet("items/{id}/batches")]
+    public async Task<IActionResult> GetItemBatches(Guid id)
+    {
+        try
+        {
+            var item = await _unitOfWork.InventoryItems.GetByIdAsync(id);
+            if (item == null || item.IsDeleted)
+                return NotFound(new { success = false, message = "المادة غير موجودة" });
+            if (!OwnedByTenant(item.CompanyId))
+                return NotFound(new { success = false, message = "المادة غير موجودة" });
+
+            var batches = await _unitOfWork.StockBatches.AsQueryable()
+                .Where(b => b.InventoryItemId == id && b.CompanyId == item.CompanyId
+                         && b.Quantity > 0 && !b.IsDeleted)
+                .OrderBy(b => b.ExpiryDate == null)
+                .ThenBy(b => b.ExpiryDate)
+                .ThenBy(b => b.ReceivedAt)
+                .Select(b => new
+                {
+                    b.Id,
+                    b.WarehouseId,
+                    WarehouseName = b.Warehouse != null ? b.Warehouse.Name : null,
+                    b.BatchNumber,
+                    b.Quantity,
+                    b.UnitCost,
+                    b.ReceivedAt,
+                    b.ExpiryDate
+                })
+                .ToListAsync();
+
+            return Ok(new { success = true, data = batches, total = batches.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب دُفعات المادة");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
@@ -4757,6 +4940,19 @@ public class InventoryController : ControllerBase
                     CreatedById = userId,
                     CompanyId = invoice.CompanyId
                 });
+
+                // ── دُفعات المخزون (تتبّع كمية/صلاحية فقط — لا أثر على CostAtSale/COGS) ──
+                if (isSales)
+                {
+                    // بيع ⇒ خصم FEFO بنفس الكمية المخصومة من WarehouseStock.
+                    await DeductFromBatchesFefoAsync(invoice.CompanyId, invoice.WarehouseId, item.InventoryItemId, item.Quantity);
+                }
+                else
+                {
+                    // شراء ⇒ دُفعة جديدة. لا تاريخ صلاحية عبر هذا المسار (لا عمود على InvoiceItem) ⇒ null.
+                    await AddStockBatchAsync(invoice.CompanyId, invoice.WarehouseId, item.InventoryItemId,
+                        item.Quantity, item.UnitPrice, null);
+                }
             }
 
             // ── 2. القيد المحاسبي ──
@@ -4952,6 +5148,11 @@ public class InventoryController : ControllerBase
                             CreatedById = currentUserId,
                             CompanyId = invoice.CompanyId
                         });
+
+                        // ── فاتورة شراء ملغاة ⇒ سحب من المخزون ⇒ خصم FEFO بنفس الكمية (تتبّع فقط).
+                        //    البيع الملغى يُعيد الكمية (إضافة) ⇒ لا نُنشئ دُفعة (لا كلفة/صلاحية موثوقة). ──
+                        if (!isSales)
+                            await DeductFromBatchesFefoAsync(invoice.CompanyId, invoice.WarehouseId, item.InventoryItemId, item.Quantity);
                     }
                 }
 
@@ -5432,6 +5633,9 @@ public class InventoryController : ControllerBase
                 {
                     // مرتجع شراء → خصم من المخزون
                     if (stock != null) { stock.CurrentQuantity -= item.Quantity; stock.LastStockOutDate = DateTime.UtcNow; _unitOfWork.WarehouseStocks.Update(stock); }
+
+                    // ── خصم FEFO من الدُّفعات بنفس الكمية المرتجعة للمورد (تتبّع فقط) ──
+                    await DeductFromBatchesFefoAsync(ret.CompanyId, ret.WarehouseId, item.InventoryItemId, item.Quantity);
                 }
 
                 await _unitOfWork.StockMovements.AddAsync(new StockMovement
@@ -5735,6 +5939,12 @@ public class PurchaseOrderItemDto
     public Guid InventoryItemId { get; set; }
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
+
+    /// <summary>تاريخ صلاحية الدُّفعة (اختياري — null لمواد بلا صلاحية)</summary>
+    public DateTime? ExpiryDate { get; set; }
+
+    /// <summary>رقم الدُّفعة/التشغيلة (اختياري)</summary>
+    public string? BatchNumber { get; set; }
 }
 
 public class UpdatePurchaseOrderRequest
@@ -5755,6 +5965,12 @@ public class ReceiveItemDto
 {
     public long PurchaseOrderItemId { get; set; }
     public int ReceivedQuantity { get; set; }
+
+    /// <summary>تاريخ صلاحية الدُّفعة المستلمة (اختياري — null لمواد بلا صلاحية)</summary>
+    public DateTime? ExpiryDate { get; set; }
+
+    /// <summary>رقم الدُّفعة/التشغيلة (اختياري)</summary>
+    public string? BatchNumber { get; set; }
 }
 
 public class CreateSalesOrderRequest

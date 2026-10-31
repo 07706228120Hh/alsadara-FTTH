@@ -197,6 +197,7 @@ public class SadaraDbContext : DbContext
     public DbSet<TechnicianDispensingItem> TechnicianDispensingItems => Set<TechnicianDispensingItem>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<WarehouseStock> WarehouseStocks => Set<WarehouseStock>();
+    public DbSet<StockBatch> StockBatches => Set<StockBatch>();
 
     // ── Inventory Upgrade ──
     public DbSet<InventoryCustomer> InventoryCustomers => Set<InventoryCustomer>();
@@ -1481,6 +1482,7 @@ public class SadaraDbContext : DbContext
         modelBuilder.Entity<TechnicianDispensingItem>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<StockMovement>().HasQueryFilter(x => !x.IsDeleted);
         modelBuilder.Entity<WarehouseStock>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<StockBatch>().HasQueryFilter(x => !x.IsDeleted);
 
         // Inventory Upgrade
         modelBuilder.Entity<InventoryCustomer>().HasQueryFilter(x => !x.IsDeleted);
@@ -1679,6 +1681,19 @@ public class SadaraDbContext : DbContext
             entity.Property(e => e.AverageCost).HasPrecision(18, 2);
             entity.HasOne(e => e.Warehouse).WithMany(w => w.Stocks).HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.InventoryItem).WithMany(i => i.Stocks).HasForeignKey(e => e.InventoryItemId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // StockBatch (دُفعة مخزون — تتبّع الكمية والصلاحية؛ لا أثر محاسبي)
+        modelBuilder.Entity<StockBatch>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.CompanyId, e.WarehouseId, e.InventoryItemId });
+            entity.HasIndex(e => new { e.CompanyId, e.ExpiryDate });
+            entity.Property(e => e.BatchNumber).HasMaxLength(100);
+            entity.Property(e => e.UnitCost).HasPrecision(18, 2);
+            entity.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.InventoryItem).WithMany().HasForeignKey(e => e.InventoryItemId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Company).WithMany().HasForeignKey(e => e.CompanyId).OnDelete(DeleteBehavior.Restrict);
         });
 
