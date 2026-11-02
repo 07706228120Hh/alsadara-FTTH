@@ -1,12 +1,12 @@
 ﻿[Setup]
 AppName=ط§ظ„طµط¯ط§ط±ط© - Alsadara
-AppVersion=2.4.33
+AppVersion=2.4.34
 AppPublisher=Alsadara Platform
 AppPublisherURL=https://github.com/07706228120Hh/alsadara-FTTH
 DefaultDirName={autopf}\Alsadara
 DefaultGroupName=ط§ظ„طµط¯ط§ط±ط©
 OutputDir=build\installer
-OutputBaseFilename=Alsadara-Setup-v2.4.33
+OutputBaseFilename=Alsadara-Setup-v2.4.34
 SetupIconFile=windows\runner\resources\app_icon.ico
 Compression=lzma2
 SolidCompression=yes
