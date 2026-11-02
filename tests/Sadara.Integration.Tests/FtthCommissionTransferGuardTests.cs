@@ -77,6 +77,26 @@ public class FtthCommissionTransferGuardTests
             throw new InvalidOperationException("FTTH لا يجب أن يُنادى في هذا الاختبار");
     }
 
+    /// <summary>
+    /// عميل FTTH مُزيّف يفشل تسجيل الدخول دائماً — يحاكي دلالة «FTTH غير قابل للوصول» للاختبارات التي
+    /// لا يُفترَض أن تبلغ طبقة FTTH (أو تبلغها فتفشل عند الدخول). الاختبارات التي تغطّي المسار الحيّ
+    /// تستخدم عميلاً قابلاً للبرمجة في ملف اختبارات منفصل.
+    /// </summary>
+    private sealed class LoginFailsFtthClient : IFtthCommissionClient
+    {
+        public Task<FtthLoginResult> LoginAsync(string serverUrl, string username, string password, CancellationToken ct)
+            => Task.FromResult(new FtthLoginResult(false, null, null, "تعذّر الاتصال بنظام FTTH"));
+
+        public Task<string?> GetPartnerIdAsync(string serverUrl, string accessToken, CancellationToken ct)
+            => throw new InvalidOperationException("لا يجب جلب partnerId بعد فشل الدخول");
+
+        public Task<decimal?> GetCommissionBalanceAsync(string serverUrl, string accessToken, string partnerId, CancellationToken ct)
+            => throw new InvalidOperationException("لا يجب جلب الرصيد بعد فشل الدخول");
+
+        public Task<FtthTransferResult> TransferAsync(string serverUrl, string accessToken, string partnerId, long amount, string requestId, CancellationToken ct)
+            => throw new InvalidOperationException("لا يجب تنفيذ التحويل بعد فشل الدخول");
+    }
+
     // ── بناة ─────────────────────────────────────────────────────────────────
 
     private static SadaraDbContext NewContext(string dbName, ICurrentTenant tenant)
@@ -92,6 +112,7 @@ public class FtthCommissionTransferGuardTests
         var ctrl = new LinkedAccountsController(
             db, tenant,
             new FakeSecretProtector(),
+            new LoginFailsFtthClient(),
             new UnreachableHttpClientFactory(),
             EmptyConfig(),
             NullLogger<LinkedAccountsController>.Instance);

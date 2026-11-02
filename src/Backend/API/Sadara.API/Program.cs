@@ -71,6 +71,9 @@ builder.Services.AddDataProtection()
     .SetApplicationName("Sadara");
 builder.Services.AddScoped<ISecretProtector, Sadara.Infrastructure.Services.Security.SecretProtector>();
 
+// عميل نداءات FTTH لحارس «تحويل العمولة» — يجعل نداءات FTTH قابلة للحقن (اختبار الحارس المالي).
+builder.Services.AddScoped<IFtthCommissionClient, Sadara.Infrastructure.Services.Ftth.FtthCommissionClient>();
+
 // عميل خدمة الساس الداخلية (typed HttpClient على 127.0.0.1:8100)
 builder.Services.AddHttpClient<ISasServiceClient, Sadara.Infrastructure.Services.Sas.SasServiceClient>();
 
