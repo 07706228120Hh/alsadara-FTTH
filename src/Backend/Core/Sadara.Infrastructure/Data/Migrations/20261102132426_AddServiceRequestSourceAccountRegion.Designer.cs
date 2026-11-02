@@ -7021,10 +7021,6 @@ namespace Sadara.Infrastructure.Data.Migrations
 
                     b.HasIndex("TechnicianId");
 
-                    b.HasIndex("CompanyId", "RegionRef");
-
-                    b.HasIndex("CompanyId", "SourceAccountType", "SourceAccountId");
-
                     b.ToTable("ServiceRequests");
                 });
 

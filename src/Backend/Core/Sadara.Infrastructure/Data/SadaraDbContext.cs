@@ -1025,10 +1025,10 @@ public class SadaraDbContext : DbContext
             entity.Property(e => e.PartnerName).HasMaxLength(200);
             entity.Property(e => e.RegionRef).HasMaxLength(100);
             entity.Property(e => e.RegionName).HasMaxLength(200);
-            // فهرس فلترة المهام حسب الحساب المصدر ضمن الشركة
-            entity.HasIndex(e => new { e.CompanyId, e.SourceAccountType, e.SourceAccountId });
-            // فهرس تجميع/تصفية المهام حسب المنطقة ضمن الشركة
-            entity.HasIndex(e => new { e.CompanyId, e.RegionRef });
+            // فهارس الحساب المصدر/المنطقة (CompanyId,SourceAccountType,SourceAccountId)
+            // و(CompanyId,RegionRef) تُدار على مستوى القاعدة فقط عبر
+            // CREATE INDEX CONCURRENTLY (deploy/indexes_concurrent_tasks_source.sql)
+            // لتفادي قفل الكتابة على ServiceRequests الحيّ؛ EF لا يعرّفهما عمداً.
         });
 
         // ServiceRequestComment (تعليق على طلب)

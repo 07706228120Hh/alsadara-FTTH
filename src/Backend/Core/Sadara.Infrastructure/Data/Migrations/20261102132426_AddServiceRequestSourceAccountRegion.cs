@@ -59,28 +59,16 @@ namespace Sadara.Infrastructure.Data.Migrations
                 nullable: false,
                 defaultValue: 0);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_ServiceRequests_CompanyId_RegionRef",
-                table: "ServiceRequests",
-                columns: new[] { "CompanyId", "RegionRef" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ServiceRequests_CompanyId_SourceAccountType_SourceAccountId",
-                table: "ServiceRequests",
-                columns: new[] { "CompanyId", "SourceAccountType", "SourceAccountId" });
+            // ملاحظة: الفهرسان IX_ServiceRequests_CompanyId_RegionRef و
+            // IX_ServiceRequests_CompanyId_SourceAccountType_SourceAccountId
+            // يُنشآن يدوياً على الإنتاج عبر CREATE INDEX CONCURRENTLY
+            // (deploy/indexes_concurrent_tasks_source.sql) لتفادي قفل الكتابة
+            // على جدول ServiceRequests الحيّ الكبير. EF لا يعرف عنهما.
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "IX_ServiceRequests_CompanyId_RegionRef",
-                table: "ServiceRequests");
-
-            migrationBuilder.DropIndex(
-                name: "IX_ServiceRequests_CompanyId_SourceAccountType_SourceAccountId",
-                table: "ServiceRequests");
-
             migrationBuilder.DropColumn(
                 name: "PartnerId",
                 table: "ServiceRequests");
