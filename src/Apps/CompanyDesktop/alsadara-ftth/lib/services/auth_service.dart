@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ftth_cloudflare_gateway.dart';
@@ -102,13 +103,13 @@ class AuthService {
       }
     } catch (e) {
       if (isFtth) {
-        print('🌐 [FTTH-HTTP] $method ${uri.host}${uri.path} → THREW: $e');
+        debugPrint('🌐 [FTTH-HTTP] $method ${uri.host}${uri.path} → THREW: $e');
       }
       rethrow;
     }
     if (isFtth) {
       final cf = resp.statusCode == 403 ? ' ⚠️CF-BLOCK' : '';
-      print('🌐 [FTTH-HTTP] $method ${uri.host}${uri.path} → ${resp.statusCode}$cf');
+      debugPrint('🌐 [FTTH-HTTP] $method ${uri.host}${uri.path} → ${resp.statusCode}$cf');
     }
     return resp;
   }

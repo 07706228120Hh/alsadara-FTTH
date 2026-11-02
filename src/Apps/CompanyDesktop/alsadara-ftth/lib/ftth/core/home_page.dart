@@ -65,6 +65,7 @@ import '../../services/vps_auth_service.dart'; // لمعرّف الموظف ال
 import '../../services/linked_accounts_service.dart'; // جلب حسابات FTTH المرتبطة للتبديل
 import '../../services/ftth/ftth_cache_service.dart';
 import '../../services/ftth/ftth_event_bus.dart';
+import '../../services/ftth_api_config.dart'; // مضيف FTTH الموحّد (admin.ftth.iq عبر بوّابة CF)
 
 import '../../utils/responsive_helper.dart';
 import '../../widgets/notification_bell.dart';
@@ -4952,6 +4953,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       showError('تعذّر تحديد حساب الشريك');
       return;
     }
+    // TOCTOU: نلتقط هوية الحساب النشط لحظة فتح الحوار؛ إن تغيّر الحساب قبل
+    // التأكيد نُلغي العملية بدل التحويل بقيم مختلطة بين حسابين مرتبطين.
+    final capturedPartnerId = partnerId!;
     final available = commission;
     if (available <= 0) {
       showError('لا يوجد رصيد عمولة قابل للتحويل');
@@ -4986,7 +4990,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 return;
               }
               Navigator.of(dialogCtx).pop();
-              _doTransferCommission(amount);
+              _doTransferCommission(amount, expectedPartnerId: capturedPartnerId);
             }
 
             return AlertDialog(
@@ -5072,15 +5076,39 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           },
         );
       },
-    );
+    ).then((_) => controller.dispose());
   }
 
   /// تنفيذ التحويل فعلياً عبر نفس طبقة FTTH المُصادقة (توكن الحساب النشط).
-  /// محمي من الضغط المزدوج، ويُحدّث الرصيد بعد النجاح.
-  Future<void> _doTransferCommission(int amount) async {
+  /// محمي من الضغط المزدوج. عملية مالية ⇒ نتعامل مع الغموض بحذر:
+  /// عند انقطاع/مهلة بعد إرسال الطلب (ربما نفّذه خادم FTTH) لا نُظهر خطأً
+  /// يشجّع التكرار، بل نُعيد جلب الرصيد ونعرض حالة «غير مؤكّدة».
+  Future<void> _doTransferCommission(
+    int amount, {
+    required String expectedPartnerId,
+  }) async {
     if (_transferInProgress) return;
-    if (partnerId == null || partnerId!.isEmpty) return;
+    final pid = partnerId;
+    if (pid == null || pid.isEmpty) return;
+
+    // TOCTOU: إن تغيّر الحساب النشط بين فتح الحوار والتأكيد، ألغِ العملية.
+    if (pid != expectedPartnerId) {
+      showError('تغيّر الحساب النشط — افتح حوار التحويل من جديد');
+      return;
+    }
+
+    // نعيد التحقّق من الرصيد لحظة التنفيذ (قد تكون العمولة تغيّرت بعد تحديث).
+    if (amount <= 0 || amount > commission) {
+      showError('تعذّر تنفيذ التحويل — تحقّق من رصيد العمولة والمبلغ');
+      return;
+    }
+
     _transferInProgress = true;
+
+    // مفتاح idempotency ثابت لهذه العملية الواحدة — يُولَّد مرّة قبل الطلب.
+    // إن دعمه خادم FTTH يمنع التحويل المزدوج عند إعادة الإرسال؛ وإن لم يدعمه
+    // فهو غير ضار. لا نُعيد الإرسال تلقائياً في كل الأحوال.
+    final requestId = _newRequestId();
 
     bool spinnerOpen = true;
     void closeSpinner() {
@@ -5099,8 +5127,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     try {
       final resp = await AuthService.instance.authenticatedRequest(
         'POST',
-        'https://api.ftth.iq/api/partners/$partnerId/wallets/transfer-commission',
-        body: jsonEncode({'amount': amount.toString()}),
+        '${FtthApi.api}/partners/$pid/wallets/transfer-commission',
+        headers: {'Idempotency-Key': requestId},
+        body: jsonEncode({
+          'amount': amount.toString(),
+          'requestId': requestId,
+        }),
       );
       if (!mounted) return;
       closeSpinner();
@@ -5122,16 +5154,33 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       } else if (code == 401) {
         showError('انتهت الجلسة — أعد تسجيل الدخول');
       } else {
-        showError('تعذّر تحويل العمولة (رمز $code)');
+        // رمز خطأ واضح من الخادم: التحويل لم ينفَّذ غالباً، لكن نعيد جلب
+        // الرصيد احترازاً ونطلب التأكّد قبل أي إعادة محاولة يدوية.
+        await fetchWalletBalance();
+        showError('تعذّر تحويل العمولة (رمز $code) — تحقّق من الرصيد قبل إعادة المحاولة');
       }
     } catch (e) {
+      // انقطاع/مهلة بعد إرسال الطلب: نتيجة التحويل غير مؤكّدة. لا نشجّع التكرار.
       if (mounted) {
         closeSpinner();
-        showError('تعذّر الاتصال بنظام FTTH');
+        // نعيد جلب الرصيد ليرى المستخدم الحالة الفعلية قبل أي إجراء.
+        await fetchWalletBalance();
+        if (mounted) {
+          showError(
+              'تعذّر تأكيد التحويل — تحقّق من رصيد العمولة والمحفظة قبل إعادة المحاولة');
+        }
       }
     } finally {
       _transferInProgress = false;
     }
+  }
+
+  /// مُعرّف طلب فريد (idempotency key) — طابع زمني بالميكروثانية + عشوائية،
+  /// بلا اعتماد خارجي. يكفي لتمييز العملية الواحدة لدى خادم FTTH إن دعمه.
+  String _newRequestId() {
+    final ts = DateTime.now().microsecondsSinceEpoch;
+    final rnd = math.Random().nextInt(0x7fffffff);
+    return 'tc-$ts-${rnd.toRadixString(16)}';
   }
 
   Widget _buildLastUpdateInfo(bool isLargeScreen) {
