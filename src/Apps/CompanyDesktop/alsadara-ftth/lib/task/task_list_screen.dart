@@ -50,6 +50,32 @@ class _TaskListScreenState extends State<TaskListScreen>
   bool _hasMorePages = true;
   bool _isLoadingMore = false;
 
+  // فلترة خادمية بحساب المصدر/المنطقة (المرحلة I1). تُطبَّق على كامل البيانات
+  // عبر بارامترات getRequests (مبنية على فهارس) لا على الصفحة المُحمَّلة فقط.
+  String? _sourceAccountId;
+  int? _sourceAccountType; // 0=None, 1=Ftth, 2=Sas
+  String? _regionRef;
+
+  /// يضبط فلتر الحساب/المنطقة الخادمي ويعيد الجلب من الصفحة الأولى.
+  /// يُمرَّر لـ HomePageTasks عبر onSourceFilterChanged ليطبّق على كل البيانات.
+  void applySourceRegionFilter({
+    String? sourceAccountId,
+    int? sourceAccountType,
+    String? regionRef,
+  }) {
+    if (_sourceAccountId == sourceAccountId &&
+        _sourceAccountType == sourceAccountType &&
+        _regionRef == regionRef) {
+      return; // لا تغيير — تجنّب جلب زائد
+    }
+    _sourceAccountId = sourceAccountId;
+    _sourceAccountType = sourceAccountType;
+    _regionRef = regionRef;
+    // الفلتر تغيّر → أبطل كاش المهام النشطة ليُعاد جلبه مفلتَراً، وأعد الجلب.
+    _lastActiveFetch = null;
+    _fetchTasks(showLoadingIndicator: false, forceActive: true);
+  }
+
   /// Server statuses of the «مفتوحة» + «قيد التنفيذ» buckets. Page 1 holds only
   /// the newest 50 tasks by creation date, so an older task that is still open
   /// (or was reassigned today) never reached the technician's list. These are
@@ -184,6 +210,9 @@ class _TaskListScreenState extends State<TaskListScreen>
           technician: _techFilter,
           department: _deptFilter,
           createdByName: _createdByFilter,
+          sourceAccountId: _sourceAccountId,
+          sourceAccountType: _sourceAccountType,
+          regionRef: _regionRef,
         );
       } catch (_) {
         return const <String, dynamic>{};
@@ -254,6 +283,9 @@ class _TaskListScreenState extends State<TaskListScreen>
         technician: _techFilter,
         department: _deptFilter,
         createdByName: _createdByFilter,
+        sourceAccountId: _sourceAccountId,
+        sourceAccountType: _sourceAccountType,
+        regionRef: _regionRef,
       );
       final activeFuture =
           _getActiveTasks(force: forceActive || _isFirstLoad);
@@ -366,6 +398,9 @@ class _TaskListScreenState extends State<TaskListScreen>
         technician: _techFilter,
         department: _deptFilter,
         createdByName: _createdByFilter,
+        sourceAccountId: _sourceAccountId,
+        sourceAccountType: _sourceAccountType,
+        regionRef: _regionRef,
       );
       final List<dynamic> items =
           response['data'] ?? response['Items'] ?? response['items'] ?? [];
@@ -461,6 +496,17 @@ class _TaskListScreenState extends State<TaskListScreen>
                     _fetchTasks(showLoadingIndicator: false, forceActive: true),
                 onLoadMore: loadMoreTasks,
                 hasMorePages: _hasMorePages,
+                // فلتر الحساب/المنطقة الخادمي — يطبّق على كامل البيانات لا الصفحة.
+                onSourceFilterChanged: ({
+                  String? sourceAccountId,
+                  int? sourceAccountType,
+                  String? regionRef,
+                }) =>
+                    applySourceRegionFilter(
+                  sourceAccountId: sourceAccountId,
+                  sourceAccountType: sourceAccountType,
+                  regionRef: regionRef,
+                ),
               ),
             ),
     );

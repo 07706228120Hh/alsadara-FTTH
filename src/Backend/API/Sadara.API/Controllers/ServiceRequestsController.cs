@@ -2576,21 +2576,40 @@ ORDER BY ""TotalCollected"" DESC;";
             if (acct == null)
                 return BadRequest(new { success = false, message = "حساب FTTH المصدر غير موجود ضمن الشركة" });
 
-            // الشريك الرئيسي (لقطة للعرض) — يُقبل من العميل بعد تنظيف (مرحلة 1: الشركاء مشتقّون من السجلّات)
+            // الشريك الرئيسي (لقطة للعرض). الشريك اختياري.
+            // العميل يُرسِل PartnerId فقط كمُحدِّد؛ لا نثق باسم العميل (PartnerName) — يُشتقّ خادمياً.
             var cleanPartnerId = string.IsNullOrWhiteSpace(partnerId) ? null : partnerId.Trim();
-            var cleanPartnerName = string.IsNullOrWhiteSpace(partnerName) ? null : partnerName.Trim();
-            // P3-a: حارس طول لحقول اللقطة المقبولة من العميل (PartnerId ≤100، PartnerName ≤200).
+            // P3-a: حارس طول للمُحدِّد المقبول من العميل (PartnerId ≤100) — خطأ صريح لا 500.
             if (cleanPartnerId != null && cleanPartnerId.Length > 100)
                 return BadRequest(new { success = false, message = "معرّف الشريك يتجاوز الحدّ المسموح (100 حرف)" });
-            if (cleanPartnerName != null && cleanPartnerName.Length > 200)
-                return BadRequest(new { success = false, message = "اسم الشريك يتجاوز الحدّ المسموح (200 حرف)" });
+
+            // P3-b: لقطة الشريك موثوقة ومشتقّة خادمياً كبقية اللقطات.
+            // إذا أُرسل PartnerId: تحقّق أنه ضمن مجمّع شركاء نفس الشركة (نفس مصدر source-pool:
+            // DISTINCT PartnerId/PartnerName من SubscriptionLogs المعزولة بالشركة)، واختم الاسم من الصف.
+            string? resolvedPartnerId = null;
+            string? resolvedPartnerName = null;
+            if (cleanPartnerId != null)
+            {
+                var matchedPartnerName = await _db.SubscriptionLogs.AsNoTracking()
+                    .Where(s => s.CompanyId == companyId
+                        && s.PartnerId == cleanPartnerId
+                        && s.PartnerName != null && s.PartnerName != "")
+                    .Select(s => s.PartnerName)
+                    .FirstOrDefaultAsync();
+                if (matchedPartnerName == null)
+                    return BadRequest(new { success = false, message = "الشريك المحدّد غير موجود ضمن شركاء الشركة" });
+
+                resolvedPartnerId = cleanPartnerId;
+                resolvedPartnerName = matchedPartnerName;     // لقطة موثوقة من صف المجمّع لا من العميل
+            }
+            // (لم يُرسَل PartnerId) ⇒ يبقى الشريك فارغاً (اختياري). المنطقة مستقلّة عن الشريك.
 
             // كل الفحوص نجحت ⇒ الآن فقط نعدّل الكيان.
             request.SourceAccountType = sourceAccountType;
             request.SourceAccountId = acct.Id;
             request.SourceAccountLabel = acct.Label;          // لقطة موثوقة من الصف لا من العميل
-            request.PartnerId = cleanPartnerId;
-            request.PartnerName = cleanPartnerName;
+            request.PartnerId = resolvedPartnerId;
+            request.PartnerName = resolvedPartnerName;
         }
         else if (sourceAccountType == TaskSourceAccountType.Sas)
         {

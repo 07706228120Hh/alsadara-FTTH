@@ -301,6 +301,32 @@ void main() {
           findsOneWidget);
     });
 
+    testWidgets('بطاقة لدور «مدير» بعرض ضيّق (360px) بلا overflow — زر «المزيد»',
+        (tester) async {
+      // دور «مدير» يُظهر شريط الإجراءات على الموبايل مع زر «المزيد» المنبثق
+      // (task_card.dart). كان نصّ «المزيد» غير مرن داخل Row ⇒ overflow ~15px
+      // عند 360px. هذا الاختبار يثبت زوال الانحدار بعد لفّ النصّ بـ Flexible.
+      setSurface(tester, const Size(360, 780));
+      await tester.pumpWidget(_wrapCard(
+        TaskCard(
+          task: _task(
+            sourceAccountType: 1,
+            sourceAccountLabel: 'حساب FTTH الرئيسي لمدينة الصدر القطاع الأول',
+            partnerName: 'الشريك الرئيسي مدينة الصدر المحدودة للاتصالات',
+            regionName: 'منطقة الحبيبية القطاع الصناعي الكبير',
+          ),
+          currentUserRole: 'مدير',
+          currentUserName: 'مدير النظام',
+          onStatusChanged: (_) {},
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      // زر «المزيد» المنبثق ظاهر في شريط إجراءات الموبايل.
+      expect(find.text('المزيد'), findsOneWidget);
+    });
+
     testWidgets('بطاقة بقيم مصدر فارغة لا تُظهر شارات', (tester) async {
       setSurface(tester, const Size(1280, 900));
       await tester.pumpWidget(_wrapCard(

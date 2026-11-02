@@ -139,6 +139,24 @@ public class TasksSourceAccountRegionTests
         return id;
     }
 
+    /// <summary>
+    /// يزرع سجل اشتراك يحمل شريكاً رئيسياً (PartnerId/PartnerName) ضمن شركة محدّدة —
+    /// هو مصدر «مجمّع الشركاء» (source-pool) الذي يتحقّق منه الباكند عند ختم لقطة الشريك (P3-b).
+    /// </summary>
+    private void SeedPartnerLog(Guid companyId, string partnerId, string partnerName)
+    {
+        using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
+        ctx.Set<SubscriptionLog>().Add(new SubscriptionLog
+        {
+            CompanyId = companyId,
+            PartnerId = partnerId,
+            PartnerName = partnerName,
+            OperationType = "renewal",
+            CreatedAt = DateTime.UtcNow,
+        });
+        ctx.SaveChanges();
+    }
+
     private Guid SeedTask(Guid companyId, int serviceId, int operationTypeId, string phone)
     {
         var id = Guid.NewGuid();
@@ -355,6 +373,8 @@ public class TasksSourceAccountRegionTests
         // اللقطة الرسمية للحساب على الخادم — لا يملك العميل حقلاً لتزييفها (CreateTaskDto بلا Label عمداً).
         const string serverLabel = "الحساب الرسمي للشركة أ";
         var ftthA = SeedFtthAccount(CompanyA, creatorA, serverLabel, "userA", "SECRET-A");
+        // P3-b: الشريك يجب أن يكون ضمن مجمّع شركاء الشركة كي يُقبَل ويُختَم اسمه خادمياً.
+        SeedPartnerLog(CompanyA, "2261175", "مدينة الصدر");
 
         await using var db = _fx.CreateContext(new TestTenant { CompanyId = CompanyA });
         var controller = BuildTaskController(db, new TestTenant { CompanyId = CompanyA }, creatorA);
@@ -764,5 +784,131 @@ public class TasksSourceAccountRegionTests
         var row = LoadTask(taskId);
         Assert.Equal("منطقة باقية", row.RegionRef);
         Assert.Equal("منطقة باقية", row.RegionName);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // P3-b) لقطة الشريك موثوقة ومشتقّة خادمياً من مجمّع شركاء الشركة
+    //   (1) PartnerId غير موجود / يخصّ شركة أخرى ⇒ 400 صفر كتابة.
+    //   (2) PartnerId صحيح من المجمّع ⇒ PartnerName يُختم من الصف لا من العميل (اسم مزيّف يُتجاهَل).
+    // ══════════════════════════════════════════════════════════════════════
+
+    [SkippableFact]
+    public async Task CreateTask_With_Ftth_And_PartnerId_From_Another_Company_Is_Rejected_No_Write()
+    {
+        _fx.SkipIfUnavailable();
+        ResetAll();
+        SeedCompanies(_fx);
+        var (svc, op) = SeedServiceAndOperation(_fx);
+        var creatorA = SeedUser(_fx, CompanyA, UserRole.Employee, null);
+
+        // حساب FTTH صحيح ضمن الشركة أ (كي لا يُرفض بسبب الحساب).
+        var ftthA = SeedFtthAccount(CompanyA, creatorA, "حساب أ", "userA", "SECRET-A");
+        // الشريك موجود لكن ضمن الشركة ب فقط — ليس في مجمّع الشركة أ.
+        SeedPartnerLog(CompanyB, "9999999", "شريك الشركة ب");
+
+        await using var db = _fx.CreateContext(new TestTenant { CompanyId = CompanyA });
+        var controller = BuildTaskController(db, new TestTenant { CompanyId = CompanyA }, creatorA);
+
+        var dto = BaseCreateDto(svc, op, "07700000016");
+        dto.SourceAccountType = TaskSourceAccountType.Ftth;
+        dto.SourceAccountId = ftthA;
+        dto.PartnerId = "9999999";                   // شريك شركة أخرى (محاولة ختم اعتباطي)
+        dto.PartnerName = "اسم مزيّف";
+
+        var result = await controller.CreateTask(dto);
+
+        // الشريك ليس ضمن مجمّع الشركة أ ⇒ 400 قبل أي كتابة.
+        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(0, CountTasks());
+    }
+
+    [SkippableFact]
+    public async Task CreateTask_With_Ftth_And_NonExistent_PartnerId_Is_Rejected_No_Write()
+    {
+        _fx.SkipIfUnavailable();
+        ResetAll();
+        SeedCompanies(_fx);
+        var (svc, op) = SeedServiceAndOperation(_fx);
+        var creatorA = SeedUser(_fx, CompanyA, UserRole.Employee, null);
+
+        var ftthA = SeedFtthAccount(CompanyA, creatorA, "حساب أ", "userA", "SECRET-A");
+        // مجمّع الشركة أ يحوي شريكاً واحداً فقط، والعميل يرسل معرّفاً مختلفاً غير موجود.
+        SeedPartnerLog(CompanyA, "2261175", "مدينة الصدر");
+
+        await using var db = _fx.CreateContext(new TestTenant { CompanyId = CompanyA });
+        var controller = BuildTaskController(db, new TestTenant { CompanyId = CompanyA }, creatorA);
+
+        var dto = BaseCreateDto(svc, op, "07700000017");
+        dto.SourceAccountType = TaskSourceAccountType.Ftth;
+        dto.SourceAccountId = ftthA;
+        dto.PartnerId = "0000001";                   // غير موجود في مجمّع الشركة
+
+        var result = await controller.CreateTask(dto);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Equal(0, CountTasks());
+    }
+
+    [SkippableFact]
+    public async Task CreateTask_With_Valid_PartnerId_Stamps_PartnerName_From_Pool_Not_Client()
+    {
+        _fx.SkipIfUnavailable();
+        ResetAll();
+        SeedCompanies(_fx);
+        var (svc, op) = SeedServiceAndOperation(_fx);
+        var creatorA = SeedUser(_fx, CompanyA, UserRole.Employee, null);
+
+        var ftthA = SeedFtthAccount(CompanyA, creatorA, "حساب أ", "userA", "SECRET-A");
+        // الاسم الرسمي للشريك في مجمّع الشركة.
+        const string officialPartnerName = "مدينة الصدر";
+        SeedPartnerLog(CompanyA, "2261175", officialPartnerName);
+
+        await using var db = _fx.CreateContext(new TestTenant { CompanyId = CompanyA });
+        var controller = BuildTaskController(db, new TestTenant { CompanyId = CompanyA }, creatorA);
+
+        var dto = BaseCreateDto(svc, op, "07700000018");
+        dto.SourceAccountType = TaskSourceAccountType.Ftth;
+        dto.SourceAccountId = ftthA;
+        dto.PartnerId = "2261175";                   // معرّف صحيح من المجمّع
+        dto.PartnerName = "اسم مزيّف من العميل";       // يجب تجاهله تماماً
+
+        var result = await controller.CreateTask(dto);
+        Assert.IsType<CreatedAtActionResult>(result);
+
+        var row = FindTaskByPhone("07700000018")!;
+        Assert.Equal("2261175", row.PartnerId);
+        // الاسم مختوم من صف المجمّع لا من العميل.
+        Assert.Equal(officialPartnerName, row.PartnerName);
+        Assert.NotEqual("اسم مزيّف من العميل", row.PartnerName);
+    }
+
+    [SkippableFact]
+    public async Task CreateTask_With_Ftth_Without_PartnerId_Leaves_Partner_Empty()
+    {
+        _fx.SkipIfUnavailable();
+        ResetAll();
+        SeedCompanies(_fx);
+        var (svc, op) = SeedServiceAndOperation(_fx);
+        var creatorA = SeedUser(_fx, CompanyA, UserRole.Employee, null);
+
+        var ftthA = SeedFtthAccount(CompanyA, creatorA, "حساب أ", "userA", "SECRET-A");
+
+        await using var db = _fx.CreateContext(new TestTenant { CompanyId = CompanyA });
+        var controller = BuildTaskController(db, new TestTenant { CompanyId = CompanyA }, creatorA);
+
+        // حساب FTTH صحيح بلا شريك — الشريك اختياري، يجب ألا يُكسَر التوافق.
+        var dto = BaseCreateDto(svc, op, "07700000019");
+        dto.SourceAccountType = TaskSourceAccountType.Ftth;
+        dto.SourceAccountId = ftthA;
+        dto.PartnerName = "اسم بلا معرّف";             // بلا PartnerId ⇒ يُتجاهَل
+
+        var result = await controller.CreateTask(dto);
+        Assert.IsType<CreatedAtActionResult>(result);
+
+        var row = FindTaskByPhone("07700000019")!;
+        Assert.Equal(TaskSourceAccountType.Ftth, row.SourceAccountType);
+        Assert.Equal(ftthA, row.SourceAccountId);
+        Assert.Null(row.PartnerId);
+        Assert.Null(row.PartnerName);
     }
 }

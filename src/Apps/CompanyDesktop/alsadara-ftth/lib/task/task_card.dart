@@ -1401,15 +1401,19 @@ class _TaskCardState extends State<TaskCard> {
                     ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.more_horiz, size: 18, color: SdColors.muted),
                         SizedBox(width: 4),
-                        Text('المزيد',
-                            style: TextStyle(
-                                fontFamily: SdText.family,
-                                fontSize: 11.5,
-                                color: SdColors.muted,
-                                fontWeight: FontWeight.w700)),
+                        Flexible(
+                          child: Text('المزيد',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontFamily: SdText.family,
+                                  fontSize: 11.5,
+                                  color: SdColors.muted,
+                                  fontWeight: FontWeight.w700)),
+                        ),
                       ],
                     ),
                   ),

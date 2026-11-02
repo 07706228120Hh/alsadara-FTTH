@@ -139,6 +139,10 @@ class TaskApiService {
     String? search,
     DateTime? fromDate,
     DateTime? toDate,
+    // فلترة خادمية بحساب المصدر/المنطقة (مبنية على فهارس في الباكند).
+    String? sourceAccountId,
+    int? sourceAccountType, // 0=None, 1=Ftth, 2=Sas
+    String? regionRef,
   }) async {
     String query = '/servicerequests?page=$page&pageSize=$pageSize';
     if (status != null) query += '&status=$status';
@@ -150,6 +154,12 @@ class TaskApiService {
       query += '&technician=${Uri.encodeComponent(technician)}';
     if (createdByName != null)
       query += '&createdByName=${Uri.encodeComponent(createdByName)}';
+    if (sourceAccountId != null && sourceAccountId.isNotEmpty)
+      query += '&sourceAccountId=${Uri.encodeComponent(sourceAccountId)}';
+    if (sourceAccountType != null)
+      query += '&sourceAccountType=$sourceAccountType';
+    if (regionRef != null && regionRef.isNotEmpty)
+      query += '&regionRef=${Uri.encodeComponent(regionRef)}';
     if (search != null && search.isNotEmpty)
       query += '&search=${Uri.encodeComponent(search)}';
     if (fromDate != null)

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../utils/responsive_helper.dart';
 import '../models/task.dart';
+import '../models/task_source_pool.dart';
 import 'task_card.dart';
 import 'add_task_api_dialog.dart';
 import '../pages/ftth/ftth_company_page.dart';
@@ -29,6 +30,14 @@ class HomePageTasks extends StatefulWidget {
   final VoidCallback? onLoadMore;
   final bool hasMorePages;
 
+  /// فلتر الحساب/المنطقة الخادمي — يطلب من الأب إعادة الجلب مفلتَراً على كامل
+  /// البيانات (لا الصفحة المُحمَّلة فقط). null في أي بارامتر = إلغاء ذلك البُعد.
+  final void Function({
+    String? sourceAccountId,
+    int? sourceAccountType,
+    String? regionRef,
+  })? onSourceFilterChanged;
+
   const HomePageTasks({
     super.key,
     required this.username,
@@ -43,6 +52,7 @@ class HomePageTasks extends StatefulWidget {
     this.onRefresh,
     this.onLoadMore,
     this.hasMorePages = true,
+    this.onSourceFilterChanged,
   });
 
   @override
@@ -72,6 +82,12 @@ class HomePageTasksState extends State<HomePageTasks> {
   // فلاتر ربط المصدر/المنطقة (المرحلة 1) — عميل-جانب على اللقطات
   String? _filterSourceAccount; // sourceAccountLabel
   String? _filterRegion; // regionName
+  // مجمّع المصدر (حسابات + مناطق ساس) لعرض خيارات الفلتر الخادمي (id + label).
+  // يُجلب مرة في initState؛ فارغ عند الفشل ⇒ نرجع للفلتر العميلي بالتسميات.
+  TaskSourcePool _sourcePool = const TaskSourcePool();
+  // آخر اختيار خادمي مطبَّق (لعرضه في الحوار). النوع يُشتَقّ من id عند التطبيق.
+  String? _serverSourceAccountId;
+  String? _serverRegionRef;
 
   // متغيرات الإشعارات الجديدة
   int newTasksCount = 0; // عدد المهام الجديدة
@@ -110,6 +126,24 @@ class HomePageTasksState extends State<HomePageTasks> {
     _loadCachedSummary();
     // تجميع اللوحة من الخادم (لا يعطّل بناء الواجهة)
     _fetchSummary();
+    // جلب مجمّع المصدر لخيارات فلتر الحساب/المنطقة (لا يعطّل بناء الواجهة).
+    _loadSourcePool();
+  }
+
+  /// يجلب مجمّع المصدر (حسابات FTTH/ساس + مناطق ساس) مرة واحدة.
+  /// الفشل غير معطِّل — يبقى الفلتر العميلي بالتسميات كاحتياط.
+  Future<void> _loadSourcePool() async {
+    try {
+      final pool = await TaskApiService.instance.fetchSourcePool();
+      if (!mounted) return;
+      if (pool.ftthAccounts.isNotEmpty ||
+          pool.sasAccounts.isNotEmpty ||
+          pool.sasRegions.isNotEmpty) {
+        setState(() => _sourcePool = pool);
+      }
+    } catch (_) {
+      // تجاهل — الاحتياط العميلي يعمل.
+    }
   }
 
   @override
@@ -2848,6 +2882,9 @@ class HomePageTasksState extends State<HomePageTasks> {
     String? tempTaskType = _filterTaskType;
     String? tempSourceAccount = _filterSourceAccount;
     String? tempRegion = _filterRegion;
+    // اختيار خادمي (عند توفّر المجمّع): id الحساب + regionRef للمنطقة.
+    String? tempSourceAccountId = _serverSourceAccountId;
+    String? tempRegionRef = _serverRegionRef;
 
     final departments = _getUniqueDepartments();
     final technicians = _getUniqueTechnicians();
@@ -2856,12 +2893,35 @@ class HomePageTasksState extends State<HomePageTasks> {
     final regions = _getUniqueRegions();
     const priorities = ['عاجل', 'عالي', 'متوسط', 'منخفض'];
 
+    // خيارات الحساب من المجمّع (id + type + label). عند توفّرها نفلتر خادمياً
+    // على كامل البيانات؛ وإلا نرجع لفلتر التسميات العميلي على الصفحة المُحمَّلة.
+    final poolAccounts = <({String id, int type, String label})>[
+      ..._sourcePool.ftthAccounts
+          .map((a) => (id: a.id, type: 1, label: a.label)),
+      ..._sourcePool.sasAccounts
+          .map((a) => (id: a.id, type: 2, label: a.label)),
+    ];
+    final usePoolAccounts = poolAccounts.isNotEmpty;
+    final poolRegions = _sourcePool.sasRegions;
+    final usePoolRegions = poolRegions.isNotEmpty;
+    // تحقّق أن قيمة id المختارة ما تزال ضمن الخيارات (وإلا صفّرها لتجنّب تأكيد Dropdown).
+    if (tempSourceAccountId != null &&
+        !poolAccounts.any((a) => a.id == tempSourceAccountId)) {
+      tempSourceAccountId = null;
+    }
+    if (tempRegionRef != null &&
+        !poolRegions.any((r) => r.id == tempRegionRef)) {
+      tempRegionRef = null;
+    }
+
     final hasActiveFilters = _filterDepartment != null ||
         _filterTechnician != null ||
         _filterPriority != null ||
         _filterTaskType != null ||
         _filterSourceAccount != null ||
-        _filterRegion != null;
+        _filterRegion != null ||
+        _serverSourceAccountId != null ||
+        _serverRegionRef != null;
 
     showDialog(
       context: context,
@@ -2891,6 +2951,8 @@ class HomePageTasksState extends State<HomePageTasks> {
                           tempTaskType = null;
                           tempSourceAccount = null;
                           tempRegion = null;
+                          tempSourceAccountId = null;
+                          tempRegionRef = null;
                         });
                       },
                       child: const Text('مسح الكل',
@@ -2992,8 +3054,40 @@ class HomePageTasksState extends State<HomePageTasks> {
                       ),
                       const SizedBox(height: 14),
 
-                      // فلتر حساب المصدر (يظهر فقط عند وجود مهام موسومة)
-                      if (sourceAccounts.isNotEmpty) ...[
+                      // فلتر حساب المصدر.
+                      // المجمّع متوفّر ⇒ منسدلة بالـ id (فلترة خادمية على كامل
+                      // البيانات). غير متوفّر ⇒ منسدلة بالتسميات (فلترة عميلية).
+                      if (usePoolAccounts) ...[
+                        const Text('حساب المصدر',
+                            style: TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        DropdownButtonFormField<String>(
+                          value: tempSourceAccountId,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            hintText: 'كل الحسابات',
+                            hintStyle: TextStyle(
+                                fontSize: 13, color: SdColors.faint),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                                value: null, child: Text('كل الحسابات')),
+                            ...poolAccounts.map((a) => DropdownMenuItem(
+                                value: a.id,
+                                child: Text(a.label,
+                                    style: const TextStyle(fontSize: 13),
+                                    overflow: TextOverflow.ellipsis))),
+                          ],
+                          onChanged: (v) =>
+                              setDialogState(() => tempSourceAccountId = v),
+                        ),
+                        const SizedBox(height: 14),
+                      ] else if (sourceAccounts.isNotEmpty) ...[
                         const Text('حساب المصدر',
                             style: TextStyle(
                                 fontSize: 13, fontWeight: FontWeight.w600)),
@@ -3025,8 +3119,41 @@ class HomePageTasksState extends State<HomePageTasks> {
                         const SizedBox(height: 14),
                       ],
 
-                      // فلتر المنطقة (يظهر فقط عند وجود مهام موسومة)
-                      if (regions.isNotEmpty) ...[
+                      // فلتر المنطقة.
+                      // مناطق الساس من المجمّع ⇒ فلترة خادمية بـ regionRef.
+                      // غير متوفّرة ⇒ منسدلة أسماء المناطق (فلترة عميلية؛ تشمل
+                      // مناطق FTTH اليدوية التي لا يعرفها المجمّع).
+                      if (usePoolRegions) ...[
+                        const Text('المنطقة (ساس)',
+                            style: TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        DropdownButtonFormField<String>(
+                          value: tempRegionRef,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            hintText: 'كل المناطق',
+                            hintStyle: TextStyle(
+                                fontSize: 13, color: SdColors.faint),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                                value: null, child: Text('كل المناطق')),
+                            ...poolRegions.map((r) => DropdownMenuItem(
+                                value: r.id,
+                                child: Text(r.name,
+                                    style: const TextStyle(fontSize: 13),
+                                    overflow: TextOverflow.ellipsis))),
+                          ],
+                          onChanged: (v) =>
+                              setDialogState(() => tempRegionRef = v),
+                        ),
+                        const SizedBox(height: 14),
+                      ] else if (regions.isNotEmpty) ...[
                         const Text('المنطقة',
                             style: TextStyle(
                                 fontSize: 13, fontWeight: FontWeight.w600)),
@@ -3095,15 +3222,50 @@ class HomePageTasksState extends State<HomePageTasks> {
                 ),
                 ElevatedButton(
                   onPressed: () {
+                    // حساب المصدر: المجمّع متوفّر ⇒ فلترة خادمية بالـ id/type
+                    // ونُلغي فلتر التسمية العميلي (تجنّب عدم تطابق التسمية).
+                    // غير متوفّر ⇒ فلترة التسمية العميلية.
+                    String? newServerAccountId;
+                    int? newServerAccountType;
+                    String? newClientSourceAccount;
+                    if (usePoolAccounts) {
+                      newServerAccountId = tempSourceAccountId;
+                      if (tempSourceAccountId != null) {
+                        newServerAccountType = poolAccounts
+                            .firstWhere((a) => a.id == tempSourceAccountId)
+                            .type;
+                      }
+                      newClientSourceAccount = null;
+                    } else {
+                      newClientSourceAccount = tempSourceAccount;
+                    }
+                    // المنطقة: مناطق الساس خادمياً بـ regionRef؛ وإلا عميلياً بالاسم.
+                    String? newServerRegionRef;
+                    String? newClientRegion;
+                    if (usePoolRegions) {
+                      newServerRegionRef = tempRegionRef;
+                      newClientRegion = null;
+                    } else {
+                      newClientRegion = tempRegion;
+                    }
+
                     setState(() {
                       _filterDepartment = tempDept;
                       _filterTechnician = tempTech;
                       _filterPriority = tempPriority;
                       _filterTaskType = tempTaskType;
-                      _filterSourceAccount = tempSourceAccount;
-                      _filterRegion = tempRegion;
+                      _filterSourceAccount = newClientSourceAccount;
+                      _filterRegion = newClientRegion;
+                      _serverSourceAccountId = newServerAccountId;
+                      _serverRegionRef = newServerRegionRef;
                       _computeFilterByStatus(_getStatusByIndex(currentIndex));
                     });
+                    // طلب إعادة الجلب الخادمي المفلتَر (على كامل البيانات).
+                    widget.onSourceFilterChanged?.call(
+                      sourceAccountId: newServerAccountId,
+                      sourceAccountType: newServerAccountType,
+                      regionRef: newServerRegionRef,
+                    );
                     // تغيير القسم/الفني → أعد تجميع اللوحة من الخادم
                     _fetchSummary();
                     Navigator.pop(context);
