@@ -158,6 +158,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   String? partnerId;
   String? partnerName;
   bool isAdmin = false;
+  // تحويل العمولة → المحفظة الرئيسية (FTTH): منع الضغط المزدوج أثناء التنفيذ
+  bool _transferInProgress = false;
   DateTime? lastUpdateTime; // نظام إدارة الصلاحيات - الحالة الافتراضية
   // أعلام للتحميل المبكر وتحكم تكرار الطلبات
   bool _earlyPrefetchStarted = false;
@@ -4615,6 +4617,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           title: 'العمولة',
           value: commission,
           color: SdColors.success,
+          // تحويل العمولة → المحفظة الرئيسية: لمدير الشركة أو من مُنح صلاحية transfer_commission
+          onTap: (isAdmin || _hasPermission('transfer_commission'))
+              ? _showTransferCommissionDialog
+              : null,
         ),
       ),
     ];
@@ -4679,6 +4685,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     required String title,
     required double value,
     required Color color,
+    VoidCallback? onTap,
   }) {
     // تصميم أفقي متناسق مع بطاقات الإحصائيات
     return LayoutBuilder(
@@ -4696,7 +4703,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         final stripHeight = isVeryCompact ? 28.0 : (isCompact ? 34.0 : 40.0);
         final cardRadius = isVeryCompact ? 10.0 : 14.0;
 
-        return Container(
+        final Widget card = Container(
           decoration: BoxDecoration(
             color: SdColors.surface,
             borderRadius: BorderRadius.circular(cardRadius),
@@ -4880,12 +4887,251 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
+                // شارة «تحويل» على البطاقة القابلة للنقر (بطاقة العمولة)
+                if (onTap != null)
+                  Positioned(
+                    bottom: 4,
+                    left: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: color.withValues(alpha: 0.4), width: 1),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.swap_vert_rounded,
+                              color: color, size: 11),
+                          const SizedBox(width: 2),
+                          Text(
+                            'تحويل',
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: SdText.family,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
         );
+
+        if (onTap == null) return card;
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(cardRadius),
+            child: card,
+          ),
+        );
       },
     );
+  }
+
+  // تنسيق رقمي بفواصل آلاف للعرض (بلا اعتماد خارجي).
+  String _fmtAmount(num v) => v
+      .toStringAsFixed(0)
+      .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
+
+  /// حوار تحويل العمولة → المحفظة الرئيسية (FTTH).
+  /// مطابق للعملية: POST /api/partners/{partnerId}/wallets/transfer-commission
+  /// ببدن {"amount":"<قيمة>"}. يعمل على الحساب النشط حالياً (partnerId/commission
+  /// يُعاد اشتقاقهما لكل حساب عند تبديل حسابات FTTH المرتبطة).
+  void _showTransferCommissionDialog() {
+    if (partnerId == null || partnerId!.isEmpty) {
+      showError('تعذّر تحديد حساب الشريك');
+      return;
+    }
+    final available = commission;
+    if (available <= 0) {
+      showError('لا يوجد رصيد عمولة قابل للتحويل');
+      return;
+    }
+
+    final controller = TextEditingController();
+    String? errorText;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (dialogCtx, setLocal) {
+            int? parsed() =>
+                int.tryParse(controller.text.trim().replaceAll(',', ''));
+
+            void setQuick(num v) {
+              controller.text = v.toInt().toString();
+              setLocal(() => errorText = null);
+            }
+
+            void onConfirm() {
+              final amount = parsed();
+              if (amount == null || amount <= 0) {
+                setLocal(() => errorText = 'أدخل مبلغاً صحيحاً أكبر من صفر');
+                return;
+              }
+              if (amount > available) {
+                setLocal(() => errorText =
+                    'المبلغ يتجاوز رصيد العمولة (${_fmtAmount(available)})');
+                return;
+              }
+              Navigator.of(dialogCtx).pop();
+              _doTransferCommission(amount);
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              title: const Text(
+                'تحويل العمولة',
+                style: TextStyle(
+                    fontFamily: SdText.family, fontWeight: FontWeight.w800),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'رصيد العمولة المتاح: ${_fmtAmount(available)} د.ع',
+                    style: const TextStyle(
+                        fontFamily: SdText.family,
+                        fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'يُحوَّل المبلغ إلى المحفظة الرئيسية في نظام FTTH.',
+                    style: TextStyle(
+                        fontFamily: SdText.family,
+                        fontSize: 12,
+                        color: SdColors.muted),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    autofocus: true,
+                    onChanged: (_) => setLocal(() => errorText = null),
+                    style: const TextStyle(fontFamily: SdText.family),
+                    decoration: InputDecoration(
+                      labelText: 'المبلغ (دينار)',
+                      labelStyle: const TextStyle(fontFamily: SdText.family),
+                      errorText: errorText,
+                      errorStyle: const TextStyle(fontFamily: SdText.family),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => setQuick(available / 2),
+                          child: const Text('النصف',
+                              style: TextStyle(fontFamily: SdText.family)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => setQuick(available),
+                          child: const Text('الكل',
+                              style: TextStyle(fontFamily: SdText.family)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(),
+                  child: const Text('إلغاء',
+                      style: TextStyle(fontFamily: SdText.family)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: SdColors.success),
+                  onPressed: onConfirm,
+                  child: const Text('تحويل',
+                      style: TextStyle(
+                          fontFamily: SdText.family, color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// تنفيذ التحويل فعلياً عبر نفس طبقة FTTH المُصادقة (توكن الحساب النشط).
+  /// محمي من الضغط المزدوج، ويُحدّث الرصيد بعد النجاح.
+  Future<void> _doTransferCommission(int amount) async {
+    if (_transferInProgress) return;
+    if (partnerId == null || partnerId!.isEmpty) return;
+    _transferInProgress = true;
+
+    bool spinnerOpen = true;
+    void closeSpinner() {
+      if (spinnerOpen && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        spinnerOpen = false;
+      }
+    }
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final resp = await AuthService.instance.authenticatedRequest(
+        'POST',
+        'https://api.ftth.iq/api/partners/$partnerId/wallets/transfer-commission',
+        body: jsonEncode({'amount': amount.toString()}),
+      );
+      if (!mounted) return;
+      closeSpinner();
+
+      final code = resp.statusCode;
+      if (code == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'تم تحويل ${_fmtAmount(amount)} د.ع من العمولة إلى المحفظة',
+              style: const TextStyle(fontFamily: SdText.family),
+            ),
+            backgroundColor: SdColors.success,
+          ),
+        );
+        await fetchWalletBalance();
+      } else if (code == 403) {
+        showError('لا تملك صلاحية تحويل العمولة في نظام FTTH');
+      } else if (code == 401) {
+        showError('انتهت الجلسة — أعد تسجيل الدخول');
+      } else {
+        showError('تعذّر تحويل العمولة (رمز $code)');
+      }
+    } catch (e) {
+      if (mounted) {
+        closeSpinner();
+        showError('تعذّر الاتصال بنظام FTTH');
+      }
+    } finally {
+      _transferInProgress = false;
+    }
   }
 
   Widget _buildLastUpdateInfo(bool isLargeScreen) {

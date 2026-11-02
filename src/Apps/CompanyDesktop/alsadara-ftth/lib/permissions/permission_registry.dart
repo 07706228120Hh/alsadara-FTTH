@@ -1154,6 +1154,15 @@ class PermissionRegistry {
       allowedActions: ['view'],
     ),
     PermissionEntry(
+      key: 'transfer_commission',
+      labelAr: 'تحويل العمولة',
+      description:
+          'تحويل رصيد العمولة إلى المحفظة الرئيسية في نظام FTTH (افتراضياً لمدير الشركة)',
+      icon: Icons.swap_vert_rounded,
+      category: 'المالية',
+      allowedActions: ['view'],
+    ),
+    PermissionEntry(
       key: 'transactions',
       labelAr: 'التحويلات',
       description: 'سجل المعاملات المالية',
