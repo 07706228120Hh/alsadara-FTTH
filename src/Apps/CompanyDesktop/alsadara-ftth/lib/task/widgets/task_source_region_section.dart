@@ -3,21 +3,20 @@ import '../../models/task_source_pool.dart';
 import '../../services/task_api_service.dart';
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
 
-/// اختيار «حساب مصدر + منطقة» لمهمة (المرحلة 1).
+/// اختيار «نوع حساب مصدر + منطقة» لمهمة (المرحلة 1).
 ///
-/// القيم المرسلة للباكند: [type] (0=لا شيء/1=FTTH/2=ساس)، [accountId]،
+/// القيم المرسلة للباكند: [type] (0=لا شيء/1=FTTH/2=ساس)،
 /// [partnerId]/[partnerName] (FTTH فقط)، و[regionRef] (Guid منطقة ساس كنص،
 /// أو نص يدوي حرّ لـ FTTH). التسميات (Label/RegionName) تُشتَقّ خادمياً فلا تُرسل.
+/// ملاحظة: لم يَعُد يُختار حساب محدّد (أُزيلت منسدلة «الحساب»).
 class TaskSourceSelection {
   final int type;
-  final String accountId;
   final String partnerId;
   final String partnerName;
   final String regionRef;
 
   const TaskSourceSelection({
     this.type = 0,
-    this.accountId = '',
     this.partnerId = '',
     this.partnerName = '',
     this.regionRef = '',
@@ -25,14 +24,12 @@ class TaskSourceSelection {
 
   TaskSourceSelection copyWith({
     int? type,
-    String? accountId,
     String? partnerId,
     String? partnerName,
     String? regionRef,
   }) {
     return TaskSourceSelection(
       type: type ?? this.type,
-      accountId: accountId ?? this.accountId,
       partnerId: partnerId ?? this.partnerId,
       partnerName: partnerName ?? this.partnerName,
       regionRef: regionRef ?? this.regionRef,
@@ -46,9 +43,8 @@ class TaskSourceRegionSection extends StatefulWidget {
   final TaskSourceSelection initial;
   final ValueChanged<TaskSourceSelection> onChanged;
 
-  /// لقطات العرض الحالية (للتعديل) — تُستخدم كبديل إن لم يَعُد الحساب/المنطقة
-  /// ضمن المجمّع (حُذف لاحقاً) حتى لا تُفقد القيمة المخزّنة.
-  final String initialAccountLabel;
+  /// لقطة العرض الحالية (للتعديل) — تُستخدم كبديل إن لم تَعُد المنطقة
+  /// ضمن المجمّع (حُذفت لاحقاً) حتى لا تُفقد القيمة المخزّنة.
   final String initialRegionName;
 
   /// مجمّع جاهز (اختياري) — إن مُرِّر لا يُعاد الجلب.
@@ -58,7 +54,6 @@ class TaskSourceRegionSection extends StatefulWidget {
     super.key,
     required this.initial,
     required this.onChanged,
-    this.initialAccountLabel = '',
     this.initialRegionName = '',
     this.pool,
   });
@@ -110,14 +105,6 @@ class _TaskSourceRegionSectionState extends State<TaskSourceRegionSection> {
     widget.onChanged(next);
   }
 
-  List<SourceAccountOption> get _accounts {
-    final p = _pool;
-    if (p == null) return const [];
-    if (_sel.type == 1) return p.ftthAccounts;
-    if (_sel.type == 2) return p.sasAccounts;
-    return const [];
-  }
-
   @override
   Widget build(BuildContext context) {
     final pool = _pool;
@@ -156,20 +143,7 @@ class _TaskSourceRegionSectionState extends State<TaskSourceRegionSection> {
             ),
           ),
 
-        // 2) الحساب (من المجمّع)
-        if (_sel.type != 0 && pool != null) ...[
-          const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
-            value: _accountValue(),
-            isExpanded: true,
-            decoration: _dec('الحساب', Icons.badge_outlined),
-            style: const TextStyle(fontSize: 13, color: SdColors.ink),
-            items: _accountItems(),
-            onChanged: (v) => _emit(_sel.copyWith(accountId: v ?? '')),
-          ),
-        ],
-
-        // 3) الشريك الرئيسي (FTTH فقط)
+        // 2) الشريك الرئيسي (FTTH فقط)
         if (_sel.type == 1 && pool != null) ...[
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
@@ -195,7 +169,7 @@ class _TaskSourceRegionSectionState extends State<TaskSourceRegionSection> {
           ),
         ],
 
-        // 4) المنطقة
+        // 3) المنطقة
         if (_sel.type == 2 && pool != null) ...[
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
@@ -229,37 +203,6 @@ class _TaskSourceRegionSectionState extends State<TaskSourceRegionSection> {
   }
 
   // ─── قيم مع بديل اصطناعي للقيمة المحذوفة من المجمّع ───
-
-  String? _accountValue() {
-    // دائماً صالح: إن لم يكن ضمن المجمّع نضيف بنداً اصطناعياً في _accountItems().
-    return _sel.accountId.isEmpty ? null : _sel.accountId;
-  }
-
-  List<DropdownMenuItem<String>> _accountItems() {
-    final items = _accounts
-        .map((a) => DropdownMenuItem(
-              value: a.id,
-              child: Text(a.display, overflow: TextOverflow.ellipsis),
-            ))
-        .toList();
-    // الحساب المخزّن غير موجود بالمجمّع (حُذف) → أضف بنداً اصطناعياً باللقطة.
-    if (_sel.accountId.isNotEmpty &&
-        !_accounts.any((a) => a.id == _sel.accountId)) {
-      items.insert(
-        0,
-        DropdownMenuItem(
-          value: _sel.accountId,
-          child: Text(
-            widget.initialAccountLabel.isNotEmpty
-                ? widget.initialAccountLabel
-                : 'حساب محفوظ',
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      );
-    }
-    return items;
-  }
 
   String? _partnerValue(TaskSourcePool pool) {
     if (_sel.partnerId.isEmpty) return null;

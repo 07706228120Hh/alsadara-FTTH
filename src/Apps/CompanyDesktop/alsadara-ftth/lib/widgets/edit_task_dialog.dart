@@ -110,7 +110,6 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
 
     _sourceSel = TaskSourceSelection(
       type: widget.task.sourceAccountType,
-      accountId: widget.task.sourceAccountId,
       partnerId: widget.task.partnerId,
       partnerName: widget.task.partnerName,
       regionRef: widget.task.regionRef,
@@ -453,8 +452,6 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                             const SizedBox(height: 12),
                             TaskSourceRegionSection(
                               initial: _sourceSel,
-                              initialAccountLabel:
-                                  widget.task.sourceAccountLabel,
                               initialRegionName: widget.task.regionName,
                               onChanged: (sel) => _sourceSel = sel,
                             ),
@@ -1132,7 +1129,6 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         // ربط حساب المصدر/المنطقة — اللقطات (Label/RegionName) تُشتَقّ خادمياً
         // فتظهر بعد تحديث القائمة من الخادم؛ هنا نحدّث الحقول المحلية فوراً.
         sourceAccountType: _sourceSel.type,
-        sourceAccountId: _sourceSel.accountId,
         partnerId: _sourceSel.partnerId,
         partnerName: _sourceSel.partnerName,
         regionRef: _sourceSel.regionRef,
@@ -1172,8 +1168,6 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         deliveryFee: double.tryParse(_deliveryFeeController.text.replaceAll(',', '').trim()),
         // ربط حساب المصدر/المنطقة — نرسل النوع دائماً (يشمل 0=None لمسح الربط)
         sourceAccountType: _sourceSel.type,
-        sourceAccountId:
-            _sourceSel.accountId.isNotEmpty ? _sourceSel.accountId : null,
         partnerId: _sourceSel.partnerId.isNotEmpty ? _sourceSel.partnerId : null,
         partnerName:
             _sourceSel.partnerName.isNotEmpty ? _sourceSel.partnerName : null,

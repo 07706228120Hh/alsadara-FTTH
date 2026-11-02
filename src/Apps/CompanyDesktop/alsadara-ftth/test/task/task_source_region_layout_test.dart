@@ -155,7 +155,7 @@ void main() {
       expect(find.text('المنطقة (يدوية)'), findsNothing);
     });
 
-    testWidgets('التبديل None→FTTH يُظهر الحساب + الشريك + منطقة يدوية',
+    testWidgets('التبديل None→FTTH يُظهر الشريك + منطقة يدوية (بلا حساب)',
         (tester) async {
       setSurface(tester, const Size(420, 840)); // موبايل ضيّق
       TaskSourceSelection? last;
@@ -177,14 +177,14 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(last?.type, 1);
-      // منسدلات FTTH: الحساب + الشريك + منطقة يدوية (نصّية). لا منسدلة ساس.
-      expect(find.text('الحساب'), findsOneWidget);
+      // منسدلات FTTH: الشريك + منطقة يدوية (نصّية) فقط. لا منسدلة «الحساب» ولا ساس.
+      expect(find.text('الحساب'), findsNothing);
       expect(find.text('الشريك الرئيسي'), findsOneWidget);
       expect(find.text('المنطقة (يدوية)'), findsOneWidget);
       expect(find.text('المنطقة (ساس)'), findsNothing);
     });
 
-    testWidgets('التبديل None→ساس يُظهر الحساب + منسدلة مناطق ساس',
+    testWidgets('التبديل None→ساس يُظهر منسدلة مناطق ساس (بلا حساب)',
         (tester) async {
       setSurface(tester, const Size(420, 840));
       await tester.pumpWidget(_wrap(
@@ -203,7 +203,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(find.text('الحساب'), findsOneWidget);
+      expect(find.text('الحساب'), findsNothing);
       expect(find.text('المنطقة (ساس)'), findsOneWidget);
       // لا عناصر FTTH.
       expect(find.text('الشريك الرئيسي'), findsNothing);

@@ -415,8 +415,6 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
             : null,
         // ربط حساب المصدر/المنطقة — يُرسَل فقط عند الاختيار (None = لا شيء)
         sourceAccountType: _sourceSel.type != 0 ? _sourceSel.type : null,
-        sourceAccountId:
-            _sourceSel.accountId.isNotEmpty ? _sourceSel.accountId : null,
         partnerId: _sourceSel.partnerId.isNotEmpty ? _sourceSel.partnerId : null,
         partnerName:
             _sourceSel.partnerName.isNotEmpty ? _sourceSel.partnerName : null,

@@ -56,7 +56,6 @@ class TaskApiService {
     int? operationTypeId,
     // ربط حساب المصدر/المنطقة (المرحلة 1) — كلها اختيارية
     int? sourceAccountType, // 0=None, 1=Ftth, 2=Sas
-    String? sourceAccountId,
     String? partnerId,
     String? partnerName,
     String? regionRef,
@@ -83,8 +82,8 @@ class TaskApiService {
       'OperationTypeId': operationTypeId,
       // نرسل int للـ enum (آمن للتسلسل بلا الاعتماد على JsonStringEnumConverter).
       // لا نرسل SourceAccountLabel/RegionName — يُشتَقّان خادمياً.
+      // لم يَعُد يُرسَل SourceAccountId (أُزيلت منسدلة «الحساب»).
       'SourceAccountType': sourceAccountType,
-      'SourceAccountId': sourceAccountId,
       'PartnerId': partnerId,
       'PartnerName': partnerName,
       'RegionRef': regionRef,
@@ -292,7 +291,6 @@ class TaskApiService {
     double? deliveryFee,
     // ربط حساب المصدر/المنطقة (المرحلة 1) — كلها اختيارية
     int? sourceAccountType, // 0=None, 1=Ftth, 2=Sas
-    String? sourceAccountId,
     String? partnerId,
     String? partnerName,
     String? regionRef,
@@ -312,8 +310,8 @@ class TaskApiService {
       'Summary': summary,
       'Priority': priority,
       // نرسل int للـ enum؛ لا نرسل Label/RegionName (يُشتَقّان خادمياً).
+      // لم يَعُد يُرسَل SourceAccountId (أُزيلت منسدلة «الحساب»).
       'SourceAccountType': sourceAccountType,
-      'SourceAccountId': sourceAccountId,
       'PartnerId': partnerId,
       'PartnerName': partnerName,
       'RegionRef': regionRef,

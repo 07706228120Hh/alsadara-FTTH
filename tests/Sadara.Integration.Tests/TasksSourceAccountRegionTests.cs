@@ -911,4 +911,45 @@ public class TasksSourceAccountRegionTests
         Assert.Null(row.PartnerId);
         Assert.Null(row.PartnerName);
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // P-new) النوع بلا حساب — المالك حذف حقل «الحساب» من الواجهة:
+    //   SourceAccountType=Ftth + شريك صالح + بلا SourceAccountId ⇒ 201،
+    //   تُختم بالنوع والشريك، و SourceAccountId=null (لا 400 بسبب غياب الحساب).
+    // ══════════════════════════════════════════════════════════════════════
+
+    [SkippableFact]
+    public async Task CreateTask_With_Ftth_Type_And_Partner_Without_AccountId_Succeeds_Stamps_Type_And_Partner()
+    {
+        _fx.SkipIfUnavailable();
+        ResetAll();
+        SeedCompanies(_fx);
+        var (svc, op) = SeedServiceAndOperation(_fx);
+        var creatorA = SeedUser(_fx, CompanyA, UserRole.Employee, null);
+
+        // الشريك ضمن مجمّع شركاء الشركة أ (كي يُقبل ويُختم اسمه خادمياً) — بلا أي حساب مزروع.
+        const string officialPartnerName = "مدينة الصدر";
+        SeedPartnerLog(CompanyA, "2261175", officialPartnerName);
+
+        await using var db = _fx.CreateContext(new TestTenant { CompanyId = CompanyA });
+        var controller = BuildTaskController(db, new TestTenant { CompanyId = CompanyA }, creatorA);
+
+        var dto = BaseCreateDto(svc, op, "07700000020");
+        dto.SourceAccountType = TaskSourceAccountType.Ftth;
+        // بلا SourceAccountId إطلاقاً (الحقل محذوف من الواجهة) — يجب ألا يُرفَض.
+        dto.PartnerId = "2261175";
+        dto.PartnerName = "اسم مزيّف من العميل";   // يُتجاهَل؛ الاسم يُختم من المجمّع
+
+        var result = await controller.CreateTask(dto);
+        Assert.IsType<CreatedAtActionResult>(result);
+
+        var row = FindTaskByPhone("07700000020")!;
+        // النوع مختوم، الحساب/اللقطة فارغان، الشريك مختوم خادمياً من المجمّع.
+        Assert.Equal(TaskSourceAccountType.Ftth, row.SourceAccountType);
+        Assert.Null(row.SourceAccountId);
+        Assert.Null(row.SourceAccountLabel);
+        Assert.Equal("2261175", row.PartnerId);
+        Assert.Equal(officialPartnerName, row.PartnerName);
+        Assert.Equal(CompanyA, row.CompanyId);     // ختم الشركة من التوكن
+    }
 }

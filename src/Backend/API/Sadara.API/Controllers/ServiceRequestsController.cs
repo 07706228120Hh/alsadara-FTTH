@@ -2568,15 +2568,19 @@ ORDER BY ""TotalCollected"" DESC;";
         // حتى لا تبقى الحالة مُعدَّلة جزئياً عند إرجاع 400.
         if (sourceAccountType == TaskSourceAccountType.Ftth)
         {
-            if (sourceAccountId is null || sourceAccountId.Value == Guid.Empty)
-                return BadRequest(new { success = false, message = "يجب تحديد حساب FTTH المصدر" });
+            // الحساب أصبح اختيارياً (المالك حذف حقل «الحساب» من الواجهة): يُقبل النوع FTTH بلا
+            // حساب محدّد — تبقى الوسوم: النوع + الشريك + المنطقة. إن أُرسل SourceAccountId
+            // (توافق خلفي/مستقبلي) يُطبَّق تحقّق الملكية ضمن الشركة ويُختم الـLabel من الصف.
+            FtthAccount? acct = null;
+            if (sourceAccountId is not null && sourceAccountId.Value != Guid.Empty)
+            {
+                acct = await _db.FtthAccounts.AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.Id == sourceAccountId.Value && a.CompanyId == companyId && !a.IsDeleted);
+                if (acct == null)
+                    return BadRequest(new { success = false, message = "حساب FTTH المصدر غير موجود ضمن الشركة" });
+            }
 
-            var acct = await _db.FtthAccounts.AsNoTracking()
-                .FirstOrDefaultAsync(a => a.Id == sourceAccountId.Value && a.CompanyId == companyId && !a.IsDeleted);
-            if (acct == null)
-                return BadRequest(new { success = false, message = "حساب FTTH المصدر غير موجود ضمن الشركة" });
-
-            // الشريك الرئيسي (لقطة للعرض). الشريك اختياري.
+            // الشريك الرئيسي (لقطة للعرض). الشريك اختياري ومستقلّ عن الحساب.
             // العميل يُرسِل PartnerId فقط كمُحدِّد؛ لا نثق باسم العميل (PartnerName) — يُشتقّ خادمياً.
             var cleanPartnerId = string.IsNullOrWhiteSpace(partnerId) ? null : partnerId.Trim();
             // P3-a: حارس طول للمُحدِّد المقبول من العميل (PartnerId ≤100) — خطأ صريح لا 500.
@@ -2605,26 +2609,30 @@ ORDER BY ""TotalCollected"" DESC;";
             // (لم يُرسَل PartnerId) ⇒ يبقى الشريك فارغاً (اختياري). المنطقة مستقلّة عن الشريك.
 
             // كل الفحوص نجحت ⇒ الآن فقط نعدّل الكيان.
+            // acct قد يكون null (لم يُرسَل حساب) ⇒ الحساب/اللقطة يبقيان null، والنوع يُختم كما هو.
             request.SourceAccountType = sourceAccountType;
-            request.SourceAccountId = acct.Id;
-            request.SourceAccountLabel = acct.Label;          // لقطة موثوقة من الصف لا من العميل
+            request.SourceAccountId = acct?.Id;
+            request.SourceAccountLabel = acct?.Label;         // لقطة موثوقة من الصف لا من العميل
             request.PartnerId = resolvedPartnerId;
             request.PartnerName = resolvedPartnerName;
         }
         else if (sourceAccountType == TaskSourceAccountType.Sas)
         {
-            if (sourceAccountId is null || sourceAccountId.Value == Guid.Empty)
-                return BadRequest(new { success = false, message = "يجب تحديد حساب الساس المصدر" });
-
-            var acct = await _db.SasAccounts.AsNoTracking()
-                .FirstOrDefaultAsync(a => a.Id == sourceAccountId.Value && a.CompanyId == companyId && !a.IsDeleted);
-            if (acct == null)
-                return BadRequest(new { success = false, message = "حساب الساس المصدر غير موجود ضمن الشركة" });
+            // الحساب اختياري (كما FTTH): يُقبل النوع «ساس» بلا حساب محدّد. إن أُرسل SourceAccountId
+            // يُطبَّق تحقّق الملكية ضمن الشركة ويُختم الـLabel من الصف.
+            SasAccount? acct = null;
+            if (sourceAccountId is not null && sourceAccountId.Value != Guid.Empty)
+            {
+                acct = await _db.SasAccounts.AsNoTracking()
+                    .FirstOrDefaultAsync(a => a.Id == sourceAccountId.Value && a.CompanyId == companyId && !a.IsDeleted);
+                if (acct == null)
+                    return BadRequest(new { success = false, message = "حساب الساس المصدر غير موجود ضمن الشركة" });
+            }
 
             // كل الفحوص نجحت ⇒ الآن فقط نعدّل الكيان.
             request.SourceAccountType = sourceAccountType;
-            request.SourceAccountId = acct.Id;
-            request.SourceAccountLabel = acct.Label;
+            request.SourceAccountId = acct?.Id;
+            request.SourceAccountLabel = acct?.Label;
             // الساس لا يحمل شريكاً رئيسياً
             request.PartnerId = null;
             request.PartnerName = null;
