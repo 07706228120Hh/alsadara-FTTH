@@ -8,6 +8,7 @@ import '../services/vps_auth_service.dart';
 import '../inventory/services/inventory_api_service.dart';
 import '../utils/responsive_helper.dart';
 import '../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
+import 'widgets/task_source_region_section.dart';
 
 /// حوار إضافة مهمة جديدة عبر API
 class AddTaskApiDialog extends StatefulWidget {
@@ -97,6 +98,9 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
   Map<String, List<String>> _departmentTasks = {};
   Map<String, int> _slaMap = {};
   String _currentSelectedPhone = '';
+
+  // ربط المهمة بحساب مصدر ومنطقة (المرحلة 1) — اختياري
+  TaskSourceSelection _sourceSel = const TaskSourceSelection();
 
   @override
   void initState() {
@@ -409,6 +413,14 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
         deliveryFee: _deliveryFeeController.text.trim().isNotEmpty
             ? double.tryParse(_deliveryFeeController.text.replaceAll(',', '').trim())
             : null,
+        // ربط حساب المصدر/المنطقة — يُرسَل فقط عند الاختيار (None = لا شيء)
+        sourceAccountType: _sourceSel.type != 0 ? _sourceSel.type : null,
+        sourceAccountId:
+            _sourceSel.accountId.isNotEmpty ? _sourceSel.accountId : null,
+        partnerId: _sourceSel.partnerId.isNotEmpty ? _sourceSel.partnerId : null,
+        partnerName:
+            _sourceSel.partnerName.isNotEmpty ? _sourceSel.partnerName : null,
+        regionRef: _sourceSel.regionRef.isNotEmpty ? _sourceSel.regionRef : null,
       );
 
       if (result['success'] == true) {
@@ -818,6 +830,8 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
             ],
             _buildMaterialsSection(),
             const SizedBox(height: 6),
+            _buildSourceAccountSection(),
+            const SizedBox(height: 6),
             _buildAdditionalSection(),
             const SizedBox(height: 6),
             _buildActionButtons(),
@@ -906,6 +920,8 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
               const SizedBox(height: 8),
             ],
             _buildMaterialsSection(),
+            const SizedBox(height: 8),
+            _buildSourceAccountSection(),
             const SizedBox(height: 8),
             _buildAdditionalSection(),
           ],
@@ -1245,6 +1261,19 @@ class _AddTaskApiDialogState extends State<AddTaskApiDialog> {
           ],
         ),
       );
+  }
+
+  /// قسم «حساب المصدر والمنطقة» (المرحلة 1) — اختياري.
+  Widget _buildSourceAccountSection() {
+    return SdCard(
+      tone: SdGroup.comms.tone,
+      icon: Icons.account_tree_outlined,
+      title: 'حساب المصدر والمنطقة (اختياري)',
+      child: TaskSourceRegionSection(
+        initial: _sourceSel,
+        onChanged: (sel) => _sourceSel = sel,
+      ),
+    );
   }
 
   Widget _buildSubscriptionSection() {

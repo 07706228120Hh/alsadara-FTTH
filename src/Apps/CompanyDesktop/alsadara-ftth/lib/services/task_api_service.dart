@@ -1,5 +1,6 @@
 import 'api/api_client.dart';
 import 'api/api_response.dart';
+import '../models/task_source_pool.dart';
 
 /// خدمة إدارة المهام عبر VPS API
 /// تستخدم ApiClient (توكن سيرفرنا) بدلاً من ApiService القديم (توكن FTTH)
@@ -53,6 +54,12 @@ class TaskApiService {
     double? deliveryFee,
     int serviceId = 9, // Internet FTTH
     int? operationTypeId,
+    // ربط حساب المصدر/المنطقة (المرحلة 1) — كلها اختيارية
+    int? sourceAccountType, // 0=None, 1=Ftth, 2=Sas
+    String? sourceAccountId,
+    String? partnerId,
+    String? partnerName,
+    String? regionRef,
   }) async {
     final body = <String, dynamic>{
       'TaskType': taskType,
@@ -74,6 +81,13 @@ class TaskApiService {
       'DeliveryFee': deliveryFee,
       'ServiceId': serviceId,
       'OperationTypeId': operationTypeId,
+      // نرسل int للـ enum (آمن للتسلسل بلا الاعتماد على JsonStringEnumConverter).
+      // لا نرسل SourceAccountLabel/RegionName — يُشتَقّان خادمياً.
+      'SourceAccountType': sourceAccountType,
+      'SourceAccountId': sourceAccountId,
+      'PartnerId': partnerId,
+      'PartnerName': partnerName,
+      'RegionRef': regionRef,
     };
 
     // إزالة القيم null
@@ -85,6 +99,23 @@ class TaskApiService {
       (json) => json,
     );
     return _toMap(response);
+  }
+
+  /// جلب مجمّع مصدر المهام (حسابات FTTH/ساس + الشركاء + مناطق الساس).
+  ///
+  /// يستدعي `GET /api/tasks/source-pool` (معزول بشركة التوكن، تعريفات بلا أسرار).
+  /// يُعيد [TaskSourcePool] فارغاً عند الفشل (الحقول اختيارية فلا تُعطِّل الحوار).
+  Future<TaskSourcePool> fetchSourcePool() async {
+    final response = await _client.get('/tasks/source-pool', (json) => json);
+    if (response.success && response.data is Map) {
+      final map = Map<String, dynamic>.from(response.data as Map);
+      // الصيغة القياسية {success, data:{...}} — ApiClient قد يفكّ data تلقائياً.
+      final data = map['data'] is Map
+          ? Map<String, dynamic>.from(map['data'] as Map)
+          : map;
+      return TaskSourcePool.fromJson(data);
+    }
+    return const TaskSourcePool();
   }
 
   /// جلب أقسام المستخدم الحالي (للليدر/المدير)
@@ -225,7 +256,13 @@ class TaskApiService {
 
   // ═══════ تعديل مهمة ═══════
 
-  /// تعديل بيانات المهمة (كل الحقول)
+  /// تعديل بيانات المهمة (كل الحقول).
+  ///
+  /// عقد [regionRef] مع الباكند:
+  ///   - `null`  ⇒ «لا تعديل» (يُحذف من الجسم عبر removeWhere فلا يُرسَل).
+  ///   - `""`    ⇒ «امسح المنطقة» (يُرسَل كسلسلة فارغة فيصفّرها الخادم).
+  ///   - نصّ غير فارغ ⇒ القيمة الجديدة.
+  /// (نفس التمييز ينطبق على الحقول النصّية الأخرى: null=لا تُرسَل، ""=تُرسَل.)
   Future<Map<String, dynamic>> updateTask(
     String requestId, {
     String? status,
@@ -243,6 +280,12 @@ class TaskApiService {
     String? priority,
     double? amount,
     double? deliveryFee,
+    // ربط حساب المصدر/المنطقة (المرحلة 1) — كلها اختيارية
+    int? sourceAccountType, // 0=None, 1=Ftth, 2=Sas
+    String? sourceAccountId,
+    String? partnerId,
+    String? partnerName,
+    String? regionRef,
   }) async {
     final body = <String, dynamic>{
       'Status': status,
@@ -258,6 +301,12 @@ class TaskApiService {
       'Notes': notes,
       'Summary': summary,
       'Priority': priority,
+      // نرسل int للـ enum؛ لا نرسل Label/RegionName (يُشتَقّان خادمياً).
+      'SourceAccountType': sourceAccountType,
+      'SourceAccountId': sourceAccountId,
+      'PartnerId': partnerId,
+      'PartnerName': partnerName,
+      'RegionRef': regionRef,
     };
     if (amount != null && amount > 0) {
       body['Amount'] = amount;

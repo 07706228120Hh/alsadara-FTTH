@@ -69,6 +69,9 @@ class HomePageTasksState extends State<HomePageTasks> {
   String? _filterTechnician;
   String? _filterPriority;
   String? _filterTaskType;
+  // فلاتر ربط المصدر/المنطقة (المرحلة 1) — عميل-جانب على اللقطات
+  String? _filterSourceAccount; // sourceAccountLabel
+  String? _filterRegion; // regionName
 
   // متغيرات الإشعارات الجديدة
   int newTasksCount = 0; // عدد المهام الجديدة
@@ -372,6 +375,14 @@ class HomePageTasksState extends State<HomePageTasks> {
     if (_filterTaskType != null && _filterTaskType!.isNotEmpty) {
       result = result.where((t) => t.title == _filterTaskType).toList();
     }
+    if (_filterSourceAccount != null && _filterSourceAccount!.isNotEmpty) {
+      result = result
+          .where((t) => t.sourceAccountLabel == _filterSourceAccount)
+          .toList();
+    }
+    if (_filterRegion != null && _filterRegion!.isNotEmpty) {
+      result = result.where((t) => t.regionName == _filterRegion).toList();
+    }
     return result;
   }
 
@@ -542,6 +553,24 @@ class HomePageTasksState extends State<HomePageTasks> {
     return _currentTasks
         .map((t) => t.title)
         .where((t) => t.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+  }
+
+  List<String> _getUniqueSourceAccounts() {
+    return _currentTasks
+        .map((t) => t.sourceAccountLabel)
+        .where((s) => s.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+  }
+
+  List<String> _getUniqueRegions() {
+    return _currentTasks
+        .map((t) => t.regionName)
+        .where((s) => s.isNotEmpty)
         .toSet()
         .toList()
       ..sort();
@@ -2562,14 +2591,18 @@ class HomePageTasksState extends State<HomePageTasks> {
                           color: (_filterDepartment != null ||
                                   _filterTechnician != null ||
                                   _filterPriority != null ||
-                                  _filterTaskType != null)
+                                  _filterTaskType != null ||
+                                  _filterSourceAccount != null ||
+                                  _filterRegion != null)
                               ? SdColors.warning.withValues(alpha: 0.3)
                               : Colors.white.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(16),
                           border: (_filterDepartment != null ||
                                   _filterTechnician != null ||
                                   _filterPriority != null ||
-                                  _filterTaskType != null)
+                                  _filterTaskType != null ||
+                                  _filterSourceAccount != null ||
+                                  _filterRegion != null)
                               ? Border.all(color: SdColors.warning, width: 1)
                               : null,
                         ),
@@ -2813,16 +2846,22 @@ class HomePageTasksState extends State<HomePageTasks> {
     String? tempTech = _filterTechnician;
     String? tempPriority = _filterPriority;
     String? tempTaskType = _filterTaskType;
+    String? tempSourceAccount = _filterSourceAccount;
+    String? tempRegion = _filterRegion;
 
     final departments = _getUniqueDepartments();
     final technicians = _getUniqueTechnicians();
     final taskTypes = _getUniqueTaskTypes();
+    final sourceAccounts = _getUniqueSourceAccounts();
+    final regions = _getUniqueRegions();
     const priorities = ['عاجل', 'عالي', 'متوسط', 'منخفض'];
 
     final hasActiveFilters = _filterDepartment != null ||
         _filterTechnician != null ||
         _filterPriority != null ||
-        _filterTaskType != null;
+        _filterTaskType != null ||
+        _filterSourceAccount != null ||
+        _filterRegion != null;
 
     showDialog(
       context: context,
@@ -2850,6 +2889,8 @@ class HomePageTasksState extends State<HomePageTasks> {
                           tempTech = null;
                           tempPriority = null;
                           tempTaskType = null;
+                          tempSourceAccount = null;
+                          tempRegion = null;
                         });
                       },
                       child: const Text('مسح الكل',
@@ -2951,6 +2992,72 @@ class HomePageTasksState extends State<HomePageTasks> {
                       ),
                       const SizedBox(height: 14),
 
+                      // فلتر حساب المصدر (يظهر فقط عند وجود مهام موسومة)
+                      if (sourceAccounts.isNotEmpty) ...[
+                        const Text('حساب المصدر',
+                            style: TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        DropdownButtonFormField<String>(
+                          value: tempSourceAccount,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            hintText: 'كل الحسابات',
+                            hintStyle: TextStyle(
+                                fontSize: 13, color: SdColors.faint),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                                value: null, child: Text('كل الحسابات')),
+                            ...sourceAccounts.map((s) => DropdownMenuItem(
+                                value: s,
+                                child: Text(s,
+                                    style: const TextStyle(fontSize: 13),
+                                    overflow: TextOverflow.ellipsis))),
+                          ],
+                          onChanged: (v) =>
+                              setDialogState(() => tempSourceAccount = v),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+
+                      // فلتر المنطقة (يظهر فقط عند وجود مهام موسومة)
+                      if (regions.isNotEmpty) ...[
+                        const Text('المنطقة',
+                            style: TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        DropdownButtonFormField<String>(
+                          value: tempRegion,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            hintText: 'كل المناطق',
+                            hintStyle: TextStyle(
+                                fontSize: 13, color: SdColors.faint),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                                value: null, child: Text('كل المناطق')),
+                            ...regions.map((s) => DropdownMenuItem(
+                                value: s,
+                                child: Text(s,
+                                    style: const TextStyle(fontSize: 13),
+                                    overflow: TextOverflow.ellipsis))),
+                          ],
+                          onChanged: (v) =>
+                              setDialogState(() => tempRegion = v),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+
                       // فلتر الأولوية
                       const Text('الأولوية',
                           style: TextStyle(
@@ -2993,6 +3100,8 @@ class HomePageTasksState extends State<HomePageTasks> {
                       _filterTechnician = tempTech;
                       _filterPriority = tempPriority;
                       _filterTaskType = tempTaskType;
+                      _filterSourceAccount = tempSourceAccount;
+                      _filterRegion = tempRegion;
                       _computeFilterByStatus(_getStatusByIndex(currentIndex));
                     });
                     // تغيير القسم/الفني → أعد تجميع اللوحة من الخادم

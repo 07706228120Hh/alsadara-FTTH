@@ -71,7 +71,10 @@ public class ServiceRequestsController : ControllerBase
         [FromQuery] string? createdByName = null,
         [FromQuery] string? search = null,
         [FromQuery] DateTime? fromDate = null,
-        [FromQuery] DateTime? toDate = null)
+        [FromQuery] DateTime? toDate = null,
+        [FromQuery] Guid? sourceAccountId = null,
+        [FromQuery] string? sourceAccountType = null,
+        [FromQuery] string? regionRef = null)
     {
         var query = _unitOfWork.ServiceRequests.AsQueryable();
 
@@ -156,6 +159,18 @@ public class ServiceRequestsController : ControllerBase
             query = query.Where(r => r.Details != null && r.Details.Contains(taskType));
         }
 
+        // فلتر الحساب المصدر والمنطقة (وسم المهمة) — معزولة تلقائياً بالشركة عبر عزل المستأجر أعلاه
+        if (sourceAccountId.HasValue)
+            query = query.Where(r => r.SourceAccountId == sourceAccountId.Value);
+        if (!string.IsNullOrWhiteSpace(sourceAccountType)
+            && Enum.TryParse<TaskSourceAccountType>(sourceAccountType, true, out var sourceTypeEnum))
+            query = query.Where(r => r.SourceAccountType == sourceTypeEnum);
+        if (!string.IsNullOrWhiteSpace(regionRef))
+        {
+            var regionRefTrimmed = regionRef.Trim();
+            query = query.Where(r => r.RegionRef == regionRefTrimmed);
+        }
+
         // بحث عام: اسم العميل، هاتف، فني، منشئ، رقم الطلب
         if (!string.IsNullOrEmpty(search))
         {
@@ -210,6 +225,13 @@ public class ServiceRequestsController : ControllerBase
                 FinalCost = r.FinalCost,
                 Address = r.Address,
                 ContactPhone = r.ContactPhone,
+                SourceAccountType = r.SourceAccountType,
+                SourceAccountId = r.SourceAccountId,
+                SourceAccountLabel = r.SourceAccountLabel,
+                PartnerId = r.PartnerId,
+                PartnerName = r.PartnerName,
+                RegionRef = r.RegionRef,
+                RegionName = r.RegionName,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt,
                 CompletedAt = r.CompletedAt
@@ -555,6 +577,42 @@ ORDER BY ""TotalCollected"" DESC;";
             .FirstOrDefaultAsync();
 
         return RequirePermissionAttribute.HasPermission(perms, "accounting.collections", "view");
+    }
+
+    /// <summary>
+    /// هل يملك المستخدم الحالي صلاحية «إضافة» أو «تعديل» المهام؟ (منطق OR).
+    /// يُستخدَم لبوّابة مجمّع الحساب المصدر (source-pool) الذي يغذّي حواري الإنشاء والتعديل معاً،
+    /// فيلزم قبول من يملك tasks/add أو tasks/edit — وهو ما لا يوفّره RequirePermissionAttribute الواحد.
+    ///  - SuperAdmin/CompanyAdmin => مسموح دائماً (نفس آلية الأدوار في بقية الـController).
+    ///  - غيرهما => فحص FirstSystemPermissionsV2 على tasks/add أو tasks/edit عبر RequirePermissionAttribute.HasPermission.
+    /// ملاحظة: HasPermission سلوكه fail-open عند صلاحيات V2 فارغة (سلوك النظام القائم — لا يُغيَّر هنا).
+    /// </summary>
+    private async Task<bool> CanAddOrEditTasksAsync()
+    {
+        // SuperAdmin يتجاوز كل الفحوص.
+        if (_tenant.IsSuperAdmin)
+            return true;
+
+        // فحص الدور من الـclaims (نفس مصدر RequirePermissionAttribute: ClaimTypes.Role أو "role").
+        var roleClaim = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                     ?? User.FindFirst("role")?.Value;
+        if (roleClaim == "SuperAdmin" || roleClaim == "CompanyAdmin")
+            return true;
+        if (int.TryParse(roleClaim, out var roleInt) && roleInt >= (int)UserRole.CompanyAdmin)
+            return true;
+
+        // غير مدير => فحص صلاحيات V2 للمستخدم من قاعدة البيانات (add أو edit).
+        var userId = GetCurrentUserId();
+        if (userId == Guid.Empty)
+            return false;
+
+        var perms = await _db.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.FirstSystemPermissionsV2)
+            .FirstOrDefaultAsync();
+
+        return RequirePermissionAttribute.HasPermission(perms, "tasks", "add")
+            || RequirePermissionAttribute.HasPermission(perms, "tasks", "edit");
     }
 
     /// <summary>
@@ -1566,6 +1624,13 @@ ORDER BY ""TotalCollected"" DESC;";
                 FinalCost = r.FinalCost,
                 Address = r.Address,
                 ContactPhone = r.ContactPhone,
+                SourceAccountType = r.SourceAccountType,
+                SourceAccountId = r.SourceAccountId,
+                SourceAccountLabel = r.SourceAccountLabel,
+                PartnerId = r.PartnerId,
+                PartnerName = r.PartnerName,
+                RegionRef = r.RegionRef,
+                RegionName = r.RegionName,
                 CreatedAt = r.CreatedAt,
                 UpdatedAt = r.UpdatedAt,
                 CompletedAt = r.CompletedAt
@@ -1836,6 +1901,17 @@ ORDER BY ""TotalCollected"" DESC;";
                 }
             }
 
+            // وسم الحساب المصدر والمنطقة (يدوي) — تحقّق ملكية صارم ضمن شركة المهمة + ختم اللقطات خادمياً
+            var writeCompanyId = request.CompanyId ?? Guid.Empty;
+            var srcErr = await ApplySourceAccountAsync(
+                request, writeCompanyId,
+                dto.SourceAccountType ?? TaskSourceAccountType.None,
+                dto.SourceAccountId, dto.PartnerId, dto.PartnerName);
+            if (srcErr != null) return srcErr;
+
+            var regionErr = await ApplyRegionAsync(request, writeCompanyId, dto.RegionRef);
+            if (regionErr != null) return regionErr;
+
             await _unitOfWork.ServiceRequests.AddAsync(request);
 
             // سجل الحالة
@@ -2060,6 +2136,23 @@ ORDER BY ""TotalCollected"" DESC;";
                 request.TechnicianId = techUser.Id;
         }
 
+        // وسم الحساب المصدر والمنطقة — يُطبَّق فقط عند إرسال الحقل (null = عدم التعديل).
+        // العزل: التحقّق ضمن شركة المهمة نفسها (request.CompanyId) — منع ربط حساب/منطقة شركة أخرى.
+        var taskCompanyId = request.CompanyId ?? Guid.Empty;
+        if (dto.SourceAccountType.HasValue)
+        {
+            var srcErr = await ApplySourceAccountAsync(
+                request, taskCompanyId, dto.SourceAccountType.Value,
+                dto.SourceAccountId, dto.PartnerId, dto.PartnerName);
+            if (srcErr != null) return srcErr;
+        }
+        // العقد: RegionRef == null ⇒ لا تعديل (تُخطّى)؛ "" ⇒ مسح المنطقة؛ نص/Guid ⇒ تطبيق (داخل ApplyRegionAsync).
+        if (dto.RegionRef != null)
+        {
+            var regionErr = await ApplyRegionAsync(request, taskCompanyId, dto.RegionRef);
+            if (regionErr != null) return regionErr;
+        }
+
         request.Details = JsonSerializer.Serialize(details, new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
         request.UpdatedAt = DateTime.UtcNow;
 
@@ -2068,6 +2161,91 @@ ORDER BY ""TotalCollected"" DESC;";
 
         _logger.LogInformation("تم تعديل المهمة {Id}", id);
         return Ok(new { success = true, message = "تم تعديل المهمة بنجاح" });
+    }
+
+    /// <summary>
+    /// مجمّع «الحساب المصدر» للمهمة على مستوى الشركة — يُغذّي منسدلات وسم المهمة
+    /// (حسابات FTTH/الساس + الشركاء + مناطق الساس)، كلها معزولة بشركة التوكن حصراً.
+    /// لا يُعيد أي كلمة مرور/سرّ إطلاقاً (إسقاط projection مُقيَّد، بلا PasswordEncrypted).
+    /// نفس حارس إنشاء المهمة (مُنشئ المهمة هو المُستهلِك).
+    /// </summary>
+    [HttpGet("/api/tasks/source-pool")]
+    [Authorize(Policy = "TechnicianOrAbove")]
+    public async Task<IActionResult> GetSourcePool()
+    {
+        // المجمّع يغذّي حواري الإنشاء والتعديل معاً، لذا يُقبل من يملك tasks/add أو tasks/edit
+        // (منطق OR لا يدعمه RequirePermissionAttribute الواحد ⇒ فحص يدوي بنفس آلية الصلاحيات V2).
+        if (!await CanAddOrEditTasksAsync())
+            return StatusCode(403, new { success = false, message = "لا تملك صلاحية عرض مجمّع الحساب المصدر" });
+
+        // عزل المستأجر (fail-closed): شركة التوكن حصراً — يُتجاهل أي companyId من العميل.
+        var resolved = ResolveWriteCompanyId(null);
+        if (resolved is null || resolved.Value == Guid.Empty)
+            return StatusCode(403, new { success = false, message = "لا يمكن تحديد الشركة من التوكن" });
+        var companyId = resolved.Value;
+
+        // حسابات FTTH (تعريفات فقط — بلا PasswordEncrypted)
+        var ftthAccounts = await _db.FtthAccounts
+            .AsNoTracking()
+            .Where(a => a.CompanyId == companyId && !a.IsDeleted)
+            .OrderBy(a => a.Label)
+            .Select(a => new
+            {
+                id = a.Id,
+                label = a.Label,
+                username = a.Username,
+                serverUrl = a.ServerUrl
+            })
+            .ToListAsync();
+
+        // حسابات الساس (تعريفات فقط — بلا PasswordEncrypted)
+        var sasAccounts = await _db.SasAccounts
+            .AsNoTracking()
+            .Where(a => a.CompanyId == companyId && !a.IsDeleted)
+            .OrderBy(a => a.Label)
+            .Select(a => new
+            {
+                id = a.Id,
+                label = a.Label,
+                username = a.Username,
+                serverUrl = a.ServerUrl,
+                accountType = (int)a.AccountType
+            })
+            .ToListAsync();
+
+        // الشركاء الرئيسيون — DISTINCT من SubscriptionLog (مصدر PartnerId/PartnerName المؤكَّد على release/v2.4.32؛
+        // لا جدول شركاء مستقل)، معزولون بالشركة مع استبعاد القيم الفارغة.
+        var partnersRaw = await _db.SubscriptionLogs
+            .AsNoTracking()
+            .Where(s => s.CompanyId == companyId
+                && s.PartnerId != null && s.PartnerId != ""
+                && s.PartnerName != null && s.PartnerName != "")
+            .Select(s => new { PartnerId = s.PartnerId!, PartnerName = s.PartnerName! })
+            .Distinct()
+            .ToListAsync();
+        var partners = partnersRaw
+            .OrderBy(p => p.PartnerName)
+            .Select(p => new { partnerId = p.PartnerId, partnerName = p.PartnerName })
+            .ToList();
+
+        // مناطق الساس — كيان نواة ITenantScoped، تُقرأ عبر DbContext النواة مباشرةً (لا مساس بوحدة الساس).
+        var sasRegions = await _db.SasRegions
+            .AsNoTracking()
+            .Where(r => r.CompanyId == companyId)
+            .OrderBy(r => r.Name)
+            .Select(r => new
+            {
+                id = r.Id,
+                name = r.Name,
+                code = r.Code
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            success = true,
+            data = new { ftthAccounts, sasAccounts, partners, sasRegions }
+        });
     }
 
     /// <summary>
@@ -2378,6 +2556,118 @@ ORDER BY ""TotalCollected"" DESC;";
         return _tenant.CompanyId;
     }
 
+    // ── تحقّق ملكية الحساب المصدر وختم اللقطة (Label) من الصف المُتحقَّق ──
+    // يتأكّد أن الحساب (FTTH/ساس) موجود ضمن شركة المهمة (companyId) — منع IDOR عبر الشركات.
+    // يُرجِع IActionResult خطأ (400) عند الفشل، أو null عند النجاح (الحقول مختومة على request).
+    private async Task<IActionResult?> ApplySourceAccountAsync(
+        ServiceRequest request, Guid companyId,
+        TaskSourceAccountType sourceAccountType, Guid? sourceAccountId,
+        string? partnerId, string? partnerName)
+    {
+        // Latent: لا نعدّل أي حقل على الكيان إلا بعد نجاح كل الفحوص (ملكية + طول اللقطات)،
+        // حتى لا تبقى الحالة مُعدَّلة جزئياً عند إرجاع 400.
+        if (sourceAccountType == TaskSourceAccountType.Ftth)
+        {
+            if (sourceAccountId is null || sourceAccountId.Value == Guid.Empty)
+                return BadRequest(new { success = false, message = "يجب تحديد حساب FTTH المصدر" });
+
+            var acct = await _db.FtthAccounts.AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == sourceAccountId.Value && a.CompanyId == companyId && !a.IsDeleted);
+            if (acct == null)
+                return BadRequest(new { success = false, message = "حساب FTTH المصدر غير موجود ضمن الشركة" });
+
+            // الشريك الرئيسي (لقطة للعرض) — يُقبل من العميل بعد تنظيف (مرحلة 1: الشركاء مشتقّون من السجلّات)
+            var cleanPartnerId = string.IsNullOrWhiteSpace(partnerId) ? null : partnerId.Trim();
+            var cleanPartnerName = string.IsNullOrWhiteSpace(partnerName) ? null : partnerName.Trim();
+            // P3-a: حارس طول لحقول اللقطة المقبولة من العميل (PartnerId ≤100، PartnerName ≤200).
+            if (cleanPartnerId != null && cleanPartnerId.Length > 100)
+                return BadRequest(new { success = false, message = "معرّف الشريك يتجاوز الحدّ المسموح (100 حرف)" });
+            if (cleanPartnerName != null && cleanPartnerName.Length > 200)
+                return BadRequest(new { success = false, message = "اسم الشريك يتجاوز الحدّ المسموح (200 حرف)" });
+
+            // كل الفحوص نجحت ⇒ الآن فقط نعدّل الكيان.
+            request.SourceAccountType = sourceAccountType;
+            request.SourceAccountId = acct.Id;
+            request.SourceAccountLabel = acct.Label;          // لقطة موثوقة من الصف لا من العميل
+            request.PartnerId = cleanPartnerId;
+            request.PartnerName = cleanPartnerName;
+        }
+        else if (sourceAccountType == TaskSourceAccountType.Sas)
+        {
+            if (sourceAccountId is null || sourceAccountId.Value == Guid.Empty)
+                return BadRequest(new { success = false, message = "يجب تحديد حساب الساس المصدر" });
+
+            var acct = await _db.SasAccounts.AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Id == sourceAccountId.Value && a.CompanyId == companyId && !a.IsDeleted);
+            if (acct == null)
+                return BadRequest(new { success = false, message = "حساب الساس المصدر غير موجود ضمن الشركة" });
+
+            // كل الفحوص نجحت ⇒ الآن فقط نعدّل الكيان.
+            request.SourceAccountType = sourceAccountType;
+            request.SourceAccountId = acct.Id;
+            request.SourceAccountLabel = acct.Label;
+            // الساس لا يحمل شريكاً رئيسياً
+            request.PartnerId = null;
+            request.PartnerName = null;
+        }
+        else // None — تفريغ الوسم بالكامل
+        {
+            request.SourceAccountType = sourceAccountType;
+            request.SourceAccountId = null;
+            request.SourceAccountLabel = null;
+            request.PartnerId = null;
+            request.PartnerName = null;
+            // M2: امسح لقطة المنطقة أيضاً حتى لا تبقى منطقة يتيمة بلا حساب مصدر.
+            request.RegionRef = null;
+            request.RegionName = null;
+        }
+
+        return null;
+    }
+
+    // ── تحقّق المنطقة وختم اسمها (لقطة) ──
+    // العقد مع الواجهة (يفرضه المتصل): regionRef == null ⇒ «لا تعديل» (لا يُستدعى الحارس أصلاً)؛
+    // هذه الدالة تُستدعى حين يقرّر المتصل التطبيق، وعندها:
+    //   - "" أو فراغ ⇒ «امسح المنطقة» (RegionRef = RegionName = null).
+    //   - Guid منطقة ساس ⇒ تحقّق أنها ضمن الشركة واختم الاسم من الصف.
+    //   - غير ذلك ⇒ منطقة نصّية يدوية (FTTH مرحلة 1) تُقبل بعد Trim (RegionName = النص نفسه).
+    // يُرجِع IActionResult خطأ (400) عند منطقة ساس خارج الشركة أو تجاوز الطول، أو null عند النجاح.
+    private async Task<IActionResult?> ApplyRegionAsync(ServiceRequest request, Guid companyId, string? regionRef)
+    {
+        // "" / فراغ = مسح صريح للمنطقة (null = عدم التعديل، ويُمنع وصوله هنا من مسار التعديل).
+        if (string.IsNullOrWhiteSpace(regionRef))
+        {
+            request.RegionRef = null;
+            request.RegionName = null;
+            return null;
+        }
+
+        var trimmed = regionRef.Trim();
+        if (Guid.TryParse(trimmed, out var regionGuid))
+        {
+            var region = await _db.SasRegions.AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Id == regionGuid && r.CompanyId == companyId);
+            if (region == null)
+                return BadRequest(new { success = false, message = "المنطقة غير موجودة ضمن الشركة" });
+
+            request.RegionRef = region.Id.ToString();
+            request.RegionName = region.Name;                 // لقطة موثوقة من الصف
+        }
+        else
+        {
+            // منطقة نصّية يدوية (FTTH مرحلة 1)
+            // P3-a: حارس طول — العمودان RegionRef varchar(100) وRegionName varchar(200)،
+            // والنص اليدوي يُكتب للعمودين معاً ⇒ الحدّ الفعّال 100؛ تجاوزه = 400 صريح لا 500.
+            if (trimmed.Length > 100)
+                return BadRequest(new { success = false, message = "اسم المنطقة يتجاوز الحدّ المسموح (100 حرف)" });
+
+            request.RegionRef = trimmed;
+            request.RegionName = trimmed;
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// الانتقالات المسموحة بين الحالات (State Machine)
     /// </summary>
@@ -2670,6 +2960,13 @@ ORDER BY ""TotalCollected"" DESC;";
             FinalCost = r.FinalCost,
             Address = r.Address,
             ContactPhone = r.ContactPhone,
+            SourceAccountType = r.SourceAccountType,
+            SourceAccountId = r.SourceAccountId,
+            SourceAccountLabel = r.SourceAccountLabel,
+            PartnerId = r.PartnerId,
+            PartnerName = r.PartnerName,
+            RegionRef = r.RegionRef,
+            RegionName = r.RegionName,
             CreatedAt = r.CreatedAt,
             UpdatedAt = r.UpdatedAt
         };
@@ -2709,6 +3006,13 @@ ORDER BY ""TotalCollected"" DESC;";
             AssignedToName = r.AssignedTo?.FullName,
             TechnicianId = r.TechnicianId,
             TechnicianName = r.Technician?.FullName,
+            SourceAccountType = r.SourceAccountType,
+            SourceAccountId = r.SourceAccountId,
+            SourceAccountLabel = r.SourceAccountLabel,
+            PartnerId = r.PartnerId,
+            PartnerName = r.PartnerName,
+            RegionRef = r.RegionRef,
+            RegionName = r.RegionName,
             CreatedAt = r.CreatedAt,
             UpdatedAt = r.UpdatedAt,
             CompletedAt = r.CompletedAt,
@@ -2776,6 +3080,14 @@ public class ServiceRequestResponse
     public decimal? FinalCost { get; set; }
     public string? Address { get; set; }
     public string? ContactPhone { get; set; }
+    // ── الحساب المصدر والمنطقة (وسم المهمة) ──
+    public TaskSourceAccountType SourceAccountType { get; set; }
+    public Guid? SourceAccountId { get; set; }
+    public string? SourceAccountLabel { get; set; }
+    public string? PartnerId { get; set; }
+    public string? PartnerName { get; set; }
+    public string? RegionRef { get; set; }
+    public string? RegionName { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
@@ -2912,9 +3224,26 @@ public class CreateTaskDto
 
     /// <summary>معرف الخدمة (اختياري - افتراضي 9 = Internet FTTH)</summary>
     public int ServiceId { get; set; } = 9;
-    
+
     /// <summary>معرف نوع العملية (اختياري)</summary>
     public int? OperationTypeId { get; set; }
+
+    // ── الحساب المصدر والمنطقة (وسم يدوي) — Label/RegionName يُشتقّان خادمياً ولا يُقبلان من العميل ──
+
+    /// <summary>نوع الحساب المصدر: None=0 / Ftth=1 / Sas=2 (اختياري، افتراضي None)</summary>
+    public TaskSourceAccountType? SourceAccountType { get; set; }
+
+    /// <summary>مرجع الحساب المصدر (FtthAccount.Id أو SasAccount.Id) — يُتحقَّق أنه ضمن الشركة</summary>
+    public Guid? SourceAccountId { get; set; }
+
+    /// <summary>معرّف عضو FTTH للشريك الرئيسي (لـ FTTH فقط)</summary>
+    public string? PartnerId { get; set; }
+
+    /// <summary>اسم الشريك الرئيسي (لقطة للعرض)</summary>
+    public string? PartnerName { get; set; }
+
+    /// <summary>مرجع المنطقة: Guid منطقة ساس (يُتحقَّق ضمن الشركة) أو نص يدوي (FTTH مرحلة 1)</summary>
+    public string? RegionRef { get; set; }
 }
 
 /// <summary>
@@ -2938,6 +3267,23 @@ public class UpdateTaskDto
     public decimal? Amount { get; set; }
     /// <summary>أجور التوصيل</summary>
     public decimal? DeliveryFee { get; set; }
+
+    // ── الحساب المصدر والمنطقة (وسم يدوي) — Label/RegionName يُشتقّان خادمياً ──
+
+    /// <summary>نوع الحساب المصدر: None=0 / Ftth=1 / Sas=2 (null = عدم التعديل)</summary>
+    public TaskSourceAccountType? SourceAccountType { get; set; }
+
+    /// <summary>مرجع الحساب المصدر — يُتحقَّق أنه ضمن الشركة</summary>
+    public Guid? SourceAccountId { get; set; }
+
+    /// <summary>معرّف عضو FTTH للشريك الرئيسي (لـ FTTH فقط)</summary>
+    public string? PartnerId { get; set; }
+
+    /// <summary>اسم الشريك الرئيسي (لقطة للعرض)</summary>
+    public string? PartnerName { get; set; }
+
+    /// <summary>مرجع المنطقة (null = عدم التعديل) — Guid ساس يُتحقَّق أو نص يدوي</summary>
+    public string? RegionRef { get; set; }
 }
 
 /// <summary>

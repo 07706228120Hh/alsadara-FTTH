@@ -37,6 +37,15 @@ class Task {
   final String createdByName; // اسم من أنشأ المهمة
   final int slaHours; // وقت SLA بالدقائق (0 = بدون SLA) — الاسم يبقى slaHours للتوافق
 
+  // ═══════ ربط المهمة بحساب مصدر ومنطقة (المرحلة 1) ═══════
+  final int sourceAccountType; // 0=None, 1=Ftth, 2=Sas
+  final String sourceAccountId; // Guid الحساب المصدر (FtthAccount/SasAccount)
+  final String sourceAccountLabel; // لقطة تسمية الحساب (عرض فقط، يُشتَقّ خادمياً)
+  final String partnerId; // معرّف عضو FTTH للشريك الرئيسي (FTTH فقط)
+  final String partnerName; // اسم الشريك الرئيسي (لقطة للعرض)
+  final String regionRef; // مرجع المنطقة: Guid منطقة ساس كنص، أو نص يدوي لـ FTTH
+  final String regionName; // اسم المنطقة المعروض (لقطة، يُشتَقّ خادمياً)
+
   /// **البناء الأساسي لمهمة جديدة**
   Task({
     required this.id,
@@ -72,6 +81,13 @@ class Task {
     this.subscriptionDuration = '', // مدة الاشتراك
     this.createdByName = '', // اسم من أنشأ المهمة
     this.slaHours = 0, // وقت SLA بالساعات
+    this.sourceAccountType = 0, // لا شيء
+    this.sourceAccountId = '',
+    this.sourceAccountLabel = '',
+    this.partnerId = '',
+    this.partnerName = '',
+    this.regionRef = '',
+    this.regionName = '',
   });
 
   // ═══════ تنسيق المبالغ المالية ═══════
@@ -161,6 +177,13 @@ class Task {
     String? subscriptionDuration,
     String? createdByName,
     int? slaHours,
+    int? sourceAccountType,
+    String? sourceAccountId,
+    String? sourceAccountLabel,
+    String? partnerId,
+    String? partnerName,
+    String? regionRef,
+    String? regionName,
   }) {
     return Task(
       id: id ?? this.id,
@@ -196,6 +219,13 @@ class Task {
       subscriptionDuration: subscriptionDuration ?? this.subscriptionDuration,
       createdByName: createdByName ?? this.createdByName,
       slaHours: slaHours ?? this.slaHours,
+      sourceAccountType: sourceAccountType ?? this.sourceAccountType,
+      sourceAccountId: sourceAccountId ?? this.sourceAccountId,
+      sourceAccountLabel: sourceAccountLabel ?? this.sourceAccountLabel,
+      partnerId: partnerId ?? this.partnerId,
+      partnerName: partnerName ?? this.partnerName,
+      regionRef: regionRef ?? this.regionRef,
+      regionName: regionName ?? this.regionName,
     );
   }
 
@@ -216,6 +246,26 @@ class Task {
     if (parsed == null) return null;
     final val = parsed.toDouble();
     return val > 0 ? val : null;
+  }
+
+  /// تحويل نوع الحساب المصدر دفاعياً — الخادم قد يرسله int (0/1/2) أو String
+  /// (None/Ftth/Sas) حسب وجود JsonStringEnumConverter من عدمه.
+  static int _parseSourceType(dynamic raw) {
+    if (raw == null) return 0;
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+    final s = raw.toString().trim();
+    final asInt = int.tryParse(s);
+    if (asInt != null) return asInt;
+    switch (s.toLowerCase()) {
+      case 'ftth':
+        return 1;
+      case 'sas':
+        return 2;
+      case 'none':
+      default:
+        return 0;
+    }
   }
 
   // ═══════ بناء من API ═══════
@@ -310,6 +360,14 @@ class Task {
       pageId: details['pageId']?.toString() ?? '',
       source: details['source']?.toString() ?? '',
       slaHours: (details['slaHours'] is num) ? (details['slaHours'] as num).toInt() : (int.tryParse(details['slaHours']?.toString() ?? '') ?? 0),
+      // ربط حساب المصدر/المنطقة — تُقرأ من المستوى الأعلى للاستجابة (أعمدة مطبّعة)
+      sourceAccountType: _parseSourceType(response['SourceAccountType']),
+      sourceAccountId: response['SourceAccountId']?.toString() ?? '',
+      sourceAccountLabel: response['SourceAccountLabel']?.toString() ?? '',
+      partnerId: response['PartnerId']?.toString() ?? '',
+      partnerName: response['PartnerName']?.toString() ?? '',
+      regionRef: response['RegionRef']?.toString() ?? '',
+      regionName: response['RegionName']?.toString() ?? '',
     );
   }
 

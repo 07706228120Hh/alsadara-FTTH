@@ -7,6 +7,7 @@ import '../services/vps_auth_service.dart';
 import '../inventory/services/inventory_api_service.dart';
 import '../utils/responsive_helper.dart';
 import '../frontend/tokens/sd_colors.dart' show SdColors;
+import '../task/widgets/task_source_region_section.dart';
 
 /// نافذة تعديل المهمة الشاملة - جميع الحقول قابلة للتعديل
 class EditTaskDialog extends StatefulWidget {
@@ -43,6 +44,9 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
   String _selectedFBG = '';
   bool _isLoading = false;
   bool _isDataLoading = true;
+
+  // ربط المهمة بحساب مصدر ومنطقة (المرحلة 1) — اختياري
+  late TaskSourceSelection _sourceSel;
 
   final List<String> _statuses = ['مفتوحة', 'قيد التنفيذ', 'مكتملة', 'ملغية'];
   final List<String> _priorities = ['منخفض', 'متوسط', 'عالي', 'عاجل'];
@@ -103,6 +107,14 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
     _selectedLeader = widget.task.leader;
     _selectedTechnician = widget.task.technician;
     _selectedFBG = widget.task.fbg;
+
+    _sourceSel = TaskSourceSelection(
+      type: widget.task.sourceAccountType,
+      accountId: widget.task.sourceAccountId,
+      partnerId: widget.task.partnerId,
+      partnerName: widget.task.partnerName,
+      regionRef: widget.task.regionRef,
+    );
   }
 
   @override
@@ -433,6 +445,18 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
                               label: 'الموقع',
                               icon: Icons.location_on,
                               required: true,
+                            ),
+                            const SizedBox(height: 20),
+
+                            // حساب المصدر والمنطقة (المرحلة 1) — اختياري
+                            _buildSectionTitle('حساب المصدر والمنطقة (اختياري)'),
+                            const SizedBox(height: 12),
+                            TaskSourceRegionSection(
+                              initial: _sourceSel,
+                              initialAccountLabel:
+                                  widget.task.sourceAccountLabel,
+                              initialRegionName: widget.task.regionName,
+                              onChanged: (sel) => _sourceSel = sel,
                             ),
                             const SizedBox(height: 20),
 
@@ -1105,6 +1129,13 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         priority: _selectedPriority,
         amount: double.tryParse(_amountController.text.replaceAll(',', '').trim()),
         deliveryFee: double.tryParse(_deliveryFeeController.text.replaceAll(',', '').trim()),
+        // ربط حساب المصدر/المنطقة — اللقطات (Label/RegionName) تُشتَقّ خادمياً
+        // فتظهر بعد تحديث القائمة من الخادم؛ هنا نحدّث الحقول المحلية فوراً.
+        sourceAccountType: _sourceSel.type,
+        sourceAccountId: _sourceSel.accountId,
+        partnerId: _sourceSel.partnerId,
+        partnerName: _sourceSel.partnerName,
+        regionRef: _sourceSel.regionRef,
         // Keep the original close time when the status was not changed.
         closedAt: _selectedStatus == widget.task.status
             ? widget.task.closedAt
@@ -1139,6 +1170,18 @@ class _EditTaskDialogState extends State<EditTaskDialog> {
         priority: updatedTask.priority,
         amount: parsedAmount,
         deliveryFee: double.tryParse(_deliveryFeeController.text.replaceAll(',', '').trim()),
+        // ربط حساب المصدر/المنطقة — نرسل النوع دائماً (يشمل 0=None لمسح الربط)
+        sourceAccountType: _sourceSel.type,
+        sourceAccountId:
+            _sourceSel.accountId.isNotEmpty ? _sourceSel.accountId : null,
+        partnerId: _sourceSel.partnerId.isNotEmpty ? _sourceSel.partnerId : null,
+        partnerName:
+            _sourceSel.partnerName.isNotEmpty ? _sourceSel.partnerName : null,
+        // المنطقة: القسم معروض دائماً هنا، فالقيمة تعكس نيّة المستخدم.
+        // نرسلها كما هي (نصّاً) لا null: "" = مسح صريح يصفّرها خادمياً
+        // (عند مسح الحقل أو اختيار نوع «لا شيء»)؛ قيمة غير فارغة = القيمة الجديدة
+        // أو القيمة المُهيّأة من المهمة بلا تغيير. null (= لا تعديل) لا يُستخدم هنا.
+        regionRef: _sourceSel.regionRef,
       );
 
       if (result['success'] == true) {

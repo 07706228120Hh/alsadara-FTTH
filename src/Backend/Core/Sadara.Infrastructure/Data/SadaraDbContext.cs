@@ -1019,6 +1019,16 @@ public class SadaraDbContext : DbContext
             // ربط العقار (سجل العقارات) — اختياري؛ حذف العقار لا يحذف الطلب (SetNull)
             entity.HasIndex(e => e.PropertyId);
             entity.HasOne(e => e.Property).WithMany().HasForeignKey(e => e.PropertyId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+            // الحساب المصدر والمنطقة (وسم يدوي) — لقطات نصّية + مراجع؛ العزل دائماً بـ CompanyId من التوكن
+            entity.Property(e => e.SourceAccountLabel).HasMaxLength(200);
+            entity.Property(e => e.PartnerId).HasMaxLength(100);
+            entity.Property(e => e.PartnerName).HasMaxLength(200);
+            entity.Property(e => e.RegionRef).HasMaxLength(100);
+            entity.Property(e => e.RegionName).HasMaxLength(200);
+            // فهرس فلترة المهام حسب الحساب المصدر ضمن الشركة
+            entity.HasIndex(e => new { e.CompanyId, e.SourceAccountType, e.SourceAccountId });
+            // فهرس تجميع/تصفية المهام حسب المنطقة ضمن الشركة
+            entity.HasIndex(e => new { e.CompanyId, e.RegionRef });
         });
 
         // ServiceRequestComment (تعليق على طلب)

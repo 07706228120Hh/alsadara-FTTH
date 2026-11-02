@@ -170,6 +170,9 @@ class _TaskCardState extends State<TaskCard> {
                 child: _buildCompactBasicInfo(),
               ),
 
+              // شارات حساب المصدر/الشريك/المنطقة (المرحلة 1) — تظهر عند وجودها فقط
+              _buildSourceBadges(isSmall),
+
               if (showDetails) ...[
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: isSmall ? 8 : 14),
@@ -472,6 +475,63 @@ class _TaskCardState extends State<TaskCard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// شارات مدمجة لحساب المصدر/الشريك/المنطقة — تظهر فقط عند وجود قيمة.
+  Widget _buildSourceBadges(bool isSmall) {
+    final t = widget.task;
+    final badges = <Widget>[];
+    if (t.sourceAccountLabel.isNotEmpty) {
+      final isSas = t.sourceAccountType == 2;
+      badges.add(_sourceBadge(
+          isSas ? Icons.dns_outlined : Icons.router_outlined,
+          t.sourceAccountLabel,
+          isSas ? SdColors.platformBase : SdColors.info));
+    }
+    if (t.partnerName.isNotEmpty) {
+      badges.add(_sourceBadge(
+          Icons.handshake_outlined, t.partnerName, SdColors.accent));
+    }
+    if (t.regionName.isNotEmpty) {
+      badges.add(_sourceBadge(
+          Icons.place_outlined, t.regionName, SdColors.success));
+    }
+    if (badges.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.fromLTRB(isSmall ? 8 : 14, 0, isSmall ? 8 : 14, 2),
+      child: Wrap(spacing: 6, runSpacing: 4, children: badges),
+    );
+  }
+
+  Widget _sourceBadge(IconData icon, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 160),
+            child: Text(
+              text,
+              style: TextStyle(
+                  fontFamily: SdText.family,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w700,
+                  color: color),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

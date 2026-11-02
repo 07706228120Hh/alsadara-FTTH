@@ -313,7 +313,30 @@ public class ServiceRequest : BaseEntity<Guid>
     
     /// <summary>المنطقة</summary>
     public string? Area { get; set; }
-    
+
+    // ============ الحساب المصدر والمنطقة (وسم يدوي — ربط المهمة بحساب شركة ومنطقة) ============
+
+    /// <summary>نوع الحساب المصدر: None=0 (غير موسوم) / Ftth=1 / Sas=2</summary>
+    public TaskSourceAccountType SourceAccountType { get; set; } = TaskSourceAccountType.None;
+
+    /// <summary>مرجع الحساب المصدر: FtthAccount.Id أو SasAccount.Id حسب النوع</summary>
+    public Guid? SourceAccountId { get; set; }
+
+    /// <summary>لقطة اسم/تسمية الحساب وقت الوسم (عرض مستقر حتى لو تغيّر الحساب لاحقاً)</summary>
+    public string? SourceAccountLabel { get; set; }
+
+    /// <summary>معرّف عضو FTTH للشريك الرئيسي (لـ FTTH فقط) — نصّي لأنه معرّف FTTH لا GUID</summary>
+    public string? PartnerId { get; set; }
+
+    /// <summary>اسم الشريك الرئيسي («مكتب 11»/«مدينة الصدر») — لقطة للعرض</summary>
+    public string? PartnerName { get; set; }
+
+    /// <summary>مرجع المنطقة: Guid منطقة الساس كنص، أو منطقة نصّية يدوية (FTTH مرحلة 1)</summary>
+    public string? RegionRef { get; set; }
+
+    /// <summary>اسم المنطقة المعروض (لقطة)</summary>
+    public string? RegionName { get; set; }
+
     /// <summary>رقم الهاتف للتواصل</summary>
     public string? ContactPhone { get; set; }
     

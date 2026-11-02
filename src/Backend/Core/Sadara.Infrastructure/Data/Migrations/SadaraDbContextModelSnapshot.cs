@@ -6913,6 +6913,14 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.Property<int>("OperationTypeId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("PartnerId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PartnerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
@@ -6929,6 +6937,14 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<string>("RegionName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("RegionRef")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("RequestNumber")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -6941,6 +6957,16 @@ namespace Sadara.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("ServiceId")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SourceAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceAccountLabel")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("SourceAccountType")
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("StartedAt")
@@ -6991,6 +7017,10 @@ namespace Sadara.Infrastructure.Data.Migrations
                     b.HasIndex("Status");
 
                     b.HasIndex("TechnicianId");
+
+                    b.HasIndex("CompanyId", "RegionRef");
+
+                    b.HasIndex("CompanyId", "SourceAccountType", "SourceAccountId");
 
                     b.ToTable("ServiceRequests");
                 });
