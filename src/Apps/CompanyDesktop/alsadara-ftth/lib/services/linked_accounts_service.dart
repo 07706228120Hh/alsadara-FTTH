@@ -238,6 +238,27 @@ class LinkedAccountsService {
     return _toMap(response);
   }
 
+  /// تحويل رصيد العمولة إلى المحفظة الرئيسية في نظام FTTH عبر بوّابة الصدارة.
+  /// الخادم يفرض الصلاحية `transfer_commission` + العزل، ويفكّ الاعتماد داخلياً،
+  /// ويجلب partnerId/الرصيد حيّاً ويفرض الحدّ (لا نعتمد على العميل للأمن).
+  /// [amount] عدد صحيح موجب بالدينار؛ [requestId] مفتاح idempotency من العميل.
+  /// يُرجع Map موحّدة مع statusCode في كل الحالات:
+  ///   - 200 نجاح (data = {amount, partnerId, status})
+  ///   - 400 مبلغ غير صحيح/يتجاوز الرصيد · 403 لا صلاحية · 404 حساب غير موجود
+  ///   - 409 طلب بنفس المعرّف قيد التنفيذ · 429 تجاوز المحاولات · 502 تعذّر النداء لـ FTTH
+  Future<Map<String, dynamic>> transferCommission(
+    String ftthAccountId, {
+    required int amount,
+    required String requestId,
+  }) async {
+    final response = await _client.post(
+      '/linked-accounts/ftth/$ftthAccountId/transfer-commission',
+      {'amount': amount, 'requestId': requestId},
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
   /// كشف كلمة مرور FTTH (أدمن شركة فقط؛ قد يرجع 403).
   /// يُرجع data = {password} عند النجاح.
   Future<Map<String, dynamic>> revealFtth(String id) async {

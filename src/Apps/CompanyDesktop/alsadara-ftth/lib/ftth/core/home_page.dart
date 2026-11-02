@@ -65,7 +65,6 @@ import '../../services/vps_auth_service.dart'; // لمعرّف الموظف ال
 import '../../services/linked_accounts_service.dart'; // جلب حسابات FTTH المرتبطة للتبديل
 import '../../services/ftth/ftth_cache_service.dart';
 import '../../services/ftth/ftth_event_bus.dart';
-import '../../services/ftth_api_config.dart'; // مضيف FTTH الموحّد (admin.ftth.iq عبر بوّابة CF)
 
 import '../../utils/responsive_helper.dart';
 import '../../widgets/notification_bell.dart';
@@ -161,6 +160,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool isAdmin = false;
   // تحويل العمولة → المحفظة الرئيسية (FTTH): منع الضغط المزدوج أثناء التنفيذ
   bool _transferInProgress = false;
+  // مفتاح idempotency مثبَّت على نيّة التحويل الواحدة (المبلغ + حساب الشريك) لا
+  // على كل نداء: إعادة المحاولة لنفس النيّة تُعيد استخدام نفس المعرّف ⇒ البوّابة
+  // تُعيد 409 فتمنع التحويل المزدوج. يُمسح بعد نجاح مؤكّد (200) ليأخذ أي تحويل
+  // لاحق مقصود معرّفاً جديداً.
+  String? _pendingTransferRequestId;
+  int? _pendingTransferAmount;
+  String? _pendingTransferPartnerId;
   DateTime? lastUpdateTime; // نظام إدارة الصلاحيات - الحالة الافتراضية
   // أعلام للتحميل المبكر وتحكم تكرار الطلبات
   bool _earlyPrefetchStarted = false;
@@ -4618,8 +4624,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           title: 'العمولة',
           value: commission,
           color: SdColors.success,
-          // تحويل العمولة → المحفظة الرئيسية: لمدير الشركة أو من مُنح صلاحية transfer_commission
-          onTap: (isAdmin || _hasPermission('transfer_commission'))
+          // تحويل العمولة → المحفظة الرئيسية: منح صريح لصلاحية transfer_commission
+          // فقط (عملية مالية لا تُمنح تلقائياً للمدير) — من لا يملكها لا يرى الزر،
+          // فلا يظهر زر يُرفَض خادمياً بـ403 (مواءمة ظهور الزر مع الصلاحية الخادمية).
+          onTap: _hasPermission('transfer_commission')
               ? _showTransferCommissionDialog
               : null,
         ),
@@ -5079,10 +5087,48 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     ).then((_) => controller.dispose());
   }
 
-  /// تنفيذ التحويل فعلياً عبر نفس طبقة FTTH المُصادقة (توكن الحساب النشط).
-  /// محمي من الضغط المزدوج. عملية مالية ⇒ نتعامل مع الغموض بحذر:
-  /// عند انقطاع/مهلة بعد إرسال الطلب (ربما نفّذه خادم FTTH) لا نُظهر خطأً
-  /// يشجّع التكرار، بل نُعيد جلب الرصيد ونعرض حالة «غير مؤكّدة».
+  /// يحدّد معرّف كيان FtthAccount للحساب النشط حالياً — لازم للنداء الخادمي
+  /// الموحّد `/api/linked-accounts/ftth/{id}/transfer-commission`. يطابق اسم
+  /// المستخدم النشط ضمن الحسابات المرتبطة؛ يُعيد الجلب مرّة إن لم يجده في الذاكرة.
+  /// يُعيد null إن تعذّر إيجاد معرّف موثوق — لا تخمين (العميل يتوقّف ويبلّغ).
+  Future<String?> _resolveActiveFtthAccountId() async {
+    final activeUsername =
+        DualAuthService.instance.ftthUsername ?? widget.username;
+    if (activeUsername.isEmpty) return null;
+
+    String? matchIn(Iterable<LinkedAccount> accounts) {
+      for (final a in accounts) {
+        if (a.isFtth && a.username == activeUsername && a.id.isNotEmpty) {
+          return a.id;
+        }
+      }
+      return null;
+    }
+
+    // 1) من القائمة المحمّلة مسبقاً في الذاكرة (مُبدّل الحساب).
+    final cached = matchIn(_ftthAccounts);
+    if (cached != null) return cached;
+
+    // 2) إعادة جلب الحسابات المرتبطة للموظف الحالي ومطابقة النشط.
+    final selfUserId = VpsAuthService.instance.currentUser?.id;
+    if (selfUserId == null || selfUserId.isEmpty) return null;
+    final result = await LinkedAccountsService.instance.getAccounts(selfUserId);
+    if (result['success'] != true) return null;
+    final data = result['data'];
+    if (data is! List) return null;
+    final fresh = data.whereType<LinkedAccount>().toList();
+    if (mounted) {
+      setState(() =>
+          _ftthAccounts = fresh.where((a) => a.isFtth && a.isActive).toList());
+    }
+    return matchIn(fresh);
+  }
+
+  /// تنفيذ التحويل فعلياً عبر بوّابة الصدارة (توكن الصدارة JWT + صلاحية
+  /// `transfer_commission` + عزل الشركة). الخادم يفكّ الاعتماد ويجلب partnerId/
+  /// الرصيد حيّاً ويفرض الحدّ — لا نعتمد على العميل للأمن. محمي من الضغط المزدوج.
+  /// عملية مالية ⇒ نتعامل مع الغموض بحذر: عند انقطاع/مهلة بعد إرسال الطلب لا
+  /// نُظهر خطأً يشجّع التكرار، بل نُعيد جلب الرصيد ونعرض حالة «غير مؤكّدة».
   Future<void> _doTransferCommission(
     int amount, {
     required String expectedPartnerId,
@@ -5098,6 +5144,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
 
     // نعيد التحقّق من الرصيد لحظة التنفيذ (قد تكون العمولة تغيّرت بعد تحديث).
+    // حارس واجهة لتجربة المستخدم فقط؛ الحدّ الفعلي مفروض خادمياً على الرصيد الحيّ.
     if (amount <= 0 || amount > commission) {
       showError('تعذّر تنفيذ التحويل — تحقّق من رصيد العمولة والمبلغ');
       return;
@@ -5105,10 +5152,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     _transferInProgress = true;
 
-    // مفتاح idempotency ثابت لهذه العملية الواحدة — يُولَّد مرّة قبل الطلب.
-    // إن دعمه خادم FTTH يمنع التحويل المزدوج عند إعادة الإرسال؛ وإن لم يدعمه
-    // فهو غير ضار. لا نُعيد الإرسال تلقائياً في كل الأحوال.
-    final requestId = _newRequestId();
+    // مفتاح idempotency مثبَّت على نيّة التحويل الواحدة (المبلغ + حساب الشريك):
+    // يُولَّد مرّة عند أول محاولة لهذه النيّة ويُحفظ. أي إعادة محاولة يدوية لنفس
+    // النيّة (بعد مهلة/غموض والسجلّ ما زال Pending خادمياً) تُعيد استخدام نفس
+    // المعرّف ⇒ البوّابة تُعيد 409 فتمنع التحويل المزدوج. تحويل مقصود جديد (مبلغ
+    // مختلف، أو بعد نجاح مؤكّد يُمسح فيه المعرّف) يأخذ معرّفاً جديداً. لا إعادة
+    // إرسال تلقائية بأي حال.
+    if (_pendingTransferRequestId == null ||
+        _pendingTransferAmount != amount ||
+        _pendingTransferPartnerId != expectedPartnerId) {
+      _pendingTransferRequestId = _newRequestId();
+      _pendingTransferAmount = amount;
+      _pendingTransferPartnerId = expectedPartnerId;
+    }
+    final requestId = _pendingTransferRequestId!;
 
     bool spinnerOpen = true;
     void closeSpinner() {
@@ -5125,20 +5182,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
 
     try {
-      final resp = await AuthService.instance.authenticatedRequest(
-        'POST',
-        '${FtthApi.api}/partners/$pid/wallets/transfer-commission',
-        headers: {'Idempotency-Key': requestId},
-        body: jsonEncode({
-          'amount': amount.toString(),
-          'requestId': requestId,
-        }),
+      // معرّف حساب FTTH المربوط النشط — لازم للنداء الخادمي الموحّد.
+      final ftthAccountId = await _resolveActiveFtthAccountId();
+      if (!mounted) return;
+      if (ftthAccountId == null || ftthAccountId.isEmpty) {
+        closeSpinner();
+        showError(
+            'تعذّر تحديد حساب FTTH المرتبط النشط — تحقّق من الحسابات المرتبطة ثم أعد المحاولة');
+        return;
+      }
+
+      final result = await LinkedAccountsService.instance.transferCommission(
+        ftthAccountId,
+        amount: amount,
+        requestId: requestId,
       );
       if (!mounted) return;
       closeSpinner();
 
-      final code = resp.statusCode;
-      if (code == 200) {
+      final code = (result['statusCode'] as int?) ?? 0;
+      final serverMsg = result['message']?.toString();
+      if (result['success'] == true && code == 200) {
+        // نجاح مؤكّد: نُنهي هذه النيّة فيأخذ أي تحويل لاحق (ولو بنفس المبلغ)
+        // معرّفاً جديداً — لا نحبس المستخدم على مفتاح استُهلك.
+        _clearPendingTransfer();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -5150,14 +5217,27 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         );
         await fetchWalletBalance();
       } else if (code == 403) {
-        showError('لا تملك صلاحية تحويل العمولة في نظام FTTH');
+        showError('لا تملك صلاحية تحويل العمولة');
       } else if (code == 401) {
         showError('انتهت الجلسة — أعد تسجيل الدخول');
-      } else {
-        // رمز خطأ واضح من الخادم: التحويل لم ينفَّذ غالباً، لكن نعيد جلب
-        // الرصيد احترازاً ونطلب التأكّد قبل أي إعادة محاولة يدوية.
+      } else if (code == 400) {
+        // الحدّ مفروض خادمياً على الرصيد الحيّ: أغلب الحالات المبلغ يتجاوز
+        // رصيد العمولة المتاح. نعيد جلب الرصيد ونعرض رسالة الخادم إن وُجدت.
         await fetchWalletBalance();
-        showError('تعذّر تحويل العمولة (رمز $code) — تحقّق من الرصيد قبل إعادة المحاولة');
+        showError(serverMsg ??
+            'المبلغ يتجاوز رصيد العمولة — تأكّد من الرصيد ثم أعد المحاولة');
+      } else if (code == 409) {
+        // طلب بنفس المعرّف مُسجَّل/قيد التنفيذ خادمياً — لا نُعيد الإرسال (منع تحويل
+        // مزدوج). نُبقي المعرّف كما هو فأي محاولة لاحقة لنفس النيّة تظلّ تصطدم بـ409.
+        await fetchWalletBalance();
+        showError(serverMsg ??
+            'الطلب قيد المعالجة/مُسجَّل — تحقّق من الرصيد قبل بدء تحويل جديد');
+      } else {
+        // رمز خطأ آخر (404/429/502/500...): نعيد جلب الرصيد احترازاً ونطلب
+        // التأكّد قبل أي إعادة محاولة يدوية. لا إعادة إرسال تلقائية.
+        await fetchWalletBalance();
+        showError(serverMsg ??
+            'تعذّر تحويل العمولة (رمز $code) — تحقّق من الرصيد قبل إعادة المحاولة');
       }
     } catch (e) {
       // انقطاع/مهلة بعد إرسال الطلب: نتيجة التحويل غير مؤكّدة. لا نشجّع التكرار.
@@ -5175,8 +5255,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
+  /// يُنهي نيّة التحويل الحالية (بعد نجاح مؤكّد) فيُولَّد معرّف جديد للتحويل التالي.
+  void _clearPendingTransfer() {
+    _pendingTransferRequestId = null;
+    _pendingTransferAmount = null;
+    _pendingTransferPartnerId = null;
+  }
+
   /// مُعرّف طلب فريد (idempotency key) — طابع زمني بالميكروثانية + عشوائية،
-  /// بلا اعتماد خارجي. يكفي لتمييز العملية الواحدة لدى خادم FTTH إن دعمه.
+  /// بلا اعتماد خارجي. يكفي لتمييز العملية الواحدة لدى بوّابة الصدارة.
   String _newRequestId() {
     final ts = DateTime.now().microsecondsSinceEpoch;
     final rnd = math.Random().nextInt(0x7fffffff);

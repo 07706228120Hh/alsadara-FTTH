@@ -163,6 +163,9 @@ public class SadaraDbContext : DbContext
     // ==================== FTTH Multi-Account Linking (حسابات FTTH المتعددة لكل موظف) ====================
     public DbSet<FtthAccount> FtthAccounts => Set<FtthAccount>();
 
+    // ==================== FTTH Commission Transfer (حارس تحويل العمولة: idempotency + تدقيق) ====================
+    public DbSet<FtthCommissionTransfer> FtthCommissionTransfers => Set<FtthCommissionTransfer>();
+
     // ==================== Credential Reveal Audit (تدقيق كشف الاعتماد المُعمَّر) ====================
     public DbSet<CredentialRevealAudit> CredentialRevealAudits => Set<CredentialRevealAudit>();
     public DbSet<ForceLogoutAudit> ForceLogoutAudits => Set<ForceLogoutAudit>();
@@ -465,6 +468,22 @@ public class SadaraDbContext : DbContext
             .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<FtthAccount>()
             .HasOne<User>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+
+        // ==================== FTTH Commission Transfer (حارس تحويل العمولة) ====================
+        // سجلّ idempotency/تدقيق لكل عملية تحويل عمولة. معزول بالشركة (ITenantScoped) + FK شركة Cascade.
+        // الفهرس الفريد المُرشّح (شركة + حساب + RequestId) بـ !IsDeleted هو ضمان idempotency على مستوى
+        // القاعدة: نفس (الشركة/الحساب/RequestId) لا يُدرَج مرّتين (يمنع التحويل المزدوج حتى عند السباق).
+        // فهرس إضافي (شركة + مالك) لعرض عمليات الموظّف المعزولة. لا FK على OwnerUserId/FtthAccountId عمداً
+        // (مراجع تدقيق تبقى ولو حُذف الحساب/المستخدم، وتفادياً لمسارات حذف متسلسلة متعددة).
+        modelBuilder.Entity<FtthCommissionTransfer>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<FtthCommissionTransfer>()
+            .HasIndex(x => new { x.CompanyId, x.OwnerUserId });
+        modelBuilder.Entity<FtthCommissionTransfer>()
+            .HasIndex(x => new { x.CompanyId, x.FtthAccountId, x.RequestId })
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false");
+        modelBuilder.Entity<FtthCommissionTransfer>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
 
         // ==================== Credential Reveal Audit (تدقيق كشف الاعتماد المُعمَّر) ====================
         // سجلّ دائم لكل عملية كشف كلمة مرور (FTTH/ساس). معزول بالشركة + فهرسان مركّبان للجلب المعزول:

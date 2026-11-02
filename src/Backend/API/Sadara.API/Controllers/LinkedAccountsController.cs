@@ -839,6 +839,129 @@ public class LinkedAccountsController : ControllerBase
         }
     }
 
+    // ==================== 7ب) حارس تحويل العمولة إلى المحفظة الرئيسية (FTTH) ====================
+
+    /// <summary>
+    /// حارس خادمي لتحويل رصيد العمولة إلى المحفظة الرئيسية في نظام FTTH. بدل أن ينادي العميل FTTH مباشرةً
+    /// (والتحقّق واجهي فقط)، تمرّ العملية عبر هذه البوّابة التي تفرض خادمياً — قبل أي نداء تحويل —:
+    ///  1) idempotency: نتيجة نهائية مسجّلة لنفس (الشركة/الحساب/RequestId) ⇒ تُعاد كما هي بلا إعادة تنفيذ.
+    ///  2) تسجيل دخول خادمي لـ FTTH بالاعتماد المخزّن (مفكوك في الذاكرة فقط) — بإعادة استخدام <see cref="FtthLoginAsync"/>.
+    ///  3) جلب رصيد العمولة الحيّ من FTTH + حلّ partnerId الحيّ (current-user).
+    ///  4) الحارس: <c>0 &lt; amount &amp;&amp; amount ≤ رصيد العمولة</c> وإلا 400 عربي بصفر نداء تحويل.
+    ///  5) تنفيذ التحويل مع تمرير <c>Idempotency-Key</c>/<c>requestId</c>، وتسجيل النتيجة في سجلّ التدقيق.
+    ///
+    /// الصلاحية: <c>transfer_commission</c> (النظام الأول، failClosed). العزل: الحساب ضمن شركة التوكن
+    /// ومالكه المستخدم الحالي (أو أدمن شركة يدير شركته) عبر <see cref="GetAccessibleAccountAsync"/>.
+    /// ⚠️ لا يُعاد أي اعتماد/سرّ ولا توكن في أي استجابة.
+    /// </summary>
+    [HttpPost("ftth/{id}/transfer-commission")]
+    [RequirePermission("transfer_commission", "view", PermissionSystem.First, failClosed: true)]
+    [EnableRateLimiting("credential-reveal")]
+    public async Task<IActionResult> TransferCommission(Guid id, [FromBody] TransferCommissionRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var currentUserId, out var denied))
+            return denied!;
+
+        // تحقّق الإدخال الأساسي (بلا نداء FTTH ولا إنشاء سجلّ لمدخلات غير صالحة).
+        if (request == null || string.IsNullOrWhiteSpace(request.RequestId))
+            return BadRequest(new { success = false, message = "معرّف الطلب مطلوب" });
+        if (request.Amount <= 0)
+            return BadRequest(new { success = false, message = "مبلغ غير صحيح" });
+
+        var requestId = request.RequestId.Trim();
+        // charset مقيّد: يصلح كمعرّف فريد وكقيمة ترويسة Idempotency-Key آمنة (بلا أسطر/حقن).
+        if (requestId.Length > 128 || !requestId.All(c => char.IsLetterOrDigit(c) || c is '-' or '_' or '.'))
+            return BadRequest(new { success = false, message = "معرّف الطلب غير صالح" });
+
+        var account = await GetAccessibleAccountAsync(id, companyId, currentUserId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب FTTH غير موجود" });
+
+        // idempotency (مستوى التطبيق): نتيجة مسجّلة لنفس (الشركة/الحساب/RequestId) ⇒ أعِدها بلا إعادة تنفيذ.
+        var existing = await _db.FtthCommissionTransfers.FirstOrDefaultAsync(
+            x => x.CompanyId == companyId && x.FtthAccountId == account.Id && x.RequestId == requestId, ct);
+        if (existing != null)
+            return BuildTransferReplayResult(existing);
+
+        // أنشئ سجلّ Pending أولاً — الفهرس الفريد (شركة/حساب/RequestId) يلتقط السباق المتزامن قبل أي تحويل.
+        var record = new FtthCommissionTransfer
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = companyId,          // ختم العزل من التوكن
+            OwnerUserId = account.OwnerUserId,
+            FtthAccountId = account.Id,
+            PartnerId = string.Empty,
+            Amount = request.Amount,
+            RequestId = requestId,
+            Status = FtthCommissionTransferStatus.Pending
+        };
+        try
+        {
+            await _db.FtthCommissionTransfers.AddAsync(record, ct);
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            // سباق: أُدرِج سجلّ بنفس (الشركة/الحساب/RequestId) بالتزامن ⇒ أعِد نتيجته (idempotency على مستوى القاعدة).
+            _db.Entry(record).State = EntityState.Detached;
+            var concurrent = await _db.FtthCommissionTransfers.FirstOrDefaultAsync(
+                x => x.CompanyId == companyId && x.FtthAccountId == account.Id && x.RequestId == requestId, ct);
+            if (concurrent != null)
+                return BuildTransferReplayResult(concurrent);
+            throw;
+        }
+
+        try
+        {
+            var password = _secretProtector.Unprotect(account.PasswordEncrypted); // في الذاكرة فقط
+            var login = await FtthLoginAsync(account.ServerUrl, account.Username, password, ct);
+            if (!login.Ok || string.IsNullOrEmpty(login.AccessToken))
+                return await FinalizeTransferAsync(record, FtthCommissionTransferStatus.Failed, 502,
+                    login.Error ?? "تعذّر تسجيل الدخول لنظام FTTH", ct);
+
+            // partnerId الحيّ من FTTH (current-user) — لا نثق بأي قيمة من العميل.
+            var partnerId = await FtthGetPartnerIdAsync(account.ServerUrl, login.AccessToken!, ct);
+            if (string.IsNullOrEmpty(partnerId))
+                return await FinalizeTransferAsync(record, FtthCommissionTransferStatus.Failed, 502,
+                    "تعذّر تحديد حساب الشريك من نظام FTTH", ct);
+            record.PartnerId = partnerId!;
+
+            // رصيد العمولة الحيّ.
+            var commission = await FtthGetCommissionBalanceAsync(account.ServerUrl, login.AccessToken!, partnerId!, ct);
+            if (commission == null)
+                return await FinalizeTransferAsync(record, FtthCommissionTransferStatus.Failed, 502,
+                    "تعذّر جلب رصيد العمولة من نظام FTTH", ct);
+
+            // الحارس المالي: المبلغ يجب ألّا يتجاوز رصيد العمولة الحيّ — صفر نداء تحويل عند التجاوز.
+            if (request.Amount > commission.Value)
+                return await FinalizeTransferAsync(record, FtthCommissionTransferStatus.Failed, 400,
+                    "المبلغ يتجاوز رصيد العمولة", ct);
+
+            // تنفيذ التحويل فعلياً مع تمرير Idempotency-Key/requestId لـ FTTH.
+            var transfer = await FtthTransferCommissionAsync(
+                account.ServerUrl, login.AccessToken!, partnerId!, request.Amount, requestId, ct);
+
+            if (transfer.Ok)
+                return await FinalizeTransferAsync(record, FtthCommissionTransferStatus.Succeeded, 200,
+                    "تم تحويل العمولة إلى المحفظة بنجاح", ct,
+                    successData: new { amount = record.Amount, partnerId, status = FtthCommissionTransferStatus.Succeeded });
+
+            return await FinalizeTransferAsync(record, FtthCommissionTransferStatus.Failed, transfer.StatusCode,
+                transfer.Error ?? "تعذّر تحويل العمولة", ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // نتيجة غير مؤكّدة: نُبقي السجلّ Pending عمداً (لا نعلّمه فشلاً لئلا يُعاد التحويل تلقائياً).
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تحويل العمولة لحساب FTTH accountId={AccountId}", account.Id);
+            // بعد احتمال إرسال طلب التحويل تكون النتيجة غير مؤكّدة ⇒ نُبقي السجلّ Pending ونعيد 500.
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
     // ==================== 8) ترحيل من البيانات القديمة (أدمن) ====================
 
     /// <summary>
@@ -1006,6 +1129,176 @@ public class LinkedAccountsController : ControllerBase
             return (false, null, null, "تعذّر الاتصال بنظام FTTH");
         }
     }
+
+    // ==================== مساعدات حارس تحويل العمولة ====================
+
+    /// <summary>يتحقّق أنّ مقطع المسار (partnerId) آمن للاستخدام في URL: أحرف/أرقام/شرطة فقط، ≤64.</summary>
+    private static bool IsSafePathSegment(string? s)
+        => !string.IsNullOrWhiteSpace(s) && s.Length <= 64 && s.All(ch => char.IsLetterOrDigit(ch) || ch == '-');
+
+    /// <summary>
+    /// يبني <see cref="HttpClient"/> مُصادَقاً لنظام FTTH بنفس ترويسات WAF المطلوبة + Bearer.
+    /// تعطيل إعادة التوجيه التلقائية (إغلاق التفاف SSRF عبر 3xx). المستدعي يتولّى التخلّص (using).
+    /// </summary>
+    private static HttpClient BuildFtthAuthedClient(string accessToken)
+    {
+        var handler = new HttpClientHandler { AllowAutoRedirect = false };
+        var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(20) };
+        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
+        client.DefaultRequestHeaders.Add("Origin", "https://admin.ftth.iq");
+        client.DefaultRequestHeaders.Add("Referer", "https://admin.ftth.iq/");
+        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+        client.DefaultRequestHeaders.Add("x-client-app", "53d57a7f-3f89-4e9d-873b-3d071bc6dd9f");
+        client.DefaultRequestHeaders.Add("x-user-role", "0");
+        return client;
+    }
+
+    /// <summary>يجلب partnerId الحيّ من FTTH عبر current-user (model.self.id). يعيد null عند الفشل.</summary>
+    private async Task<string?> FtthGetPartnerIdAsync(string serverUrl, string accessToken, CancellationToken ct)
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(serverUrl) ? DefaultFtthBaseUrl : serverUrl.TrimEnd('/');
+        if (!IsAllowedFtthServerUrl(baseUrl)) return null; // دفاع بالعمق (إغلاق SSRF)
+
+        try
+        {
+            using var client = BuildFtthAuthedClient(accessToken);
+            var resp = await client.GetAsync($"{baseUrl}/api/current-user", ct);
+            if (!resp.IsSuccessStatusCode) return null;
+
+            var json = await resp.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("model", out var model)
+                && model.TryGetProperty("self", out var self)
+                && self.TryGetProperty("id", out var idEl))
+            {
+                return idEl.ValueKind switch
+                {
+                    JsonValueKind.String => idEl.GetString(),
+                    JsonValueKind.Number => idEl.GetRawText(),
+                    _ => null
+                };
+            }
+            return null;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "تعذّر جلب partnerId من نظام FTTH");
+            return null;
+        }
+    }
+
+    /// <summary>يجلب رصيد العمولة الحيّ من FTTH (model.commission). يعيد null عند الفشل.</summary>
+    private async Task<decimal?> FtthGetCommissionBalanceAsync(string serverUrl, string accessToken, string partnerId, CancellationToken ct)
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(serverUrl) ? DefaultFtthBaseUrl : serverUrl.TrimEnd('/');
+        if (!IsAllowedFtthServerUrl(baseUrl)) return null;
+        if (!IsSafePathSegment(partnerId)) return null; // partnerId جزء من المسار — نقبل معرّفات بسيطة فقط
+
+        try
+        {
+            using var client = BuildFtthAuthedClient(accessToken);
+            var resp = await client.GetAsync($"{baseUrl}/api/partners/{partnerId}/wallets/balance", ct);
+            if (!resp.IsSuccessStatusCode) return null;
+
+            var json = await resp.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("model", out var model)
+                && model.TryGetProperty("commission", out var c))
+            {
+                if (c.ValueKind == JsonValueKind.Number && c.TryGetDecimal(out var dn)) return dn;
+                if (c.ValueKind == JsonValueKind.String && decimal.TryParse(c.GetString(), out var ds)) return ds;
+            }
+            return null;
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "تعذّر جلب رصيد العمولة من نظام FTTH");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// ينفّذ تحويل العمولة لدى FTTH (partners/{partnerId}/wallets/transfer-commission) مع تمرير Idempotency-Key/requestId.
+    /// يعيد (نجاح، رمز HTTP، رسالة خطأ). لا يُسجَّل أي سرّ هنا.
+    /// </summary>
+    private async Task<(bool Ok, int StatusCode, string? Error)> FtthTransferCommissionAsync(
+        string serverUrl, string accessToken, string partnerId, long amount, string requestId, CancellationToken ct)
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(serverUrl) ? DefaultFtthBaseUrl : serverUrl.TrimEnd('/');
+        if (!IsAllowedFtthServerUrl(baseUrl)) return (false, 0, "عنوان خادم FTTH غير مسموح");
+        if (!IsSafePathSegment(partnerId)) return (false, 0, "معرّف الشريك غير صالح");
+
+        try
+        {
+            using var client = BuildFtthAuthedClient(accessToken);
+            client.DefaultRequestHeaders.Add("Idempotency-Key", requestId);
+
+            var payload = JsonSerializer.Serialize(new { amount = amount.ToString(), requestId });
+            using var content = new StringContent(payload, System.Text.Encoding.UTF8, "application/json");
+
+            var resp = await client.PostAsync($"{baseUrl}/api/partners/{partnerId}/wallets/transfer-commission", content, ct);
+            var code = (int)resp.StatusCode;
+            if (resp.IsSuccessStatusCode) return (true, code, null);
+            return (false, code, $"فشل تحويل العمولة لدى نظام FTTH: {code}");
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "تعذّر الاتصال بنظام FTTH أثناء تحويل العمولة");
+            return (false, 0, "تعذّر الاتصال بنظام FTTH");
+        }
+    }
+
+    /// <summary>
+    /// يُنهي سجلّ تحويل العمولة بنتيجة نهائية (نجاح/فشل): يحدّث الحالة/الرمز/الرسالة/الوقت، يحفظ، يسجّل تدقيقاً،
+    /// ويعيد استجابة API قياسية. responseCode يُستخدم رمز HTTP على الفشل (ويُعاد نفسه عند الإعادة idempotent).
+    /// </summary>
+    private async Task<IActionResult> FinalizeTransferAsync(
+        FtthCommissionTransfer record, string status, int responseCode, string message,
+        CancellationToken ct, object? successData = null)
+    {
+        record.Status = status;
+        record.FtthResponseCode = responseCode;
+        record.FtthMessage = message;
+        record.CompletedAtUtc = DateTime.UtcNow;
+        record.UpdatedAt = DateTime.UtcNow;
+        _db.FtthCommissionTransfers.Update(record);
+        await _db.SaveChangesAsync(ct);
+
+        // تدقيق أمني/مالي: من حوّل كم ولأي حساب/شريك ونتيجته — بلا أي سرّ ولا توكن.
+        _logger.LogWarning(
+            "AUDIT تحويل عمولة FTTH: companyId={CompanyId} accountId={AccountId} ownerUserId={Owner} partnerId={PartnerId} amount={Amount} requestId={RequestId} status={Status} ftthCode={Code} atUtc={AtUtc}",
+            record.CompanyId, record.FtthAccountId, record.OwnerUserId, record.PartnerId, record.Amount, record.RequestId, status, responseCode, DateTime.UtcNow);
+
+        if (status == FtthCommissionTransferStatus.Succeeded)
+            return Ok(new { success = true, data = successData ?? new { amount = record.Amount, status }, message });
+
+        var http = responseCode is >= 400 and < 600 ? responseCode : 502;
+        return StatusCode(http, new { success = false, message });
+    }
+
+    /// <summary>يبني استجابة idempotent من سجلّ تحويل موجود: نجاح يُعاد، فشل يُعاد برمزه، Pending => 409.</summary>
+    private IActionResult BuildTransferReplayResult(FtthCommissionTransfer t)
+    {
+        if (t.Status == FtthCommissionTransferStatus.Succeeded)
+            return Ok(new
+            {
+                success = true,
+                data = new { amount = t.Amount, partnerId = t.PartnerId, status = t.Status },
+                message = t.FtthMessage ?? "تم تحويل العمولة إلى المحفظة بنجاح"
+            });
+
+        if (t.Status == FtthCommissionTransferStatus.Failed)
+        {
+            var http = t.FtthResponseCode is >= 400 and < 600 ? t.FtthResponseCode.Value : 502;
+            return StatusCode(http, new { success = false, message = t.FtthMessage ?? "تعذّر تحويل العمولة" });
+        }
+
+        // Pending: عملية سابقة بنفس المعرّف لم تُحسَم نتيجتها بعد — لا نُعيد التنفيذ (منع تحويل مزدوج).
+        return StatusCode(409, new { success = false, message = "عملية تحويل بنفس المعرّف قيد التنفيذ — لا تُعِد الإرسال" });
+    }
 }
 
 // ============ DTOs (لا تحوي أي كلمة مرور) ============
@@ -1056,6 +1349,12 @@ public record CreateSasLinkedAccountRequest(
     SasAccountType? AccountType = null,
     decimal? AmountMultiplier = null,
     bool? IsActive = null);
+
+/// <summary>
+/// طلب تحويل رصيد العمولة إلى المحفظة الرئيسية (FTTH).
+/// Amount بالدينار (عدد صحيح موجب)؛ RequestId مُعرّف idempotency فريد من العميل.
+/// </summary>
+public record TransferCommissionRequest(long Amount, string RequestId);
 
 /// <summary>طلب تعديل حساب ساس — كل الحقول اختيارية؛ Password فقط عند التغيير.</summary>
 public record UpdateSasLinkedAccountRequest(
