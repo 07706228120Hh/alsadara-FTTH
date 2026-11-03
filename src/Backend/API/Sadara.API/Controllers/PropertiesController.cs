@@ -97,11 +97,22 @@ public class PropertiesController : ControllerBase
         if (!string.IsNullOrWhiteSpace(q))
         {
             var s = q.Trim();
+            // رقم الهاتف غالباً يُكتب بصِيَغ مختلفة؛ ننظّف أرقام البحث لمطابقة مرنة.
+            var digits = new string(s.Where(char.IsDigit).ToArray());
             query = query.Where(x =>
                 x.Npn.Contains(s) || x.NpnDisplay.Contains(s) ||
                 (x.IqPin != null && x.IqPin.Contains(s)) ||
                 x.Governorate.Contains(s) || x.Area.Contains(s) || x.District.Contains(s) ||
-                (x.Landmark != null && x.Landmark.Contains(s)));
+                (x.Landmark != null && x.Landmark.Contains(s)) ||
+                // الاسم/الهاتف المخزّنان مباشرةً على العقار (OwnerName/OwnerPhone).
+                (x.OwnerName != null && x.OwnerName.Contains(s)) ||
+                (x.OwnerPhone != null && x.OwnerPhone.Contains(s)) ||
+                (digits.Length >= 3 && x.OwnerPhone != null && x.OwnerPhone.Contains(digits)) ||
+                // المواطن الأساسي المرتبط (إن وُجد): الاسم أو الهاتف.
+                _db.PropertyResidents.Any(r => r.PropertyId == x.Id && !r.IsDeleted &&
+                    _db.Citizens.Any(c => c.Id == r.CitizenId && !c.IsDeleted &&
+                        (c.FullName.Contains(s) || c.PhoneNumber.Contains(s) ||
+                         (digits.Length >= 3 && c.PhoneNumber.Contains(digits))))));
         }
 
         var total = await query.CountAsync(ct);

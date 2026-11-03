@@ -280,7 +280,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
         onSubmitted: (_) => _load(),
         style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
         decoration: InputDecoration(
-          hintText: 'بحث: رقم وطني / عنوان / نقطة دالة',
+          hintText: 'بحث: اسم / هاتف / رقم وطني / عنوان',
           hintStyle: TextStyle(fontFamily: 'Cairo', color: SdColors.faint),
           prefixIcon:
               const Icon(Icons.search_rounded, color: SdColors.primary),
