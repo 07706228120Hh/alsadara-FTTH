@@ -4,6 +4,8 @@
 /// الموحّد (sd: Cairo + SdColors) ومتجاوب مع سطح المكتب، RTL.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../frontend/components/sd_raised.dart';
 import '../../frontend/tokens/sd_colors.dart';
@@ -27,6 +29,7 @@ class PropertiesListPage extends StatefulWidget {
 class _PropertiesListPageState extends State<PropertiesListPage> {
   final _api = PropertyApiService.instance;
   final _q = TextEditingController();
+  Timer? _debounce; // بحث فوري مؤجَّل أثناء الكتابة (تصفية حيّة).
 
   List<Property> _rows = const [];
   bool _loading = true;
@@ -49,8 +52,17 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _q.dispose();
     super.dispose();
+  }
+
+  /// بحث فوري: يُصفّي تلقائياً بعد توقّف الكتابة لحظةً (debounce) بلا زرّ.
+  void _onQueryChanged(String _) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      if (mounted) _load();
+    });
   }
 
   Future<void> _load({int page = 1}) async {
@@ -277,7 +289,11 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
       child: TextField(
         controller: _q,
         textInputAction: TextInputAction.search,
-        onSubmitted: (_) => _load(),
+        onChanged: _onQueryChanged,
+        onSubmitted: (_) {
+          _debounce?.cancel();
+          _load();
+        },
         style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w600),
         decoration: InputDecoration(
           hintText: 'بحث: اسم / هاتف / رقم وطني / عنوان',
