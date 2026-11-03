@@ -413,6 +413,14 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
   Widget _card(Property p) {
     final commercial = p.isCommercial;
     final tint = commercial ? SdColors.warning : SdColors.primary;
+    // اسم/هاتف المواطن للعرض: نُفضّل المواطن الأساسي المرتبط، وإلا مالك العقار
+    // المخزّن مباشرةً على السجل (OwnerName/OwnerPhone).
+    final residentName = (p.primaryResidentName ?? '').trim().isNotEmpty
+        ? p.primaryResidentName!.trim()
+        : (p.ownerName ?? '').trim();
+    final residentPhone = (p.primaryResidentPhone ?? '').trim().isNotEmpty
+        ? p.primaryResidentPhone!.trim()
+        : (p.ownerPhone ?? '').trim();
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -458,8 +466,8 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                               fontFamily: 'Cairo',
                               fontSize: 12, color: SdColors.muted)),
                     ],
-                    if ((p.primaryResidentName ?? '').trim().isNotEmpty ||
-                        (p.primaryResidentPhone ?? '').trim().isNotEmpty) ...[
+                    if (residentName.isNotEmpty ||
+                        residentPhone.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -468,9 +476,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              (p.primaryResidentName ?? '').trim().isNotEmpty
-                                  ? p.primaryResidentName!.trim()
-                                  : '—',
+                              residentName.isNotEmpty ? residentName : '—',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -480,13 +486,13 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                                   color: PropUi.ink),
                             ),
                           ),
-                          if ((p.primaryResidentPhone ?? '').trim().isNotEmpty) ...[
+                          if (residentPhone.isNotEmpty) ...[
                             const SizedBox(width: 10),
                             const Icon(Icons.phone_rounded,
                                 size: 13, color: SdColors.success),
                             const SizedBox(width: 3),
                             Text(
-                              p.primaryResidentPhone!.trim(),
+                              residentPhone,
                               textDirection: TextDirection.ltr,
                               style: TextStyle(
                                   fontFamily: 'Cairo',
