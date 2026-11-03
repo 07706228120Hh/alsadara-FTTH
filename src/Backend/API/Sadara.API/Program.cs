@@ -18,6 +18,8 @@ using Sadara.Infrastructure.Services.Server;
 using Serilog;
 using System.Text;
 using System.Threading.RateLimiting;
+using System.Net;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Caching.Memory;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.ResponseCompression;
@@ -269,16 +271,28 @@ builder.Services.AddCors(options =>
 // Rate Limiting
 builder.Services.AddRateLimiter(options =>
 {
+    // تقسيم الحدّ العام بمعرّف المستخدم من التوكن أولاً، ثم عنوان IP للطلبات المجهولة.
+    // سبب حرج: خلف nginx/Cloudflare يكون RemoteIpAddress هو عنوان البروكسي (loopback) نفسه
+    // لكل المستخدمين، فلو قسّمنا به وحده لاقتُسِم حدّ 600/دقيقة بين كل مستخدمي المنصّة على مفتاح
+    // واحد ⇒ رفض 429 عشوائي للجميع. التقسيم بمعرّف المستخدم (من JWT مُتحقَّق، وUseRateLimiter بعد
+    // UseAuthentication) يعطي كل مستخدم حصّته الخاصة ويزيل التبعية لعنوان البروكسي.
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+    {
+        var userId = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? context.User?.FindFirst("sub")?.Value;
+        var partitionKey = !string.IsNullOrEmpty(userId)
+            ? $"user:{userId}"
+            : $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "anonymous"}";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: partitionKey,
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 600,
                 Window = TimeSpan.FromMinutes(1),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 50
-            }));
+            });
+    });
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
     // سياسة مشدّدة لنقاط كشف الاعتماد/الدخول الحسّاسة (ميزة الحسابات المرتبطة).
@@ -317,6 +331,25 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            });
+    });
+
+    // سياسة خنق لكل عنوان IP على نقاط الدخول/التسجيل المجهولة (مقاومة قوة غاشمة).
+    // المسارات المجهولة لا تملك معرّف مستخدم، فتُقسَّم بعنوان IP الحقيقي للعميل — ويتطلّب ذلك
+    // UseForwardedHeaders (محصوراً بالـloopback) ليكون RemoteIpAddress هو العميل لا البروكسي.
+    // 50 محاولة/دقيقة لكل IP، بلا طابور ⇒ رفض فوري 429 لما يزيد (سخيّ بما يكفي لمكاتب NAT مشتركة،
+    // وأشدّ بكثير من الحدّ العام 600 على مستوى المنصّة). يُطبَّق صراحةً عبر [EnableRateLimiting("auth-ip")].
+    options.AddPolicy("auth-ip", context =>
+    {
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"auth-ip:{ip}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 50,
                 Window = TimeSpan.FromMinutes(1),
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                 QueueLimit = 0
@@ -383,6 +416,21 @@ builder.Services.AddSignalR(options =>
 });
 
 var app = builder.Build();
+
+// Forwarded Headers — يجب أن يكون أوّل وسيط. خلف nginx (على نفس الـVPS) نثق فقط بوكيل الـloopback
+// فيصبح RemoteIpAddress هو عنوان العميل الحقيقي (من X-Forwarded-For الذي يضيفه nginx) بدل loopback.
+// حصر KnownProxies بالـloopback إلزامي أمنياً: بدونه يستطيع العميل تزوير X-Forwarded-For وانتحال IP
+// لتجاوز خنق «auth-ip» وتلويث السجلات. ForwardLimit = 1 (قفزة بروكسي واحدة موثوقة = nginx).
+var forwardedOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    ForwardLimit = 1
+};
+forwardedOptions.KnownNetworks.Clear();
+forwardedOptions.KnownProxies.Clear();
+forwardedOptions.KnownProxies.Add(IPAddress.Loopback);     // 127.0.0.1
+forwardedOptions.KnownProxies.Add(IPAddress.IPv6Loopback); // ::1
+app.UseForwardedHeaders(forwardedOptions);
 
 // Global Exception Handler
 app.Use(async (context, next) =>

@@ -458,6 +458,46 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                               fontFamily: 'Cairo',
                               fontSize: 12, color: SdColors.muted)),
                     ],
+                    if ((p.primaryResidentName ?? '').trim().isNotEmpty ||
+                        (p.primaryResidentPhone ?? '').trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.person_rounded,
+                              size: 14, color: SdColors.primary),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              (p.primaryResidentName ?? '').trim().isNotEmpty
+                                  ? p.primaryResidentName!.trim()
+                                  : '—',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                  color: PropUi.ink),
+                            ),
+                          ),
+                          if ((p.primaryResidentPhone ?? '').trim().isNotEmpty) ...[
+                            const SizedBox(width: 10),
+                            const Icon(Icons.phone_rounded,
+                                size: 13, color: SdColors.success),
+                            const SizedBox(width: 3),
+                            Text(
+                              p.primaryResidentPhone!.trim(),
+                              textDirection: TextDirection.ltr,
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                  color: SdColors.muted),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,

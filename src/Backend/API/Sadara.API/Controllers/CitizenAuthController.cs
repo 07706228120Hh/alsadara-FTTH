@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Sadara.Domain.Entities;
@@ -119,6 +120,7 @@ public class CitizenAuthController : ControllerBase
     /// تسجيل مواطن جديد
     /// </summary>
     [HttpPost("register")]
+    [EnableRateLimiting("auth-ip")]
     public async Task<IActionResult> Register([FromBody] CitizenRegisterRequest request)
     {
         try
@@ -298,6 +300,7 @@ public class CitizenAuthController : ControllerBase
     /// تسجيل دخول المواطن
     /// </summary>
     [HttpPost("login")]
+    [EnableRateLimiting("auth-ip")]
     public async Task<IActionResult> Login([FromBody] CitizenLoginRequest request)
     {
         try

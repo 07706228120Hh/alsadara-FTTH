@@ -315,6 +315,11 @@ class Property {
   final String? address2;
   final String? address3;
 
+  /// المواطن الأساسي المرتبط بالعقار (اسم + هاتف) — تُملأ في قائمة العقارات
+  /// للعرض بجانب رقم العقار الوطني. null إن لم يُربط مواطن بعد.
+  final String? primaryResidentName;
+  final String? primaryResidentPhone;
+
   /// معرّفات البنية الهرمية للمواقع (Guid) — إضافةً للّقطات النصّية أعلاه.
   final String? regionId;
   final String? address2Id;
@@ -352,6 +357,8 @@ class Property {
     this.ownerPhone,
     this.address2,
     this.address3,
+    this.primaryResidentName,
+    this.primaryResidentPhone,
     this.regionId,
     this.address2Id,
     this.address3Id,
@@ -394,6 +401,10 @@ class Property {
       ownerName: _pickOrNull(j, ['ownerName', 'OwnerName', 'owner_name']),
       ownerPhone:
           _pickOrNull(j, ['ownerPhone', 'OwnerPhone', 'owner_phone']),
+      primaryResidentName: _pickOrNull(
+          j, ['primaryResidentName', 'PrimaryResidentName', 'primary_resident_name']),
+      primaryResidentPhone: _pickOrNull(j,
+          ['primaryResidentPhone', 'PrimaryResidentPhone', 'primary_resident_phone']),
       address2: _pickOrNull(j, ['address2', 'Address2', 'address_2']),
       address3: _pickOrNull(j, ['address3', 'Address3', 'address_3']),
       regionId: _pickOrNull(j, ['regionId', 'RegionId', 'region_id']),

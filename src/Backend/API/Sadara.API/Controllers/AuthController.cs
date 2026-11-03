@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Sadara.Application.DTOs;
 using Sadara.Application.Services;
 
@@ -6,6 +7,8 @@ namespace Sadara.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+// خنق لكل IP على كل نقاط المصادقة المجهولة (دخول/تسجيل/تجديد/استرجاع كلمة المرور).
+[EnableRateLimiting("auth-ip")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;

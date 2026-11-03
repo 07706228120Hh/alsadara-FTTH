@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Sadara.Domain.Entities;
@@ -70,6 +71,7 @@ public class UnifiedAuthController : ControllerBase
     /// </remarks>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth-ip")]
     public async Task<IActionResult> Login([FromBody] UnifiedLoginRequest request)
     {
         try
@@ -275,6 +277,7 @@ public class UnifiedAuthController : ControllerBase
     /// </summary>
     [HttpPost("register/citizen")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth-ip")]
     public async Task<IActionResult> RegisterCitizen([FromBody] CitizenRegistrationRequest request)
     {
         try
@@ -369,6 +372,7 @@ public class UnifiedAuthController : ControllerBase
     /// </summary>
     [HttpPost("send-otp")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth-ip")]
     public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest request)
     {
         try
@@ -430,6 +434,7 @@ public class UnifiedAuthController : ControllerBase
     /// </summary>
     [HttpPost("login-otp")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth-ip")]
     public async Task<IActionResult> LoginWithOtp([FromBody] OtpLoginRequest request)
     {
         try
@@ -519,6 +524,7 @@ public class UnifiedAuthController : ControllerBase
     /// </summary>
     [HttpPost("refresh-token")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth-ip")]
     public async Task<IActionResult> RefreshToken([FromBody] UnifiedRefreshTokenRequest request)
     {
         try
@@ -727,6 +733,7 @@ public class UnifiedAuthController : ControllerBase
     /// </summary>
     [HttpPost("forgot-password")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth-ip")]
     public async Task<IActionResult> ForgotPassword([FromBody] UnifiedForgotPasswordRequest request)
     {
         try
@@ -777,6 +784,7 @@ public class UnifiedAuthController : ControllerBase
     /// </summary>
     [HttpPost("reset-password")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth-ip")]
     public async Task<IActionResult> ResetPassword([FromBody] UnifiedResetPasswordRequest request)
     {
         try
@@ -1007,6 +1015,7 @@ public class UnifiedAuthController : ControllerBase
     /// </summary>
     [HttpPost("setup/super-admin")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth-ip")]
     public async Task<IActionResult> SetupSuperAdmin([FromBody] SuperAdminSetupRequest request)
     {
         try

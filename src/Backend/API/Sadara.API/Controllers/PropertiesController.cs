@@ -105,11 +105,28 @@ public class PropertiesController : ControllerBase
         }
 
         var total = await query.CountAsync(ct);
-        var rows = await query
+        var pageProps = await query
             .OrderByDescending(x => x.CreatedAt)
             .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(x => ToDto(x))
             .ToListAsync(ct);
+
+        // المواطن الأساسي لكل عقار في الصفحة (اسم + هاتف) — استعلام واحد يتفادى N+1.
+        // نُفضّل الساكن المُعلَّم IsPrimary، وإلا أول ساكن مرتبط.
+        var ids = pageProps.Select(p => p.Id).ToList();
+        var residentsByProp = await _db.PropertyResidents.AsNoTracking()
+            .Where(r => r.CompanyId == companyId && ids.Contains(r.PropertyId))
+            .Join(_db.Citizens.AsNoTracking(), r => r.CitizenId, c => c.Id,
+                (r, c) => new { r.PropertyId, r.IsPrimary, c.FullName, c.PhoneNumber })
+            .ToListAsync(ct);
+        var primaryByProp = residentsByProp
+            .GroupBy(x => x.PropertyId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.IsPrimary).First());
+
+        var rows = pageProps.Select(p =>
+        {
+            primaryByProp.TryGetValue(p.Id, out var r);
+            return ToDto(p, r?.FullName, r?.PhoneNumber);
+        }).ToList();
 
         return Ok(new { success = true, data = rows, total, page, pageSize });
     }
@@ -1101,9 +1118,12 @@ public class PropertiesController : ControllerBase
         return (raw, disp);
     }
 
-    private static object ToDto(Property x) => new
+    private static object ToDto(Property x, string? primaryResidentName = null, string? primaryResidentPhone = null) => new
     {
         id = x.Id,
+        // المواطن الأساسي المرتبط (للعرض في القائمة بجانب رقم العقار الوطني) — null إن لم يُربط بعد.
+        primaryResidentName,
+        primaryResidentPhone,
         qrToken = x.QrToken,
         qrPayload = $"SADARA|P:{x.QrToken}",
         npn = x.Npn,
