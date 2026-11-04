@@ -527,8 +527,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                       children: [
                         _tag(p.propertyTypeLabel, tint),
                         _tag(p.ownershipLabel, SdColors.success),
-                        _tag('${p.serviceCount} خدمة',
-                            SdColors.primaryLight),
+                        ..._serviceTags(p),
                       ],
                     ),
                   ],
@@ -541,6 +540,70 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
       ),
     );
   }
+
+  /// شارات خدمات العقار على البطاقة: شارة لكل نوع خدمة مميّز (إنترنت/ماستر/…)
+  /// بأيقونة ولون مخصّصين. أنواع مستقبلية غير معروفة تُعرض بتسميتها الخام وأيقونة
+  /// محايدة تلقائياً (لا حاجة لتعديل عند إضافة نوع جديد). بلا خدمة ⇒ شارة رمادية.
+  List<Widget> _serviceTags(Property p) {
+    if (p.serviceTypes.isEmpty) {
+      return [_tag('بلا خدمة', SdColors.faint)];
+    }
+    return [
+      for (final type in p.serviceTypes)
+        _iconTag(
+          serviceTypeLabelOf(type),
+          _serviceTypeIcon(type),
+          _serviceTypeColor(type),
+        ),
+    ];
+  }
+
+  IconData _serviceTypeIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'internet':
+        return Icons.wifi_rounded;
+      case 'master':
+        return Icons.satellite_alt_rounded;
+      case 'iptv':
+        return Icons.live_tv_rounded;
+      default:
+        return Icons.bolt_rounded; // نوع مستقبلي غير معروف
+    }
+  }
+
+  Color _serviceTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'internet':
+        return SdColors.primary;
+      case 'master':
+        return SdColors.warning;
+      case 'iptv':
+        return SdColors.success;
+      default:
+        return SdColors.muted;
+    }
+  }
+
+  /// شارة بأيقونة + نصّ (لأنواع الخدمات).
+  Widget _iconTag(String t, IconData icon, Color c) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: c.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(PropUi.radiusPill),
+          border: Border.all(color: c.withValues(alpha: 0.22)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: c),
+            const SizedBox(width: 3),
+            Text(t,
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    color: c, fontWeight: FontWeight.w700, fontSize: 11)),
+          ],
+        ),
+      );
 
   Widget _tag(String t, Color c) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),

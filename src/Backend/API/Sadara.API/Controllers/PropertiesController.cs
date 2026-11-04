@@ -133,10 +133,26 @@ public class PropertiesController : ControllerBase
             .GroupBy(x => x.PropertyId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.IsPrimary).First());
 
+        // ملخّص خدمات كل عقار في الصفحة (العدد + الأنواع المميّزة) — استعلام واحد يتفادى N+1.
+        // الأنواع تُعرض كشارات على البطاقة (إنترنت/ماستر/…)، قابلة للتوسّع لأي نوع مستقبلي.
+        var svcByProp = await _db.PropertyServices.AsNoTracking()
+            .Where(s => s.CompanyId == companyId && ids.Contains(s.PropertyId) && !s.IsDeleted)
+            .Select(s => new { s.PropertyId, s.ServiceType })
+            .ToListAsync(ct);
+        var svcSummary = svcByProp
+            .GroupBy(x => x.PropertyId)
+            .ToDictionary(
+                g => g.Key,
+                g => (
+                    count: g.Count(),
+                    types: g.Select(x => x.ServiceType).Distinct()
+                            .OrderBy(t => t).Select(t => t.ToString()).ToList()));
+
         var rows = pageProps.Select(p =>
         {
             primaryByProp.TryGetValue(p.Id, out var r);
-            return ToDto(p, r?.FullName, r?.PhoneNumber);
+            svcSummary.TryGetValue(p.Id, out var sv);
+            return ToDto(p, r?.FullName, r?.PhoneNumber, sv.count, sv.types);
         }).ToList();
 
         return Ok(new { success = true, data = rows, total, page, pageSize });
@@ -1129,12 +1145,20 @@ public class PropertiesController : ControllerBase
         return (raw, disp);
     }
 
-    private static object ToDto(Property x, string? primaryResidentName = null, string? primaryResidentPhone = null) => new
+    private static object ToDto(
+        Property x,
+        string? primaryResidentName = null,
+        string? primaryResidentPhone = null,
+        int serviceCount = 0,
+        IEnumerable<string>? serviceTypes = null) => new
     {
         id = x.Id,
         // المواطن الأساسي المرتبط (للعرض في القائمة بجانب رقم العقار الوطني) — null إن لم يُربط بعد.
         primaryResidentName,
         primaryResidentPhone,
+        // ملخّص الخدمات للعرض على بطاقة القائمة (العدد + الأنواع المميّزة) — تُملأ في القائمة فقط.
+        serviceCount,
+        serviceTypes = serviceTypes?.ToArray() ?? System.Array.Empty<string>(),
         qrToken = x.QrToken,
         qrPayload = $"SADARA|P:{x.QrToken}",
         npn = x.Npn,

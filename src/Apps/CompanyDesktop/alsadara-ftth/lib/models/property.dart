@@ -335,6 +335,10 @@ class Property {
   /// عدد الخدمات المرتبطة (من قائمة الفهرس أو من التفاصيل).
   final int serviceCount;
 
+  /// أنواع الخدمات المميّزة المرتبطة بالعقار (Internet / Master / …) — للعرض
+  /// كشارات على بطاقة القائمة. تُملأ من الفهرس، أو تُشتقّ من [services] في التفاصيل.
+  final List<String> serviceTypes;
+
   /// تُملأ فقط في استجابة التفاصيل / حلّ الـQR.
   final List<PropertyResident> residents;
   final List<PropertyService> services;
@@ -370,6 +374,7 @@ class Property {
     required this.notes,
     required this.createdAt,
     this.serviceCount = 0,
+    this.serviceTypes = const [],
     this.residents = const [],
     this.services = const [],
   });
@@ -382,6 +387,16 @@ class Property {
     final svc = services;
     final explicitCount =
         _pick(j, ['serviceCount', 'ServiceCount', 'service_count']);
+    // أنواع الخدمات: من الفهرس مباشرةً، وإلا تُشتقّ من قائمة الخدمات (التفاصيل).
+    final typesRaw = _pick(j, ['serviceTypes', 'ServiceTypes', 'service_types']);
+    final serviceTypes = <String>{
+      if (typesRaw is List)
+        for (final t in typesRaw)
+          if ((t ?? '').toString().trim().isNotEmpty) t.toString()
+      else
+        for (final s in svc)
+          if (s.serviceType.trim().isNotEmpty) s.serviceType,
+    }.toList();
     return Property(
       id: _str(_pick(j, ['id', 'Id'])),
       qrToken: _str(_pick(j, ['qrToken', 'QrToken', 'qr_token'])),
@@ -420,7 +435,11 @@ class Property {
       hasPhoto: _pick(j, ['hasPhoto', 'HasPhoto', 'has_photo']) == true,
       notes: _str(_pick(j, ['notes', 'Notes'])),
       createdAt: _str(_pick(j, ['createdAt', 'CreatedAt', 'created_at'])),
-      serviceCount: explicitCount != null ? _asInt(explicitCount) : svc.length,
+      // في التفاصيل تُرسَل قائمة الخدمات (نعتمد طولها)؛ في الفهرس يُرسَل العدد صراحةً.
+      serviceCount: svc.isNotEmpty
+          ? svc.length
+          : (explicitCount != null ? _asInt(explicitCount) : 0),
+      serviceTypes: serviceTypes,
       residents: residents,
       services: svc,
     );
