@@ -42,6 +42,7 @@ import 'accounting/accounting_dashboard_page.dart'; // نظام المحاسبة
 import '../inventory/inventory_page.dart'; // نظام المخازن
 import '../sas_agent/sas_agent_page.dart'; // صفحة وكيل الساس (بوّابة /api/sas-agent)
 import 'properties/properties_list_page.dart'; // سجل العقارات المستقل (بوّابة /api/properties)
+import 'properties/user_locations_map_page.dart'; // مواقع المستخدمين (خريطة 3D)
 import '../task/follow_up_page.dart'; // صفحة المتابعة
 // import '../task/audit_dashboard_page.dart'; // داشبورد التدقيق — مخفي حالياً
 // شاشتي - معاملات الفني
@@ -2419,6 +2420,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         group: SdGroup.platform,
         permissionKey: 'property_registry',
         onTap: () => _navigateTo(const PropertiesListPage()),
+      ),
+      _menuTile(
+        title: 'مواقع المستخدمين',
+        subtitle: 'خريطة ثلاثية الأبعاد لمواقع العقارات',
+        icon: Icons.map_rounded,
+        group: SdGroup.platform,
+        permissionKey: 'property_registry',
+        onTap: () => _navigateTo(const UserLocationsMapPage()),
       ),
       _menuTile(
         title: 'البحث بالذكاء الاصطناعي',

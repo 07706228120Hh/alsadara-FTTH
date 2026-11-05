@@ -145,6 +145,90 @@ class PropertyQrResolveResult {
       );
 }
 
+/// نقطة خريطة خفيفة لعقار له إحداثيات — لعرض «مواقع المستخدمين» على الخريطة 3D.
+class PropertyMapPoint {
+  final String id;
+  final double lat;
+  final double lng;
+  final String npnDisplay;
+  final String propertyType; // Residential / Commercial
+  final String ownership; // Owned / Rent
+  final String name; // المواطن الأساسي أو مالك العقار
+  final String phone;
+  final String governorate;
+  final String area;
+  final List<String> serviceTypes; // Internet / Master / Iptv / …
+
+  const PropertyMapPoint({
+    required this.id,
+    required this.lat,
+    required this.lng,
+    required this.npnDisplay,
+    required this.propertyType,
+    required this.ownership,
+    required this.name,
+    required this.phone,
+    required this.governorate,
+    required this.area,
+    required this.serviceTypes,
+  });
+
+  bool get isCommercial => propertyType.toLowerCase() == 'commercial';
+
+  /// يحوّل عقاراً كاملاً إلى نقطة خريطة (للـfallback من الفهرس المُرقَّم).
+  /// يُرجع null إن لم يملك إحداثيات صالحة.
+  static PropertyMapPoint? fromProperty(Property p) {
+    final lat = p.latitude, lng = p.longitude;
+    if (lat == null || lng == null) return null;
+    final name = (p.primaryResidentName ?? '').trim().isNotEmpty
+        ? p.primaryResidentName!.trim()
+        : (p.ownerName ?? '').trim();
+    final phone = (p.primaryResidentPhone ?? '').trim().isNotEmpty
+        ? p.primaryResidentPhone!.trim()
+        : (p.ownerPhone ?? '').trim();
+    return PropertyMapPoint(
+      id: p.id,
+      lat: lat,
+      lng: lng,
+      npnDisplay: p.npnDisplay,
+      propertyType: p.propertyType,
+      ownership: p.ownership,
+      name: name,
+      phone: phone,
+      governorate: p.governorate,
+      area: p.area,
+      serviceTypes: p.serviceTypes,
+    );
+  }
+
+  factory PropertyMapPoint.fromJson(Map<String, dynamic> j) {
+    double d(dynamic v) {
+      if (v is num) return v.toDouble();
+      return double.tryParse('${v ?? ''}') ?? 0;
+    }
+
+    final typesRaw = j['serviceTypes'] ?? j['ServiceTypes'] ?? const [];
+    return PropertyMapPoint(
+      id: (j['id'] ?? j['Id'] ?? '').toString(),
+      lat: d(j['latitude'] ?? j['Latitude'] ?? j['lat']),
+      lng: d(j['longitude'] ?? j['Longitude'] ?? j['lng'] ?? j['lon']),
+      npnDisplay: (j['npnDisplay'] ?? j['NpnDisplay'] ?? '').toString(),
+      propertyType: (j['propertyType'] ?? j['PropertyType'] ?? '').toString(),
+      ownership: (j['ownership'] ?? j['Ownership'] ?? '').toString(),
+      name: (j['name'] ?? j['Name'] ?? '').toString(),
+      phone: (j['phone'] ?? j['Phone'] ?? '').toString(),
+      governorate: (j['governorate'] ?? j['Governorate'] ?? '').toString(),
+      area: (j['area'] ?? j['Area'] ?? '').toString(),
+      serviceTypes: (typesRaw is List)
+          ? typesRaw
+              .map((e) => '$e')
+              .where((s) => s.trim().isNotEmpty)
+              .toList()
+          : const [],
+    );
+  }
+}
+
 /// نتيجة بحث منتقي المواطن.
 class CitizenHit {
   final String id;
@@ -209,6 +293,57 @@ class PropertyApiService {
       pageSize:
           _asInt(res['pageSize']) == 0 ? pageSize : _asInt(res['pageSize']),
     );
+  }
+
+  /// نقاط الخريطة: كل عقارات الشركة التي تملك إحداثيات (حمولة خفيفة).
+  ///
+  /// تحاول نقطة النهاية المخصّصة `/properties/map-points` أولاً؛ وإن لم تكن منشورة
+  /// بعد (404/خطأ) تتراجع إلى ترقيم الفهرس العام `/properties` وتُصفّي الإحداثيات
+  /// محلياً — فتعمل الشاشة قبل نشر الباكند وبعده.
+  Future<List<PropertyMapPoint>> mapPoints({String? propertyType}) async {
+    try {
+      final params = <String, String>{
+        if (propertyType != null && propertyType.isNotEmpty)
+          'propertyType': propertyType,
+      };
+      final query = params.isEmpty
+          ? ''
+          : '?${params.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&')}';
+      final res = await _api.get('/properties/map-points$query');
+      final data = (res['data'] as List?) ?? const [];
+      return data
+          .whereType<Map>()
+          .map((e) => PropertyMapPoint.fromJson(e.cast<String, dynamic>()))
+          .toList();
+    } catch (_) {
+      // Fallback: الفهرس المُرقَّم (حتى نشر نقطة النهاية المخصّصة).
+      return _mapPointsFromPagedIndex(propertyType: propertyType);
+    }
+  }
+
+  /// Fallback: يجمع نقاط الخريطة من الفهرس المُرقَّم (صفحات بحجم 200) ويُصفّي
+  /// العقارات التي تملك إحداثيات. محدود بسقف صفحات لتفادي الجلب غير المحدود.
+  Future<List<PropertyMapPoint>> _mapPointsFromPagedIndex({
+    String? propertyType,
+  }) async {
+    const pageSize = 200;
+    const maxPages = 100; // سقف أمان: حتى 20000 عقار.
+    final out = <PropertyMapPoint>[];
+    var page = 1;
+    while (page <= maxPages) {
+      final res = await list(
+        propertyType: propertyType,
+        page: page,
+        pageSize: pageSize,
+      );
+      for (final p in res.items) {
+        final pt = PropertyMapPoint.fromProperty(p);
+        if (pt != null) out.add(pt);
+      }
+      if (!res.hasMore || res.items.isEmpty) break;
+      page++;
+    }
+    return out;
   }
 
   /// تفاصيل عقار بالمعرّف.

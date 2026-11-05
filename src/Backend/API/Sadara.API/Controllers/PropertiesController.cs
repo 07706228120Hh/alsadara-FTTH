@@ -158,6 +158,95 @@ public class PropertiesController : ControllerBase
         return Ok(new { success = true, data = rows, total, page, pageSize });
     }
 
+    /// <summary>
+    /// نقاط الخريطة: كل عقارات الشركة التي تملك إحداثيات (Latitude/Longitude غير فارغَين) —
+    /// حمولة خفيفة (بلا صور/خدمات كاملة) لعرضها على خريطة «مواقع المستخدمين». معزولة بالشركة.
+    /// تُرجع ملخّص أنواع الخدمات + اسم/هاتف المالك أو المواطن الأساسي، باستعلامات تتفادى N+1.
+    /// </summary>
+    [HttpGet("map-points")]
+    [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetMapPoints(
+        [FromQuery] PropertyType? propertyType,
+        [FromQuery] int limit = 20000,
+        CancellationToken ct = default)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        limit = Math.Clamp(limit, 1, 50000);
+
+        var query = _db.Properties.AsNoTracking()
+            .Where(x => x.CompanyId == companyId
+                        && x.Latitude != null && x.Longitude != null);
+        if (propertyType.HasValue) query = query.Where(x => x.PropertyType == propertyType.Value);
+
+        var props = await query
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(limit)
+            .Select(x => new
+            {
+                x.Id,
+                x.Latitude,
+                x.Longitude,
+                x.NpnDisplay,
+                x.PropertyType,
+                x.Ownership,
+                x.OwnerName,
+                x.OwnerPhone,
+                x.Governorate,
+                x.Area,
+            })
+            .ToListAsync(ct);
+
+        var ids = props.Select(p => p.Id).ToList();
+
+        // المواطن الأساسي لكل عقار (اسم + هاتف) — استعلام واحد يتفادى N+1.
+        var residentsByProp = await _db.PropertyResidents.AsNoTracking()
+            .Where(r => r.CompanyId == companyId && ids.Contains(r.PropertyId) && !r.IsDeleted)
+            .Join(_db.Citizens.AsNoTracking(), r => r.CitizenId, c => c.Id,
+                (r, c) => new { r.PropertyId, r.IsPrimary, c.FullName, c.PhoneNumber })
+            .ToListAsync(ct);
+        var primaryByProp = residentsByProp
+            .GroupBy(x => x.PropertyId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.IsPrimary).First());
+
+        // أنواع خدمات كل عقار — استعلام واحد يتفادى N+1 (للترميز اللوني على الخريطة).
+        var svcByProp = await _db.PropertyServices.AsNoTracking()
+            .Where(s => s.CompanyId == companyId && ids.Contains(s.PropertyId) && !s.IsDeleted)
+            .Select(s => new { s.PropertyId, s.ServiceType })
+            .ToListAsync(ct);
+        var typesByProp = svcByProp
+            .GroupBy(x => x.PropertyId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(x => x.ServiceType).Distinct().OrderBy(t => t)
+                      .Select(t => t.ToString()).ToArray());
+
+        var data = props.Select(p =>
+        {
+            primaryByProp.TryGetValue(p.Id, out var r);
+            typesByProp.TryGetValue(p.Id, out var types);
+            var name = !string.IsNullOrWhiteSpace(r?.FullName) ? r!.FullName
+                     : (p.OwnerName ?? string.Empty);
+            var phone = !string.IsNullOrWhiteSpace(r?.PhoneNumber) ? r!.PhoneNumber
+                      : (p.OwnerPhone ?? string.Empty);
+            return new
+            {
+                id = p.Id,
+                latitude = p.Latitude,
+                longitude = p.Longitude,
+                npnDisplay = p.NpnDisplay,
+                propertyType = p.PropertyType.ToString(),
+                ownership = p.Ownership.ToString(),
+                name,
+                phone,
+                governorate = p.Governorate,
+                area = p.Area,
+                serviceTypes = types ?? System.Array.Empty<string>(),
+            };
+        }).ToList();
+
+        return Ok(new { success = true, data, total = data.Count });
+    }
+
     /// <summary>تفاصيل عقار واحد.</summary>
     [HttpGet("{id:guid}")]
     [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
