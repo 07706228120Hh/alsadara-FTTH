@@ -413,7 +413,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         break;
       case 1:
         if (_ftthOperators.isEmpty && !_isLoadingFtth && _ftthAuthenticated) {
-          _loadFtthData();
+          _loadFtthAggregated();
         }
         break;
       case 2:
@@ -432,7 +432,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       setState(() => _ftthAuthenticated = token != null && token.isNotEmpty);
     }
     if (_ftthAuthenticated) {
-      _loadFtthData();
+      _loadFtthAggregated();
     }
   }
 
@@ -1127,6 +1127,23 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     }
   }
 
+  /// جلب FTTH تلقائي «شامل»: إن وُجد أكثر من شريك رئيسي مُسجَّل للشركة، يجلب
+  /// **كل الشركاء** ويدمجهم (عبر `_loadAllPartnersData`) حتى تشمل تبويبات FTTH
+  /// والمقارنة عمليات كل الحسابات لا جلسة شريك واحد؛ وإلا يكتفي بجلسة الشريك الحالي.
+  /// يُستخدم في التحميل التلقائي بدل `_loadFtthData` المباشر.
+  Future<void> _loadFtthAggregated() async {
+    if (!_ftthAuthenticated || !mounted) return;
+    if (_oursPartners.isEmpty) {
+      await _loadOursPartners();
+    }
+    if (!mounted) return;
+    if (_oursPartners.length >= 2) {
+      await _loadAllPartnersData();
+    } else {
+      await _loadFtthData();
+    }
+  }
+
   /// المرحلة 2: نسب عمليات "بدون منشئ" في الخلفية مع تحديث العداد
   Future<void> _resolveOrphansInBackground() async {
     // جمع معاملات "بدون منشئ" + "Agent" (كلاهما يحتاج إعادة نسب)
@@ -1598,9 +1615,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       await Future.delayed(const Duration(milliseconds: 100));
     }
 
-    // 2. تحميل بيانات FTTH إذا لم تُحمَّل
+    // 2. تحميل بيانات FTTH إذا لم تُحمَّل (شامل لكل الشركاء)
     if (_ftthOperators.isEmpty && _ftthAuthenticated) {
-      await _loadFtthData();
+      await _loadFtthAggregated();
     }
     // انتظار انتهاء تحميل FTTH
     while (_isLoadingFtth && mounted) {
