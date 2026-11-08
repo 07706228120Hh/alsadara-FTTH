@@ -431,9 +431,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     if (mounted) {
       setState(() => _ftthAuthenticated = token != null && token.isNotEmpty);
     }
-    if (_ftthAuthenticated) {
-      _loadFtthAggregated();
-    }
+    // لا نجلب FTTH هنا: الجلب يحدث فقط عند الانتقال لتبويب FTTH/المقارنة (كسولاً،
+    // بالتاريخ المختار في «خادمنا»)، مع إظهار أيقونة تحميل أثناء الجلب.
   }
 
   Future<void> _showFtthLoginDialog() async {
