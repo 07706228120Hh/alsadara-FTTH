@@ -2407,9 +2407,25 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   }
 
   void _refreshAll() {
+    // 1) أعد تحميل «خادمنا» بالتاريخ المختار دائماً.
     _loadOursData();
-    if (_ftthAuthenticated) _loadFtthData();
-    _comparisonRows.clear();
+    // 2) بطّل كاش FTTH/المقارنة حتى يُعاد الجلب بالتاريخ الجديد (لا يبقى جلب أول مرّة).
+    if (mounted) {
+      setState(() {
+        _ftthOperators = {};
+        _ftthTotalNegative = 0;
+        _ftthTotalPositive = 0;
+        _ftthTotalCount = 0;
+        _comparisonRows.clear();
+      });
+    }
+    // 3) أعد الجلب فوراً إن كنا على تبويب FTTH/المقارنة (شامل كل الشركاء)؛
+    //    وإلا يتكفّل التبديل الكسول (_onTabChanged) بالجلب عند فتح التبويب.
+    if (_tabController.index == 1 && _ftthAuthenticated) {
+      _loadFtthAggregated();
+    } else if (_tabController.index == 2) {
+      _buildComparison();
+    }
   }
 
   /// تصحيح السجلات القديمة التي لا تحتوي على CompanyId
