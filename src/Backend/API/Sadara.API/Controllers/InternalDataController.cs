@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
+using Sadara.Application.Interfaces;
 using Sadara.Infrastructure.Data;
 using System.Security.Cryptography;
 using System.Text;
@@ -26,13 +27,15 @@ public class InternalDataController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly SadaraDbContext _context;
     private readonly ILogger<InternalDataController> _logger;
+    private readonly ISecretProtector _secretProtector;
 
-    public InternalDataController(IUnitOfWork unitOfWork, IConfiguration configuration, SadaraDbContext context, ILogger<InternalDataController> logger)
+    public InternalDataController(IUnitOfWork unitOfWork, IConfiguration configuration, SadaraDbContext context, ILogger<InternalDataController> logger, ISecretProtector secretProtector)
     {
         _unitOfWork = unitOfWork;
         _configuration = configuration;
         _context = context;
         _logger = logger;
+        _secretProtector = secretProtector;
     }
 
     /// <summary>
@@ -951,7 +954,42 @@ public class InternalDataController : ControllerBase
             employee.PlainPassword = request.NewPassword;
         }
         if (request.FtthPassword != null)
-            employee.FtthPasswordEncrypted = request.FtthPassword;
+        {
+            employee.FtthPasswordEncrypted = request.FtthPassword; // قديم (رجوع احتياطي، يُزال بالمرحلة 6)
+            // المرحلة 4: وجّه كلمة المرور إلى FtthAccount مشفّرة (المصدر الموحّد)
+            if (!string.IsNullOrWhiteSpace(employee.FtthUsername) && employee.CompanyId.HasValue
+                && !string.IsNullOrEmpty(request.FtthPassword))
+            {
+                var uname = employee.FtthUsername.Trim();
+                var enc = _secretProtector.Protect(request.FtthPassword);
+                var acc = await _context.FtthAccounts.FirstOrDefaultAsync(a => !a.IsDeleted
+                    && a.OwnerUserId == employee.Id && a.CompanyId == employee.CompanyId.Value
+                    && a.Username.ToLower() == uname.ToLower());
+                if (acc != null)
+                {
+                    acc.PasswordEncrypted = enc;
+                    acc.Status = "Unverified"; // كلمة مرور جديدة تحتاج إعادة تحقّق
+                    _context.FtthAccounts.Update(acc);
+                }
+                else
+                {
+                    var hasPrimary = await _context.FtthAccounts.AnyAsync(a => !a.IsDeleted
+                        && a.OwnerUserId == employee.Id && a.CompanyId == employee.CompanyId.Value && a.IsPrimary);
+                    await _context.FtthAccounts.AddAsync(new FtthAccount
+                    {
+                        Id = Guid.NewGuid(),
+                        CompanyId = employee.CompanyId.Value,
+                        OwnerUserId = employee.Id,
+                        Username = uname,
+                        Label = "حساب مرتبط",
+                        PasswordEncrypted = enc,
+                        Status = "Unverified",
+                        IsPrimary = !hasPrimary,
+                        IsActive = true
+                    });
+                }
+            }
+        }
 
         // Attendance security code — with uniqueness check
         if (request.AttendanceSecurityCode != null)
@@ -2069,6 +2107,8 @@ public class InternalDataController : ControllerBase
                 l.WalletBalanceBefore,
                 l.WalletBalanceAfter,
                 l.PartnerName,
+                l.PartnerId,
+                l.OperatorUsername,
                 l.CompanyId,
                 l.CollectionType,
                 l.PaymentMethod,
@@ -2113,6 +2153,7 @@ public class InternalDataController : ControllerBase
             l.BundleId, l.CurrentStatus, l.DeviceUsername, l.OperationType,
             l.ActivatedBy, l.ActivationDate, l.ZoneId, l.ZoneName,
             l.WalletBalanceBefore, l.WalletBalanceAfter, l.PartnerName,
+            l.PartnerId, l.OperatorUsername,
             l.CompanyId, l.CollectionType, l.PaymentMethod,
             l.IsPrinted, l.IsWhatsAppSent, l.PaymentStatus,
             l.StartDate, l.EndDate, l.CreatedAt,

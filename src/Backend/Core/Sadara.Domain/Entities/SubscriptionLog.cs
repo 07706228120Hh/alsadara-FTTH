@@ -48,6 +48,11 @@ public class SubscriptionLog : BaseEntity<long>
     // معلومات الشريك/الموظف
     public string? PartnerName { get; set; }
     public string? PartnerId { get; set; }
+    /// <summary>
+    /// معرّف المشغّل الخام من FTTH (createdBy) كما وصل — **لا يُستبدَل أبداً** بالاسم المحلول.
+    /// هوية ثابتة للمطابقة (شريك→مشغّل→مواطن)؛ ActivatedBy يبقى للعرض فقط.
+    /// </summary>
+    public string? OperatorUsername { get; set; }
     public Guid? UserId { get; set; }  // FK to User table
     public Guid? CompanyId { get; set; }  // FK to Company table
 

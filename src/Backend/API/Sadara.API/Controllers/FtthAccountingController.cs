@@ -8,6 +8,7 @@ using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 using Sadara.API.Authorization;
 using Sadara.API.Constants;
+using Sadara.Infrastructure.Data;
 
 namespace Sadara.API.Controllers;
 
@@ -25,13 +26,15 @@ public class FtthAccountingController : ControllerBase
     private readonly ILogger<FtthAccountingController> _logger;
     private readonly IConfiguration _configuration;
     private readonly ICurrentTenant _tenant;
+    private readonly SadaraDbContext _db;
 
-    public FtthAccountingController(IUnitOfWork unitOfWork, ILogger<FtthAccountingController> logger, IConfiguration configuration, ICurrentTenant tenant)
+    public FtthAccountingController(IUnitOfWork unitOfWork, ILogger<FtthAccountingController> logger, IConfiguration configuration, ICurrentTenant tenant, SadaraDbContext db)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _configuration = configuration;
         _tenant = tenant;
+        _db = db;
     }
 
     /// تحويل اسم المستخدم (FtthUsername/Username) إلى الاسم الكامل — للعمليات الفردية
@@ -127,6 +130,7 @@ public class FtthAccountingController : ControllerBase
                 DeviceUsername = dto.DeviceUsername,
                 OperationType = dto.OperationType,
                 ActivatedBy = dto.ActivatedBy,
+                OperatorUsername = dto.ActivatedBy, // المعرّف الخام قبل حلّه لاسم (لا يُستبدَل)
                 ActivationDate = dto.ActivationDate,
                 ActivationTime = dto.ActivationTime,
                 SessionId = dto.SessionId,
@@ -431,6 +435,8 @@ public class FtthAccountingController : ControllerBase
                     ReferenceNumber = log.Id.ToString(),
                     CreatedById = createdById,
                     CompanyId = techCompanyId,
+                    PartnerId = log.PartnerId,                 // نسخة الشريك (تقارير الفني لكل شريك)
+                    OperatorUsername = log.OperatorUsername,   // نسخة معرّف المشغّل الخام
                     CreatedAt = DateTime.UtcNow
                 };
                 await _unitOfWork.TechnicianTransactions.AddAsync(techTx);
@@ -769,7 +775,8 @@ public class FtthAccountingController : ControllerBase
     public async Task<IActionResult> GetOperatorsDashboard(
         [FromQuery] Guid? companyId = null,
         [FromQuery] DateTime? from = null,
-        [FromQuery] DateTime? to = null)
+        [FromQuery] DateTime? to = null,
+        [FromQuery] Guid? partnerId = null)
     {
         try
         {
@@ -778,6 +785,17 @@ public class FtthAccountingController : ControllerBase
             if (companyId.HasValue)
                 // تضمين السجلات القديمة التي لم يُحدد لها CompanyId (للتوافق مع البيانات السابقة)
                 query = query.Where(l => l.CompanyId == companyId || l.CompanyId == null);
+
+            // فلتر الشريك: نحلّ معرّف الكيان → معرّف شريك FTTH (PartnerAccountId) الذي تحمله العمليات،
+            // ونفلتر به أو بمعرّف الكيان نفسه (توافق).
+            if (partnerId.HasValue)
+            {
+                var partnerGuid = partnerId.Value.ToString();
+                var ftthPid = await _db.FtthPartners.Where(p => p.Id == partnerId.Value && !p.IsDeleted)
+                    .Select(p => p.PartnerAccountId).FirstOrDefaultAsync();
+                query = query.Where(l => l.PartnerId == partnerGuid
+                    || (ftthPid != null && l.PartnerId == ftthPid));
+            }
             if (from.HasValue)
             {
                 var fromUtc = DateTime.SpecifyKind(from.Value.Date.AddHours(-3), DateTimeKind.Utc);
@@ -2011,10 +2029,55 @@ public class FtthAccountingController : ControllerBase
             if (user == null)
                 return NotFound(new { success = false, message = "المستخدم غير موجود" });
 
+            // عزل: غير SuperAdmin لا يربط حساب مستخدم من شركة أخرى (IDOR)
+            if (!_tenant.IsSuperAdmin && (user.CompanyId == null || user.CompanyId != _tenant.CompanyId))
+                return StatusCode(403, new { success = false, message = "لا تملك صلاحية على مستخدم شركة أخرى" });
+
             user.FtthUsername = dto.FtthUsername;
-            user.FtthPasswordEncrypted = dto.FtthPasswordEncrypted;
+            // إصلاح: لا نمسح كلمة المرور القديمة عند عدم إرسالها (إعادة الربط لا تُفقدها).
+            // تُمسح فقط عند إزالة الربط (اسم مستخدم فارغ)؛ وتُحدَّث فقط عند إرسال قيمة جديدة.
+            if (string.IsNullOrEmpty(dto.FtthUsername))
+                user.FtthPasswordEncrypted = null;
+            else if (!string.IsNullOrEmpty(dto.FtthPasswordEncrypted))
+                user.FtthPasswordEncrypted = dto.FtthPasswordEncrypted;
             _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();
+
+            // المرحلة 3 (النهج أ): اضمن وجود FtthAccount بنفس اسم المستخدم (المصدر الموحّد الجديد).
+            // غير موثّق بلا كلمة مرور — تُدخَل لاحقاً من تبويب «الحسابات المرتبطة». لا يكسر القديم.
+            if (!string.IsNullOrWhiteSpace(dto.FtthUsername) && user.CompanyId.HasValue)
+            {
+                var uname = dto.FtthUsername.Trim();
+                var memberId = string.IsNullOrWhiteSpace(dto.FtthMemberId) ? null : dto.FtthMemberId.Trim();
+                var existing = await _db.FtthAccounts.FirstOrDefaultAsync(a => !a.IsDeleted
+                    && a.OwnerUserId == user.Id && a.CompanyId == user.CompanyId.Value
+                    && a.Username.ToLower() == uname.ToLower());
+                if (existing == null)
+                {
+                    var hasPrimary = await _db.FtthAccounts.AnyAsync(a => !a.IsDeleted
+                        && a.OwnerUserId == user.Id && a.CompanyId == user.CompanyId.Value && a.IsPrimary);
+                    await _db.FtthAccounts.AddAsync(new FtthAccount
+                    {
+                        Id = Guid.NewGuid(),
+                        CompanyId = user.CompanyId.Value,
+                        OwnerUserId = user.Id,
+                        Username = uname,
+                        FtthMemberId = memberId,
+                        Label = "حساب مرتبط",
+                        Status = "Unverified",
+                        IsPrimary = !hasPrimary,
+                        IsActive = true
+                    });
+                    await _db.SaveChangesAsync();
+                }
+                else if (memberId != null && string.IsNullOrWhiteSpace(existing.FtthMemberId))
+                {
+                    // حساب موجود بلا رقم عضو — عبّئه (ترحيل تدريجي)
+                    existing.FtthMemberId = memberId;
+                    _db.FtthAccounts.Update(existing);
+                    await _db.SaveChangesAsync();
+                }
+            }
 
             return Ok(new { success = true, message = "تم ربط حساب FTTH بنجاح" });
         }
@@ -2143,7 +2206,7 @@ public class FtthAccountingController : ControllerBase
                     u.Username,
                     u.PhoneNumber,
                     u.FtthUsername,
-                    u.FtthPasswordEncrypted,
+                    // أُزيلت u.FtthPasswordEncrypted من الاستجابة (منع تسريب السرّ في قائمة العرض)
                     hasLink = u.FtthUsername != null && u.FtthUsername != "",
                     u.CompanyId
                 })
@@ -2291,24 +2354,115 @@ public class FtthAccountingController : ControllerBase
                 .Select(u => new { u.Id, u.FtthUsername, u.Username, u.FullName, u.CompanyId })
                 .ToListAsync();
             var ftthToUser = new Dictionary<string, dynamic>();
+
+            // ═══ المصدر الموحّد الجديد (المرحلة 2): حسابات «الحسابات المرتبطة» FtthAccount ═══
+            // تُضاف أولاً فتأخذ الأولوية (TryAdd = الأول يفوز)؛ الموثّق/الأساسي يفوز عند تكرار الاسم.
+            // القديم (FtthUsername/Username/FullName أدناه) يبقى رجوعاً احتياطياً فلا ينكسر شيء.
+            var ownerName = userMap.ToDictionary(x => (Guid)x.Id, x => (string)(x.FullName ?? ""));
+            var syncCompanyId = dto?.CompanyId; // عزل: اقصر الحسابات على شركة المزامنة عند توفّرها
+
+            // ═══ المنفّذون المستبعَدون: عمليات createdBy ضمن القائمة تُتخطّى كلياً ═══
+            // (مثل بطاقات لا تدخل حسابات الشركة). المطابقة بلا حساسية لحالة الأحرف + trim.
+            var excludedCreators = (await _db.FtthExcludedCreators
+                    .Where(x => !x.IsDeleted && x.IsActive
+                        && (syncCompanyId == null || x.CompanyId == syncCompanyId))
+                    .Select(x => x.Identifier)
+                    .ToListAsync())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.ToLower().Trim())
+                .ToHashSet();
+
+            var ftthAccs = await _db.FtthAccounts
+                .Where(a => !a.IsDeleted && a.IsActive
+                    && (syncCompanyId == null || a.CompanyId == syncCompanyId))
+                .OrderByDescending(a => a.Status == "Verified")
+                .ThenByDescending(a => a.IsPrimary)
+                .ThenBy(a => a.Id)   // كاسر تعادل حتمي
+                .Select(a => new { a.Username, a.FtthMemberId, a.OwnerUserId, a.CompanyId, a.PartnerId,
+                    // معرّف شريك FTTH (PartnerAccountId) — هو ما تحمله العمليات (مثل "2261175")،
+                    // لا GUID كياننا؛ نجلبه بربط FtthPartner لتجسير المطابقة.
+                    PartnerAccountId = _db.FtthPartners.Where(p => p.Id == a.PartnerId)
+                        .Select(p => p.PartnerAccountId).FirstOrDefault() })
+                .ToListAsync();
+
+            // ═══ المطابقة بمفتاح (شريك + اسم مستخدم) — المستوى الأول الأدقّ ═══
+            // المفتاح = معرّف شريك FTTH (PartnerAccountId) + اسم المستخدم (موحّد مع العمليات).
+            // دعم GUID كياننا أيضاً (توافقاً مع أي وسم قديم). غامض ⇒ يُتخطّى.
+            string PartnerKey(string? partnerKey, string? username)
+                => $"{(partnerKey ?? "").Trim()}\u0001{(username ?? "").ToLower().Trim()}";
+            var pkOwners = new Dictionary<string, HashSet<Guid>>();
+            void NotePartner(string? partnerKey, string? username, Guid owner)
+            {
+                if (string.IsNullOrWhiteSpace(partnerKey) || string.IsNullOrWhiteSpace(username)) return;
+                var pk = PartnerKey(partnerKey, username);
+                if (!pkOwners.TryGetValue(pk, out var set)) { set = new HashSet<Guid>(); pkOwners[pk] = set; }
+                set.Add(owner);
+            }
+            foreach (var a in ftthAccs)
+            {
+                NotePartner(a.PartnerAccountId, a.Username, a.OwnerUserId);           // بمعرّف FTTH
+                NotePartner(a.PartnerId?.ToString(), a.Username, a.OwnerUserId);      // بمعرّف كياننا (توافق)
+            }
+            var ftthToUserByPartner = new Dictionary<string, dynamic>();
+
+            // المرحلة 7: مفاتيح المطابقة = اسم المستخدم + رقم عضو الفريق (FtthMemberId)،
+            // لأن FTTH يسجّل المنفّذ أحياناً برقم العضو لا باسمه.
+            // صمام أمان: أي مفتاح (اسم أو رقم) مرتبط بعدّة مالكين = غامض ⇒ لا نُنسب به
+            // (نتركه للمطابقة الاحتياطية) حتى يُفرده المالك.
+            var keyOwners = new Dictionary<string, HashSet<Guid>>();
+            void NoteKey(string? key, Guid owner)
+            {
+                if (string.IsNullOrWhiteSpace(key)) return;
+                var kk = key.ToLower().Trim();
+                if (!keyOwners.TryGetValue(kk, out var set)) { set = new HashSet<Guid>(); keyOwners[kk] = set; }
+                set.Add(owner);
+            }
+            foreach (var a in ftthAccs) { NoteKey(a.Username, a.OwnerUserId); NoteKey(a.FtthMemberId, a.OwnerUserId); }
+            var ambiguousKeys = keyOwners.Where(x => x.Value.Count > 1).Select(x => x.Key).ToHashSet();
+
+            foreach (var a in ftthAccs)
+            {
+                // تخطّى حساباً مالكه غير نشط/محذوف — لئلا يُنسب القيد لمستخدم محذوف
+                if (!ownerName.TryGetValue(a.OwnerUserId, out var fn)) continue;
+                var val = new { Id = a.OwnerUserId, FullName = fn, CompanyId = (Guid?)a.CompanyId };
+                // المستوى الأول: مفتاح (شريك + اسم) غير الغامض — بمعرّف FTTH وبمعرّف كياننا
+                void AddPartnerKey(string? partnerKey)
+                {
+                    if (string.IsNullOrWhiteSpace(partnerKey) || string.IsNullOrWhiteSpace(a.Username)) return;
+                    var pk = PartnerKey(partnerKey, a.Username);
+                    if (pkOwners.TryGetValue(pk, out var set) && set.Count == 1)
+                        ftthToUserByPartner.TryAdd(pk, val);
+                }
+                AddPartnerKey(a.PartnerAccountId);
+                AddPartnerKey(a.PartnerId?.ToString());
+                foreach (var key in new[] { a.Username, a.FtthMemberId })
+                {
+                    if (string.IsNullOrWhiteSpace(key)) continue;
+                    var kk = key.ToLower().Trim();
+                    if (ambiguousKeys.Contains(kk)) continue; // مفتاح مكرّر لعدّة مالكين → تخطَّ
+                    ftthToUser.TryAdd(kk, val);
+                }
+            }
+
             foreach (var u in userMap)
             {
                 var val = new { u.Id, u.FullName, u.CompanyId };
                 // أولوية: FtthUsername > Username > FullName
+                // P2-1: لا نُعيد مفتاحاً غامضاً عبر الرجوع القديم (حتى لا تُساء النسبة المالية).
                 if (!string.IsNullOrWhiteSpace(u.FtthUsername))
                 {
                     var k = u.FtthUsername.ToLower().Trim();
-                    ftthToUser.TryAdd(k, val);
+                    if (!ambiguousKeys.Contains(k)) ftthToUser.TryAdd(k, val);
                 }
                 if (!string.IsNullOrWhiteSpace(u.Username))
                 {
                     var k = u.Username.ToLower().Trim();
-                    ftthToUser.TryAdd(k, val);
+                    if (!ambiguousKeys.Contains(k)) ftthToUser.TryAdd(k, val);
                 }
                 if (!string.IsNullOrWhiteSpace(u.FullName))
                 {
                     var k = u.FullName.ToLower().Trim();
-                    ftthToUser.TryAdd(k, val);
+                    if (!ambiguousKeys.Contains(k)) ftthToUser.TryAdd(k, val);
                 }
             }
 
@@ -2324,19 +2478,45 @@ public class FtthAccountingController : ControllerBase
                 planPriceMap.TryAdd(p.Name, p.MonthlyPrice);
             }
 
+            // خريطة شريك: معرّف الكيان → معرّف شريك FTTH (PartnerAccountId) — لمطابقة أجرة الزون بالشريك.
+            var partnerFtthIdMap = await _db.FtthPartners
+                .Where(p => !p.IsDeleted && (syncCompanyId == null || p.CompanyId == syncCompanyId))
+                .Select(p => new { p.Id, p.PartnerAccountId })
+                .ToDictionaryAsync(x => x.Id, x => x.PartnerAccountId);
+
             var allZoneFees = await _unitOfWork.ZoneMaintenanceFees.AsQueryable()
-                .Where(z => !z.IsDeleted && z.IsEnabled)
-                .Select(z => new { z.ZoneName, z.ZoneId, z.MaintenanceAmount })
+                .Where(z => !z.IsDeleted && z.IsEnabled
+                    && (syncCompanyId == null || z.CompanyId == syncCompanyId))
+                .Select(z => new { z.ZoneName, z.ZoneId, z.MaintenanceAmount, z.PartnerId })
                 .ToListAsync();
-            // خريطة: اسم الزون أو معرفه → مبلغ الصيانة
-            var zoneFeeByName = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-            var zoneFeeById = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+            // مفتاح أجرة الزون = (معرّف شريك FTTH أو "" للاحتياطي بلا شريك) + الزون.
+            string ZoneFeeKey(string? partnerKey, string? zone)
+                => $"{(partnerKey ?? "").Trim().ToLower()}\u0001{(zone ?? "").Trim().ToLower()}";
+            var zoneFeeMap = new Dictionary<string, decimal>();
             foreach (var z in allZoneFees)
             {
+                // أجرة بشريك: مفتاحها معرّف FTTH للشريك؛ بلا شريك: "" (احتياطي لكل الشركاء).
+                string pkey = "";
+                if (z.PartnerId.HasValue)
+                    pkey = (partnerFtthIdMap.TryGetValue(z.PartnerId.Value, out var fid) && !string.IsNullOrWhiteSpace(fid))
+                        ? fid! : z.PartnerId.Value.ToString();
                 if (!string.IsNullOrWhiteSpace(z.ZoneName))
-                    zoneFeeByName.TryAdd(z.ZoneName, z.MaintenanceAmount);
+                    zoneFeeMap.TryAdd(ZoneFeeKey(pkey, z.ZoneName), z.MaintenanceAmount);
                 if (!string.IsNullOrWhiteSpace(z.ZoneId))
-                    zoneFeeById.TryAdd(z.ZoneId, z.MaintenanceAmount);
+                    zoneFeeMap.TryAdd(ZoneFeeKey(pkey, z.ZoneId), z.MaintenanceAmount);
+            }
+            // بحث أجرة الزون: جرّب أجرة شريك العملية أولاً ثم الاحتياطية.
+            decimal LookupZoneFee(string? txPartnerFtthId, string? zoneName, string? zoneId)
+            {
+                foreach (var zone in new[] { zoneName, zoneId })
+                {
+                    if (string.IsNullOrWhiteSpace(zone)) continue;
+                    if (!string.IsNullOrWhiteSpace(txPartnerFtthId)
+                        && zoneFeeMap.TryGetValue(ZoneFeeKey(txPartnerFtthId, zone), out var pf)) return pf;
+                    if (zoneFeeMap.TryGetValue(ZoneFeeKey("", zone), out var bf)) return bf;
+                }
+                return 0;
             }
 
             int saved = 0, skipped = 0, failed = 0, updated = 0;
@@ -2346,6 +2526,14 @@ public class FtthAccountingController : ControllerBase
 
             foreach (var tx in dto.Transactions)
             {
+                // ═══ استبعاد: منفّذ العملية ضمن القائمة ⇒ تخطٍّ كامل (لا سجلّ ولا قيد) ═══
+                if (excludedCreators.Count > 0 && !string.IsNullOrWhiteSpace(tx.CreatedBy)
+                    && excludedCreators.Contains(tx.CreatedBy.ToLower().Trim()))
+                {
+                    skipped++;
+                    continue;
+                }
+
                 // تحديث السجلات الموجودة إذا كانت بياناتها ناقصة
                 if (!string.IsNullOrEmpty(tx.FtthTransactionId) && existingSet.Contains(tx.FtthTransactionId))
                 {
@@ -2359,6 +2547,11 @@ public class FtthAccountingController : ControllerBase
                         if (existing != null)
                         {
                             bool needsUpdate = false;
+                            // ردم المعرّف الخام والشريك على السجلّات القديمة (لا يُستبدَل إن كان موجوداً)
+                            if (string.IsNullOrEmpty(existing.OperatorUsername) && !string.IsNullOrEmpty(tx.CreatedBy))
+                            { existing.OperatorUsername = tx.CreatedBy; needsUpdate = true; }
+                            if (string.IsNullOrEmpty(existing.PartnerId) && !string.IsNullOrEmpty(tx.PartnerId))
+                            { existing.PartnerId = tx.PartnerId; existing.PartnerName = tx.PartnerName; needsUpdate = true; }
                             if (string.IsNullOrEmpty(existing.CollectionType) && !string.IsNullOrEmpty(tx.CollectionType))
                             {
                                 existing.CollectionType = tx.CollectionType;
@@ -2457,7 +2650,18 @@ public class FtthAccountingController : ControllerBase
                     {
                         userId = directUserId;
                     }
-                    // ثانياً: البحث بـ CreatedBy (اسم المستخدم في FTTH)
+                    // المستوى 1: مفتاح (شريك + اسم مستخدم) — الأدقّ، يحلّ تصادم الأسماء بين الشركاء.
+                    // tx.PartnerId = معرّف شريك FTTH (مثل "2261175") أو GUID كياننا — كلاهما مُفهرَس.
+                    if (userId == null && !string.IsNullOrEmpty(tx.PartnerId) && !string.IsNullOrEmpty(tx.CreatedBy))
+                    {
+                        var pk = PartnerKey(tx.PartnerId, tx.CreatedBy);
+                        if (ftthToUserByPartner.TryGetValue(pk, out var pu))
+                        {
+                            userId = pu.Id;
+                            companyId ??= pu.CompanyId;
+                        }
+                    }
+                    // المستوى 2: البحث بـ CreatedBy (اسم المستخدم في FTTH) — رجوع إن لم يُحدَّد الشريك
                     if (userId == null && !string.IsNullOrEmpty(tx.CreatedBy))
                     {
                         var key = tx.CreatedBy.ToLower().Trim();
@@ -2523,14 +2727,8 @@ public class FtthAccountingController : ControllerBase
                         }
                     }
 
-                    // 2. أجور الصيانة = من جدول أجور الزونات حسب المنطقة
-                    decimal autoMaintenanceFee = 0;
-                    if (!string.IsNullOrEmpty(tx.ZoneName) && zoneFeeByName.TryGetValue(tx.ZoneName, out var feeByName))
-                        autoMaintenanceFee = feeByName;
-                    else if (!string.IsNullOrEmpty(tx.ZoneId) && zoneFeeById.TryGetValue(tx.ZoneId, out var feeById))
-                        autoMaintenanceFee = feeById;
-                    else if (!string.IsNullOrEmpty(tx.ZoneId) && zoneFeeByName.TryGetValue(tx.ZoneId, out var feeByZoneIdInName))
-                        autoMaintenanceFee = feeByZoneIdInName;
+                    // 2. أجور الصيانة = من جدول أجور الزونات حسب المنطقة + شريك العملية (مع احتياطي بلا شريك)
+                    decimal autoMaintenanceFee = LookupZoneFee(tx.PartnerId, tx.ZoneName, tx.ZoneId);
 
                     // تحديد ActivatedBy: أولوية FullName > CreatedBy
                     var activatedByValue = tx.CreatedBy;
@@ -2581,7 +2779,10 @@ public class FtthAccountingController : ControllerBase
                         PlanPrice = planPrice,
                         CommitmentPeriod = tx.CommitmentPeriod,
                         OperationType = operationTypeAr,
-                        ActivatedBy = activatedByValue,
+                        ActivatedBy = activatedByValue,               // اسم محلول للعرض فقط
+                        OperatorUsername = tx.CreatedBy,              // معرّف المشغّل الخام — هوية ثابتة لا تُستبدَل
+                        PartnerId = tx.PartnerId,                     // الشريك (من tx.partner)
+                        PartnerName = tx.PartnerName,
                         ActivationDate = activationDateUtc,
                         ZoneId = tx.ZoneId,
                         ZoneName = tx.ZoneName,
@@ -2877,21 +3078,47 @@ public class FtthAccountingController : ControllerBase
             foreach (var p in allPlans)
                 planPriceMap.TryAdd(p.Name, p.MonthlyPrice);
 
+            // خريطة شريك: معرّف الكيان → معرّف شريك FTTH (PartnerAccountId) — لمطابقة أجرة الزون بالشريك.
+            var partnerFtthIdMap = await _db.FtthPartners
+                .Where(p => !p.IsDeleted && (companyId == null || p.CompanyId == companyId))
+                .Select(p => new { p.Id, p.PartnerAccountId })
+                .ToDictionaryAsync(x => x.Id, x => x.PartnerAccountId);
+
             var allZoneFees = await _unitOfWork.ZoneMaintenanceFees.AsQueryable()
-                .Where(z => !z.IsDeleted && z.IsEnabled)
-                .Select(z => new { z.ZoneName, z.ZoneId, z.MaintenanceAmount })
+                .Where(z => !z.IsDeleted && z.IsEnabled
+                    && (companyId == null || z.CompanyId == companyId))
+                .Select(z => new { z.ZoneName, z.ZoneId, z.MaintenanceAmount, z.PartnerId })
                 .ToListAsync();
-            var zoneFeeByName = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
-            var zoneFeeById = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+            // مفتاح أجرة الزون = (معرّف شريك FTTH أو "" للاحتياطي بلا شريك) + الزون.
+            string ZoneFeeKey(string? partnerKey, string? zone)
+                => $"{(partnerKey ?? "").Trim().ToLower()}\u0001{(zone ?? "").Trim().ToLower()}";
+            var zoneFeeMap = new Dictionary<string, decimal>();
             foreach (var z in allZoneFees)
             {
+                string pkey = "";
+                if (z.PartnerId.HasValue)
+                    pkey = (partnerFtthIdMap.TryGetValue(z.PartnerId.Value, out var fid) && !string.IsNullOrWhiteSpace(fid))
+                        ? fid! : z.PartnerId.Value.ToString();
                 if (!string.IsNullOrWhiteSpace(z.ZoneName))
-                    zoneFeeByName.TryAdd(z.ZoneName, z.MaintenanceAmount);
+                    zoneFeeMap.TryAdd(ZoneFeeKey(pkey, z.ZoneName), z.MaintenanceAmount);
                 if (!string.IsNullOrWhiteSpace(z.ZoneId))
-                    zoneFeeById.TryAdd(z.ZoneId, z.MaintenanceAmount);
+                    zoneFeeMap.TryAdd(ZoneFeeKey(pkey, z.ZoneId), z.MaintenanceAmount);
+            }
+            // بحث أجرة الزون: جرّب أجرة شريك العملية أولاً ثم الاحتياطية.
+            decimal LookupZoneFee(string? txPartnerFtthId, string? zoneName, string? zoneId)
+            {
+                foreach (var zone in new[] { zoneName, zoneId })
+                {
+                    if (string.IsNullOrWhiteSpace(zone)) continue;
+                    if (!string.IsNullOrWhiteSpace(txPartnerFtthId)
+                        && zoneFeeMap.TryGetValue(ZoneFeeKey(txPartnerFtthId, zone), out var pf)) return pf;
+                    if (zoneFeeMap.TryGetValue(ZoneFeeKey("", zone), out var bf)) return bf;
+                }
+                return 0;
             }
 
-            if (!planPriceMap.Any() && !zoneFeeByName.Any())
+            if (!planPriceMap.Any() && !zoneFeeMap.Any())
                 return BadRequest(new { success = false, message = "لا توجد أسعار باقات أو أجور صيانة مُعرّفة — أضفها أولاً" });
 
             // 2. جلب العمليات
@@ -2976,14 +3203,8 @@ public class FtthAccountingController : ControllerBase
                         }
                     }
 
-                    // حساب أجور الصيانة
-                    decimal autoMaintenanceFee = 0;
-                    if (!string.IsNullOrEmpty(log.ZoneName) && zoneFeeByName.TryGetValue(log.ZoneName, out var feeByName))
-                        autoMaintenanceFee = feeByName;
-                    else if (!string.IsNullOrEmpty(log.ZoneId) && zoneFeeById.TryGetValue(log.ZoneId, out var feeById))
-                        autoMaintenanceFee = feeById;
-                    else if (!string.IsNullOrEmpty(log.ZoneId) && zoneFeeByName.TryGetValue(log.ZoneId, out var feeByZoneIdInName))
-                        autoMaintenanceFee = feeByZoneIdInName;
+                    // حساب أجور الصيانة — حسب شريك العملية (مع احتياطي بلا شريك)
+                    decimal autoMaintenanceFee = LookupZoneFee(log.PartnerId, log.ZoneName, log.ZoneId);
 
                     // تخطي إذا لا يوجد أي تغيير (لا إيرادات ولا تصحيح BasePrice) — ما لم يكن بدون قيد
                     var basePriceChanged = autoBasePrice != (log.BasePrice ?? 0) && autoBasePrice > 0;
@@ -4149,9 +4370,108 @@ public class FtthAccountingController : ControllerBase
         }
     }
 
+    // ==================== المنفّذون المستبعَدون من المقارنة (CRUD) ====================
+
+    /// <summary>قائمة المنفّذين المستبعَدين لشركة المستخدم (من التوكن).</summary>
+    [HttpGet("excluded-creators")]
+    [RequirePermission("accounting.ftth_operators", "view")]
+    public async Task<IActionResult> GetExcludedCreators([FromQuery] Guid? companyId)
+    {
+        var scope = ResolveExclusionCompany(companyId);
+        if (scope == null) return BadRequest(new { success = false, message = "تعذّر تحديد الشركة" });
+        var list = await _db.FtthExcludedCreators
+            .Where(x => !x.IsDeleted && x.CompanyId == scope.Value)
+            .OrderByDescending(x => x.CreatedAt)
+            .Select(x => new { id = x.Id, identifier = x.Identifier, note = x.Note, isActive = x.IsActive, createdAt = x.CreatedAt })
+            .ToListAsync();
+        return Ok(new { success = true, data = list, total = list.Count });
+    }
+
+    /// <summary>إضافة منفّذ مستبعَد (رقم أو اسم). عمليات createdBy المطابقة تُتخطّى في المزامنة/المقارنة.</summary>
+    [HttpPost("excluded-creators")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
+    public async Task<IActionResult> AddExcludedCreator([FromBody] ExcludedCreatorDto dto)
+    {
+        var scope = ResolveExclusionCompany(dto?.CompanyId);
+        if (scope == null) return BadRequest(new { success = false, message = "تعذّر تحديد الشركة" });
+        var ident = (dto?.Identifier ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(ident)) return BadRequest(new { success = false, message = "المعرّف مطلوب" });
+        var exists = await _db.FtthExcludedCreators.AnyAsync(x => !x.IsDeleted
+            && x.CompanyId == scope.Value && x.Identifier.ToLower() == ident.ToLower());
+        if (exists) return Conflict(new { success = false, message = "المعرّف مُضاف مسبقاً" });
+        var entity = new FtthExcludedCreator
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = scope.Value,
+            Identifier = ident,
+            Note = string.IsNullOrWhiteSpace(dto?.Note) ? null : dto!.Note!.Trim(),
+            IsActive = dto?.IsActive ?? true,
+            CreatedById = CurrentUserIdOrNull()
+        };
+        await _db.FtthExcludedCreators.AddAsync(entity);
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, data = new { id = entity.Id }, message = "تمت إضافة المنفّذ المستبعَد" });
+    }
+
+    /// <summary>تعديل منفّذ مستبعَد (المعرّف/الملاحظة/التفعيل).</summary>
+    [HttpPut("excluded-creators/{id}")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
+    public async Task<IActionResult> UpdateExcludedCreator(Guid id, [FromBody] ExcludedCreatorDto dto)
+    {
+        var entity = await _db.FtthExcludedCreators.FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
+        if (entity == null) return NotFound(new { success = false, message = "غير موجود" });
+        if (!CanAccessCompany(entity.CompanyId)) return Forbid();
+        if (!string.IsNullOrWhiteSpace(dto?.Identifier))
+        {
+            var newIdent = dto!.Identifier!.Trim();
+            var dup = await _db.FtthExcludedCreators.AnyAsync(x => !x.IsDeleted && x.Id != id
+                && x.CompanyId == entity.CompanyId && x.Identifier.ToLower() == newIdent.ToLower());
+            if (dup) return Conflict(new { success = false, message = "المعرّف مُضاف مسبقاً" });
+            entity.Identifier = newIdent;
+        }
+        if (dto?.Note != null) entity.Note = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim();
+        if (dto?.IsActive != null) entity.IsActive = dto.IsActive.Value;
+        entity.UpdatedAt = DateTime.UtcNow;
+        _db.FtthExcludedCreators.Update(entity);
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, message = "تم التعديل" });
+    }
+
+    /// <summary>حذف منفّذ مستبعَد (حذف ناعم).</summary>
+    [HttpDelete("excluded-creators/{id}")]
+    [RequirePermission("accounting.ftth_operators", "edit")]
+    public async Task<IActionResult> DeleteExcludedCreator(Guid id)
+    {
+        var entity = await _db.FtthExcludedCreators.FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
+        if (entity == null) return NotFound(new { success = false, message = "غير موجود" });
+        if (!CanAccessCompany(entity.CompanyId)) return Forbid();
+        entity.IsDeleted = true;
+        entity.DeletedAt = DateTime.UtcNow;
+        _db.FtthExcludedCreators.Update(entity);
+        await _db.SaveChangesAsync();
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    // عزل: شركة المستبعَدين = شركة التوكن (SuperAdmin يجوز له تحديد شركة).
+    private Guid? ResolveExclusionCompany(Guid? requested)
+        => _tenant.IsSuperAdmin ? (requested ?? _tenant.CompanyId) : _tenant.CompanyId;
+
+    private bool CanAccessCompany(Guid companyId)
+        => _tenant.IsSuperAdmin || (_tenant.CompanyId.HasValue && _tenant.CompanyId.Value == companyId);
+
+    private Guid? CurrentUserIdOrNull()
+    {
+        var sub = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+        return Guid.TryParse(sub, out var g) ? g : (Guid?)null;
+    }
+
 }
 
 // ==================== DTOs ====================
+
+/// <summary>طلب إضافة/تعديل منفّذ مستبعَد.</summary>
+public record ExcludedCreatorDto(string? Identifier, string? Note = null, bool? IsActive = null, Guid? CompanyId = null);
 
 public record FtthLogWithAccountingDto(
     // حقول SubscriptionLog الأساسية
@@ -4227,7 +4547,8 @@ public record OperatorCreditCollectionDto(
 public record LinkFtthAccountDto(
     Guid UserId,
     string FtthUsername,
-    string? FtthPasswordEncrypted
+    string? FtthPasswordEncrypted,
+    string? FtthMemberId = null
 );
 
 public record SetRenewalCycleDto(
@@ -4271,7 +4592,10 @@ public record SyncFtthTransactionItem(
     string? ZoneName = null,
     string? TechnicianName = null,
     string? PaymentStatus = null,
-    int? CommitmentPeriod = null
+    int? CommitmentPeriod = null,
+    // الشريك (من tx.partner في FTTH) — لتخزين PartnerId/PartnerName على العملية
+    string? PartnerId = null,
+    string? PartnerName = null
 );
 
 public record QuickDeliverDto(

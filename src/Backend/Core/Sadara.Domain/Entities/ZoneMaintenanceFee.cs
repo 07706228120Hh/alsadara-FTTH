@@ -18,6 +18,12 @@ public class ZoneMaintenanceFee : BaseEntity<Guid>
     /// <summary>مفعّل أم لا</summary>
     public bool IsEnabled { get; set; } = true;
 
+    /// <summary>
+    /// الشريك الرئيسي الذي تتبعه أجرة الزون (<see cref="FtthPartner"/>).
+    /// nullable: الأجور القديمة بلا شريك تبقى احتياطية لكل الشركاء حتى تُسنَد.
+    /// </summary>
+    public Guid? PartnerId { get; set; }
+
     /// <summary>معرف الشركة</summary>
     public Guid CompanyId { get; set; }
     public Company? Company { get; set; }
