@@ -8487,9 +8487,17 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     }
 
     if (_comparisonRows.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_isLoadingCompare) _buildComparison();
-      });
+      // كسولاً: لا نُطلق بناء المقارنة (الذي يجلب كل الشركاء) إلا إذا كان تبويب
+      // المقارنة هو النشط فعلاً. بدون هذا الحارس كان جسم _buildCompareTab يُنفَّذ
+      // في كل بناء للصفحة (لأنه يُمرَّر كاستدعاء دالّة إلى TabBarView) فيجلب
+      // الشركاء ونحن ما زلنا في تبويب «خادمنا».
+      if (_tabController.index == 2) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !_isLoadingCompare && _tabController.index == 2) {
+            _buildComparison();
+          }
+        });
+      }
       return const Center(child: CircularProgressIndicator());
     }
 
