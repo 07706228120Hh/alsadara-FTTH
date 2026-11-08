@@ -17,6 +17,12 @@ public class FtthAccount : BaseEntity<Guid>, ITenantScoped
     /// <summary>معرف الموظف المالك للحساب (User) — يُطابَق مع المستخدم الحالي كدفاع بالعمق</summary>
     public Guid OwnerUserId { get; set; }
 
+    /// <summary>
+    /// الشريك الرئيسي الذي يتبعه هذا الحساب الفرعي (<see cref="FtthPartner"/>).
+    /// nullable للحسابات القديمة قبل بنية الشركاء. يميّز الحساب عند تصادم أسماء المستخدمين بين الشركاء.
+    /// </summary>
+    public Guid? PartnerId { get; set; }
+
     /// <summary>تسمية وصفية للحساب يختارها الموظف (مثل: «حسابي الرئيسي»)</summary>
     public string Label { get; set; } = string.Empty;
 

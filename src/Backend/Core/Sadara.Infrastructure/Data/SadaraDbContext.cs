@@ -162,6 +162,7 @@ public class SadaraDbContext : DbContext
 
     // ==================== FTTH Multi-Account Linking (حسابات FTTH المتعددة لكل موظف) ====================
     public DbSet<FtthAccount> FtthAccounts => Set<FtthAccount>();
+    public DbSet<FtthPartner> FtthPartners => Set<FtthPartner>();
 
     // ==================== FTTH Commission Transfer (حارس تحويل العمولة: idempotency + تدقيق) ====================
     public DbSet<FtthCommissionTransfer> FtthCommissionTransfers => Set<FtthCommissionTransfer>();
@@ -468,6 +469,21 @@ public class SadaraDbContext : DbContext
             .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<FtthAccount>()
             .HasOne<User>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+
+        // ==================== FTTH Partners (الشركاء الرئيسيون) ====================
+        // مصدر الجلب الموثوق لعمليات كل مشغّلي الشريك. اعتماد الرئيسي مشفّر ولا يُعاد.
+        modelBuilder.Entity<FtthPartner>().HasQueryFilter(x => !x.IsDeleted);
+        modelBuilder.Entity<FtthPartner>()
+            .HasIndex(x => new { x.CompanyId, x.Name })
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false");
+        modelBuilder.Entity<FtthPartner>()
+            .HasIndex(x => new { x.CompanyId, x.PartnerAccountId });
+        modelBuilder.Entity<FtthPartner>()
+            .HasOne(x => x.Company).WithMany().HasForeignKey(x => x.CompanyId).OnDelete(DeleteBehavior.Cascade);
+        // فهرس حساب الموظف حسب شريكه (للتجميع والمطابقة)
+        modelBuilder.Entity<FtthAccount>()
+            .HasIndex(x => new { x.CompanyId, x.PartnerId });
 
         // ==================== FTTH Commission Transfer (حارس تحويل العمولة) ====================
         // سجلّ idempotency/تدقيق لكل عملية تحويل عمولة. معزول بالشركة (ITenantScoped) + FK شركة Cascade.

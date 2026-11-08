@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -1116,6 +1117,480 @@ public class LinkedAccountsController : ControllerBase
         // Pending: عملية سابقة بنفس المعرّف لم تُحسَم نتيجتها بعد — لا نُعيد التنفيذ (منع تحويل مزدوج).
         return StatusCode(409, new { success = false, message = "عملية تحويل بنفس المعرّف قيد التنفيذ — لا تُعِد الإرسال" });
     }
+
+    // ==================== الشركاء الرئيسيون (FtthPartner) ====================
+    // مصدر الجلب الموثوق لعمليات كل مشغّلي الشريك. اعتماد الرئيسي مشفّر ولا يُعاد.
+    // محصور بأدمن الشركة فأعلى (يحمل اعتماداً قوياً) + عزل بالشركة من التوكن.
+
+    /// <summary>قائمة الشركاء الرئيسيين للشركة (بلا أسرار).</summary>
+    [HttpGet("partners")]
+    [RequirePermission("linked_accounts", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetPartners(CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var list = await _db.FtthPartners.AsNoTracking()
+            .Where(p => p.CompanyId == companyId && !p.IsDeleted)
+            .OrderBy(p => p.Name)
+            .Select(p => new { id = p.Id, name = p.Name, mainUsername = p.MainUsername, serverUrl = p.ServerUrl,
+                partnerAccountId = p.PartnerAccountId, isActive = p.IsActive, status = p.Status, lastVerifiedAt = p.LastVerifiedAt })
+            .ToListAsync(ct);
+        return Ok(new { success = true, data = list, total = list.Count });
+    }
+
+    /// <summary>إضافة شريك رئيسي (اسم + اعتماد الحساب الرئيسي). كلمة المرور تُشفَّر ولا تُعاد.</summary>
+    [HttpPost("partners")]
+    [RequirePermission("linked_accounts", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> CreatePartner([FromBody] CreatePartnerRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        if (!IsCompanyAdminOrAbove()) return Forbid();
+        if (string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.MainUsername)
+            || string.IsNullOrWhiteSpace(request.MainPassword))
+            return BadRequest(new { success = false, message = "الاسم واسم المستخدم وكلمة المرور مطلوبة" });
+        if (!string.IsNullOrWhiteSpace(request.ServerUrl) && !IsAllowedFtthServerUrl(request.ServerUrl))
+            return BadRequest(new { success = false, message = "عنوان خادم FTTH غير مسموح" });
+        var name = request.Name.Trim();
+        var dup = await _db.FtthPartners.AnyAsync(p => !p.IsDeleted && p.CompanyId == companyId
+            && p.Name.ToLower() == name.ToLower(), ct);
+        if (dup) return Conflict(new { success = false, message = "اسم الشريك مُستخدم مسبقاً" });
+        var partner = new FtthPartner
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = companyId,
+            Name = name,
+            MainUsername = request.MainUsername.Trim(),
+            MainPasswordEncrypted = _secretProtector.Protect(request.MainPassword),
+            ServerUrl = string.IsNullOrWhiteSpace(request.ServerUrl) ? DefaultFtthBaseUrl : request.ServerUrl.Trim(),
+            IsActive = true,
+            Status = "Unverified"
+        };
+        await _db.FtthPartners.AddAsync(partner, ct);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, data = new { id = partner.Id }, message = "تمت إضافة الشريك" });
+    }
+
+    /// <summary>تعديل شريك (الاسم/اسم المستخدم/كلمة المرور الاختيارية/التفعيل/الخادم).</summary>
+    [HttpPut("partners/{id}")]
+    [RequirePermission("linked_accounts", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> UpdatePartner(Guid id, [FromBody] UpdatePartnerRequest request, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        if (!IsCompanyAdminOrAbove()) return Forbid();
+        var partner = await _db.FtthPartners.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
+        if (partner == null || partner.CompanyId != companyId)
+            return NotFound(new { success = false, message = "الشريك غير موجود" });
+        if (request.ServerUrl != null && request.ServerUrl.Length > 0 && !IsAllowedFtthServerUrl(request.ServerUrl))
+            return BadRequest(new { success = false, message = "عنوان خادم FTTH غير مسموح" });
+        if (!string.IsNullOrWhiteSpace(request.Name)) partner.Name = request.Name.Trim();
+        if (!string.IsNullOrWhiteSpace(request.MainUsername)) partner.MainUsername = request.MainUsername.Trim();
+        if (!string.IsNullOrWhiteSpace(request.MainPassword))
+        {
+            partner.MainPasswordEncrypted = _secretProtector.Protect(request.MainPassword);
+            partner.Status = "Unverified"; // اعتماد جديد يحتاج إعادة توثيق
+        }
+        if (request.IsActive != null) partner.IsActive = request.IsActive.Value;
+        if (!string.IsNullOrWhiteSpace(request.ServerUrl)) partner.ServerUrl = request.ServerUrl.Trim();
+        partner.UpdatedAt = DateTime.UtcNow;
+        _db.FtthPartners.Update(partner);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, message = "تم تعديل الشريك" });
+    }
+
+    /// <summary>حذف شريك (حذف ناعم). لا يحذف حسابات الموظفين المرتبطة (تبقى بلا شريك).</summary>
+    [HttpDelete("partners/{id}")]
+    [RequirePermission("linked_accounts", "manage", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> DeletePartner(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        if (!IsCompanyAdminOrAbove()) return Forbid();
+        var partner = await _db.FtthPartners.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
+        if (partner == null || partner.CompanyId != companyId)
+            return NotFound(new { success = false, message = "الشريك غير موجود" });
+        partner.IsDeleted = true;
+        partner.DeletedAt = DateTime.UtcNow;
+        _db.FtthPartners.Update(partner);
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { success = true, message = "تم حذف الشريك" });
+    }
+
+    /// <summary>توثيق الحساب الرئيسي للشريك: دخول خادمي + التقاط PartnerAccountId من JWT.</summary>
+    [HttpPost("partners/{id}/verify")]
+    [RequirePermission("linked_accounts", "manage", PermissionSystem.Second, failClosed: true)]
+    [EnableRateLimiting("credential-reveal")]
+    public async Task<IActionResult> VerifyPartner(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var partner = await _db.FtthPartners.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
+        if (partner == null || partner.CompanyId != companyId)
+            return NotFound(new { success = false, message = "الشريك غير موجود" });
+        try
+        {
+            var password = _secretProtector.Unprotect(partner.MainPasswordEncrypted);
+            var result = await FtthLoginAsync(partner.ServerUrl, partner.MainUsername, password, ct);
+            partner.Status = result.Ok ? "Verified" : "Invalid";
+            if (result.Ok)
+            {
+                partner.LastVerifiedAt = DateTime.UtcNow;
+                var accId = ExtractAccountIdFromJwt(result.AccessToken);
+                if (!string.IsNullOrWhiteSpace(accId)) partner.PartnerAccountId = accId;
+            }
+            partner.UpdatedAt = DateTime.UtcNow;
+            _db.FtthPartners.Update(partner);
+            await _db.SaveChangesAsync(ct);
+            return Ok(new { success = true, data = new { verified = result.Ok, status = partner.Status,
+                partnerAccountId = partner.PartnerAccountId }, message = result.Ok ? "تم توثيق الشريك" : "فشل التحقق من اعتماد الشريك" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في توثيق الشريك");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>قائمة مشغّلي الشريك (أسماء المستخدمين من /api/teams/members عبر الحساب الرئيسي) — لقائمة الاختيار. بلا أسرار.</summary>
+    [HttpGet("partners/{id}/operators")]
+    [RequirePermission("linked_accounts", "manage", PermissionSystem.Second, failClosed: true)]
+    [EnableRateLimiting("credential-reveal")]
+    public async Task<IActionResult> GetPartnerOperators(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var partner = await _db.FtthPartners.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
+        if (partner == null || partner.CompanyId != companyId)
+            return NotFound(new { success = false, message = "الشريك غير موجود" });
+        try
+        {
+            var password = _secretProtector.Unprotect(partner.MainPasswordEncrypted);
+            var login = await FtthLoginAsync(partner.ServerUrl, partner.MainUsername, password, ct);
+            if (!login.Ok)
+                return StatusCode(502, new { success = false, message = login.Error ?? "تعذّر تسجيل الدخول لحساب الشريك الرئيسي" });
+            var members = await FetchPartnerMembersAsync(partner.ServerUrl, login.AccessToken!, ct);
+            return Ok(new { success = true, data = members, total = members.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب مشغّلي الشريك");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// مناطق (زونات) الشريك من FTTH مباشرة: دخول خادمي لحساب الشريك الرئيسي ثم
+    /// GET /api/locations/zones بتوكنه (النتيجة مقيَّدة بمناطق هذا الشريك). خادمي بالكامل —
+    /// لا يُعاد أي سرّ، والاعتماد يُفكّ في الذاكرة فقط.
+    /// </summary>
+    [HttpGet("partners/{id}/zones")]
+    [RequirePermission("linked_accounts", "manage", PermissionSystem.Second, failClosed: true)]
+    [EnableRateLimiting("credential-reveal")]
+    public async Task<IActionResult> GetPartnerZones(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var partner = await _db.FtthPartners.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
+        if (partner == null || partner.CompanyId != companyId)
+            return NotFound(new { success = false, message = "الشريك غير موجود" });
+        try
+        {
+            var password = _secretProtector.Unprotect(partner.MainPasswordEncrypted);
+            var login = await FtthLoginAsync(partner.ServerUrl, partner.MainUsername, password, ct);
+            if (!login.Ok)
+                return StatusCode(502, new { success = false, message = login.Error ?? "تعذّر تسجيل الدخول لحساب الشريك الرئيسي" });
+            var zones = await FetchPartnerZonesAsync(partner.ServerUrl, login.AccessToken!, ct);
+            return Ok(new { success = true, data = zones, total = zones.Count });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب مناطق الشريك");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// دخول خادمي لحساب الشريك الرئيسي ويعيد توكن الوصول (+ معرّف/اسم الشريك) ليجلب التطبيق
+    /// عمليات هذا الشريك ويوسمها. لا يُعاد أي سرّ دائم؛ محدود المعدّل ومُدقّق.
+    /// </summary>
+    [HttpPost("partners/{id}/login")]
+    [RequirePermission("linked_accounts", "manage", PermissionSystem.Second, failClosed: true)]
+    [EnableRateLimiting("credential-reveal")]
+    public async Task<IActionResult> LoginPartner(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var currentUserId, out var denied)) return denied!;
+        var partner = await _db.FtthPartners.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
+        if (partner == null || partner.CompanyId != companyId)
+            return NotFound(new { success = false, message = "الشريك غير موجود" });
+        try
+        {
+            var password = _secretProtector.Unprotect(partner.MainPasswordEncrypted);
+            var login = await FtthLoginAsync(partner.ServerUrl, partner.MainUsername, password, ct);
+            if (!login.Ok)
+                return StatusCode(502, new { success = false, message = login.Error ?? "تعذّر تسجيل الدخول لحساب الشريك الرئيسي" });
+
+            // تدقيق: من سجّل دخولاً خادمياً لأي شريك ومتى — بلا كلمة مرور ولا توكن في السجل.
+            _logger.LogWarning("AUDIT دخول خادمي لشريك FTTH: requestedByUserId={Actor} companyId={CompanyId} partnerId={PartnerId} atUtc={AtUtc}",
+                currentUserId, companyId, partner.Id, DateTime.UtcNow);
+
+            return Ok(new { success = true, data = new
+            {
+                accessToken = login.AccessToken,
+                partnerId = partner.Id,
+                partnerName = partner.Name,
+                partnerAccountId = partner.PartnerAccountId,
+                serverUrl = partner.ServerUrl
+            } });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في تسجيل الدخول لحساب الشريك");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    private async Task<(bool Ok, string? AccessToken, string? RefreshToken, string? Error)> FtthLoginAsync(
+        string serverUrl, string username, string password, CancellationToken ct)
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(serverUrl) ? DefaultFtthBaseUrl : serverUrl.TrimEnd('/');
+
+        // دفاع بالعمق (إغلاق SSRF): لا نُجري أي نداء شبكة إن لم يمرّ العنوان قائمة السماح.
+        if (!IsAllowedFtthServerUrl(baseUrl))
+            return (false, null, null, "عنوان خادم FTTH غير مسموح");
+
+        try
+        {
+            // تعطيل إعادة التوجيه التلقائية لمنع التفاف SSRF عبر 3xx نحو عناوين داخلية.
+            using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(20) };
+
+            // FTTH WAF يتطلب هذه الترويسات — بدونها يرفض الطلب.
+            client.DefaultRequestHeaders.Add("Origin", "https://admin.ftth.iq");
+            client.DefaultRequestHeaders.Add("Referer", "https://admin.ftth.iq/");
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            client.DefaultRequestHeaders.Add("x-client-app", "53d57a7f-3f89-4e9d-873b-3d071bc6dd9f");
+            client.DefaultRequestHeaders.Add("x-user-role", "0");
+
+            var content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("username", username),
+                new KeyValuePair<string, string>("password", password),
+                new KeyValuePair<string, string>("grant_type", "password"),
+                new KeyValuePair<string, string>("scope", "openid profile"),
+            });
+
+            var response = await client.PostAsync($"{baseUrl}/api/auth/Contractor/token", content, ct);
+            if (!response.IsSuccessStatusCode)
+                return (false, null, null, $"فشل الاتصال بنظام FTTH: {(int)response.StatusCode}");
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            string? access = root.TryGetProperty("access_token", out var at) && at.ValueKind == JsonValueKind.String
+                ? at.GetString() : null;
+            string? refresh = root.TryGetProperty("refresh_token", out var rt) && rt.ValueKind == JsonValueKind.String
+                ? rt.GetString() : null;
+
+            if (string.IsNullOrEmpty(access))
+                return (false, null, null, "لم يُعِد خادم FTTH رمز وصول صالحاً");
+
+            return (true, access, refresh, null);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // لا نسجّل الاعتماد — رسالة الاستثناء فقط.
+            _logger.LogWarning(ex, "تعذّر الاتصال بنظام FTTH أثناء تسجيل الدخول/التحقق");
+            return (false, null, null, "تعذّر الاتصال بنظام FTTH");
+        }
+    }
+
+    /// <summary>
+    /// بعد دخول FTTH ناجح: يجلب أعضاء الفريق (/api/teams/members) بالتوكن، ويطابق العضو
+    /// الذي اسم مستخدمه = اسم مستخدم الحساب، فيعيد (رقم العضو الرقمي، الدور، الاسم المعروض).
+    /// رقم العضو يُقبل **رقمياً بحتاً** فقط (id/memberId/accountId/self.id). لا يرمي استثناءً —
+    /// يعيد null عند أي فشل كي لا يُفشل التوثيق. إن طابق الاسم بلا رقم، يسجّل مفاتيح الكائن للتشخيص.
+    /// </summary>
+    private async Task<(string? MemberId, string? Role, string? DisplayName)> FetchFtthMemberInfoAsync(
+        string serverUrl, string accessToken, string username, CancellationToken ct)
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(serverUrl) ? DefaultFtthBaseUrl : serverUrl.TrimEnd('/');
+        if (!IsAllowedFtthServerUrl(baseUrl)) return (null, null, null); // دفاع SSRF
+        try
+        {
+            using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(20) };
+            client.DefaultRequestHeaders.Add("Origin", "https://admin.ftth.iq");
+            client.DefaultRequestHeaders.Add("Referer", "https://admin.ftth.iq/");
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+            var response = await client.GetAsync($"{baseUrl}/api/teams/members", ct);
+            if (!response.IsSuccessStatusCode) return (null, null, null);
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
+                return (null, null, null);
+
+            var want = username.Trim().ToLowerInvariant();
+            int memberCount = 0;
+            JsonElement? matched = null;
+            foreach (var m in items.EnumerateArray())
+            {
+                if (m.ValueKind != JsonValueKind.Object) continue;
+                memberCount++;
+                var u = GetJsonString(m, "username");
+                if (u?.Trim().ToLowerInvariant() == want) matched = m;
+            }
+            // المعرّف = حقل id العضو في /api/teams/members (فريد لكل عامل، عادةً GUID).
+            // ليس AccountId في JWT (ذاك معرّف الشريك المشترك بين كل عمّال الحساب).
+            string? memberId = null;
+            string? role = null;
+            string? display = null;
+            if (matched != null)
+            {
+                var mm = matched.Value;
+                memberId = GetJsonString(mm, "id");
+                if (memberId == null && mm.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.Number)
+                    memberId = idEl.GetRawText();
+                if (mm.TryGetProperty("role", out var r) && r.ValueKind == JsonValueKind.Object)
+                    role = GetJsonString(r, "displayValue");
+                var nm = $"{GetJsonString(mm, "firstName") ?? ""} {GetJsonString(mm, "lastName") ?? ""}".Trim();
+                display = string.IsNullOrEmpty(nm) ? null : nm;
+            }
+
+            _logger.LogInformation("توثيق FTTH: الحساب={Want} عدد الأعضاء={Count} معرّف_العضو={Id}",
+                want, memberCount, memberId ?? "(null)");
+            return (memberId, role, display);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "تعذّر جلب أعضاء فريق FTTH أثناء التوثيق");
+            return (null, null, null);
+        }
+    }
+
+    /// <summary>يقرأ خاصية نصّية من كائن JSON (أو null).</summary>
+    private static string? GetJsonString(JsonElement obj, string name)
+        => obj.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
+    /// <summary>
+    /// يستخرج معرّف حساب الشريك الرقمي من JWT (مطالبة AccountId/account*id). بلا تحقّق توقيع — عرض فقط.
+    /// هذا هو **معرّف الشريك** (مشترك بين كل مشغّليه) — صحيح استعماله هنا للشريك لا للعامل الفرد.
+    /// </summary>
+    private static string? ExtractAccountIdFromJwt(string? jwt)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(jwt)) return null;
+            var parts = jwt.Split('.');
+            if (parts.Length < 2) return null;
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
+            switch (payload.Length % 4) { case 2: payload += "=="; break; case 3: payload += "="; break; }
+            using var doc = JsonDocument.Parse(Convert.FromBase64String(payload));
+            foreach (var p in doc.RootElement.EnumerateObject())
+            {
+                if (!p.Name.Contains("account", StringComparison.OrdinalIgnoreCase)
+                    || !p.Name.Contains("id", StringComparison.OrdinalIgnoreCase)) continue;
+                string? v = p.Value.ValueKind == JsonValueKind.String ? p.Value.GetString()
+                          : p.Value.ValueKind == JsonValueKind.Number ? p.Value.GetRawText() : null;
+                if (!string.IsNullOrWhiteSpace(v) && v!.All(char.IsDigit)) return v;
+            }
+            return null;
+        }
+        catch { return null; }
+    }
+
+    /// <summary>
+    /// يجلب مشغّلي الشريك من <c>/api/teams/members</c> بتوكن الحساب الرئيسي، ويعيد
+    /// (اسم المستخدم + الاسم المعروض + الدور) لكل عضو — بلا أي سرّ. لا يرمي (يعيد قائمة فارغة عند الفشل).
+    /// </summary>
+    private async Task<List<object>> FetchPartnerMembersAsync(string serverUrl, string accessToken, CancellationToken ct)
+    {
+        var result = new List<object>();
+        var baseUrl = string.IsNullOrWhiteSpace(serverUrl) ? DefaultFtthBaseUrl : serverUrl.TrimEnd('/');
+        if (!IsAllowedFtthServerUrl(baseUrl)) return result;
+        try
+        {
+            using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(20) };
+            client.DefaultRequestHeaders.Add("Origin", "https://admin.ftth.iq");
+            client.DefaultRequestHeaders.Add("Referer", "https://admin.ftth.iq/");
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            var response = await client.GetAsync($"{baseUrl}/api/teams/members", ct);
+            if (!response.IsSuccessStatusCode) return result;
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
+                return result;
+            foreach (var m in items.EnumerateArray())
+            {
+                if (m.ValueKind != JsonValueKind.Object) continue;
+                var username = GetJsonString(m, "username");
+                if (string.IsNullOrWhiteSpace(username)) continue;
+                var display = $"{GetJsonString(m, "firstName") ?? ""} {GetJsonString(m, "lastName") ?? ""}".Trim();
+                string? role = m.TryGetProperty("role", out var r) && r.ValueKind == JsonValueKind.Object
+                    ? GetJsonString(r, "displayValue") : null;
+                result.Add(new { username, displayName = string.IsNullOrEmpty(display) ? null : display, role });
+            }
+        }
+        catch (Exception ex) { _logger.LogWarning(ex, "تعذّر جلب مشغّلي الشريك"); }
+        return result;
+    }
+
+    /// <summary>
+    /// يجلب مناطق الشريك من FTTH بتوكنه عبر GET /api/locations/zones (بترويسات WAF + x-client-app).
+    /// يعيد قائمة {zoneId, zoneName} (self.displayValue/id)، مقيَّدة بمناطق هذا الشريك.
+    /// </summary>
+    private async Task<List<object>> FetchPartnerZonesAsync(string serverUrl, string accessToken, CancellationToken ct)
+    {
+        var result = new List<object>();
+        var baseUrl = string.IsNullOrWhiteSpace(serverUrl) ? DefaultFtthBaseUrl : serverUrl.TrimEnd('/');
+        if (!IsAllowedFtthServerUrl(baseUrl)) return result;
+        try
+        {
+            using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(20) };
+            client.DefaultRequestHeaders.Add("Origin", "https://admin.ftth.iq");
+            client.DefaultRequestHeaders.Add("Referer", "https://admin.ftth.iq/");
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            client.DefaultRequestHeaders.Add("x-client-app", "53d57a7f-3f89-4e9d-873b-3d071bc6dd9f");
+            client.DefaultRequestHeaders.Add("x-user-role", "0");
+            client.DefaultRequestHeaders.Add("Accept", "application/json, text/plain, */*");
+            client.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+            // بلا query params: WAF يرفض pageSize/pageNumber على هذا المسار بـ403. الافتراضي يعيد كل مناطق الشريك.
+            var response = await client.GetAsync($"{baseUrl}/api/locations/zones", ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("ZONES fetch non-success: status={Status}", (int)response.StatusCode);
+                return result;
+            }
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array)
+                return result;
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var z in items.EnumerateArray())
+            {
+                if (z.ValueKind != JsonValueKind.Object) continue;
+                string? name = null, zid = null;
+                if (z.TryGetProperty("self", out var self) && self.ValueKind == JsonValueKind.Object)
+                {
+                    name = GetJsonString(self, "displayValue");
+                    zid = GetJsonString(self, "id");
+                }
+                name ??= GetJsonString(z, "displayValue") ?? GetJsonString(z, "name") ?? zid;
+                zid ??= GetJsonString(z, "id");
+                if (string.IsNullOrWhiteSpace(name) || !seen.Add(name)) continue;
+                result.Add(new { zoneId = zid ?? "", zoneName = name });
+            }
+        }
+        catch (Exception ex) { _logger.LogWarning(ex, "تعذّر جلب مناطق الشريك"); }
+        return result;
+    }
+
 }
 
 // ============ DTOs (لا تحوي أي كلمة مرور) ============
@@ -1182,3 +1657,19 @@ public record UpdateSasLinkedAccountRequest(
     SasAccountType? AccountType = null,
     decimal? AmountMultiplier = null,
     bool? IsActive = null);
+
+/// <summary>طلب إنشاء شريك رئيسي. كلمة مرور الحساب الرئيسي تُشفَّر ولا تُعاد.</summary>
+public record CreatePartnerRequest(
+    string Name,
+    string MainUsername,
+    string MainPassword,
+    string? ServerUrl = null);
+
+/// <summary>طلب تعديل شريك. كلمة المرور اختيارية (تُعاد كتابتها فقط عند إرسال قيمة).</summary>
+public record UpdatePartnerRequest(
+    string? Name = null,
+    string? MainUsername = null,
+    string? MainPassword = null,
+    bool? IsActive = null,
+    string? ServerUrl = null);
+
