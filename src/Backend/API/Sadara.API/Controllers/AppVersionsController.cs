@@ -114,6 +114,13 @@ public class AppVersionsController : ControllerBase
             var root = doc.RootElement;
             var (url, size, name) = SelectAsset(root, platform);
 
+            // نُعيد رابط تنزيل عبر خادمنا (caching proxy) بدل رابط GitHub المباشر:
+            // شبكة توزيع GitHub (objects.githubusercontent.com) محجوبة/مخنوقة على
+            // بعض شبكات العملاء ⇒ التحميل يعلَق على 0%. خادمنا يصل GitHub بسرعة،
+            // فيبثّ الملف للعميل الذي يصل خادمنا أصلاً. يتضمّن الرابط اسم الملف
+            // الحقيقي كي يحفظه التطبيق بامتداد ‎.exe الصحيح.
+            var publicUrl = BuildMirrorUrl(platform, name, url);
+
             return Ok(new
             {
                 success = true,
@@ -122,7 +129,7 @@ public class AppVersionsController : ControllerBase
                     version =
                         (root.TryGetProperty("tag_name", out var t) ? t.GetString() ?? "" : "")
                         .Replace("v", ""),
-                    downloadUrl = url,
+                    downloadUrl = publicUrl,
                     downloadSize = size,
                     assetName = name,
                     releaseNotes = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "",
@@ -199,6 +206,115 @@ public class AppVersionsController : ControllerBase
         finally
         {
             _manifestLock.Release();
+        }
+    }
+
+    // أقفال لكل ملف لمنع تنزيلات متزامنة مكرّرة لنفس الأصل (cache stampede).
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim>
+        _downloadLocks = new();
+
+    /// بناء رابط التنزيل عبر خادمنا (يتضمّن اسم الملف الحقيقي في المسار كي
+    /// يحفظه التطبيق بامتداده الصحيح). يسقط لرابط GitHub إن غاب الأصل/المضيف.
+    private string BuildMirrorUrl(string platform, string assetName, string fallbackUrl)
+    {
+        if (string.IsNullOrEmpty(assetName) || string.IsNullOrEmpty(fallbackUrl))
+            return fallbackUrl;
+        var host = Request.Host.HasValue ? Request.Host.Value : "";
+        if (string.IsNullOrEmpty(host)) return fallbackUrl;
+        var scheme = host.Contains("localhost", StringComparison.OrdinalIgnoreCase)
+            ? Request.Scheme
+            : "https";
+        var file = Uri.EscapeDataString(System.IO.Path.GetFileName(assetName));
+        return $"{scheme}://{host}/api/appversions/download/{platform.ToLowerInvariant()}/{file}";
+    }
+
+    /// <summary>
+    /// تنزيل ملف التثبيت عبر خادمنا (caching proxy). يجلب الأصل من GitHub مرّة
+    /// واحدة جهة الخادم (يصل GitHub بسرعة) ويُخزّنه مؤقتاً ثم يبثّه للعميل مع
+    /// دعم Range (استئناف). يصحّح مشكلة تعلّق التحميل على 0% عند العملاء الذين
+    /// تُحجب عنهم شبكة توزيع GitHub. عام (بلا مصادقة) لأنه يُستدعى قبل الدخول؛
+    /// لا يبثّ إلا الأصل المنشور علناً لأحدث إصدار.
+    /// </summary>
+    [HttpGet("download/{platform}/{fileName}")]
+    public async Task<IActionResult> DownloadInstaller(string platform, string fileName)
+    {
+        fileName = System.IO.Path.GetFileName(fileName ?? ""); // تنظيف ضد المسارات
+        if (string.IsNullOrEmpty(fileName))
+            return BadRequest(new { success = false, message = "اسم ملف غير صالح" });
+
+        var json = await GetLatestReleaseJsonCachedAsync();
+        if (string.IsNullOrEmpty(json))
+            return StatusCode(502, new { success = false, message = "تعذّر جلب معلومات الإصدار حالياً" });
+
+        using var doc = JsonDocument.Parse(json);
+        var (url, size, name) = SelectAsset(doc.RootElement, platform);
+        if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(name))
+            return NotFound(new { success = false, message = "لا يوجد ملف لهذه المنصّة" });
+
+        // لا نبثّ إلا أصل أحدث إصدار (نمنع جلب أي ملف اعتباطي عبر الوسيط).
+        var safeName = System.IO.Path.GetFileName(name);
+        if (!string.Equals(safeName, fileName, StringComparison.OrdinalIgnoreCase))
+            return NotFound(new { success = false, message = "الملف المطلوب غير متاح" });
+
+        var cacheDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "sadara-updates");
+        System.IO.Directory.CreateDirectory(cacheDir);
+        var cachePath = System.IO.Path.Combine(cacheDir, safeName);
+
+        var cached = System.IO.File.Exists(cachePath) &&
+                     (size <= 0 || new System.IO.FileInfo(cachePath).Length == size);
+        if (!cached)
+        {
+            var ok = await EnsureCachedAsync(url, cachePath, safeName, size);
+            if (!ok)
+                return StatusCode(502, new { success = false, message = "تعذّر تجهيز ملف التحديث" });
+        }
+
+        return PhysicalFile(cachePath, "application/octet-stream", safeName, enableRangeProcessing: true);
+    }
+
+    /// تنزيل الأصل من GitHub إلى الكاش بأمان (ملف مؤقت ثم نقل ذرّي)، مع قفل
+    /// لكل ملف لمنع التنزيلات المتزامنة. يُعيد true عند جاهزية الكاش.
+    private async Task<bool> EnsureCachedAsync(string url, string cachePath, string name, long expectedSize)
+    {
+        var gate = _downloadLocks.GetOrAdd(name, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync();
+        try
+        {
+            if (System.IO.File.Exists(cachePath) &&
+                (expectedSize <= 0 || new System.IO.FileInfo(cachePath).Length == expectedSize))
+                return true;
+
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromMinutes(5);
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Add("User-Agent", "Sadara-Update-Mirror");
+
+            using var resp = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead);
+            if (!resp.IsSuccessStatusCode) return false;
+
+            var tmp = cachePath + ".downloading";
+            await using (var fs = System.IO.File.Create(tmp))
+            {
+                await resp.Content.CopyToAsync(fs);
+            }
+
+            if (expectedSize > 0 && new System.IO.FileInfo(tmp).Length != expectedSize)
+            {
+                System.IO.File.Delete(tmp);
+                return false;
+            }
+
+            if (System.IO.File.Exists(cachePath)) System.IO.File.Delete(cachePath);
+            System.IO.File.Move(tmp, cachePath);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            gate.Release();
         }
     }
 
