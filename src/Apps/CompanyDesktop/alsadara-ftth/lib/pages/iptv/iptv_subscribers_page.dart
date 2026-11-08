@@ -1,12 +1,18 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../frontend/frontend.dart'; // نظام تصميم الصدارة الموحّد (sd)
 import '../../services/iptv_service.dart';
 import '../../services/custom_auth_service.dart';
 import '../../services/vps_auth_service.dart';
 import '../../services/local_database_service.dart';
+// وحدة الساس المعزولة — تُنادى عبر بوّابة الصدارة /api/sas-agent/* فقط (قراءة).
+import '../../sas_agent/services/sas_agent_api_service.dart';
+import '../../sas_agent/models/sas_account.dart';
 import '../../whatsapp/services/whatsapp_sender_service.dart';
 import '../../whatsapp/services/whatsapp_system_settings_service.dart'
     show WhatsAppOperationType;
@@ -26,6 +32,36 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
   String _searchQuery = '';
   String _statusFilter = 'all'; // all, active, inactive
 
+  // رابط لوحة تحكّم IPTV — يتغيّر دورياً، لذا يُحفظ محلياً وقابل للتعديل من الواجهة.
+  static const String _panelUrlPrefsKey = 'iptv_panel_url';
+  static const String _defaultPanelUrl =
+      'http://dhplus21.vip:2082/iptv/index.php/users/index';
+  String _panelUrl = _defaultPanelUrl;
+
+  // ───────────────────────── الربط الموحّد (FTTH + الساس) ─────────────────────────
+  // حقل subscriptionId واحد يحمل مصدرين (بلا تغيير باكند/هجرة):
+  //   • FTTH: معرّف الاشتراك الخام (مثل FBG0980) — بلا بادئة (توافق رجعي).
+  //   • الساس: 'sas:<accountId>|<username>'.
+  static const String _sasLinkPrefix = 'sas:';
+  static bool _isSasLink(String? v) =>
+      v != null && v.startsWith(_sasLinkPrefix);
+  static String _encodeSasLink(String accountId, String username) =>
+      '$_sasLinkPrefix$accountId|$username';
+  /// يعيد [accountId, username] لرابط ساس، أو null لغيره.
+  static List<String>? _decodeSasLink(String? v) {
+    if (!_isSasLink(v)) return null;
+    final body = v!.substring(_sasLinkPrefix.length);
+    final i = body.indexOf('|');
+    if (i < 0) return [body, ''];
+    return [body.substring(0, i), body.substring(i + 1)];
+  }
+
+  // حسابات الساس المرتبطة (للبحث وتسمية الحساب) — تُجلب مرة واحدة.
+  List<SasAccount> _sasAccounts = [];
+  bool _sasAccountsLoaded = false;
+  // كاش حالة الساس للصفوف المرتبطة: 'accountId|username' → حقول الحالة.
+  final Map<String, Map<String, dynamic>> _sasStatusCache = {};
+
   String? get _companyId =>
       CustomAuthService().currentTenantId ??
       VpsAuthService.instance.currentCompanyId;
@@ -33,7 +69,150 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
   @override
   void initState() {
     super.initState();
+    _loadPanelUrl();
     _loadData();
+  }
+
+  Future<void> _loadPanelUrl() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString(_panelUrlPrefsKey);
+      if (saved != null && saved.trim().isNotEmpty && mounted) {
+        setState(() => _panelUrl = saved.trim());
+      }
+    } catch (_) {}
+  }
+
+  // =============== لوحة تحكّم IPTV (فتح/تعديل الرابط) ===============
+
+  Future<void> _openPanel() async {
+    final raw = _panelUrl.trim();
+    final uri = Uri.tryParse(raw);
+    if (raw.isEmpty || uri == null || !uri.hasScheme) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('الرابط غير صالح — عدّله أولاً'),
+          backgroundColor: SdColors.warning,
+        ),
+      );
+      return;
+    }
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذّر فتح المتصفح'),
+          backgroundColor: SdColors.danger,
+        ),
+      );
+    }
+  }
+
+  Future<void> _editPanelUrl() async {
+    final ctrl = TextEditingController(text: _panelUrl);
+    final newUrl = await showDialog<String>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: Colors.white,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('رابط لوحة IPTV',
+              style:
+                  TextStyle(color: SdColors.ink, fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: min(460, MediaQuery.of(context).size.width * 0.85),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'يُفتح هذا الرابط في المتصفح عند الضغط على «فتح اللوحة». '
+                  'عدّله كلما تغيّر رابط الدخول.',
+                  style: TextStyle(color: SdColors.muted, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: ctrl,
+                  autofocus: true,
+                  keyboardType: TextInputType.url,
+                  style: const TextStyle(color: SdColors.ink, fontSize: 13),
+                  decoration: InputDecoration(
+                    labelText: 'الرابط',
+                    labelStyle: TextStyle(color: SdColors.faint, fontSize: 13),
+                    prefixIcon:
+                        Icon(Icons.link_rounded, color: SdColors.faint, size: 18),
+                    filled: true,
+                    fillColor: SdColors.surfaceAlt,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: SdColors.divider),
+                    ),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 14),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => ctrl.text = _defaultPanelUrl,
+                  icon: Icon(Icons.restart_alt_rounded,
+                      size: 16, color: SdColors.muted),
+                  label: Text('إرجاع الرابط الافتراضي',
+                      style: TextStyle(color: SdColors.muted, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('إلغاء', style: TextStyle(color: SdColors.muted)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: SdColors.platformBase,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('حفظ'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (newUrl == null) return;
+    if (newUrl.isEmpty) return;
+    final uri = Uri.tryParse(newUrl);
+    if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('رابط غير صالح — يجب أن يبدأ بـ http:// أو https://'),
+          backgroundColor: SdColors.warning,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_panelUrlPrefsKey, newUrl);
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() => _panelUrl = newUrl);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('تم حفظ الرابط'),
+        backgroundColor: SdColors.success,
+      ),
+    );
   }
 
   Future<void> _loadData() async {
@@ -46,6 +225,9 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
 
       // جلب حالة اشتراك FTTH للمرتبطين
       await _enrichWithFtthStatus(data);
+      // جلب حالة اشتراك الساس للمرتبطين بالساس
+      await _ensureSasAccounts();
+      await _enrichWithSasStatus(data);
 
       setState(() {
         _subscribers = data;
@@ -85,6 +267,113 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
         }
       }
     } catch (_) {}
+  }
+
+  /// جلب حسابات الساس مرة واحدة (قد يملك المستخدم أكثر من حساب = «الحسابات المتعددة»).
+  Future<void> _ensureSasAccounts() async {
+    if (_sasAccountsLoaded) return;
+    try {
+      _sasAccounts = await SasAgentApiService.instance.getAccounts();
+    } catch (_) {
+      _sasAccounts = [];
+    }
+    _sasAccountsLoaded = true;
+  }
+
+  String _sasAccountName(String accountId) {
+    for (final a in _sasAccounts) {
+      if (a.id == accountId) return a.displayName;
+    }
+    return 'ساس';
+  }
+
+  static String _sasProfileOf(Map<String, dynamic> row) {
+    final p = row['profile_details'] ?? row['profileDetails'];
+    if (p is Map && p['name'] != null) return '${p['name']}';
+    return (row['profile'] ?? row['profile_name'] ?? '').toString();
+  }
+
+  static bool _sasActive(String s) {
+    final x = s.toLowerCase();
+    return x == 'true' ||
+        x == 'active' ||
+        x == '1' ||
+        x == 'enabled' ||
+        x == 'online' ||
+        s == 'فعال';
+  }
+
+  /// نص وصفي لحالة الربط في نافذة الإضافة/التعديل.
+  String _linkLabel(String? link) {
+    if (link == null || link.isEmpty) return 'غير مرتبط بأي نظام';
+    final dec = _decodeSasLink(link);
+    if (dec != null) {
+      final acc = _sasAccountName(dec[0]);
+      return 'مرتبط بمشترك ساس: ${dec[1]} ($acc)';
+    }
+    return 'مرتبط بمشترك FTTH: $link';
+  }
+
+  /// إثراء الصفوف المرتبطة بالساس بحالتها (المصدر: المحلي السريع subscribers-local).
+  /// مُجمَّع حسب (الحساب+المستخدم) ومُكاش لتقليل النداءات.
+  Future<void> _enrichWithSasStatus(List<Map<String, dynamic>> data) async {
+    // اجمع الروابط الساسيّة المميّزة.
+    final needed = <String, List<String>>{}; // key → [accountId, username]
+    for (final sub in data) {
+      final dec = _decodeSasLink(sub['subscriptionId']?.toString());
+      if (dec != null && dec[1].isNotEmpty) {
+        needed['${dec[0]}|${dec[1]}'] = dec;
+      }
+    }
+    if (needed.isEmpty) return;
+
+    for (final entry in needed.entries) {
+      if (_sasStatusCache.containsKey(entry.key)) continue;
+      final accountId = entry.value[0];
+      final username = entry.value[1];
+      try {
+        final page = await SasAgentApiService.instance
+            .getLocalSubscribers(accountId, search: username, count: 10);
+        Map<String, dynamic>? match;
+        for (final row in page.subscribers) {
+          if ((row['username'] ?? '').toString() == username) {
+            match = row;
+            break;
+          }
+        }
+        match ??= page.subscribers.isNotEmpty ? page.subscribers.first : null;
+        if (match != null) {
+          _sasStatusCache[entry.key] = {
+            'status':
+                (match['status'] ?? match['enabled'] ?? match['online'] ?? '')
+                    .toString(),
+            'expires': (match['expiration'] ??
+                    match['expiry'] ??
+                    match['expire_date'] ??
+                    '')
+                .toString(),
+            'profile': _sasProfileOf(match),
+            'accountName': _sasAccountName(accountId),
+          };
+        }
+      } catch (_) {
+        // صامت: قد يفتقر المستخدم لصلاحية sas_agent أو الخدمة متوقفة.
+      }
+    }
+
+    // ألصق الحالة المكاشة على الصفوف.
+    for (final sub in data) {
+      final dec = _decodeSasLink(sub['subscriptionId']?.toString());
+      if (dec == null) continue;
+      final c = _sasStatusCache['${dec[0]}|${dec[1]}'];
+      sub['_sasAccountName'] =
+          c?['accountName'] ?? _sasAccountName(dec[0]);
+      if (c != null) {
+        sub['_sasStatus'] = c['status'];
+        sub['_sasExpires'] = c['expires'];
+        sub['_sasProfile'] = c['profile'];
+      }
+    }
   }
 
   void _applyFilters() {
@@ -130,6 +419,16 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
         appBar: SdAppBar(
           title: 'مشتركي IPTV',
           actions: [
+            SdAppBarAction(
+              icon: Icons.open_in_browser_rounded,
+              label: 'فتح اللوحة',
+              onPressed: _openPanel,
+            ),
+            SdAppBarAction(
+              icon: Icons.edit_note_rounded,
+              label: 'تعديل الرابط',
+              onPressed: _editPanelUrl,
+            ),
             SdAppBarAction(
               icon: Icons.refresh_rounded,
               label: 'تحديث',
@@ -334,7 +633,7 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
               DataColumn(label: Text('الكود')),
               DataColumn(label: Text('المدة')),
               DataColumn(label: Text('حالة IPTV')),
-              DataColumn(label: Text('اشتراك FTTH')),
+              DataColumn(label: Text('الاشتراك المرتبط')),
               DataColumn(label: Text('المنطقة')),
               DataColumn(label: Text('الإجراءات')),
             ],
@@ -381,8 +680,8 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                       ),
                     ),
                   )),
-                  // حالة اشتراك FTTH
-                  DataCell(_buildFtthStatusCell(sub)),
+                  // حالة الاشتراك المرتبط (FTTH أو الساس)
+                  DataCell(_buildLinkStatusCell(sub)),
                   DataCell(_buildLocationCell(sub)),
                   DataCell(Row(
                     mainAxisSize: MainAxisSize.min,
@@ -421,6 +720,87 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
             }),
           ),
         ),
+      ),
+    );
+  }
+
+  /// يوجّه خلية الحالة حسب نوع الرابط: ساس، FTTH، أو غير مرتبط.
+  Widget _buildLinkStatusCell(Map<String, dynamic> sub) {
+    final link = sub['subscriptionId']?.toString();
+    if (link == null || link.isEmpty) {
+      return Text('غير مرتبط',
+          style: TextStyle(color: SdColors.faint, fontSize: 12));
+    }
+    if (_isSasLink(link)) return _buildSasStatusCell(sub);
+    return _buildFtthStatusCell(sub);
+  }
+
+  Widget _buildSasStatusCell(Map<String, dynamic> sub) {
+    final status = sub['_sasStatus']?.toString() ?? '';
+    final expires = sub['_sasExpires']?.toString() ?? '';
+    final profile = sub['_sasProfile']?.toString() ?? '';
+    final account = sub['_sasAccountName']?.toString() ?? 'ساس';
+    final dec = _decodeSasLink(sub['subscriptionId']?.toString());
+    final username = dec != null && dec[1].isNotEmpty ? dec[1] : '';
+
+    // لم تُجلب الحالة بعد (أو لا صلاحية/خدمة متوقفة): شارة ساس محايدة.
+    if (status.isEmpty && expires.isEmpty) {
+      return Tooltip(
+        message: [
+          'ساس: $account',
+          if (username.isNotEmpty) 'المستخدم: $username',
+        ].join('\n'),
+        child: _linkBadge(
+            Icons.dns_rounded, 'ساس', SdColors.platformBase, SdColors.platformBase),
+      );
+    }
+
+    bool isExpired = false;
+    String expLabel = '';
+    int daysLeft = 0;
+    if (expires.isNotEmpty) {
+      final d = DateTime.tryParse(expires);
+      if (d != null) {
+        isExpired = d.isBefore(DateTime.now());
+        expLabel = DateFormat('yyyy-MM-dd').format(d);
+        daysLeft = d.difference(DateTime.now()).inDays;
+      }
+    }
+    final active = _sasActive(status) && !isExpired;
+    final color = active ? SdColors.success : SdColors.danger;
+    final edge = active ? SdColors.successEdge : SdColors.dangerEdge;
+    final text = isExpired ? 'منتهي' : (active ? 'فعال' : 'متوقف');
+
+    return Tooltip(
+      message: [
+        'ساس: $account',
+        if (username.isNotEmpty) 'المستخدم: $username',
+        'الحالة: $text',
+        if (profile.isNotEmpty) 'الباقة: $profile',
+        if (expLabel.isNotEmpty) 'ينتهي: $expLabel',
+        if (!isExpired && daysLeft > 0) 'متبقي: $daysLeft يوم',
+      ].join('\n'),
+      child: _linkBadge(Icons.dns_rounded, text, color, edge),
+    );
+  }
+
+  Widget _linkBadge(IconData icon, String text, Color bg, Color edge) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: bg.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: edge),
+          const SizedBox(width: 4),
+          Text(text,
+              style: TextStyle(
+                  color: edge, fontSize: 11, fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }
@@ -748,11 +1128,10 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              linkedSubscriptionId != null
-                                  ? 'مرتبط بمشترك FTTH: $linkedSubscriptionId'
-                                  : 'غير مرتبط بمشترك FTTH',
+                              _linkLabel(linkedSubscriptionId),
                               style: TextStyle(
-                                color: linkedSubscriptionId != null
+                                color: (linkedSubscriptionId != null &&
+                                        linkedSubscriptionId!.isNotEmpty)
                                     ? SdColors.platformBase
                                     : SdColors.faint,
                                 fontSize: 12,
@@ -761,23 +1140,32 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
                           ),
                           TextButton(
                             onPressed: () async {
-                              final selected = await _selectFtthSubscriber(ctx);
+                              final selected =
+                                  await showDialog<Map<String, dynamic>>(
+                                context: ctx,
+                                builder: (_) =>
+                                    const _LinkedSubscriberPicker(),
+                              );
                               if (selected != null) {
                                 setDialogState(() {
                                   linkedSubscriptionId =
-                                      selected['subscription_id']?.toString();
+                                      selected['link']?.toString();
                                   if (nameCtrl.text.isEmpty) {
                                     nameCtrl.text =
-                                        selected['display_name'] ?? '';
+                                        (selected['name'] ?? '').toString();
                                   }
                                   if (phoneCtrl.text.isEmpty) {
-                                    phoneCtrl.text = selected['phone'] ?? '';
+                                    phoneCtrl.text =
+                                        (selected['phone'] ?? '').toString();
                                   }
                                 });
                               }
                             },
                             child: Text(
-                              linkedSubscriptionId != null ? 'تغيير' : 'ربط',
+                              (linkedSubscriptionId != null &&
+                                      linkedSubscriptionId!.isNotEmpty)
+                                  ? 'تغيير'
+                                  : 'ربط',
                               style: const TextStyle(
                                   color: SdColors.platformBase, fontSize: 12),
                             ),
@@ -1017,111 +1405,299 @@ class _IptvSubscribersPageState extends State<IptvSubscribersPage> {
     );
   }
 
-  // =============== اختيار مشترك FTTH ===============
+}
 
-  Future<Map<String, dynamic>?> _selectFtthSubscriber(BuildContext ctx) async {
-    final allSubs = await LocalDatabaseService.instance.getAllSubscribers();
-    if (allSubs.isEmpty) {
-      if (!mounted) return null;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('لا توجد بيانات محلية - قم بالمزامنة أولاً'),
-          backgroundColor: SdColors.warning,
-        ),
-      );
-      return null;
+/// نافذة اختيار مشترك موحّدة: تبحث في FTTH (محلي) + الساس (كل الحسابات، محلي سريع).
+/// تعيد عند الاختيار: { source: 'ftth'|'sas', link, name, phone }.
+class _LinkedSubscriberPicker extends StatefulWidget {
+  const _LinkedSubscriberPicker();
+
+  @override
+  State<_LinkedSubscriberPicker> createState() =>
+      _LinkedSubscriberPickerState();
+}
+
+class _LinkedSubscriberPickerState extends State<_LinkedSubscriberPicker> {
+  final _searchCtrl = TextEditingController();
+  Timer? _debounce;
+
+  String _source = 'all'; // all | ftth | sas
+  String _query = '';
+
+  List<Map<String, dynamic>> _ftthAll = [];
+  List<SasAccount> _sasAccounts = [];
+  bool _ready = false;
+
+  List<Map<String, dynamic>> _results = [];
+  bool _searching = false;
+  int _reqToken = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _bootstrap() async {
+    try {
+      _ftthAll = await LocalDatabaseService.instance.getAllSubscribers();
+    } catch (_) {
+      _ftthAll = [];
+    }
+    try {
+      _sasAccounts = await SasAgentApiService.instance.getAccounts();
+    } catch (_) {
+      _sasAccounts = [];
+    }
+    if (!mounted) return;
+    setState(() => _ready = true);
+    _compute();
+  }
+
+  void _onSearchChanged(String v) {
+    _query = v.trim();
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), _compute);
+  }
+
+  List<Map<String, dynamic>> _ftthMatches() {
+    final q = _query.toLowerCase();
+    final list = _ftthAll.where((s) {
+      if (q.isEmpty) return true;
+      final name = (s['display_name'] ?? '').toString().toLowerCase();
+      final phone = (s['phone'] ?? '').toString().toLowerCase();
+      final sid = (s['subscription_id'] ?? '').toString().toLowerCase();
+      final zone = (s['zone_name'] ?? '').toString().toLowerCase();
+      return name.contains(q) ||
+          phone.contains(q) ||
+          sid.contains(q) ||
+          zone.contains(q);
+    }).take(50);
+    return list
+        .map((s) => <String, dynamic>{
+              'source': 'ftth',
+              'link': (s['subscription_id'] ?? '').toString(),
+              'name': (s['display_name'] ?? '').toString(),
+              'phone': (s['phone'] ?? '').toString(),
+              'subtitle': (s['subscription_id'] ?? '').toString(),
+              'account': (s['zone_name'] ?? '').toString(),
+            })
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _sasMatches() async {
+    if (_sasAccounts.isEmpty) return [];
+    final out = <Map<String, dynamic>>[];
+    for (final acc in _sasAccounts) {
+      try {
+        final page = await SasAgentApiService.instance
+            .getLocalSubscribers(acc.id, search: _query, count: 25);
+        for (final row in page.subscribers) {
+          final username = (row['username'] ?? '').toString();
+          if (username.isEmpty) continue;
+          final first = (row['firstName'] ?? row['first_name'] ?? '').toString();
+          final last = (row['lastName'] ?? row['last_name'] ?? '').toString();
+          final full = ('$first $last').trim();
+          out.add(<String, dynamic>{
+            'source': 'sas',
+            'link': _IptvSubscribersPageState._encodeSasLink(acc.id, username),
+            'name': full.isNotEmpty ? full : username,
+            'phone': (row['phone'] ?? row['mobile'] ?? '').toString(),
+            'subtitle': username,
+            'account': acc.displayName,
+          });
+        }
+      } catch (_) {
+        // صامت: لا صلاحية sas_agent أو الخدمة متوقفة.
+      }
+    }
+    return out;
+  }
+
+  Future<void> _compute() async {
+    final token = ++_reqToken;
+    setState(() => _searching = true);
+    final results = <Map<String, dynamic>>[];
+
+    if (_source == 'all' || _source == 'ftth') {
+      results.addAll(_ftthMatches());
+    }
+    if (_source == 'sas' || (_source == 'all' && _query.isNotEmpty)) {
+      // في «الكل» نبحث الساس فقط عند وجود نص (تجنّب جلب ثقيل بلا داعٍ).
+      results.addAll(await _sasMatches());
     }
 
-    String searchText = '';
-    List<Map<String, dynamic>> filteredSubs = allSubs;
+    if (!mounted || token != _reqToken) return;
+    setState(() {
+      _results = results;
+      _searching = false;
+    });
+  }
 
-    return showDialog<Map<String, dynamic>>(
-      context: ctx,
-      builder: (dlgCtx) => StatefulBuilder(
-        builder: (dlgCtx, setDlgState) => Directionality(
-          textDirection: TextDirection.rtl,
-          child: AlertDialog(
-            backgroundColor: Colors.white,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Text('اختيار مشترك FTTH',
-                style: TextStyle(
-                    color: SdColors.ink,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-            content: SizedBox(
-              width: min(400, MediaQuery.of(context).size.width * 0.85),
-              height: min(400, MediaQuery.of(context).size.height * 0.6),
-              child: Column(
-                children: [
-                  TextField(
-                    style:
-                        const TextStyle(color: SdColors.ink, fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: 'بحث...',
-                      hintStyle: TextStyle(color: SdColors.faint),
-                      prefixIcon: Icon(Icons.search_rounded,
-                          color: SdColors.faint, size: 18),
-                      filled: true,
-                      fillColor: SdColors.surfaceAlt,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      isDense: true,
-                    ),
-                    onChanged: (v) {
-                      setDlgState(() {
-                        searchText = v.toLowerCase();
-                        filteredSubs = allSubs.where((s) {
-                          final name = (s['display_name'] ?? '')
-                              .toString()
-                              .toLowerCase();
-                          final phone =
-                              (s['phone'] ?? '').toString().toLowerCase();
-                          return name.contains(searchText) ||
-                              phone.contains(searchText);
-                        }).toList();
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount:
-                          filteredSubs.length > 50 ? 50 : filteredSubs.length,
-                      itemBuilder: (_, i) {
-                        final s = filteredSubs[i];
-                        return ListTile(
-                          dense: true,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
-                          title: Text(s['display_name'] ?? '',
-                              style: const TextStyle(
-                                  color: SdColors.ink, fontSize: 13)),
-                          subtitle: Text(
-                            '${s['phone'] ?? '-'} | ${s['zone_name'] ?? ''}',
-                            style: TextStyle(
-                                color: SdColors.faint, fontSize: 11),
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('اختيار مشترك (FTTH / الساس)',
+            style: TextStyle(
+                color: SdColors.ink, fontSize: 16, fontWeight: FontWeight.bold)),
+        content: SizedBox(
+          width: min(440, MediaQuery.of(context).size.width * 0.9),
+          height: min(460, MediaQuery.of(context).size.height * 0.7),
+          child: !_ready
+              ? const Center(
+                  child: CircularProgressIndicator(color: SdColors.platformBase))
+              : Column(
+                  children: [
+                    // شرائح المصدر
+                    Row(
+                      children: [
+                        _sourceChip('الكل', 'all'),
+                        const SizedBox(width: 6),
+                        _sourceChip('FTTH', 'ftth'),
+                        const SizedBox(width: 6),
+                        _sourceChip('الساس', 'sas'),
+                        const Spacer(),
+                        if (_searching)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: SdColors.platformBase),
                           ),
-                          onTap: () => Navigator.pop(dlgCtx, s),
-                        );
-                      },
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dlgCtx),
-                child: Text('إلغاء',
-                    style: TextStyle(color: SdColors.muted)),
-              ),
-            ],
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _searchCtrl,
+                      autofocus: true,
+                      style: const TextStyle(color: SdColors.ink, fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'بحث بالاسم، الهاتف، اليوزر...',
+                        hintStyle: TextStyle(color: SdColors.faint),
+                        prefixIcon: Icon(Icons.search_rounded,
+                            color: SdColors.faint, size: 18),
+                        filled: true,
+                        fillColor: SdColors.surfaceAlt,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        isDense: true,
+                      ),
+                      onChanged: _onSearchChanged,
+                    ),
+                    const SizedBox(height: 8),
+                    if (_source == 'all' && _query.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text(
+                          'اكتب للبحث في الساس أيضاً',
+                          style: TextStyle(color: SdColors.faint, fontSize: 11),
+                        ),
+                      ),
+                    Expanded(
+                      child: _results.isEmpty
+                          ? Center(
+                              child: Text(
+                                _searching ? 'جارٍ البحث...' : 'لا توجد نتائج',
+                                style: TextStyle(color: SdColors.faint),
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: _results.length,
+                              itemBuilder: (_, i) {
+                                final r = _results[i];
+                                final isSas = r['source'] == 'sas';
+                                return ListTile(
+                                  dense: true,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  leading: _systemBadge(isSas),
+                                  title: Text(
+                                    (r['name'] ?? '').toString().isEmpty
+                                        ? (r['subtitle'] ?? '').toString()
+                                        : r['name'].toString(),
+                                    style: const TextStyle(
+                                        color: SdColors.ink, fontSize: 13),
+                                  ),
+                                  subtitle: Text(
+                                    '${r['subtitle'] ?? ''} · '
+                                    '${(r['phone'] ?? '').toString().isEmpty ? '-' : r['phone']}'
+                                    '${(r['account'] ?? '').toString().isNotEmpty ? ' · ${r['account']}' : ''}',
+                                    style: TextStyle(
+                                        color: SdColors.faint, fontSize: 11),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  onTap: () => Navigator.pop(context, r),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('إلغاء', style: TextStyle(color: SdColors.muted)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sourceChip(String label, String value) {
+    final selected = _source == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _source = value);
+        _compute();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? SdColors.platformBase.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected ? SdColors.platformBase : SdColors.divider,
+            width: selected ? 1.5 : 1,
           ),
         ),
+        child: Text(label,
+            style: TextStyle(
+                color: selected ? SdColors.platformBase : SdColors.muted,
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
       ),
+    );
+  }
+
+  Widget _systemBadge(bool isSas) {
+    final color = isSas ? SdColors.platformBase : SdColors.info;
+    return Container(
+      width: 44,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(isSas ? 'ساس' : 'FTTH',
+          style: TextStyle(
+              color: color, fontSize: 10, fontWeight: FontWeight.w700)),
     );
   }
 }
