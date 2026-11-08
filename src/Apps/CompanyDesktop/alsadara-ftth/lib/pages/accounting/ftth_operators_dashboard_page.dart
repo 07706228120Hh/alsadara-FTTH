@@ -139,6 +139,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     {'value': 'PLAN_CHANGE', 'label': 'تغيير الباقة'},
     {'value': 'PLAN_PURCHASE', 'label': 'شراء باقة'},
     {'value': 'PLAN_RENEW', 'label': 'تجديد الباقة'},
+    {'value': 'PLAN_C_RENEW', 'label': 'تجديد C'},
     {'value': 'PURCHASE_COMMISSION', 'label': 'عمولة شراء'},
     {'value': 'SCHEDULE_CANCEL', 'label': 'إلغاء جدولة'},
     {'value': 'SCHEDULE_CHANGE', 'label': 'تغيير جدولة'},
@@ -255,6 +256,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
     const map = {
       'PLAN_PURCHASE': 'شراء باقة',
       'PLAN_RENEW': 'تجديد',
+      'PLAN_C_RENEW': 'تجديد C',
       'PLAN_CHANGE': 'تغيير باقة',
       'PLAN_SUBSCRIBE': 'اشتراك',
       'AUTO_RENEW': 'تجديد تلقائي',
@@ -295,7 +297,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   // ── TAB 3: المقارنة ──
   bool _isLoadingCompare = false;
   List<_ComparisonRow> _comparisonRows = [];
-  String? _selectedPartnerFilter; // null = الكل؛ '' = بدون شريك
+  String? _selectedPartnerFilter; // null = الكل؛ '' = بدون شريك (تبويب المقارنة)
+  String? _selectedFtthPartnerFilter; // null = الكل؛ '' = بدون شريك (تبويب FTTH)
   int _hoveredCompIdx = -1;
   int _totalMatched = 0;
   int _totalOursOnly = 0;
@@ -919,7 +922,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                   'PLAN_SUBSCRIBE'
                 }.contains(type)) {
                   op.purchaseOps++;
-                } else if (const {'PLAN_RENEW', 'AUTO_RENEW', 'PLAN_EMI_RENEW'}
+                } else if (const {'PLAN_RENEW', 'AUTO_RENEW', 'PLAN_EMI_RENEW', 'PLAN_C_RENEW'}
                     .contains(type)) {
                   op.renewOps++;
                 } else if (const {'PLAN_CHANGE', 'SCHEDULE_CHANGE'}
@@ -1249,7 +1252,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               'PLAN_SUBSCRIBE'
             }.contains(tx.type)) {
               target.purchaseOps++;
-            } else if (const {'PLAN_RENEW', 'AUTO_RENEW', 'PLAN_EMI_RENEW'}
+            } else if (const {'PLAN_RENEW', 'AUTO_RENEW', 'PLAN_EMI_RENEW', 'PLAN_C_RENEW'}
                 .contains(tx.type)) {
               target.renewOps++;
             } else if (const {'PLAN_CHANGE', 'SCHEDULE_CHANGE'}
@@ -1312,7 +1315,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
               'PLAN_SUBSCRIBE'
             }.contains(tx.type))
               orphanOp.purchaseOps++;
-            else if (const {'PLAN_RENEW', 'AUTO_RENEW', 'PLAN_EMI_RENEW'}
+            else if (const {'PLAN_RENEW', 'AUTO_RENEW', 'PLAN_EMI_RENEW', 'PLAN_C_RENEW'}
                 .contains(tx.type))
               orphanOp.renewOps++;
             else if (const {'PLAN_CHANGE', 'SCHEDULE_CHANGE'}.contains(tx.type))
@@ -2415,6 +2418,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         _ftthTotalNegative = 0;
         _ftthTotalPositive = 0;
         _ftthTotalCount = 0;
+        _selectedFtthPartnerFilter = null; // تصفير فلتر الشريك مع إبطال الكاش
+        _selectedPartnerFilter = null;
         _comparisonRows.clear();
       });
     }
@@ -6779,6 +6784,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
         children: [
           _buildFtthSummary(),
           SizedBox(height: context.accR.spaceXS),
+          // فلتر الشريك (يصفّي الملخّص والجدول محلياً)
+          _buildFtthPartnerFilter(),
           // شريط تقدم نسب "بدون منشئ"
           if (_isResolvingOrphans)
             Padding(
@@ -7317,6 +7324,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           .toList();
     }
 
+    // فلتر الشريك المختار (تبويب FTTH) — يُطبَّق على الملخّص أيضاً
+    if (_selectedFtthPartnerFilter != null) {
+      visibleList = visibleList
+          .where((op) => _operatorPartnerId(op) == _selectedFtthPartnerFilter)
+          .toList();
+    }
+
     // حساب إجماليات الفئات من القائمة المرئية
     int totalPur = 0, totalRen = 0, totalChg = 0, totalSch = 0;
     int totalComm = 0, totalRev = 0, totalWal = 0, totalOth = 0;
@@ -7436,6 +7450,13 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
             return filtered;
           })
           .where((op) => op.totalCount > 0)
+          .toList();
+    }
+
+    // فلتر الشريك المختار (تبويب FTTH)
+    if (_selectedFtthPartnerFilter != null) {
+      list = list
+          .where((op) => _operatorPartnerId(op) == _selectedFtthPartnerFilter)
           .toList();
     }
     final sorted = list..sort((a, b) => b.totalCount.compareTo(a.totalCount));
@@ -9004,6 +9025,8 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       case 'AUTO_RENEW':
       case 'PLAN_EMI_RENEW':
         return 'تجديد';
+      case 'PLAN_C_RENEW':
+        return 'تجديد C';
       case 'PLAN_CHANGE':
       case 'SCHEDULE_CHANGE':
         return 'تغيير';
@@ -9557,6 +9580,87 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
   /// فلتر «الشريك» لتبويب المقارنة — chips خياراتها الشركاء المتمايزون
   /// الظاهرون في _comparisonRows (+ «الكل» و«بدون شريك» عند وجود صفوف بلا شريك).
   /// الفلترة عرضٌ فقط ولا تمسّ _comparisonRows.
+  /// الشريك الغالب لمشغّل FTTH: معرّف أول عملية موسومة بشريك. '' إن بلا شريك.
+  String _operatorPartnerId(_FtthOperatorData op) {
+    for (final tx in op.transactions) {
+      final pid = tx.partnerId;
+      if (pid != null && pid.isNotEmpty) return pid;
+    }
+    return '';
+  }
+
+  /// فلتر الشريك في تبويب FTTH (نظير فلتر المقارنة) — يصفّي المشغّلين المعروضين
+  /// (الجدول + بطاقات الملخّص) حسب الشريك المشتقّ من عملياتهم، محلياً بلا إعادة جلب.
+  Widget _buildFtthPartnerFilter() {
+    final Map<String, String> partners = {}; // partnerId → partnerName
+    var hasNoPartner = false;
+    for (final op in _ftthOperators.values) {
+      final pid = _operatorPartnerId(op);
+      if (pid.isNotEmpty) {
+        if (!partners.containsKey(pid)) {
+          var name = pid;
+          for (final tx in op.transactions) {
+            if (tx.partnerId == pid &&
+                (tx.partnerName != null && tx.partnerName!.isNotEmpty)) {
+              name = tx.partnerName!;
+              break;
+            }
+          }
+          partners[pid] = name;
+        }
+      } else {
+        hasNoPartner = true;
+      }
+    }
+    // لا تعرض الفلتر إلا إن وُجد أكثر من شريك (أو شريك + بلا شريك).
+    if (partners.length < 2 && !(partners.isNotEmpty && hasNoPartner)) {
+      return const SizedBox.shrink();
+    }
+
+    Widget chip(String label, String? value) => Padding(
+          padding: const EdgeInsets.only(left: 6),
+          child: ChoiceChip(
+            label: Text(label,
+                style: TextStyle(
+                    fontFamily: 'Cairo',
+                    fontSize: context.accR.small,
+                    fontWeight: FontWeight.w600)),
+            selected: _selectedFtthPartnerFilter == value,
+            onSelected: (_) =>
+                setState(() => _selectedFtthPartnerFilter = value),
+            selectedColor: SdColors.primaryTint,
+            visualDensity: VisualDensity.compact,
+          ),
+        );
+
+    final chips = <Widget>[chip('الكل', null)];
+    partners.forEach((id, name) => chips.add(chip(name, id)));
+    if (hasNoPartner) chips.add(chip('بدون شريك', ''));
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(0, 0, 0, context.accR.spaceS),
+      child: Row(
+        children: [
+          Icon(Icons.handshake_outlined,
+              size: context.accR.iconM, color: SdColors.accent),
+          const SizedBox(width: 6),
+          Text('الشريك:',
+              style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: context.accR.small,
+                  fontWeight: FontWeight.w700)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: chips),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPartnerFilter() {
     final Map<String, String> partners = {}; // partnerId → partnerName
     var hasNoPartner = false;
@@ -11880,6 +11984,7 @@ class _FtthOperatorData {
     'PLAN_RENEW',
     'AUTO_RENEW',
     'PLAN_EMI_RENEW',
+    'PLAN_C_RENEW',
     'PLAN_CHANGE',
     'SCHEDULE_CHANGE',
     'PLAN_SCHEDULE',
@@ -11947,6 +12052,7 @@ class _FtthOperatorData {
       'PLAN_RENEW',
       'AUTO_RENEW',
       'PLAN_EMI_RENEW',
+      'PLAN_C_RENEW',
       'PLAN_CHANGE',
       'SCHEDULE_CHANGE',
       'PLAN_SCHEDULE'
