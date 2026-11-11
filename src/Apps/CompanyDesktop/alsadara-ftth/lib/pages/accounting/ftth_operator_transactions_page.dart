@@ -8,7 +8,6 @@ import '../../utils/responsive_helper.dart';
 import '../../frontend/frontend.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../services/plan_pricing_service.dart';
-import '../../services/ftth_plans_service.dart';
 
 /// نموذج بسيط لعملية مشغل
 class _OpTransaction {
@@ -80,12 +79,9 @@ class _FtthOperatorTransactionsPageState
   String _sortBy = 'date';
   bool _isAscending = false;
   String _selectedCategory = 'الكل';
-  bool _fiberOnly = true; // إظهار باقات الإنترنت فقط افتراضياً
-  // أسماء الباقات المعروفة (قديم+جديد) — تُجلب ديناميكياً؛ نبدأ بالاحتياطي فوراً
-  List<String> _knownPlanNames = [
-    ...FtthPlansService.fallbackActivePlans,
-    ...FtthPlansService.legacyPlanNames,
-  ];
+  // ملاحظة: لا فلتر «باقات الإنترنت» هنا — البيانات القادمة من تبويب FTTH
+  // مفلترة أصلاً لباقات الإنترنت فقط (_isInternetPlanName عند التجميع)، فإعادة
+  // فلترتها بتعريف ثانٍ كانت تُسقط عمليات إنترنت مشروعة وتُخالف عدّاد الرئيسية.
   final _searchController = TextEditingController();
 
   // إحصائيات
@@ -98,20 +94,6 @@ class _FtthOperatorTransactionsPageState
   void initState() {
     super.initState();
     _initData();
-    _loadKnownPlans();
-  }
-
-  /// جلب أسماء الباقات ديناميكياً لتحديد معاملات باقات الإنترنت
-  Future<void> _loadKnownPlans() async {
-    try {
-      final plans = await FtthPlansService.instance.getFilterPlanNames();
-      if (mounted && plans.isNotEmpty) {
-        setState(() {
-          _knownPlanNames = plans;
-          _applyFilters();
-        });
-      }
-    } catch (_) {}
   }
 
   @override
@@ -186,17 +168,6 @@ class _FtthOperatorTransactionsPageState
             tx.deviceUsername.toLowerCase().contains(q) ||
             _translateType(tx.type).contains(q) ||
             tx.type.toLowerCase().contains(q);
-      }).toList();
-    }
-
-    // فلتر باقات الإنترنت فقط (يطابق أسماء الباقات المعروفة: قديم+جديد)
-    if (_fiberOnly) {
-      _filtered = _filtered.where((tx) {
-        final p = tx.planName.toLowerCase();
-        if (p.isEmpty) return false;
-        if (p.contains('fiber')) return true; // توافق مع الأسماء القديمة
-        return _knownPlanNames
-            .any((n) => n.isNotEmpty && p.contains(n.toLowerCase()));
       }).toList();
     }
 
@@ -637,27 +608,9 @@ class _FtthOperatorTransactionsPageState
             ],
           ),
           SizedBox(height: context.accR.spaceXS),
-          // فلتر Fiber + فلاتر التصنيف
+          // فلاتر التصنيف (لا زرّ «باقات الإنترنت» — البيانات إنترنت-فقط أصلاً)
           Row(
             children: [
-              // زر Fiber فقط
-              FilterChip(
-                label: Text('باقات الإنترنت', style: TextStyle(fontSize: context.accR.small)),
-                selected: _fiberOnly,
-                selectedColor: SdColors.successTint,
-                checkmarkColor: SdColors.success,
-                onSelected: (v) {
-                  setState(() {
-                    _fiberOnly = v;
-                    _applyFilters();
-                  });
-                },
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-              ),
-              SizedBox(width: context.accR.spaceS),
-              // فلاتر التصنيف
               Expanded(
                 child: SizedBox(
                   height: 30,
