@@ -5430,6 +5430,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           operators: _oursOperators.map((o) => (o['ftthUsername'] ?? '').toString()).where((s) => s.isNotEmpty).toList(),
           filterOperatorName: operatorName,
           filterOperatorFtthUsername: ftthUser,
+          filterOperatorUserId: op['userId']?.toString(),
           filterCollectionType: collectionType,
           filterOperationType: operationType,
           filterIsTechnician: isTech,
@@ -12649,6 +12650,9 @@ class _AllOperationsPage extends StatefulWidget {
   /// فلتر مشغل محدد — إذا موجود يُطبّق تلقائياً عند الفتح
   final String? filterOperatorName;
   final String? filterOperatorFtthUsername;
+  /// هوية المستخدم المحلولة للمشغّل — المفتاح الثابت الصحيح للمطابقة (يجمع كل
+  /// أسماء FTTH للشخص الواحد مثل alimo/alimosa/الاسم العربي) فيتطابق العدّ مع اللوحة.
+  final String? filterOperatorUserId;
   /// فلتر نوع التحصيل (cash/credit/master/agent/technician)
   final String? filterCollectionType;
   /// فلتر نوع العملية (purchase/renewal/change)
@@ -12663,6 +12667,7 @@ class _AllOperationsPage extends StatefulWidget {
     this.operators = const [],
     this.filterOperatorName,
     this.filterOperatorFtthUsername,
+    this.filterOperatorUserId,
     this.filterCollectionType,
     this.filterOperationType,
     this.filterIsTechnician = false,
@@ -13053,6 +13058,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           'اسم الباقة': item['PlanName'] ?? '',
           'المُفعِّل': item['ActivatedBy'] ?? '',
           'OperatorUsername': item['OperatorUsername']?.toString() ?? '',
+          'UserId': item['UserId']?.toString() ?? '',
           'تاريخ التفعيل': actDate != null ? _dateFmt.format(actDate) : '',
           'وقت التفعيل': actDate != null ? _timeFmt.format(actDate) : '',
           'نوع العملية': item['OperationType'] ?? '',
@@ -13231,6 +13237,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           'وقت التفعيل':    _toLocalTime(item['ActivationDate']?.toString()),
           'المُفعِّل':        item['ActivatedBy']?.toString() ?? '',
           'OperatorUsername': item['OperatorUsername']?.toString() ?? '',
+          'UserId':           item['UserId']?.toString() ?? '',
           'partnerId':        rawPartnerId,
           'partnerName':      rawPartnerName,
           'الشريك':           _resolvePartnerName(rawPartnerId, rawPartnerName),
@@ -13295,12 +13302,20 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     var result = source.where((r) {
       // فلتر المزامنة
       if (_showSyncedOnly && r['مطابقة_raw'] != true) return false;
-      // نطاق المشغّل/الفني — مُسنِد مستقل: يطابق الاسم المحلول أو المعرّف الخام الثابت
-      if (_scopeNames.isNotEmpty) {
+      // نطاق المشغّل/الفني — مُسنِد مستقل عن فلاتر الأعمدة.
+      // المفتاح الصحيح للمشغّل = UserId (الهوية المحلولة = نفس تجميع اللوحة) فيُجمَع
+      // كل أسماء FTTH للشخص الواحد (alimo/alimosa/الاسم العربي) ⇒ العدّ يطابق اللوحة.
+      // يُرجَع للاسم فقط حين لا يتوفّر UserId (سجلّ غير محلول) أو للفني (هويته في عمود الفني).
+      {
+        final scopeUid = (widget.filterOperatorUserId ?? '').trim();
         if (_scopeIsTechnician) {
-          final tech = (r['الفني']?.toString() ?? '').toLowerCase().trim();
-          if (!_scopeNames.contains(tech)) return false;
-        } else {
+          if (_scopeNames.isNotEmpty) {
+            final tech = (r['الفني']?.toString() ?? '').toLowerCase().trim();
+            if (!_scopeNames.contains(tech)) return false;
+          }
+        } else if (scopeUid.isNotEmpty) {
+          if ((r['UserId']?.toString() ?? '').trim() != scopeUid) return false;
+        } else if (_scopeNames.isNotEmpty) {
           final act = (r['المُفعِّل']?.toString() ?? '').toLowerCase().trim();
           final opu = (r['OperatorUsername']?.toString() ?? '').toLowerCase().trim();
           if (!_scopeNames.contains(act) && !_scopeNames.contains(opu)) return false;
