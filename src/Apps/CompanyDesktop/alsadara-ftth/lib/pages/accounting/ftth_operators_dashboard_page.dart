@@ -12728,6 +12728,13 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   // ── Column filters: dataKey → Set of selected values (multi-select) ──
   final Map<String, Set<String>> _colFilters = {};
 
+  // ── نطاق المشغّل/الفني (مُسنِد مستقل عن فلاتر الأعمدة) ──
+  // يُطابق بالاسم المحلول (المُفعِّل=ActivatedBy) أو بالمعرّف الخام الثابت (OperatorUsername —
+  // نفس مفتاح تجميع اللوحة الرئيسية) فيتطابق العدّ مع الرئيسية ولا يُسقِط صفوفاً لاختلاف تمثيل الاسم.
+  // لا يُحتسب ضمن «عدد الفلاتر» ولا يمسحه زر «مسح الفلاتر» (يبقى نطاق الشاشة).
+  final Set<String> _scopeNames = {}; // قيم lowercase: الاسم العربي + ftthUsername
+  bool _scopeIsTechnician = false;
+
   // ── Multi-select rows ──
   final Set<String> _selectedIds = {};
   bool _isDeletingSelected = false;
@@ -13045,6 +13052,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           'م.الاشتراك': item['SubscriptionId'] ?? '',
           'اسم الباقة': item['PlanName'] ?? '',
           'المُفعِّل': item['ActivatedBy'] ?? '',
+          'OperatorUsername': item['OperatorUsername']?.toString() ?? '',
           'تاريخ التفعيل': actDate != null ? _dateFmt.format(actDate) : '',
           'وقت التفعيل': actDate != null ? _timeFmt.format(actDate) : '',
           'نوع العملية': item['OperationType'] ?? '',
@@ -13222,6 +13230,7 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
           'تاريخ التفعيل':   _toLocalDate(item['ActivationDate']?.toString()),
           'وقت التفعيل':    _toLocalTime(item['ActivationDate']?.toString()),
           'المُفعِّل':        item['ActivatedBy']?.toString() ?? '',
+          'OperatorUsername': item['OperatorUsername']?.toString() ?? '',
           'partnerId':        rawPartnerId,
           'partnerName':      rawPartnerName,
           'الشريك':           _resolvePartnerName(rawPartnerId, rawPartnerName),
@@ -13286,6 +13295,17 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
     var result = source.where((r) {
       // فلتر المزامنة
       if (_showSyncedOnly && r['مطابقة_raw'] != true) return false;
+      // نطاق المشغّل/الفني — مُسنِد مستقل: يطابق الاسم المحلول أو المعرّف الخام الثابت
+      if (_scopeNames.isNotEmpty) {
+        if (_scopeIsTechnician) {
+          final tech = (r['الفني']?.toString() ?? '').toLowerCase().trim();
+          if (!_scopeNames.contains(tech)) return false;
+        } else {
+          final act = (r['المُفعِّل']?.toString() ?? '').toLowerCase().trim();
+          final opu = (r['OperatorUsername']?.toString() ?? '').toLowerCase().trim();
+          if (!_scopeNames.contains(act) && !_scopeNames.contains(opu)) return false;
+        }
+      }
       // بحث نصي عام
       if (q.isNotEmpty &&
           !r.values.any((v) => v.toString().toLowerCase().contains(q))) {
@@ -13321,37 +13341,17 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
   /// تطبيق الفلاتر التلقائية (مشغل / تحصيل / نوع عملية)
   void _applyAutoFilters() {
     bool changed = false;
-    // فلتر المشغل/الفني
+    // نطاق المشغل/الفني — مُسنِد مستقل (لا يُحتسب كفلتر عمود، ولا يمسحه زر المسح).
+    // يطابق بالاسم المحلول (المُفعِّل) أو بالمعرّف الخام الثابت (OperatorUsername = مفتاح
+    // تجميع اللوحة) فلا تُسقَط صفوف المشغّل لاختلاف تمثيل اسمه بين سجل وآخر ⇒ العدّ = الرئيسية.
+    _scopeNames.clear();
+    _scopeIsTechnician = widget.filterIsTechnician;
     if (widget.filterOperatorName != null && widget.filterOperatorName!.isNotEmpty) {
-      final ftthUser = (widget.filterOperatorFtthUsername ?? '').toLowerCase();
-      final arName = widget.filterOperatorName!.toLowerCase();
-
-      bool nameMatches(String v) {
-        final vLow = v.toLowerCase();
-        return (ftthUser.isNotEmpty && vLow == ftthUser) || vLow == arName;
-      }
-
-      if (widget.filterIsTechnician) {
-        // الفني ما عنده ftthUsername — اسمه يظهر في عمود "الفني" فقط
-        final matchTech = _records
-            .map((r) => r['الفني']?.toString() ?? '')
-            .where((v) => v.isNotEmpty && nameMatches(v))
-            .toSet();
-        if (matchTech.isNotEmpty) {
-          _colFilters['الفني'] = matchTech;
-          changed = true;
-        }
-      } else {
-        // المشغل — اسمه/username في عمود "المُفعِّل"
-        final matchOperator = _records
-            .map((r) => r['المُفعِّل']?.toString() ?? '')
-            .where((v) => v.isNotEmpty && nameMatches(v))
-            .toSet();
-        if (matchOperator.isNotEmpty) {
-          _colFilters['المُفعِّل'] = matchOperator;
-          changed = true;
-        }
-      }
+      final ftthUser = (widget.filterOperatorFtthUsername ?? '').toLowerCase().trim();
+      final arName = widget.filterOperatorName!.toLowerCase().trim();
+      if (arName.isNotEmpty) _scopeNames.add(arName);
+      if (ftthUser.isNotEmpty) _scopeNames.add(ftthUser);
+      if (_scopeNames.isNotEmpty) changed = true;
     }
     // فلتر التحصيل
     if (widget.filterCollectionType != null && widget.filterCollectionType!.isNotEmpty) {
