@@ -286,7 +286,11 @@ public class LinkedAccountsController : ControllerBase
                 .Select(x => new LinkedAccountDto(
                     x.Id, "Ftth", x.Label, x.Username, x.ServerUrl, x.Role,
                     x.IsActive, x.IsPrimary, x.Status, x.LastVerifiedAt, x.LastLoginAt, true,
-                    null, null))
+                    null, null, x.FtthMemberId,
+                    x.PartnerId.HasValue ? x.PartnerId.ToString() : null,
+                    x.PartnerId.HasValue
+                        ? _db.FtthPartners.Where(p => p.Id == x.PartnerId.Value).Select(p => p.Name).FirstOrDefault()
+                        : null))
                 .ToListAsync(ct);
 
             // حسابات الساس (قراءة فقط — لا نُنادي وحدة الساس ولا نعدّلها). نوع الحساب يُحوَّل لنص في الذاكرة.
@@ -337,6 +341,14 @@ public class LinkedAccountsController : ControllerBase
         var (ok, targetUserId, tdenied) = await ResolveTargetUserAsync(ownerId, companyId, currentUserId, ct);
         if (!ok) return tdenied!;
 
+        // عزل: إن حُدِّد شريك وجب أن يكون شريكاً لنفس الشركة.
+        if (request.PartnerId.HasValue)
+        {
+            var validPartner = await _db.FtthPartners.AnyAsync(p => p.Id == request.PartnerId.Value
+                && p.CompanyId == companyId && !p.IsDeleted, ct);
+            if (!validPartner) return BadRequest(new { success = false, message = "الشريك غير موجود لهذه الشركة" });
+        }
+
         try
         {
             var account = new FtthAccount
@@ -344,10 +356,12 @@ public class LinkedAccountsController : ControllerBase
                 Id = Guid.NewGuid(),
                 CompanyId = companyId,          // ختم العزل من التوكن
                 OwnerUserId = targetUserId,     // مالك الحساب (الحالي أو موظّف شركته للأدمن)
+                PartnerId = request.PartnerId,  // الشريك الرئيسي الذي يتبعه الحساب
                 Label = request.Label?.Trim() ?? string.Empty,
                 Username = request.Username.Trim(),
                 ServerUrl = string.IsNullOrWhiteSpace(request.ServerUrl) ? DefaultFtthBaseUrl : request.ServerUrl.Trim(),
                 Role = string.IsNullOrWhiteSpace(request.Role) ? null : request.Role.Trim(),
+                FtthMemberId = string.IsNullOrWhiteSpace(request.FtthMemberId) ? null : request.FtthMemberId.Trim(),
                 PasswordEncrypted = _secretProtector.Protect(request.Password ?? string.Empty),
                 IsActive = true,
                 IsPrimary = request.IsPrimary ?? false,
@@ -366,6 +380,12 @@ public class LinkedAccountsController : ControllerBase
                 currentUserId, companyId, account.Id, account.OwnerUserId, DateTime.UtcNow);
 
             return Ok(new { success = true, data = ToDto(account), message = "تم ربط حساب FTTH بنجاح" });
+        }
+        catch (DbUpdateException dbex) when (dbex.InnerException is Npgsql.PostgresException pg && pg.SqlState == "23505")
+        {
+            // تكرار (نفس الشركة+المالك+اسم المستخدم) — رسالة ودّية بدل 500.
+            return Conflict(new { success = false,
+                message = "هذا الحساب مربوط مسبقاً لهذا الموظف. استخدم «تعديل» على بطاقته لإضافة الشريك." });
         }
         catch (Exception ex)
         {
@@ -402,6 +422,14 @@ public class LinkedAccountsController : ControllerBase
 
             if (request.Label != null) account.Label = request.Label.Trim();
             if (!string.IsNullOrWhiteSpace(request.Username)) account.Username = request.Username.Trim();
+            if (!string.IsNullOrWhiteSpace(request.FtthMemberId)) account.FtthMemberId = request.FtthMemberId.Trim();
+            if (request.PartnerId.HasValue)
+            {
+                var validPartner = await _db.FtthPartners.AnyAsync(p => p.Id == request.PartnerId.Value
+                    && p.CompanyId == account.CompanyId && !p.IsDeleted, ct);
+                if (!validPartner) return BadRequest(new { success = false, message = "الشريك غير موجود لهذه الشركة" });
+                account.PartnerId = request.PartnerId;
+            }
             if (request.IsActive.HasValue) account.IsActive = request.IsActive.Value;
 
             // إعادة التشفير فقط عند إرسال كلمة مرور جديدة غير فارغة (نفس نمط SasAgentController).
@@ -498,16 +526,66 @@ public class LinkedAccountsController : ControllerBase
             var result = await _ftthClient.LoginAsync(account.ServerUrl, account.Username, password, ct);
 
             account.Status = result.Ok ? "Verified" : "Invalid";
-            if (result.Ok) account.LastVerifiedAt = DateTime.UtcNow;
+            string? detectedPartnerAccountId = null; // معرّف شريك FTTH من JWT
+            string? detectedPartnerName = null;      // اسم الشريك المُسنَد (إن وُجد كياناً)
+            bool partnerAutoAssigned = false;
+            bool partnerUndefined = false;
+            if (result.Ok)
+            {
+                account.LastVerifiedAt = DateTime.UtcNow;
+                // بعد دخول ناجح: اجلب رقم العضو/الدور من FTTH (هوية المطابقة). لا يُرمى استثناء.
+                var info = await FetchFtthMemberInfoAsync(account.ServerUrl, result.AccessToken!, account.Username, ct);
+                if (!string.IsNullOrWhiteSpace(info.MemberId)) account.FtthMemberId = info.MemberId;
+                if (!string.IsNullOrWhiteSpace(info.Role)) account.Role = info.Role;
+
+                // ═══ إسناد الشريك تلقائياً: AccountId من JWT = معرّف شريك FTTH ═══
+                // نقارنه بالشركاء المعرّفين (PartnerAccountId) ونُسنِد تلقائياً — بلا اختيار يدوي.
+                detectedPartnerAccountId = ExtractAccountIdFromJwt(result.AccessToken);
+                if (!string.IsNullOrWhiteSpace(detectedPartnerAccountId))
+                {
+                    var partner = await _db.FtthPartners.FirstOrDefaultAsync(p => !p.IsDeleted
+                        && p.CompanyId == account.CompanyId
+                        && p.PartnerAccountId == detectedPartnerAccountId, ct);
+                    if (partner != null)
+                    {
+                        account.PartnerId = partner.Id;       // إسناد تلقائي
+                        detectedPartnerName = partner.Name;
+                        partnerAutoAssigned = true;
+                    }
+                    else
+                    {
+                        partnerUndefined = true;              // شريك مكتشَف غير معرّف بعد
+                    }
+                }
+            }
             account.UpdatedAt = DateTime.UtcNow;
             _db.FtthAccounts.Update(account);
             await _db.SaveChangesAsync(ct);
 
+            var msg = !result.Ok
+                ? "فشل التحقق من بيانات الاعتماد"
+                : partnerAutoAssigned
+                    ? $"تم التحقق وإسناد الشريك «{detectedPartnerName}» تلقائياً"
+                    : partnerUndefined
+                        ? $"تم التحقق — الشريك المكتشَف (رقم {detectedPartnerAccountId}) غير معرّف؛ أضفه من شاشة الشركاء"
+                        : "تم التحقق بنجاح";
             return Ok(new
             {
                 success = true,
-                data = new { verified = result.Ok, status = account.Status, lastVerifiedAt = account.LastVerifiedAt },
-                message = result.Ok ? "تم التحقق بنجاح" : "فشل التحقق من بيانات الاعتماد"
+                data = new
+                {
+                    verified = result.Ok,
+                    status = account.Status,
+                    lastVerifiedAt = account.LastVerifiedAt,
+                    ftthMemberId = account.FtthMemberId,
+                    role = account.Role,
+                    partnerId = account.PartnerId,
+                    partnerName = detectedPartnerName,
+                    detectedPartnerAccountId,
+                    partnerAutoAssigned,
+                    partnerUndefined
+                },
+                message = msg
             });
         }
         catch (Exception ex)
@@ -1061,7 +1139,7 @@ public class LinkedAccountsController : ControllerBase
     private static LinkedAccountDto ToDto(FtthAccount a)
         => new(a.Id, "Ftth", a.Label, a.Username, a.ServerUrl, a.Role,
                a.IsActive, a.IsPrimary, a.Status, a.LastVerifiedAt, a.LastLoginAt, true,
-               null, null);
+               null, null, a.FtthMemberId);
 
     /// <summary>يبني DTO حساب ساس موحّد من الكيان — بلا أي كلمة مرور (مطابق لتمثيل الساس في GetLinkedAccounts).</summary>
     private static LinkedAccountDto ToSasDto(SasAccount a)
@@ -1610,7 +1688,10 @@ public record LinkedAccountDto(
     DateTime? LastLoginAt,
     bool HasSecret,
     int? AccountType = null,
-    decimal? AmountMultiplier = null);
+    decimal? AmountMultiplier = null,
+    string? FtthMemberId = null,
+    string? PartnerId = null,
+    string? PartnerName = null);
 
 /// <summary>طلب إنشاء حساب FTTH لموظّف. كلمة المرور تُشفَّر فور الاستقبال ولا تُعاد.</summary>
 public record CreateFtthAccountRequest(
@@ -1620,7 +1701,9 @@ public record CreateFtthAccountRequest(
     string Password,
     string? ServerUrl = null,
     string? Role = null,
-    bool? IsPrimary = null);
+    bool? IsPrimary = null,
+    string? FtthMemberId = null,
+    Guid? PartnerId = null);
 
 /// <summary>طلب تعديل حساب FTTH. كلمة المرور اختيارية: تُعاد كتابتها فقط عند إرسال قيمة غير فارغة.</summary>
 public record UpdateFtthAccountRequest(
@@ -1629,7 +1712,9 @@ public record UpdateFtthAccountRequest(
     string? Password = null,
     bool? IsActive = null,
     bool? IsPrimary = null,
-    string? ServerUrl = null);
+    string? ServerUrl = null,
+    string? FtthMemberId = null,
+    Guid? PartnerId = null);
 
 /// <summary>طلب إنشاء حساب ساس لموظّف. كلمة المرور تُشفَّر فور الاستقبال ولا تُعاد.</summary>
 public record CreateSasLinkedAccountRequest(
