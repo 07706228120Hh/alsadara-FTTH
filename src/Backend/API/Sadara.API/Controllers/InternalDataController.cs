@@ -3510,9 +3510,11 @@ public class InternalDataController : ControllerBase
         DateTime? activationEntryDate = null;
         if (log.ActivationDate.HasValue)
         {
+            // لحظة التفعيل الحقيقية كما هي (UTC) — العرض يحوّلها toLocal() لتوقيت بغداد
+            // فيظهر الوقت الفعلي بدل 12:00 الثابت. فلاتر المدى تحوّل حدود اليوم إلى UTC
+            // بطرح 3 ساعات ⇒ تبقى ضمن نفس يوم بغداد. كتابة للجديد فقط — لا يُمَسّ موجود.
             activationEntryDate = DateTime.SpecifyKind(
-                log.ActivationDate.Value.AddHours(3).Date.AddHours(12 - 3),
-                DateTimeKind.Utc);
+                log.ActivationDate.Value, DateTimeKind.Utc);
         }
 
         await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(

@@ -506,10 +506,12 @@ public class FtthAccountingController : ControllerBase
         DateTime? activationEntryDate = null;
         if (log.ActivationDate.HasValue)
         {
-            // تحويل UTC → تاريخ بغداد عند الظهر (09:00 UTC) — نفس صيغة CreateAndPostJournalEntry
+            // لحظة التفعيل الحقيقية كما هي (UTC). العرض يحوّلها toLocal() لتوقيت بغداد
+            // فيظهر الوقت الفعلي بدل 12:00 الثابت. فلاتر المدى تحوّل حدود اليوم إلى UTC
+            // بطرح 3 ساعات ⇒ تبقى ضمن نفس يوم بغداد. كتابة للقيود الجديدة فقط —
+            // لا يُمَسّ أي قيد موجود (البيانات التاريخية تبقى كما هي).
             activationEntryDate = DateTime.SpecifyKind(
-                log.ActivationDate.Value.AddHours(3).Date.AddHours(12 - 3),
-                DateTimeKind.Utc);
+                log.ActivationDate.Value, DateTimeKind.Utc);
         }
 
         // إنشاء القيد — CreatedById/ApprovedById = المنفّذ من التوكن (createdById)، لا dto.UserId

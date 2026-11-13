@@ -372,9 +372,11 @@ public sealed class SubscriptionAccountingService : ISubscriptionAccountingServi
         DateTime? entryDate = null;
         if (input.EntryDate.HasValue)
         {
+            // لحظة التفعيل الحقيقية كما هي (UTC) — العرض يحوّلها toLocal() لتوقيت بغداد
+            // فيظهر الوقت الفعلي بدل 12:00 الثابت. فلاتر المدى تحوّل حدود اليوم إلى UTC
+            // بطرح 3 ساعات ⇒ تبقى ضمن نفس يوم بغداد. كتابة للجديد فقط — لا يُمَسّ موجود.
             entryDate = DateTime.SpecifyKind(
-                input.EntryDate.Value.AddHours(3).Date.AddHours(12 - 3),
-                DateTimeKind.Utc);
+                input.EntryDate.Value, DateTimeKind.Utc);
         }
 
         // ═══ نوع المرجع حسب المصدر: الساس => SasSubscription، FTTH => FtthSubscription ═══
