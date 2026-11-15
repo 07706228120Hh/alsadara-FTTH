@@ -191,19 +191,30 @@ public static class PartnerPageBalanceHelper
 
         FtthPartner? ById(Guid? id) => id.HasValue ? partners.FirstOrDefault(p => p.Id == id.Value) : null;
 
+        var logPartnerId = log.PartnerId?.Trim();
+        if (!string.IsNullOrEmpty(logPartnerId))
+        {
+            // The PartnerId tag is relayed by the client, but it is honoured only when it matches exactly
+            // one partner REGISTERED in the caller's company (`partners` is already scoped to log.CompanyId).
+            // That company-scoped match is the security control: a caller cannot steer a charge to a foreign
+            // or unregistered partner. We no longer also require the activating user to own a linked FTTH
+            // account under the partner — operators routinely activate on a partner's behalf without owning
+            // its login, and that extra condition mis-routed ~43% of correctly-tagged activations to the
+            // general page balance. Residual risk is bounded to mis-attribution within the same company
+            // (auditable via the journal entry's log reference, reversible), and the IsFunded gate in
+            // ResolvePageAccountForLog still keeps charges in the general 11102 until a partner is funded.
+            var matches = partners.Where(p => p.PartnerAccountId == logPartnerId).ToList();
+            return matches.Count == 1 ? matches[0] : null;
+        }
+
+        // Only the weaker signals below need the user's linked accounts — a tagged activation (the common
+        // case) already returned above, so this query is deferred off that hot path.
         // Guid.Empty owns no account, so a log without a user simply yields an empty list.
         var ownerUserId = log.UserId ?? Guid.Empty;
         var userAccounts = await db.FtthAccounts.IgnoreQueryFilters()
             .Where(a => a.CompanyId == companyId && a.OwnerUserId == ownerUserId && !a.IsDeleted)
             .Select(a => new { a.Id, a.PartnerId, a.Username, a.FtthMemberId, a.IsActive })
             .ToListAsync();
-
-        var logPartnerId = log.PartnerId?.Trim();
-        if (!string.IsNullOrEmpty(logPartnerId))
-        {
-            var matches = partners.Where(p => p.PartnerAccountId == logPartnerId).ToList();
-            return matches.Count == 1 && userAccounts.Any(a => a.PartnerId == matches[0].Id) ? matches[0] : null;
-        }
 
         if (ftthAccountId.HasValue)
         {

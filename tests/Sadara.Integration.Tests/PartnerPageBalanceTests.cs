@@ -561,6 +561,14 @@ public class PartnerPageBalanceTests : IDisposable
                 Linked(ownAccountId, s.UserId, s.SecondPartnerId, "op-second"),
                 Linked(Guid.NewGuid(), s.UserId, s.PartnerId, "op-first"),
                 Linked(foreignAccountId, otherUserId, s.PartnerId, "op-foreign"));
+            // A partner registered in ANOTHER company, with a distinct FTTH id, to prove a tag can never
+            // steer a charge across company boundaries.
+            seed.Set<Company>().Add(new Company { Id = CompanyB, Name = "شركة ب", Code = "CB" });
+            seed.Set<FtthPartner>().Add(new FtthPartner
+            {
+                Id = Guid.NewGuid(), CompanyId = CompanyB, Name = "شريك ب",
+                MainUsername = "b", MainPasswordEncrypted = "enc", PartnerAccountId = "5555555"
+            });
             await seed.SaveChangesAsync();
         }
 
@@ -593,10 +601,17 @@ public class PartnerPageBalanceTests : IDisposable
         var unknownPartner = await PartnerPageBalanceHelper.ResolvePageAccountForLog(ctx, Log(ftthPartnerId: "9999999"), ownAccountId);
         Assert.Equal(AccountCodes.PageBalance, unknownPartner!.Code);
 
-        // a partner id the user has no linked account with cannot steer the charge (client-supplied value)
-        var notOwned = await PartnerPageBalanceHelper.ResolvePageAccountForLog(
+        // a tag that matches a partner registered in ANOTHER company is ignored (partners are company-scoped),
+        // so it can never steer a charge across companies ⇒ general balance
+        var foreignCompanyTag = await PartnerPageBalanceHelper.ResolvePageAccountForLog(ctx, Log(ftthPartnerId: "5555555"), ownAccountId);
+        Assert.Equal(AccountCodes.PageBalance, foreignCompanyTag!.Code);
+
+        // a PartnerId tag matching a partner registered in the caller's company steers the charge to that
+        // partner's funded account even when the user owns no linked account under it — the company-scoped
+        // match is the guard, not account ownership (3171968 = the second partner, funded above)
+        var taggedNotOwned = await PartnerPageBalanceHelper.ResolvePageAccountForLog(
             ctx, new SubscriptionLog { CompanyId = CompanyA, UserId = otherUserId, PartnerId = "3171968" }, null);
-        Assert.Equal(AccountCodes.PageBalance, notOwned!.Code);
+        Assert.Equal(KeyOf(s.SecondPartnerId), taggedNotOwned!.Description);
 
         // 3) operator username matches one of the user's linked accounts
         var byOperator = await PartnerPageBalanceHelper.ResolvePageAccountForLog(ctx, Log(operatorUsername: "OP-Second"), null);
