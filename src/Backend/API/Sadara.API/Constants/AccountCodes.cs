@@ -31,6 +31,9 @@ public static class AccountCodes
     public static bool IsPageBalanceCode(string? code) =>
         code != null && (code == PageBalance || code.StartsWith(PartnerPageBalancePrefix, StringComparison.Ordinal));
 
+    /// <summary>أرباح محتجزة (حقوق ملكية) — الحساب المقابل لقيد التسوية الافتتاحي لأرصدة الشركاء.</summary>
+    public const string RetainedEarnings = "3200";
+
     /// <summary>صندوق الشركة الرئيسي - يستقبل الكاش من المشغلين</summary>
     public const string CompanyMainCash = "11104";
 

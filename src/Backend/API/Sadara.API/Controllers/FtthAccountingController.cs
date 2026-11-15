@@ -4587,6 +4587,117 @@ public class FtthAccountingController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// بذر لمرة واحدة للأرصدة الافتتاحية لحسابات «رصيد صفحة الشريك» (11102-NN): يُنشئ حساب كل شريك ثم يُرحّل
+    /// قيداً واحداً متوازناً — مدين كل حساب شريك برصيد صفحته الحقيقي على FTTH (مُرسَل في الطلب)، دائن الرصيد
+    /// العام 11102 (يُصفَّره)، ودائن/مدين «أرباح محتجزة 3200» بالفرق (تسوية افتتاحية). بعده تبدأ التفعيلات
+    /// بالخصم من حساب كل شريك (القيد يُدينه ⇒ يتجاوز حارس IsFunded).
+    ///
+    /// محميّة: SuperAdmin + علَم الإعداد <c>PartnerPageBalance:AllowSeed</c> (OFF افتراضياً) + حتمية (ترفض لو
+    /// وُجد أي حساب شريك مسبقاً). تتطلب نسخة احتياطية وتجميد التفعيل لحظة التنفيذ (راجع دليل التشغيل).
+    /// </summary>
+    [HttpPost("partner-page-balances/seed-opening")]
+    [Authorize(Policy = "SuperAdmin")]
+    public async Task<IActionResult> SeedPartnerPageOpeningBalances([FromBody] SeedPartnerPageOpeningRequest? dto,
+        [FromQuery] Guid? companyId = null)
+    {
+        // بوابة إعداد صريحة: لا يُنفَّذ البذر إلا عند تفعيل العلَم يدوياً على الخادم.
+        if (!_configuration.GetValue<bool>("PartnerPageBalance:AllowSeed"))
+            return StatusCode(403, new { success = false, message = "بذر الأرصدة الافتتاحية معطّل (PartnerPageBalance:AllowSeed=OFF)" });
+
+        if (dto?.Partners == null || dto.Partners.Count == 0)
+            return BadRequest(new { success = false, message = "قائمة الأرصدة الافتتاحية مطلوبة" });
+        if (dto.Confirm != true)
+            return BadRequest(new { success = false, message = "يجب تأكيد العملية (Confirm=true)" });
+        if (string.IsNullOrWhiteSpace(dto.IdempotencyKey))
+            return BadRequest(new { success = false, message = "معرّف العملية مطلوب" });
+        if (dto.Partners.Any(p => p.OpeningBalance < 0))
+            return BadRequest(new { success = false, message = "الرصيد الافتتاحي لا يكون سالباً" });
+        if (dto.Partners.Select(p => p.PartnerId).Distinct().Count() != dto.Partners.Count)
+            return BadRequest(new { success = false, message = "تكرار معرّف شريك في الطلب" });
+
+        var scope = ResolveExclusionCompany(companyId);
+        if (!scope.HasValue) return BadRequest(new { success = false, message = "تعذّر تحديد الشركة" });
+        var company = scope.Value;
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue) return Unauthorized(new { success = false, message = "جلسة غير صالحة" });
+
+        try
+        {
+            // حتمية: البذر لا يُكرَّر — يُرفَض لو وُجد أي حساب شريك (11102-NN) مسبقاً.
+            var alreadySeeded = await _db.Accounts.IgnoreQueryFilters().AnyAsync(a =>
+                a.CompanyId == company && !a.IsDeleted && a.Code.StartsWith(AccountCodes.PartnerPageBalancePrefix));
+            if (alreadySeeded)
+                return Conflict(new { success = false, message = "سبق بذر أرصدة الشركاء لهذه الشركة" });
+
+            var partners = await _db.FtthPartners.IgnoreQueryFilters()
+                .Where(p => p.CompanyId == company && !p.IsDeleted).ToListAsync();
+            if (partners.Count == 0)
+                return BadRequest(new { success = false, message = "لا يوجد شركاء لهذه الشركة" });
+
+            // يجب أن يغطّي الطلب كل شركاء الشركة (لا بذر جزئي يترك شركاء بلا رصيد افتتاحي).
+            var requested = dto.Partners.ToDictionary(p => p.PartnerId, p => p.OpeningBalance);
+            var partnerIds = partners.Select(p => p.Id).ToHashSet();
+            if (requested.Keys.Any(id => !partnerIds.Contains(id)))
+                return BadRequest(new { success = false, message = "الطلب يحوي شريكاً لا ينتمي لهذه الشركة" });
+            if (partnerIds.Any(id => !requested.ContainsKey(id)))
+                return BadRequest(new { success = false, message = "يجب تحديد الرصيد الافتتاحي لكل شركاء الشركة" });
+
+            var general = await PartnerPageBalanceHelper.FindGeneralPageAccount(_db, company);
+            if (general == null)
+                return BadRequest(new { success = false, message = "حساب رصيد الصفحة العام (11102) غير موجود" });
+            var retained = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.RetainedEarnings, company);
+            if (retained == null)
+                return BadRequest(new { success = false, message = "حساب أرباح محتجزة (3200) غير موجود" });
+
+            // إنشاء حساب كل شريك (11102-NN) بتمثيل التطبيق الصحيح.
+            var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>();
+            var created = new List<object>();
+            foreach (var partner in partners)
+            {
+                var account = await PartnerPageBalanceHelper.EnsurePartnerPageAccount(_db, partner);
+                if (account == null)
+                    return StatusCode(500, new { success = false, message = $"تعذّر إنشاء حساب الشريك {partner.Name}" });
+                var opening = requested[partner.Id];
+                if (opening != 0)
+                    lines.Add((account.Id, opening, 0, $"رصيد افتتاحي - {partner.Name}"));
+                created.Add(new { partnerId = partner.Id, partner.Name, code = account.Code, opening });
+            }
+
+            // تصفير الرصيد العام (أصول): دائن برصيده الموجب (أو مدين لو كان سالباً).
+            var g = general.CurrentBalance;
+            lines.Add((general.Id, g < 0 ? -g : 0, g > 0 ? g : 0, "تصفير الرصيد العام إلى حسابات الشركاء"));
+
+            // سطر التسوية (أرباح محتجزة): يوازن القيد — الفرق بين إجمالي أرصدة الشركاء والرصيد العام.
+            var openSum = partners.Sum(p => requested[p.Id]);
+            var debitSoFar = openSum + (g < 0 ? -g : 0);
+            var creditSoFar = g > 0 ? g : 0;
+            var diff = debitSoFar - creditSoFar;
+            lines.Add((retained.Id, diff < 0 ? -diff : 0, diff > 0 ? diff : 0, "تسوية افتتاحية - فرق رصيد صفحة الشركاء (FTTH)"));
+
+            var entryId = await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                _unitOfWork, company, userId.Value,
+                "بذر رصيد افتتاحي لحسابات صفحة الشركاء — تسوية",
+                JournalReferenceType.Manual, $"ppb-seed:{dto.IdempotencyKey}", lines);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogWarning("Partner page balances seeded: company={Company} by={UserId} entry={EntryId} openSum={OpenSum} general={General} adjustment={Diff}",
+                company, userId.Value, entryId, openSum, g, diff);
+
+            return Ok(new
+            {
+                success = true,
+                message = "تم بذر الأرصدة الافتتاحية للشركاء",
+                data = new { journalEntryId = entryId, partners = created, generalZeroed = g, retainedEarningsAdjustment = diff }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في بذر الأرصدة الافتتاحية للشركاء — الشركة {Company}", company);
+            return StatusCode(500, new { success = false, message = "تعذّر تنفيذ البذر" });
+        }
+    }
+
     private async Task<IActionResult> FundPartnerPageBalance(Guid partnerId, PartnerFundingSource source, decimal amount,
         string? notes, string? idempotencyKey, Guid? requestedCompanyId)
     {
@@ -4669,6 +4780,12 @@ public record PartnerPageTopUpDto(decimal Amount, string? Source, string? Notes 
 
 /// <summary>تحويل من الرصيد العام إلى رصيد صفحة شريك.</summary>
 public record PartnerPageTransferDto(decimal Amount, string? Notes = null, string? IdempotencyKey = null);
+
+/// <summary>بذر الأرصدة الافتتاحية: رصيد افتتاحي (رصيد FTTH الحقيقي) لكل شريك في الشركة.</summary>
+public record SeedPartnerPageOpeningRequest(List<PartnerOpeningDto> Partners, string? IdempotencyKey, bool? Confirm = null);
+
+/// <summary>رصيد افتتاحي لشريك واحد (معرّف كياننا + رصيد صفحته الحقيقي على FTTH).</summary>
+public record PartnerOpeningDto(Guid PartnerId, decimal OpeningBalance);
 
 public record FtthLogWithAccountingDto(
     // حقول SubscriptionLog الأساسية
