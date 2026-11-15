@@ -877,6 +877,25 @@ class AccountingService {
     return _toMap(response);
   }
 
+  /// إرجاع من رصيد شريك إلى الرصيد العام (يعمل أيضاً لحساب شريك محذوف).
+  Future<Map<String, dynamic>> returnPartnerPageBalanceToGeneral(
+    String partnerId, {
+    required double amount,
+    required String idempotencyKey,
+    String? notes,
+  }) async {
+    final response = await _client.post(
+      '/ftth-accounting/partner-page-balances/$partnerId/return-to-general',
+      {
+        'Amount': amount,
+        'IdempotencyKey': idempotencyKey,
+        if (notes != null && notes.isNotEmpty) 'Notes': notes,
+      },
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
   /// عكس عملية شحن/تحويل (قيد معاكس، مرة واحدة فقط).
   Future<Map<String, dynamic>> reversePartnerPageFunding(
       String journalEntryId) async {

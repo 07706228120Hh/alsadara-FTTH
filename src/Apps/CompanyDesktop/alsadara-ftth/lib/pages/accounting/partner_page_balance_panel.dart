@@ -97,7 +97,7 @@ class _PartnerPageBalancePanelState extends State<PartnerPageBalancePanel> {
   }
 
   Future<void> _openFund(Map<String, dynamic> partner,
-      {required bool fromGeneral}) async {
+      {required bool fromGeneral, bool toGeneral = false}) async {
     final ok = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -105,6 +105,7 @@ class _PartnerPageBalancePanelState extends State<PartnerPageBalancePanel> {
         partner: partner,
         overview: _overview!,
         fromGeneral: fromGeneral,
+        toGeneral: toGeneral,
       ),
     );
     if (ok == true) _load();
@@ -170,15 +171,24 @@ class _PartnerPageBalancePanelState extends State<PartnerPageBalancePanel> {
           'مجموع الشركاء', _num(_f(o, 'PartnersTotal')), SdColors.info,
           icon: Icons.functions));
       for (final p in _partners) {
+        // A deleted partner cannot be selected; its leftover balance can only
+        // be returned to the general balance.
+        final deleted = _f(p, 'PartnerDeleted') == true;
         tiles.add(_tile(
-          (_f(p, 'Name') ?? '').toString(),
+          deleted
+              ? '${(_f(p, 'Name') ?? '').toString()} (محذوف)'
+              : (_f(p, 'Name') ?? '').toString(),
           _num(_f(p, 'Balance')),
-          SdColors.accent,
-          icon: Icons.business,
-          onTap: widget.onSelectPartner == null ||
-                  _f(p, 'PartnerDeleted') == true
-              ? null
-              : () => widget.onSelectPartner!(_f(p, 'PartnerId')?.toString()),
+          deleted ? SdColors.danger : SdColors.accent,
+          icon: deleted ? Icons.undo : Icons.business,
+          onTap: deleted
+              ? (_canEdit && _f(p, 'PartnerId') != null
+                  ? () => _openFund(p, fromGeneral: false, toGeneral: true)
+                  : null)
+              : widget.onSelectPartner == null
+                  ? null
+                  : () =>
+                      widget.onSelectPartner!(_f(p, 'PartnerId')?.toString()),
         ));
       }
     } else if (selected != null) {
@@ -218,6 +228,11 @@ class _PartnerPageBalancePanelState extends State<PartnerPageBalancePanel> {
                 Icons.swap_horiz,
                 SdColors.info,
                 () => _openFund(selected, fromGeneral: true)),
+            _action(
+                'إرجاع إلى الرصيد العام',
+                Icons.undo,
+                SdColors.danger,
+                () => _openFund(selected, fromGeneral: false, toGeneral: true)),
           ],
           _action('كشف الحساب', Icons.receipt_long, SdColors.primary,
               () => _openStatement(selected)),
@@ -307,10 +322,14 @@ class _FundDialog extends StatefulWidget {
   /// true = transfer from the general page balance; false = top-up from a cash box.
   final bool fromGeneral;
 
+  /// true = return from the partner's balance to the general page balance.
+  final bool toGeneral;
+
   const _FundDialog({
     required this.partner,
     required this.overview,
     required this.fromGeneral,
+    this.toGeneral = false,
   });
 
   @override
@@ -343,7 +362,11 @@ class _FundDialogState extends State<_FundDialog> {
       _num(_f(widget.overview, 'CompanyMainCashBalance'));
   double get _generalBalance => _num(_f(widget.overview, 'GeneralBalance'));
 
-  double get _available => widget.fromGeneral
+  double get _partnerBalance => _num(_f(widget.partner, 'Balance'));
+
+  double get _available => widget.toGeneral
+      ? _partnerBalance
+      : widget.fromGeneral
       ? _generalBalance
       : _source == 'petty'
           ? _pettyBalance
@@ -354,7 +377,7 @@ class _FundDialogState extends State<_FundDialog> {
   @override
   void initState() {
     super.initState();
-    if (!widget.fromGeneral) {
+    if (!widget.fromGeneral && !widget.toGeneral) {
       _source = _hasPetty ? 'petty' : (_hasMain ? 'main' : null);
     }
   }
@@ -372,13 +395,14 @@ class _FundDialogState extends State<_FundDialog> {
       setState(() => _error = 'أدخل مبلغاً صحيحاً أكبر من صفر');
       return;
     }
-    if (!widget.fromGeneral && _source == null) {
+    if (!widget.fromGeneral && !widget.toGeneral && _source == null) {
       setState(() => _error = 'اختر مصدر الشحن');
       return;
     }
     if (amount > _available) {
-      setState(() => _error =
-          'المبلغ يتجاوز الرصيد المتاح في المصدر (${_fmt(_available)})');
+      setState(() => _error = widget.toGeneral
+          ? 'المبلغ يتجاوز رصيد الشريك (${_fmt(_available)})'
+          : 'المبلغ يتجاوز الرصيد المتاح في المصدر (${_fmt(_available)})');
       return;
     }
 
@@ -394,7 +418,13 @@ class _FundDialogState extends State<_FundDialog> {
     final notes = _notesCtrl.text.trim();
     Map<String, dynamic> res;
     try {
-      res = widget.fromGeneral
+      res = widget.toGeneral
+          ? await AccountingService.instance.returnPartnerPageBalanceToGeneral(
+              partnerId,
+              amount: amount,
+              idempotencyKey: _key,
+              notes: notes)
+          : widget.fromGeneral
           ? await AccountingService.instance
               .transferGeneralToPartnerPageBalance(partnerId,
                   amount: amount, idempotencyKey: _key, notes: notes)
@@ -420,9 +450,11 @@ class _FundDialogState extends State<_FundDialog> {
   @override
   Widget build(BuildContext context) {
     final name = (_f(widget.partner, 'Name') ?? '').toString();
-    final title = widget.fromGeneral
-        ? 'تحويل من الرصيد العام إلى $name'
-        : 'شحن رصيد $name';
+    final title = widget.toGeneral
+        ? 'إرجاع من $name إلى الرصيد العام'
+        : widget.fromGeneral
+            ? 'تحويل من الرصيد العام إلى $name'
+            : 'شحن رصيد $name';
     return Directionality(
       textDirection: TextDirection.rtl,
       child: AlertDialog(
@@ -441,7 +473,10 @@ class _FundDialogState extends State<_FundDialog> {
                   'الرصيد الحالي للشريك: ${_fmt(_num(_f(widget.partner, 'Balance')))}',
                   style: const TextStyle(fontFamily: _cairo, fontSize: 12)),
               const SizedBox(height: 8),
-              if (widget.fromGeneral)
+              if (widget.toGeneral)
+                Text('الرصيد العام الحالي: ${_fmt(_generalBalance)}',
+                    style: const TextStyle(fontFamily: _cairo, fontSize: 12))
+              else if (widget.fromGeneral)
                 Text('المتاح في الرصيد العام: ${_fmt(_generalBalance)}',
                     style: const TextStyle(fontFamily: _cairo, fontSize: 12))
               else if (!_hasPetty && !_hasMain)
@@ -514,7 +549,12 @@ class _FundDialogState extends State<_FundDialog> {
                     height: 16,
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: Colors.white))
-                : Text(widget.fromGeneral ? 'تحويل' : 'شحن',
+                : Text(
+                    widget.toGeneral
+                        ? 'إرجاع'
+                        : widget.fromGeneral
+                            ? 'تحويل'
+                            : 'شحن',
                     style: const TextStyle(fontFamily: _cairo)),
           ),
         ],
@@ -666,6 +706,8 @@ class _StatementDialogState extends State<_StatementDialog> {
       case 'reversal':
       case 'rev':
         return 'عكس';
+      case 'return':
+        return 'إرجاع للعام';
       case 'activation':
         return 'تفعيل';
       default:

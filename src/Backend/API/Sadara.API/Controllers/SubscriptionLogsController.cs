@@ -7,6 +7,7 @@ using Sadara.Domain.Interfaces;
 using Sadara.API.Authorization;
 using Sadara.API.Constants;
 using Sadara.API.Services;
+using Sadara.Application.Interfaces;
 using Sadara.Infrastructure.Data;
 
 namespace Sadara.API.Controllers;
@@ -22,6 +23,7 @@ public class SubscriptionLogsController : ControllerBase
     private readonly IUnitOfWork _unitOfWork;
     private readonly SadaraDbContext _db;
     private readonly ILogger<SubscriptionLogsController> _logger;
+    private readonly ICurrentTenant _tenant;
 
     /// <summary>
     /// تحويل اسم المستخدم (FtthUsername/Username) إلى الاسم العربي الكامل
@@ -37,8 +39,9 @@ public class SubscriptionLogsController : ControllerBase
         return user?.FullName ?? activatedBy;
     }
 
-    public SubscriptionLogsController(IUnitOfWork unitOfWork, SadaraDbContext db, ILogger<SubscriptionLogsController> logger)
+    public SubscriptionLogsController(IUnitOfWork unitOfWork, SadaraDbContext db, ILogger<SubscriptionLogsController> logger, ICurrentTenant tenant)
     {
+        _tenant = tenant;
         _unitOfWork = unitOfWork;
         _db = db;
         _logger = logger;
@@ -106,6 +109,26 @@ public class SubscriptionLogsController : ControllerBase
     [RequirePermission("subscriptions", "add", PermissionSystem.Second)]
     public async Task<IActionResult> Create([FromBody] CreateSubscriptionLogRequest request)
     {
+        // Tenant isolation: the company comes from the token, never from the body (independent of the
+        // EnforceIsolation flag). Only a SuperAdmin may name a company.
+        var tokenCompanyId = request.CompanyId;
+        if (!_tenant.IsSuperAdmin)
+        {
+            if (!_tenant.CompanyId.HasValue
+                || (request.CompanyId.HasValue && request.CompanyId.Value != _tenant.CompanyId.Value))
+                return StatusCode(403, new { success = false, message = "لا تملك صلاحية التسجيل على شركة أخرى" });
+            tokenCompanyId = _tenant.CompanyId;
+        }
+
+        // The operator the entry is booked on must belong to that company.
+        if (request.UserId.HasValue && tokenCompanyId.HasValue)
+        {
+            var operatorInCompany = await _db.Users.IgnoreQueryFilters()
+                .AnyAsync(u => u.Id == request.UserId.Value && u.CompanyId == tokenCompanyId.Value && !u.IsDeleted);
+            if (!operatorInCompany)
+                return StatusCode(403, new { success = false, message = "المستخدم لا ينتمي إلى هذه الشركة" });
+        }
+
         var log = new SubscriptionLog
         {
             // معلومات العميل
@@ -149,7 +172,7 @@ public class SubscriptionLogsController : ControllerBase
             PartnerName = request.PartnerName,
             PartnerId = request.PartnerId,
             UserId = request.UserId,
-            CompanyId = request.CompanyId,
+            CompanyId = tokenCompanyId,
 
             // حالة العملية
             IsPrinted = request.IsPrinted,
@@ -175,11 +198,11 @@ public class SubscriptionLogsController : ControllerBase
         if (!string.IsNullOrEmpty(log.SessionId))
         {
             var duplicate = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                .AnyAsync(l => l.SessionId == log.SessionId && !l.IsDeleted);
+                .AnyAsync(l => l.SessionId == log.SessionId && l.CompanyId == tokenCompanyId && !l.IsDeleted);
             if (duplicate)
             {
                 var existing = await _unitOfWork.SubscriptionLogs.AsQueryable()
-                    .FirstOrDefaultAsync(l => l.SessionId == log.SessionId && !l.IsDeleted);
+                    .FirstOrDefaultAsync(l => l.SessionId == log.SessionId && l.CompanyId == tokenCompanyId && !l.IsDeleted);
                 return Ok(new { success = true, id = existing?.Id, duplicate = true });
             }
         }

@@ -4536,6 +4536,36 @@ public class FtthAccountingController : ControllerBase
         return FundPartnerPageBalance(partnerId, PartnerFundingSource.GeneralPageBalance, dto.Amount, dto.Notes, dto.IdempotencyKey, companyId);
     }
 
+    /// <summary>إرجاع من رصيد شريك إلى الرصيد العام (11102) — يعمل أيضاً لحساب شريك محذوف.</summary>
+    [HttpPost("partner-page-balances/{partnerId}/return-to-general")]
+    [RequirePermission("accounting.ftth_operators", "edit", failClosed: true)]
+    public async Task<IActionResult> ReturnPartnerPageBalanceToGeneral(Guid partnerId, [FromBody] PartnerPageTransferDto dto,
+        [FromQuery] Guid? companyId = null)
+    {
+        if (dto == null)
+            return BadRequest(new { success = false, message = "بيانات الطلب مطلوبة" });
+        var scope = ResolveExclusionCompany(companyId);
+        if (!scope.HasValue) return BadRequest(new { success = false, message = "تعذّر تحديد الشركة" });
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue) return Unauthorized(new { success = false, message = "جلسة غير صالحة" });
+        if (string.IsNullOrWhiteSpace(dto.IdempotencyKey))
+            return BadRequest(new { success = false, message = "معرّف العملية مطلوب" });
+        try
+        {
+            var result = await PartnerPageBalanceService.ReturnToGeneral(_db, _unitOfWork, scope.Value, partnerId,
+                dto.Amount, dto.Notes, dto.IdempotencyKey, userId.Value);
+            if (result.Success && !result.Duplicate)
+                _logger.LogInformation("Partner page balance returned to general: partner={PartnerId} amount={Amount} by={UserId} entry={EntryId}",
+                    partnerId, dto.Amount, userId.Value, result.JournalEntryId);
+            return PartnerPageBalanceResponse(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في إرجاع رصيد الشريك {PartnerId} إلى الرصيد العام", partnerId);
+            return StatusCode(500, new { success = false, message = "تعذّر تنفيذ العملية" });
+        }
+    }
+
     /// <summary>عكس عملية شحن/تحويل (قيد معاكس، مرة واحدة فقط).</summary>
     [HttpPost("partner-page-balances/reverse/{journalEntryId}")]
     [RequirePermission("accounting.ftth_operators", "edit", failClosed: true)]

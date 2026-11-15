@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Sadara.API.Controllers;
 using Sadara.API.Constants;
 using Sadara.API.Services;
 using Sadara.Domain.Entities;
@@ -42,6 +45,7 @@ public class PartnerPageBalanceTests : IDisposable
             "DELETE FROM \"JournalEntries\" WHERE \"CompanyId\" IN ({0}, {1});" +
             "DELETE FROM \"Accounts\" WHERE \"CompanyId\" IN ({0}, {1}) AND \"ParentAccountId\" IS NOT NULL;" +
             "DELETE FROM \"Accounts\" WHERE \"CompanyId\" IN ({0}, {1});" +
+            "DELETE FROM \"SubscriptionLogs\" WHERE \"CompanyId\" IN ({0}, {1});" +
             "DELETE FROM \"FtthAccounts\" WHERE \"CompanyId\" IN ({0}, {1});" +
             "DELETE FROM \"FtthPartners\" WHERE \"CompanyId\" IN ({0}, {1});" +
             "DELETE FROM \"Users\" WHERE \"CompanyId\" IN ({0}, {1});" +
@@ -366,6 +370,75 @@ public class PartnerPageBalanceTests : IDisposable
         Assert.Equal(400, reversed.StatusCode);
         Assert.Equal(100, PartnerBalance(CompanyA, s.PartnerId));
         Assert.Equal(700, Balance(CompanyA, AccountCodes.PettyCash));
+    }
+
+    [SkippableFact]
+    public async Task ReturnToGeneral_MovesMoneyBack_EvenForADeletedPartner_AndNeverOverdraws()
+    {
+        _fx.SkipIfUnavailable();
+        var s = Seed(CompanyA);
+        var b = Seed(CompanyB);
+        Assert.True((await Fund(CompanyA, s.PartnerId, PartnerFundingSource.PettyCash, 300, s.UserId)).Success);
+        var generalBefore = Balance(CompanyA, AccountCodes.PageBalance);
+        await using (var ctx = _fx.CreateContext(PostgresFixture.SystemTenant))
+        {
+            var partner = await ctx.Set<FtthPartner>().IgnoreQueryFilters().SingleAsync(p => p.Id == s.PartnerId);
+            partner.IsDeleted = true;
+            await ctx.SaveChangesAsync();
+        }
+
+        async Task<PartnerPageBalanceResult> Return(Guid companyId, decimal amount, Guid userId, string? key = null)
+        {
+            await using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
+            return await PartnerPageBalanceService.ReturnToGeneral(ctx, new UnitOfWork(ctx), companyId, s.PartnerId, amount, null, key, userId);
+        }
+
+        var tooMuch = await Return(CompanyA, 301, s.UserId);
+        var crossTenant = await Return(CompanyB, 100, b.UserId);
+        var ok = await Return(CompanyA, 200, s.UserId, "return-key-0001");
+        var replay = await Return(CompanyA, 200, s.UserId, "return-key-0001");
+        var conflict = await Return(CompanyA, 100, s.UserId, "return-key-0001");
+
+        Assert.Equal(400, tooMuch.StatusCode);
+        Assert.Equal(404, crossTenant.StatusCode);
+        Assert.True(ok.Success);
+        Assert.True(replay.Duplicate);
+        Assert.Equal(409, conflict.StatusCode);
+        Assert.Equal(100, PartnerBalance(CompanyA, s.PartnerId));
+        Assert.Equal(generalBefore + 200, Balance(CompanyA, AccountCodes.PageBalance));
+    }
+
+    [SkippableFact]
+    public async Task CreateSubscriptionLog_TakesTheCompanyFromTheToken_NotFromTheBody()
+    {
+        _fx.SkipIfUnavailable();
+        var a = Seed(CompanyA);
+        var b = Seed(CompanyB);
+
+        async Task<int> Create(Guid? bodyCompanyId, Guid? bodyUserId, string sessionId)
+        {
+            await using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
+            var controller = new SubscriptionLogsController(new UnitOfWork(ctx), ctx,
+                NullLogger<SubscriptionLogsController>.Instance, new TestTenant { CompanyId = CompanyA });
+            var result = await controller.Create(new CreateSubscriptionLogRequest
+            {
+                CompanyId = bodyCompanyId, UserId = bodyUserId, SessionId = sessionId, CustomerName = "مشترك"
+            });
+            return (result as ObjectResult)?.StatusCode ?? 0;
+        }
+
+        var foreignCompany = await Create(CompanyB, b.UserId, "sess-foreign-company");
+        var foreignUser = await Create(null, b.UserId, "sess-foreign-user");
+        var stamped = await Create(null, a.UserId, "sess-own");
+
+        Assert.Equal(403, foreignCompany);
+        Assert.Equal(403, foreignUser);
+        Assert.Equal(201, stamped);
+        await using var check = _fx.CreateContext(PostgresFixture.SystemTenant);
+        var logs = await check.Set<SubscriptionLog>().IgnoreQueryFilters()
+            .Where(l => l.SessionId != null && l.SessionId.StartsWith("sess-")).ToListAsync();
+        var log = Assert.Single(logs);
+        Assert.Equal(CompanyA, log.CompanyId);
     }
 
     [SkippableFact]

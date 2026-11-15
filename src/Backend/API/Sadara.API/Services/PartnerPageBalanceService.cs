@@ -83,6 +83,7 @@ public static partial class PartnerPageBalanceService
     public const string TopUpReferencePrefix = "ppb:topup:";
     public const string TransferReferencePrefix = "ppb:xfer:";
     public const string ReversalReferencePrefix = "ppb:rev:";
+    public const string ReturnReferencePrefix = "ppb:ret:";
 
     private const decimal MaxAmount = 1_000_000_000_000m;
     private const int MaxNotesLength = 200;
@@ -250,6 +251,86 @@ public static partial class PartnerPageBalanceService
             return new PartnerPageBalanceResult(true, 200,
                 isTransfer ? $"تم تحويل {amount:N0} إلى {partner.Name}" : $"تم شحن {amount:N0} إلى {partner.Name}",
                 entryId, partnerAccount.CurrentBalance, sourceAccount.CurrentBalance);
+        });
+    }
+
+    /// <summary>
+    /// Moves money from a partner's page-balance account back to the general 11102. Works on the account itself,
+    /// so the balance of a deleted partner (or of a deactivated account) can still be recovered.
+    /// </summary>
+    public static async Task<PartnerPageBalanceResult> ReturnToGeneral(
+        SadaraDbContext db,
+        IUnitOfWork unitOfWork,
+        Guid companyId,
+        Guid partnerId,
+        decimal amount,
+        string? notes,
+        string? idempotencyKey,
+        Guid createdById)
+    {
+        if (amount <= 0)
+            return Fail(400, "المبلغ يجب أن يكون أكبر من صفر");
+        if (amount > MaxAmount || decimal.Round(amount, 2) != amount)
+            return Fail(400, "المبلغ غير صالح");
+
+        var key = string.IsNullOrWhiteSpace(idempotencyKey) ? null : idempotencyKey.Trim();
+        if (key != null && !IdempotencyKeyRegex().IsMatch(key))
+            return Fail(400, "معرّف العملية غير صالح");
+
+        var partnerAccount = await PartnerPageBalanceHelper.FindPartnerPageAccount(db, companyId, partnerId, includeInactive: true);
+        if (partnerAccount == null)
+            return Fail(404, "لا يوجد حساب رصيد لهذا الشريك");
+
+        var referenceId = ReturnReferencePrefix + partnerId.ToString("N") + (key != null ? ":" + key : "");
+
+        return await WithCompanyLock(db, companyId, async () =>
+        {
+            var general = await PartnerPageBalanceHelper.FindGeneralPageAccount(db, companyId);
+            if (general == null)
+                return Fail(400, "حساب رصيد الصفحة (11102) غير موجود في شجرة الحسابات");
+
+            if (key != null)
+            {
+                var existing = await db.JournalEntries.IgnoreQueryFilters().AsNoTracking()
+                    .Include(j => j.Lines)
+                    .FirstOrDefaultAsync(j => j.CompanyId == companyId && !j.IsDeleted
+                        && j.ReferenceType == JournalReferenceType.CashTransfer && j.ReferenceId == referenceId);
+                if (existing != null)
+                {
+                    var samePayload =
+                        existing.Lines.Any(l => !l.IsDeleted && l.AccountId == partnerAccount.Id && l.CreditAmount == amount);
+                    if (!samePayload)
+                        return Fail(409, "معرّف العملية مستخدم مسبقاً لعملية مختلفة");
+
+                    await db.Entry(partnerAccount).ReloadAsync();
+                    return new PartnerPageBalanceResult(true, 200, "العملية منفّذة مسبقاً", existing.Id,
+                        partnerAccount.CurrentBalance, Duplicate: true);
+                }
+            }
+
+            await db.Entry(general).ReloadAsync();
+            await db.Entry(partnerAccount).ReloadAsync();
+
+            if (partnerAccount.CurrentBalance < amount)
+                return Fail(400, $"رصيد الشريك غير كافٍ (المتاح {partnerAccount.CurrentBalance:N0})");
+
+            var description = $"إرجاع من {partnerAccount.Name} إلى الرصيد العام";
+            var cleanNotes = CleanNotes(notes);
+            if (cleanNotes != null)
+                description += $" — {cleanNotes}";
+
+            var lines = new List<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)>
+            {
+                (general.Id, amount, 0, "إضافة إلى الرصيد العام"),
+                (partnerAccount.Id, 0, amount, "إرجاع إلى الرصيد العام")
+            };
+
+            var entryId = await ServiceRequestAccountingHelper.CreateAndPostJournalEntry(
+                unitOfWork, companyId, createdById, Truncate(description, 500),
+                JournalReferenceType.CashTransfer, referenceId, lines);
+
+            return new PartnerPageBalanceResult(true, 200, $"تم إرجاع {amount:N0} إلى الرصيد العام",
+                entryId, partnerAccount.CurrentBalance, general.CurrentBalance);
         });
     }
 
@@ -461,6 +542,7 @@ public static partial class PartnerPageBalanceService
             if (referenceId.StartsWith(TopUpReferencePrefix, StringComparison.Ordinal)) return "topup";
             if (referenceId.StartsWith(TransferReferencePrefix, StringComparison.Ordinal)) return "transfer";
             if (referenceId.StartsWith(ReversalReferencePrefix, StringComparison.Ordinal)) return "reversal";
+            if (referenceId.StartsWith(ReturnReferencePrefix, StringComparison.Ordinal)) return "return";
         }
         return "other";
     }
