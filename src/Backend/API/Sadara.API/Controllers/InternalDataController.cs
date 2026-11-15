@@ -2357,7 +2357,7 @@ public class InternalDataController : ControllerBase
                             .Where(a => a.Id == line.AccountId).Select(a => a.Code).FirstOrDefaultAsync();
 
                         decimal nd = line.DebitAmount, nc = line.CreditAmount;
-                        if (code == "11102") { nd = 0; nc = pd; }
+                        if (AccountCodes.IsPageBalanceCode(code)) { nd = 0; nc = pd; }
                         else if (code == "4110") { nd = 0; nc = mf; }
                         else if (code == "4120") { nd = 0; nc = cdp; }
                         else if (code == "5110") { nd = md; nc = 0; }
@@ -3030,9 +3030,12 @@ public class InternalDataController : ControllerBase
             var hasLogAmount = (log.PlanPrice.HasValue && log.PlanPrice > 0) || (log.BasePrice.HasValue && log.BasePrice > 0);
             if (log.CompanyId.HasValue && log.UserId.HasValue && hasLogAmount && !string.IsNullOrEmpty(log.CollectionType))
             {
+                // Linked FTTH account the operator activated with — picks the partner page balance to charge.
+                Guid? ftthAccountId = request.TryGetProperty("ftthAccountId", out var pFa) && pFa.ValueKind == JsonValueKind.String
+                    && Guid.TryParse(pFa.GetString(), out var faGuid) ? faGuid : null;
                 try
                 {
-                    journalEntryId = await CreateAccountingEntryForLog(log);
+                    journalEntryId = await CreateAccountingEntryForLog(log, ftthAccountId);
                     if (journalEntryId.HasValue)
                     {
                         log.JournalEntryId = journalEntryId;
@@ -3319,7 +3322,7 @@ public class InternalDataController : ControllerBase
     ///   دائن: إيراد صيانة 4110 (إن وُجدت)
     ///   دائن: إيراد خصم الشركة 4120 (إن لم يُمرَّر)
     /// </summary>
-    private async Task<Guid?> CreateAccountingEntryForLog(Sadara.Domain.Entities.SubscriptionLog log)
+    private async Task<Guid?> CreateAccountingEntryForLog(Sadara.Domain.Entities.SubscriptionLog log, Guid? ftthAccountId = null)
     {
         var companyId = log.CompanyId!.Value;
         var userId = log.UserId!.Value;
@@ -3365,7 +3368,8 @@ public class InternalDataController : ControllerBase
         var companyDiscountProfit = log.SystemDiscountEnabled ? 0 : companyDiscount;
 
         // ═══ جلب حسابات القيد ═══
-        var pageBalanceAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PageBalance, companyId);
+        // Page balance of the activating partner (11102-NN); general 11102 when no partner resolves.
+        var pageBalanceAccount = await Sadara.API.Services.PartnerPageBalanceHelper.ResolvePageAccountForLog(_context, log, ftthAccountId);
         if (pageBalanceAccount == null)
         {
             _logger.LogWarning("حساب رصيد الصفحة 11102 غير موجود للشركة {CompanyId}", companyId);

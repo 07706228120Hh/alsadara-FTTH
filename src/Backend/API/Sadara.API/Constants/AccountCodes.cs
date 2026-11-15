@@ -21,6 +21,16 @@ public static class AccountCodes
     /// <summary>رصيد الصفحة - المحور المركزي للتفعيلات</summary>
     public const string PageBalance = "11102";
 
+    /// <summary>
+    /// Code prefix of per-partner page-balance accounts ("11102-01", "11102-02", ...).
+    /// The separator is required: operator cash boxes are "1110" + N and may themselves start with "11102".
+    /// </summary>
+    public const string PartnerPageBalancePrefix = "11102-";
+
+    /// <summary>True for the general page-balance account (11102) and every per-partner one (11102-NN).</summary>
+    public static bool IsPageBalanceCode(string? code) =>
+        code != null && (code == PageBalance || code.StartsWith(PartnerPageBalancePrefix, StringComparison.Ordinal));
+
     /// <summary>صندوق الشركة الرئيسي - يستقبل الكاش من المشغلين</summary>
     public const string CompanyMainCash = "11104";
 

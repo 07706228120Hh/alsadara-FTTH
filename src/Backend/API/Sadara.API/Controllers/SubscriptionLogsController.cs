@@ -6,6 +6,8 @@ using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 using Sadara.API.Authorization;
 using Sadara.API.Constants;
+using Sadara.API.Services;
+using Sadara.Infrastructure.Data;
 
 namespace Sadara.API.Controllers;
 
@@ -18,6 +20,7 @@ namespace Sadara.API.Controllers;
 public class SubscriptionLogsController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly SadaraDbContext _db;
     private readonly ILogger<SubscriptionLogsController> _logger;
 
     /// <summary>
@@ -34,9 +37,10 @@ public class SubscriptionLogsController : ControllerBase
         return user?.FullName ?? activatedBy;
     }
 
-    public SubscriptionLogsController(IUnitOfWork unitOfWork, ILogger<SubscriptionLogsController> logger)
+    public SubscriptionLogsController(IUnitOfWork unitOfWork, SadaraDbContext db, ILogger<SubscriptionLogsController> logger)
     {
         _unitOfWork = unitOfWork;
+        _db = db;
         _logger = logger;
     }
 
@@ -229,7 +233,8 @@ public class SubscriptionLogsController : ControllerBase
                 var collectedAmount = netFromCompany + revenue - manualDiscount;
 
                 // ═══ جلب الحسابات ═══
-                var pageBalanceAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PageBalance, companyId);
+                // Partner page account when the activation maps to an FTTH partner, else the general 11102.
+                var pageBalanceAccount = await PartnerPageBalanceHelper.ResolvePageAccountForLog(_db, log, null);
                 if (pageBalanceAccount == null)
                 {
                     _logger.LogWarning("⚠️ حساب رصيد الصفحة 11102 غير موجود للشركة {CompanyId} — السجل {LogId} بدون قيد", companyId, log.Id);
@@ -536,8 +541,11 @@ public class SubscriptionLogsController : ControllerBase
                 var opType = isPurchase ? "شراء" : "تجديد";
 
                 // ═══ 1. عكس القيد القديم وأرصدة حساباته ═══
+                // Keep the rebuilt entry on the page-balance account (general or partner) the old one used.
+                Account? originalPageAccount = null;
                 if (log.JournalEntryId.HasValue)
                 {
+                    originalPageAccount = await PartnerPageBalanceHelper.FindPageAccountOnEntry(_db, log.JournalEntryId.Value, companyId);
                     var oldJe = await _unitOfWork.JournalEntries.AsQueryable()
                         .Include(j => j.Lines)
                         .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId.Value);
@@ -621,7 +629,8 @@ public class SubscriptionLogsController : ControllerBase
                 var collectedAmount = netFromCompany + revenue - manualDiscount;
 
                 // ═══ 4. جلب الحسابات ═══
-                var pageBalanceAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PageBalance, companyId);
+                var pageBalanceAccount = originalPageAccount
+                    ?? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PageBalance, companyId);
                 if (pageBalanceAccount == null) { skipped++; continue; }
                 var maintenanceRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.MaintenanceRevenue, companyId);
                 var discountRevenueAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.CompanyDiscountRevenue, companyId);

@@ -1,0 +1,854 @@
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart' hide TextDirection;
+import '../../frontend/tokens/sd_colors.dart' show SdColors;
+import '../../permissions/permission_manager.dart';
+import '../../services/accounting_service.dart';
+
+/// Reads a field from a backend DTO regardless of casing (records are
+/// serialized PascalCase, anonymous wrappers camelCase).
+dynamic _f(Map m, String pascal) {
+  if (m.containsKey(pascal)) return m[pascal];
+  final camel = pascal[0].toLowerCase() + pascal.substring(1);
+  return m[camel];
+}
+
+double _num(dynamic v) =>
+    v is num ? v.toDouble() : double.tryParse(v?.toString() ?? '') ?? 0;
+
+final _money = NumberFormat('#,##0', 'en_US');
+
+String _fmt(double v) => '${_money.format(v)} د.ع';
+
+const _cairo = 'Cairo';
+
+/// Compact panel for the «خادمنا» tab: general page balance + one balance per
+/// FTTH partner, with top-up / transfer / statement actions for the selected
+/// partner. Self-contained: loads its own data and reloads after any change.
+class PartnerPageBalancePanel extends StatefulWidget {
+  /// Selected partner (FtthPartner id) from the tab's dropdown; null = all.
+  final String? selectedPartnerId;
+
+  /// Tapping a partner tile selects it in the tab's dropdown.
+  final ValueChanged<String?>? onSelectPartner;
+
+  const PartnerPageBalancePanel({
+    super.key,
+    this.selectedPartnerId,
+    this.onSelectPartner,
+  });
+
+  @override
+  State<PartnerPageBalancePanel> createState() =>
+      _PartnerPageBalancePanelState();
+}
+
+class _PartnerPageBalancePanelState extends State<PartnerPageBalancePanel> {
+  bool _loading = true;
+  String? _error;
+  Map<String, dynamic>? _overview;
+
+  bool get _canEdit =>
+      PermissionManager.instance.canEdit('accounting.ftth_operators');
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final res = await AccountingService.instance.getPartnerPageBalances();
+      if (!mounted) return;
+      if (res['success'] == true && res['data'] is Map) {
+        _overview = Map<String, dynamic>.from(res['data'] as Map);
+      } else {
+        _error = (res['message'] ?? 'تعذّر جلب أرصدة الشركاء').toString();
+      }
+    } catch (_) {
+      _error = 'تعذّر جلب أرصدة الشركاء';
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  List<Map<String, dynamic>> get _partners {
+    final raw = _overview == null ? null : _f(_overview!, 'Partners');
+    if (raw is! List) return const [];
+    return [
+      for (final p in raw)
+        if (p is Map) Map<String, dynamic>.from(p)
+    ];
+  }
+
+  Map<String, dynamic>? get _selected {
+    final id = widget.selectedPartnerId?.toLowerCase();
+    if (id == null) return null;
+    for (final p in _partners) {
+      if (_f(p, 'PartnerId')?.toString().toLowerCase() == id) return p;
+    }
+    return null;
+  }
+
+  Future<void> _openFund(Map<String, dynamic> partner,
+      {required bool fromGeneral}) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _FundDialog(
+        partner: partner,
+        overview: _overview!,
+        fromGeneral: fromGeneral,
+      ),
+    );
+    if (ok == true) _load();
+  }
+
+  Future<void> _openStatement(Map<String, dynamic> partner) async {
+    final changed = await showDialog<bool>(
+      context: context,
+      builder: (_) =>
+          _StatementDialog(partner: partner, canEdit: _canEdit),
+    );
+    if (changed == true) _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.black26),
+      ),
+      child: _loading
+          ? const SizedBox(
+              height: 40,
+              child: Center(
+                  child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))))
+          : _error != null
+              ? Row(children: [
+                  const Icon(Icons.error_outline,
+                      size: 16, color: SdColors.danger),
+                  const SizedBox(width: 6),
+                  Expanded(
+                      child: Text(_error!,
+                          style: const TextStyle(
+                              fontFamily: _cairo,
+                              fontSize: 12,
+                              color: SdColors.danger))),
+                  TextButton(
+                      onPressed: _load,
+                      child: const Text('إعادة المحاولة',
+                          style: TextStyle(fontFamily: _cairo, fontSize: 12))),
+                ])
+              : _buildContent(),
+    );
+  }
+
+  Widget _buildContent() {
+    final o = _overview!;
+    final selected = _selected;
+    final tiles = <Widget>[
+      _tile('الرصيد العام', _num(_f(o, 'GeneralBalance')), SdColors.primary,
+          icon: Icons.account_balance_wallet_outlined),
+    ];
+
+    if (widget.selectedPartnerId == null) {
+      tiles.add(_tile(
+          'مجموع الشركاء', _num(_f(o, 'PartnersTotal')), SdColors.info,
+          icon: Icons.functions));
+      for (final p in _partners) {
+        tiles.add(_tile(
+          (_f(p, 'Name') ?? '').toString(),
+          _num(_f(p, 'Balance')),
+          SdColors.accent,
+          icon: Icons.business,
+          onTap: widget.onSelectPartner == null ||
+                  _f(p, 'PartnerDeleted') == true
+              ? null
+              : () => widget.onSelectPartner!(_f(p, 'PartnerId')?.toString()),
+        ));
+      }
+    } else if (selected != null) {
+      tiles.add(_tile(
+        'رصيد ${(_f(selected, 'Name') ?? '').toString()}',
+        _num(_f(selected, 'Balance')),
+        SdColors.accent,
+        icon: Icons.business,
+        subtitle: (_f(selected, 'Code') ?? '').toString(),
+      ));
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        const Padding(
+          padding: EdgeInsetsDirectional.only(end: 4),
+          child: Text('رصيد الصفحة',
+              style: TextStyle(
+                  fontFamily: _cairo,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold)),
+        ),
+        ...tiles,
+        if (widget.selectedPartnerId != null && selected == null)
+          const Text('لا يوجد حساب رصيد لهذا الشريك',
+              style: TextStyle(
+                  fontFamily: _cairo, fontSize: 12, color: SdColors.faint)),
+        if (selected != null) ...[
+          if (_canEdit) ...[
+            _action('شحن', Icons.add_card, SdColors.success,
+                () => _openFund(selected, fromGeneral: false)),
+            _action(
+                'تحويل من الرصيد العام إلى شريك',
+                Icons.swap_horiz,
+                SdColors.info,
+                () => _openFund(selected, fromGeneral: true)),
+          ],
+          _action('كشف الحساب', Icons.receipt_long, SdColors.primary,
+              () => _openStatement(selected)),
+        ],
+        IconButton(
+          onPressed: _load,
+          tooltip: 'تحديث',
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          icon: const Icon(Icons.refresh, size: 16, color: SdColors.faint),
+        ),
+      ],
+    );
+  }
+
+  Widget _tile(String title, double value, Color color,
+      {IconData? icon, String? subtitle, VoidCallback? onTap}) {
+    final negative = value < 0;
+    final body = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (icon != null) ...[
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 6),
+        ],
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              subtitle == null || subtitle.isEmpty
+                  ? title
+                  : '$title · $subtitle',
+              style: const TextStyle(
+                  fontFamily: _cairo, fontSize: 10, color: Colors.black54),
+            ),
+            Text(
+              _fmt(value),
+              textDirection: TextDirection.ltr,
+              style: TextStyle(
+                fontFamily: _cairo,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: negative ? SdColors.danger : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ]),
+    );
+    if (onTap == null) return body;
+    return InkWell(
+        onTap: onTap, borderRadius: BorderRadius.circular(8), child: body);
+  }
+
+  Widget _action(
+      String label, IconData icon, Color color, VoidCallback onPressed) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 14),
+      label: Text(label,
+          style: const TextStyle(fontFamily: _cairo, fontSize: 12)),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color),
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Top-up / transfer dialog
+// ════════════════════════════════════════════════════════════════
+
+class _FundDialog extends StatefulWidget {
+  final Map<String, dynamic> partner;
+  final Map<String, dynamic> overview;
+
+  /// true = transfer from the general page balance; false = top-up from a cash box.
+  final bool fromGeneral;
+
+  const _FundDialog({
+    required this.partner,
+    required this.overview,
+    required this.fromGeneral,
+  });
+
+  @override
+  State<_FundDialog> createState() => _FundDialogState();
+}
+
+class _FundDialogState extends State<_FundDialog> {
+  final _amountCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
+  String? _source; // 'petty' | 'main'
+  bool _busy = false;
+  String? _error;
+
+  // One key per distinct (amount, source) attempt: a retry of the same request
+  // never double-posts, while a corrected amount is a new request.
+  String _key = _newKey();
+  String? _keySignature;
+
+  static String _newKey() {
+    const chars =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    final rnd = Random.secure();
+    return List.generate(24, (_) => chars[rnd.nextInt(chars.length)]).join();
+  }
+
+  bool get _hasPetty => _f(widget.overview, 'HasPettyCash') == true;
+  bool get _hasMain => _f(widget.overview, 'HasCompanyMainCash') == true;
+  double get _pettyBalance => _num(_f(widget.overview, 'PettyCashBalance'));
+  double get _mainBalance =>
+      _num(_f(widget.overview, 'CompanyMainCashBalance'));
+  double get _generalBalance => _num(_f(widget.overview, 'GeneralBalance'));
+
+  double get _available => widget.fromGeneral
+      ? _generalBalance
+      : _source == 'petty'
+          ? _pettyBalance
+          : _source == 'main'
+              ? _mainBalance
+              : 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.fromGeneral) {
+      _source = _hasPetty ? 'petty' : (_hasMain ? 'main' : null);
+    }
+  }
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final amount = double.tryParse(_amountCtrl.text.replaceAll(',', '').trim());
+    if (amount == null || amount <= 0) {
+      setState(() => _error = 'أدخل مبلغاً صحيحاً أكبر من صفر');
+      return;
+    }
+    if (!widget.fromGeneral && _source == null) {
+      setState(() => _error = 'اختر مصدر الشحن');
+      return;
+    }
+    if (amount > _available) {
+      setState(() => _error =
+          'المبلغ يتجاوز الرصيد المتاح في المصدر (${_fmt(_available)})');
+      return;
+    }
+
+    final signature = '$amount|$_source';
+    if (_keySignature != null && _keySignature != signature) _key = _newKey();
+    _keySignature = signature;
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final partnerId = _f(widget.partner, 'PartnerId').toString();
+    final notes = _notesCtrl.text.trim();
+    Map<String, dynamic> res;
+    try {
+      res = widget.fromGeneral
+          ? await AccountingService.instance
+              .transferGeneralToPartnerPageBalance(partnerId,
+                  amount: amount, idempotencyKey: _key, notes: notes)
+          : await AccountingService.instance.topUpPartnerPageBalance(partnerId,
+              amount: amount,
+              source: _source!,
+              idempotencyKey: _key,
+              notes: notes);
+    } catch (_) {
+      res = {'success': false, 'message': 'تعذّر الاتصال بالخادم'};
+    }
+    if (!mounted) return;
+    if (res['success'] == true) {
+      Navigator.pop(context, true);
+      return;
+    }
+    setState(() {
+      _busy = false;
+      _error = (res['message'] ?? 'فشلت العملية').toString();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = (_f(widget.partner, 'Name') ?? '').toString();
+    final title = widget.fromGeneral
+        ? 'تحويل من الرصيد العام إلى $name'
+        : 'شحن رصيد $name';
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: Text(title,
+            style: const TextStyle(
+                fontFamily: _cairo,
+                fontSize: 15,
+                fontWeight: FontWeight.bold)),
+        content: SizedBox(
+          width: 380,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                  'الرصيد الحالي للشريك: ${_fmt(_num(_f(widget.partner, 'Balance')))}',
+                  style: const TextStyle(fontFamily: _cairo, fontSize: 12)),
+              const SizedBox(height: 8),
+              if (widget.fromGeneral)
+                Text('المتاح في الرصيد العام: ${_fmt(_generalBalance)}',
+                    style: const TextStyle(fontFamily: _cairo, fontSize: 12))
+              else if (!_hasPetty && !_hasMain)
+                const Text(
+                    'لا يوجد حساب القاصة ولا صندوق الشركة الرئيسي في شجرة الحسابات',
+                    style: TextStyle(
+                        fontFamily: _cairo,
+                        fontSize: 12,
+                        color: SdColors.danger))
+              else
+                Wrap(spacing: 8, runSpacing: 6, children: [
+                  if (_hasPetty)
+                    _sourceChip('petty', 'القاصة', _pettyBalance),
+                  if (_hasMain)
+                    _sourceChip('main', 'صندوق الشركة الرئيسي', _mainBalance),
+                ]),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _amountCtrl,
+                autofocus: true,
+                enabled: !_busy,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                textDirection: TextDirection.ltr,
+                style: const TextStyle(fontFamily: _cairo, fontSize: 14),
+                decoration: const InputDecoration(
+                  labelText: 'المبلغ (د.ع)',
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (_) => _busy ? null : _submit(),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _notesCtrl,
+                enabled: !_busy,
+                maxLength: 200,
+                style: const TextStyle(fontFamily: _cairo, fontSize: 13),
+                decoration: const InputDecoration(
+                  labelText: 'ملاحظات (اختياري)',
+                  isDense: true,
+                  counterText: '',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(_error!,
+                    style: const TextStyle(
+                        fontFamily: _cairo,
+                        fontSize: 12,
+                        color: SdColors.danger)),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _busy ? null : () => Navigator.pop(context, false),
+            child: const Text('إلغاء', style: TextStyle(fontFamily: _cairo)),
+          ),
+          ElevatedButton(
+            onPressed: _busy ? null : _submit,
+            style: ElevatedButton.styleFrom(
+                backgroundColor: SdColors.success,
+                foregroundColor: Colors.white),
+            child: _busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : Text(widget.fromGeneral ? 'تحويل' : 'شحن',
+                    style: const TextStyle(fontFamily: _cairo)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sourceChip(String value, String label, double balance) {
+    return ChoiceChip(
+      selected: _source == value,
+      onSelected: _busy ? null : (_) => setState(() => _source = value),
+      label: Text('$label — ${_fmt(balance)}',
+          style: const TextStyle(fontFamily: _cairo, fontSize: 12)),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Statement dialog
+// ════════════════════════════════════════════════════════════════
+
+class _StatementDialog extends StatefulWidget {
+  final Map<String, dynamic> partner;
+  final bool canEdit;
+
+  const _StatementDialog({required this.partner, required this.canEdit});
+
+  @override
+  State<_StatementDialog> createState() => _StatementDialogState();
+}
+
+class _StatementDialogState extends State<_StatementDialog> {
+  static const _pageSize = 50;
+  final _rows = <Map<String, dynamic>>[];
+  final _dateFmt = DateFormat('yyyy/MM/dd HH:mm');
+  Map<String, dynamic>? _head;
+  int _page = 0;
+  int _total = 0;
+  bool _loading = false;
+  String? _error;
+  String? _reversingId;
+  bool _changed = false;
+
+  String get _partnerId => _f(widget.partner, 'PartnerId').toString();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMore();
+  }
+
+  Future<void> _reload() async {
+    _rows.clear();
+    _page = 0;
+    await _loadMore();
+  }
+
+  Future<void> _loadMore() async {
+    if (_loading) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final res = await AccountingService.instance.getPartnerPageStatement(
+          _partnerId,
+          page: _page + 1,
+          pageSize: _pageSize);
+      if (!mounted) return;
+      if (res['success'] == true && res['data'] is Map) {
+        final d = Map<String, dynamic>.from(res['data'] as Map);
+        _head = d;
+        _total = _num(_f(d, 'Total')).toInt();
+        final rows = _f(d, 'Rows');
+        if (rows is List) {
+          for (final r in rows) {
+            if (r is Map) _rows.add(Map<String, dynamic>.from(r));
+          }
+        }
+        _page++;
+      } else {
+        _error = (res['message'] ?? 'تعذّر جلب كشف الحساب').toString();
+      }
+    } catch (_) {
+      _error = 'تعذّر جلب كشف الحساب';
+    }
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _reverse(Map<String, dynamic> row) async {
+    final amount = max(_num(_f(row, 'Debit')), _num(_f(row, 'Credit')));
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('عكس العملية',
+              style: TextStyle(
+                  fontFamily: _cairo,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold)),
+          content: Text(
+              'سيُنشأ قيد معاكس بمبلغ ${_fmt(amount)} ويعود المبلغ إلى مصدره. لا يمكن التراجع عن العكس. هل تريد المتابعة؟',
+              style: const TextStyle(fontFamily: _cairo, fontSize: 13)),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child:
+                    const Text('إلغاء', style: TextStyle(fontFamily: _cairo))),
+            ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: SdColors.danger,
+                    foregroundColor: Colors.white),
+                child: const Text('عكس',
+                    style: TextStyle(fontFamily: _cairo))),
+          ],
+        ),
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    final id = _f(row, 'JournalEntryId').toString();
+    setState(() => _reversingId = id);
+    Map<String, dynamic> res;
+    try {
+      res = await AccountingService.instance.reversePartnerPageFunding(id);
+    } catch (_) {
+      res = {'success': false, 'message': 'تعذّر الاتصال بالخادم'};
+    }
+    if (!mounted) return;
+    setState(() => _reversingId = null);
+    if (res['success'] == true) {
+      _changed = true;
+      await _reload();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text((res['message'] ?? 'فشل عكس العملية').toString(),
+              style: const TextStyle(fontFamily: _cairo))));
+    }
+  }
+
+  String _kindLabel(String kind) {
+    switch (kind.toLowerCase()) {
+      case 'topup':
+        return 'شحن';
+      case 'transfer':
+      case 'xfer':
+        return 'تحويل من العام';
+      case 'reversal':
+      case 'rev':
+        return 'عكس';
+      case 'activation':
+        return 'تفعيل';
+      default:
+        return 'قيد';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = (_f(widget.partner, 'Name') ?? '').toString();
+    final head = _head;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) Navigator.pop(context, _changed);
+        },
+        child: AlertDialog(
+          title: Row(children: [
+            Expanded(
+              child: Text('كشف حساب رصيد $name',
+                  style: const TextStyle(
+                      fontFamily: _cairo,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold)),
+            ),
+            IconButton(
+                onPressed: () => Navigator.pop(context, _changed),
+                icon: const Icon(Icons.close, size: 18)),
+          ]),
+          contentPadding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          content: SizedBox(
+            width: 720,
+            height: 460,
+            child: Column(children: [
+              if (head != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Wrap(spacing: 14, runSpacing: 4, children: [
+                    _stat('الرصيد الحالي',
+                        _num(_f(head, 'CurrentBalance')), SdColors.primary),
+                    _stat('إجمالي الشحن', _num(_f(head, 'TotalDebit')),
+                        SdColors.success),
+                    _stat('إجمالي الخصم', _num(_f(head, 'TotalCredit')),
+                        SdColors.danger),
+                  ]),
+                ),
+              const Divider(height: 1),
+              Expanded(child: _buildList()),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _stat(String label, double value, Color color) => Text.rich(
+        TextSpan(children: [
+          TextSpan(
+              text: '$label: ',
+              style: const TextStyle(color: Colors.black54, fontSize: 12)),
+          TextSpan(
+              text: _fmt(value),
+              style: TextStyle(
+                  color: color, fontSize: 13, fontWeight: FontWeight.bold)),
+        ]),
+        style: const TextStyle(fontFamily: _cairo),
+      );
+
+  Widget _buildList() {
+    if (_rows.isEmpty) {
+      if (_loading) return const Center(child: CircularProgressIndicator());
+      return Center(
+          child: Text(_error ?? 'لا توجد حركات',
+              style: TextStyle(
+                  fontFamily: _cairo,
+                  fontSize: 13,
+                  color: _error != null ? SdColors.danger : SdColors.faint)));
+    }
+    final hasMore = _rows.length < _total;
+    return ListView.separated(
+      itemCount: _rows.length + (hasMore || _error != null ? 1 : 0),
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (ctx, i) {
+        if (i >= _rows.length) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Center(
+              child: _loading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : TextButton(
+                      onPressed: _loadMore,
+                      child: Text(
+                          _error != null ? 'إعادة المحاولة' : 'تحميل المزيد',
+                          style: const TextStyle(
+                              fontFamily: _cairo, fontSize: 12))),
+            ),
+          );
+        }
+        return _buildRow(_rows[i]);
+      },
+    );
+  }
+
+  Widget _buildRow(Map<String, dynamic> r) {
+    final debit = _num(_f(r, 'Debit'));
+    final credit = _num(_f(r, 'Credit'));
+    final isIn = debit > 0;
+    final color = isIn ? SdColors.success : SdColors.danger;
+    final dateRaw = (_f(r, 'CreatedAt') ?? _f(r, 'EntryDate'))?.toString();
+    final date = dateRaw == null ? null : DateTime.tryParse(dateRaw);
+    final id = _f(r, 'JournalEntryId').toString();
+    final reversed = _f(r, 'Reversed') == true;
+    final canReverse = widget.canEdit && _f(r, 'CanReverse') == true;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(children: [
+        SizedBox(
+          width: 108,
+          child: Text(date == null ? '—' : _dateFmt.format(date.toLocal()),
+              textDirection: TextDirection.ltr,
+              style: const TextStyle(
+                  fontFamily: _cairo, fontSize: 11, color: Colors.black54)),
+        ),
+        Container(
+          margin: const EdgeInsetsDirectional.only(end: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(_kindLabel((_f(r, 'Kind') ?? '').toString()),
+              style: TextStyle(fontFamily: _cairo, fontSize: 11, color: color)),
+        ),
+        Expanded(
+          child: Text(
+            '${(_f(r, 'Description') ?? '').toString()}${reversed ? ' (معكوسة)' : ''}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+                fontFamily: _cairo,
+                fontSize: 12,
+                decoration: reversed ? TextDecoration.lineThrough : null),
+          ),
+        ),
+        SizedBox(
+          width: 120,
+          child: Text(
+            '${isIn ? '+' : '−'} ${_money.format(isIn ? debit : credit)}',
+            textAlign: TextAlign.end,
+            textDirection: TextDirection.ltr,
+            style: TextStyle(
+                fontFamily: _cairo,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: color),
+          ),
+        ),
+        SizedBox(
+          width: 64,
+          child: !canReverse
+              ? null
+              : _reversingId == id
+                  ? const Center(
+                      child: SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2)))
+                  : TextButton(
+                      onPressed:
+                          _reversingId != null ? null : () => _reverse(r),
+                      style: TextButton.styleFrom(
+                          foregroundColor: SdColors.danger,
+                          padding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact),
+                      child: const Text('عكس',
+                          style: TextStyle(fontFamily: _cairo, fontSize: 12))),
+        ),
+      ]),
+    );
+  }
+}

@@ -3472,7 +3472,7 @@ public class AccountingController : ControllerBase
                             var debit = lineDto.DebitAmount;
                             var credit = lineDto.CreditAmount;
 
-                            if (code == AccountCodes.PageBalance && credit > 0)
+                            if (AccountCodes.IsPageBalanceCode(code) && credit > 0)
                             {
                                 log.BasePrice = credit;
                             }
@@ -3488,7 +3488,7 @@ public class AccountingController : ControllerBase
                             {
                                 log.CompanyDiscount = credit;
                             }
-                            else if (code.StartsWith(AccountCodes.Cash) && code != AccountCodes.PageBalance && debit > 0)
+                            else if (code.StartsWith(AccountCodes.Cash) && !AccountCodes.IsPageBalanceCode(code) && debit > 0)
                             {
                                 log.CollectionType = "cash";
                             }
@@ -4421,14 +4421,15 @@ public class AccountingController : ControllerBase
                 .Where(a => a.Code == AccountCodes.CompanyMainCash)
                 .Sum(a => a.CurrentBalance);
 
-            // ═══ رصيد الصفحة (11102) ═══
+            // ═══ رصيد الصفحة (11102 + حسابات الشركاء 11102-NN) ═══
             var pageBalance = leafAccounts
-                .Where(a => a.Code == AccountCodes.PageBalance)
+                .Where(a => AccountCodes.IsPageBalanceCode(a.Code))
                 .Sum(a => a.CurrentBalance);
 
             // ═══ مستحقات المشغلين = نقد في صناديقهم (1110) + آجل في ذمتهم (1160) ═══
             var operatorCashBoxes = leafAccounts
-                .Where(a => a.Code != null && a.Code.StartsWith(AccountCodes.Cash) && !AccountCodes.KnownNonOperatorCashCodes.Contains(a.Code))
+                .Where(a => a.Code != null && a.Code.StartsWith(AccountCodes.Cash)
+                    && !AccountCodes.KnownNonOperatorCashCodes.Contains(a.Code) && !AccountCodes.IsPageBalanceCode(a.Code))
                 .Sum(a => a.CurrentBalance);
             var operatorCredit = leafAccounts
                 .Where(a => a.Code != null && a.Code.StartsWith(AccountCodes.OperatorReceivables) && a.Code != AccountCodes.OperatorReceivables)

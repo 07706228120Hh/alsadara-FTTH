@@ -14,6 +14,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../../services/whatsapp_template_storage.dart';
 import '../../services/subscription_logs_service.dart';
+import '../../services/linked_accounts_service.dart';
 import '../../services/api/api_config.dart';
 import '../../services/auth_service.dart';
 import '../../services/ftth_api_config.dart';
@@ -5194,6 +5195,13 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
           widget.userPhone ??
           'غير متوفر';
 
+      // الحساب المرتبط النشط ⇒ الخادم يخصم من رصيد صفحة شريكه (null = الخادم يحدّد الشريك).
+      final ftthAccountId =
+          await LinkedAccountsService.instance.resolveActiveFtthAccountId(
+        userId: VpsAuthService.instance.currentUser?.id ?? '',
+        ftthUsername: DualAuthService.instance.ftthUsername ?? '',
+      );
+
       final logId = await SubscriptionLogsService.instance.saveSubscriptionLog(
         // معلومات العميل
         customerId: subscriptionInfo!.customerId,
@@ -5256,6 +5264,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage>
         userId: VpsAuthService.instance.currentUser?.id ??
             VpsAuthService.instance.currentSuperAdmin?.id,
         companyId: VpsAuthService.instance.currentCompanyId,
+        ftthAccountId: ftthAccountId,
         // حقول تكامل المحاسبة
         collectionType: _getCollectionTypeCode(selectedPaymentMethod),
         linkedAgentId: _selectedLinkedAgent?['Id']?.toString(),

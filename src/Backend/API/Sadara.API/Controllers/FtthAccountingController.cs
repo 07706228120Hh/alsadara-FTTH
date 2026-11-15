@@ -8,6 +8,7 @@ using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
 using Sadara.API.Authorization;
 using Sadara.API.Constants;
+using Sadara.API.Services;
 using Sadara.Infrastructure.Data;
 
 namespace Sadara.API.Controllers;
@@ -324,8 +325,8 @@ public class FtthAccountingController : ControllerBase
         var collectedAmount = netFromCompany + revenue - manualDiscount;
 
         // ═══ جلب الحسابات ═══
-        // دائن: رصيد الصفحة الداخلي (11102)
-        var pageBalanceAccount = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PageBalance, companyId);
+        // دائن: رصيد صفحة الشريك المفعِّل (11102-NN)، أو الرصيد العام (11102) إن لم يُحسم الشريك
+        var pageBalanceAccount = await PartnerPageBalanceHelper.ResolvePageAccountForLog(_db, log, dto.FtthAccountId);
         if (pageBalanceAccount == null)
         {
             _logger.LogWarning("حساب رصيد الصفحة 11102 غير موجود للشركة {CompanyId}", companyId);
@@ -1704,6 +1705,10 @@ public class FtthAccountingController : ControllerBase
                         var collectedAmount = netFromCompany + revenue - manualDiscount;
                         if (collectedAmount < 0) collectedAmount = 0;
 
+                        // Keep charging the page-balance account this activation was originally charged to
+                        // (partner or general) — must be read before the old lines are soft-deleted.
+                        var originalPageAcct = await PartnerPageBalanceHelper.FindPageAccountOnEntry(_db, entry.Id, companyId);
+
                         // ── 1. عكس أرصدة الأسطر القديمة ──
                         foreach (var oldLine in entry.Lines.Where(l => !l.IsDeleted))
                         {
@@ -1767,7 +1772,8 @@ public class FtthAccountingController : ControllerBase
                         }
 
                         // دائن: رصيد الصفحة
-                        var pageAcct = await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PageBalance, companyId);
+                        var pageAcct = originalPageAcct
+                            ?? await ServiceRequestAccountingHelper.FindAccountByCode(_unitOfWork, AccountCodes.PageBalance, companyId);
                         if (pageAcct != null && netFromCompany > 0)
                             newLines.Add((pageAcct.Id, 0, netFromCompany, $"خصم من رصيد الصفحة - {log.PlanName}"));
 
@@ -3380,7 +3386,7 @@ public class FtthAccountingController : ControllerBase
 
             decimal newDebit = line.DebitAmount, newCredit = line.CreditAmount;
 
-            if (acctCode == "11102") // رصيد الصفحة — دائن = المستقطع
+            if (AccountCodes.IsPageBalanceCode(acctCode)) // رصيد الصفحة (عام أو شريك) — دائن = المستقطع
             {
                 newDebit = 0; newCredit = pageDeduction;
             }
@@ -4454,6 +4460,159 @@ public class FtthAccountingController : ControllerBase
         return Ok(new { success = true, message = "تم الحذف" });
     }
 
+    // ==================== رصيد الصفحة لكل شريك (11102-NN) ====================
+    // الشركة دائماً من التوكن (SuperAdmin يجوز له تحديد شركة)؛ منفّذ القيد من التوكن لا من الطلب.
+
+    /// <summary>أرصدة الصفحة: العام + كل شريك + رصيدا القاصة وصندوق الشركة (مصدرا الشحن).</summary>
+    [HttpGet("partner-page-balances")]
+    [RequirePermission("accounting.ftth_operators", "view")]
+    public async Task<IActionResult> GetPartnerPageBalances([FromQuery] Guid? companyId = null)
+    {
+        var scope = ResolveExclusionCompany(companyId);
+        if (!scope.HasValue) return BadRequest(new { success = false, message = "تعذّر تحديد الشركة" });
+        try
+        {
+            var data = await PartnerPageBalanceService.GetOverview(_db, scope.Value);
+            // Cash-box balances are funds data: only for those who can fund or already see the funds overview.
+            if (!await CanSeeFundingSourceBalances())
+                data = data with { PettyCashBalance = 0, CompanyMainCashBalance = 0 };
+            return Ok(new { success = true, data });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب أرصدة الصفحة للشركاء");
+            return StatusCode(500, new { success = false, message = "تعذّر جلب أرصدة الشركاء" });
+        }
+    }
+
+    /// <summary>كشف حركات رصيد الصفحة لشريك (شحن/تحويل/تفعيلات)، الأحدث أولاً.</summary>
+    [HttpGet("partner-page-balances/{partnerId}/statement")]
+    [RequirePermission("accounting.ftth_operators", "view")]
+    public async Task<IActionResult> GetPartnerPageStatement(Guid partnerId, [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 50,
+        [FromQuery] Guid? companyId = null)
+    {
+        var scope = ResolveExclusionCompany(companyId);
+        if (!scope.HasValue) return BadRequest(new { success = false, message = "تعذّر تحديد الشركة" });
+        try
+        {
+            static DateTime? Utc(DateTime? d) => d.HasValue ? DateTime.SpecifyKind(d.Value, DateTimeKind.Utc) : null;
+            var data = await PartnerPageBalanceService.GetStatement(_db, scope.Value, partnerId, Utc(from), Utc(to), page, pageSize);
+            if (data == null) return NotFound(new { success = false, message = "الشريك غير موجود" });
+            return Ok(new { success = true, data, total = data.Total, page = data.Page, pageSize = data.PageSize });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في جلب كشف رصيد الصفحة للشريك {PartnerId}", partnerId);
+            return StatusCode(500, new { success = false, message = "تعذّر جلب كشف الشريك" });
+        }
+    }
+
+    /// <summary>شحن رصيد شريك من القاصة (petty) أو صندوق الشركة الرئيسي (main).</summary>
+    [HttpPost("partner-page-balances/{partnerId}/topup")]
+    [RequirePermission("accounting.ftth_operators", "edit", failClosed: true)]
+    public Task<IActionResult> TopUpPartnerPageBalance(Guid partnerId, [FromBody] PartnerPageTopUpDto dto,
+        [FromQuery] Guid? companyId = null)
+    {
+        PartnerFundingSource? source = dto?.Source?.Trim().ToLowerInvariant() switch
+        {
+            "petty" => PartnerFundingSource.PettyCash,
+            "main" => PartnerFundingSource.CompanyMainCash,
+            _ => null
+        };
+        if (dto == null || source == null)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "مصدر الشحن يجب أن يكون القاصة أو صندوق الشركة" }));
+        return FundPartnerPageBalance(partnerId, source.Value, dto.Amount, dto.Notes, dto.IdempotencyKey, companyId);
+    }
+
+    /// <summary>تحويل من الرصيد العام (11102) إلى رصيد شريك.</summary>
+    [HttpPost("partner-page-balances/{partnerId}/transfer-from-general")]
+    [RequirePermission("accounting.ftth_operators", "edit", failClosed: true)]
+    public Task<IActionResult> TransferGeneralToPartnerPageBalance(Guid partnerId, [FromBody] PartnerPageTransferDto dto,
+        [FromQuery] Guid? companyId = null)
+    {
+        if (dto == null)
+            return Task.FromResult<IActionResult>(BadRequest(new { success = false, message = "بيانات الطلب مطلوبة" }));
+        return FundPartnerPageBalance(partnerId, PartnerFundingSource.GeneralPageBalance, dto.Amount, dto.Notes, dto.IdempotencyKey, companyId);
+    }
+
+    /// <summary>عكس عملية شحن/تحويل (قيد معاكس، مرة واحدة فقط).</summary>
+    [HttpPost("partner-page-balances/reverse/{journalEntryId}")]
+    [RequirePermission("accounting.ftth_operators", "edit", failClosed: true)]
+    public async Task<IActionResult> ReversePartnerPageFunding(Guid journalEntryId, [FromQuery] Guid? companyId = null)
+    {
+        var scope = ResolveExclusionCompany(companyId);
+        if (!scope.HasValue) return BadRequest(new { success = false, message = "تعذّر تحديد الشركة" });
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue) return Unauthorized(new { success = false, message = "جلسة غير صالحة" });
+        try
+        {
+            var result = await PartnerPageBalanceService.Reverse(_db, _unitOfWork, scope.Value, journalEntryId, userId.Value);
+            return PartnerPageBalanceResponse(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في عكس عملية شحن رصيد شريك {JournalEntryId}", journalEntryId);
+            return StatusCode(500, new { success = false, message = "تعذّر عكس العملية" });
+        }
+    }
+
+    private async Task<IActionResult> FundPartnerPageBalance(Guid partnerId, PartnerFundingSource source, decimal amount,
+        string? notes, string? idempotencyKey, Guid? requestedCompanyId)
+    {
+        var scope = ResolveExclusionCompany(requestedCompanyId);
+        if (!scope.HasValue) return BadRequest(new { success = false, message = "تعذّر تحديد الشركة" });
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue) return Unauthorized(new { success = false, message = "جلسة غير صالحة" });
+        // Mandatory at the API boundary: without it a double submit would post twice.
+        if (string.IsNullOrWhiteSpace(idempotencyKey))
+            return BadRequest(new { success = false, message = "معرّف العملية مطلوب" });
+        try
+        {
+            var result = await PartnerPageBalanceService.Fund(_db, _unitOfWork, scope.Value, partnerId, source, amount,
+                notes, idempotencyKey, userId.Value);
+            if (result.Success && !result.Duplicate)
+                _logger.LogInformation("Partner page balance funded: partner={PartnerId} source={Source} amount={Amount} by={UserId} entry={EntryId}",
+                    partnerId, source, amount, userId.Value, result.JournalEntryId);
+            return PartnerPageBalanceResponse(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في شحن رصيد الصفحة للشريك {PartnerId}", partnerId);
+            return StatusCode(500, new { success = false, message = "تعذّر تنفيذ العملية" });
+        }
+    }
+
+    private IActionResult PartnerPageBalanceResponse(PartnerPageBalanceResult result)
+    {
+        if (!result.Success)
+            return StatusCode(result.StatusCode, new { success = false, message = result.Message });
+        return Ok(new
+        {
+            success = true,
+            message = result.Message,
+            data = new
+            {
+                journalEntryId = result.JournalEntryId,
+                partnerBalance = result.PartnerBalance,
+                sourceBalance = result.SourceBalance,
+                duplicate = result.Duplicate
+            }
+        });
+    }
+
+    private async Task<bool> CanSeeFundingSourceBalances()
+    {
+        if (_tenant.IsSuperAdmin) return true;
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue) return false;
+        var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+        if (user == null) return false;
+        var permissions = user.FirstSystemPermissionsV2;
+        return RequirePermissionAttribute.HasPermission(permissions, "accounting.ftth_operators", "edit", failClosed: true)
+            || RequirePermissionAttribute.HasPermission(permissions, "accounting.funds_overview", "view", failClosed: true);
+    }
+
     // عزل: شركة المستبعَدين = شركة التوكن (SuperAdmin يجوز له تحديد شركة).
     private Guid? ResolveExclusionCompany(Guid? requested)
         => _tenant.IsSuperAdmin ? (requested ?? _tenant.CompanyId) : _tenant.CompanyId;
@@ -4474,6 +4633,12 @@ public class FtthAccountingController : ControllerBase
 
 /// <summary>طلب إضافة/تعديل منفّذ مستبعَد.</summary>
 public record ExcludedCreatorDto(string? Identifier, string? Note = null, bool? IsActive = null, Guid? CompanyId = null);
+
+/// <summary>شحن رصيد صفحة شريك: Source = "petty" (القاصة) أو "main" (صندوق الشركة الرئيسي).</summary>
+public record PartnerPageTopUpDto(decimal Amount, string? Source, string? Notes = null, string? IdempotencyKey = null);
+
+/// <summary>تحويل من الرصيد العام إلى رصيد صفحة شريك.</summary>
+public record PartnerPageTransferDto(decimal Amount, string? Notes = null, string? IdempotencyKey = null);
 
 public record FtthLogWithAccountingDto(
     // حقول SubscriptionLog الأساسية
@@ -4525,7 +4690,9 @@ public record FtthLogWithAccountingDto(
     decimal? CompanyDiscount,      // خصم الشركة (FTTH)
     decimal? ManualDiscount,       // خصم اختياري (منّا)
     decimal? MaintenanceFee,       // رسوم صيانة المنطقة
-    bool SystemDiscountEnabled = true  // هل خصم الشركة مفعّل للعميل؟
+    bool SystemDiscountEnabled = true,  // هل خصم الشركة مفعّل للعميل؟
+    // Linked FTTH account (FtthAccount.Id) the operator activated with — picks the partner page balance to charge.
+    Guid? FtthAccountId = null
 );
 
 public record OperatorCashDeliveryDto(

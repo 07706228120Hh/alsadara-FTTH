@@ -812,6 +812,82 @@ class AccountingService {
     return _toMap(response);
   }
 
+  // ═══════════════════════════════════════════
+  // رصيد الصفحة لكل شريك (الشركة من التوكن)
+  // ═══════════════════════════════════════════
+
+  /// الرصيد العام + رصيد كل شريك + رصيدا القاصة وصندوق الشركة (مصدرا الشحن).
+  Future<Map<String, dynamic>> getPartnerPageBalances() async {
+    final response = await _client.get(
+        '/ftth-accounting/partner-page-balances', (json) => json);
+    return _toMap(response);
+  }
+
+  /// كشف حركات رصيد شريك (شحن/تحويل/تفعيلات)، الأحدث أولاً.
+  Future<Map<String, dynamic>> getPartnerPageStatement(
+    String partnerId, {
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    final response = await _client.get(
+      '/ftth-accounting/partner-page-balances/$partnerId/statement?page=$page&pageSize=$pageSize',
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// شحن رصيد شريك. [source]: 'petty' = القاصة، 'main' = صندوق الشركة الرئيسي.
+  /// [idempotencyKey] ثابت لكل محاولة شحن واحدة ⇒ إعادة الإرسال لا تُكرّر القيد.
+  Future<Map<String, dynamic>> topUpPartnerPageBalance(
+    String partnerId, {
+    required double amount,
+    required String source,
+    required String idempotencyKey,
+    String? notes,
+  }) async {
+    final response = await _client.post(
+      '/ftth-accounting/partner-page-balances/$partnerId/topup',
+      {
+        'Amount': amount,
+        'Source': source,
+        'IdempotencyKey': idempotencyKey,
+        if (notes != null && notes.isNotEmpty) 'Notes': notes,
+      },
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// تحويل من الرصيد العام (11102) إلى رصيد شريك.
+  Future<Map<String, dynamic>> transferGeneralToPartnerPageBalance(
+    String partnerId, {
+    required double amount,
+    required String idempotencyKey,
+    String? notes,
+  }) async {
+    final response = await _client.post(
+      '/ftth-accounting/partner-page-balances/$partnerId/transfer-from-general',
+      {
+        'Amount': amount,
+        'IdempotencyKey': idempotencyKey,
+        if (notes != null && notes.isNotEmpty) 'Notes': notes,
+      },
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
+  /// عكس عملية شحن/تحويل (قيد معاكس، مرة واحدة فقط).
+  Future<Map<String, dynamic>> reversePartnerPageFunding(
+      String journalEntryId) async {
+    final response = await _client.post(
+      '/ftth-accounting/partner-page-balances/reverse/$journalEntryId',
+      <String, dynamic>{},
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
   /// إضافة منفّذ مستبعَد (رقم أو اسم + ملاحظة اختيارية).
   Future<Map<String, dynamic>> addExcludedCreator({
     required String identifier,

@@ -59,6 +59,8 @@ class SubscriptionLogsService {
     String? partnerId,
     String? userId,
     String? companyId,
+    // الحساب المرتبط (FtthAccount) الذي نُفِّذ به التفعيل — يحدّد رصيد صفحة أي شريك يُخصَم منه
+    String? ftthAccountId,
     // حالة العملية
     bool isPrinted = false,
     bool isWhatsAppSent = false,
@@ -118,6 +120,7 @@ class SubscriptionLogsService {
         'partnerId': partnerId,
         'userId': userId,
         'companyId': companyId,
+        'ftthAccountId': ftthAccountId,
         // حالة العملية
         'isPrinted': isPrinted,
         'isWhatsAppSent': isWhatsAppSent,

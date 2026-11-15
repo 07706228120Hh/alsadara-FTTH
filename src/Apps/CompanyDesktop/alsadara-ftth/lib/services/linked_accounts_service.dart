@@ -156,6 +156,40 @@ class LinkedAccountsService {
     return map;
   }
 
+  String? _resolvedAccountKey;
+  String? _resolvedAccountId;
+
+  /// معرّف كيان FtthAccount للحساب الذي يعمل به الموظف الآن (مطابقة باسم مستخدم FTTH).
+  /// يُرسَل مع التفعيل ليُخصَم من رصيد صفحة شريك هذا الحساب. أفضل-جهد: يُعيد null عند أي
+  /// تعذّر أو تجاوز المهلة — الخادم عندها يحدّد الشريك بنفسه، والتفعيل لا يتعطّل أبداً.
+  Future<String?> resolveActiveFtthAccountId({
+    required String userId,
+    required String ftthUsername,
+    Duration timeout = const Duration(seconds: 4),
+  }) async {
+    final username = ftthUsername.trim().toLowerCase();
+    if (userId.isEmpty || username.isEmpty) return null;
+    final key = '$userId|$username';
+    if (_resolvedAccountKey == key) return _resolvedAccountId;
+    try {
+      final result = await getAccounts(userId).timeout(timeout);
+      final data = result['data'];
+      if (result['success'] != true || data is! List) return null;
+      for (final a in data.whereType<LinkedAccount>()) {
+        if (a.isFtth &&
+            a.id.isNotEmpty &&
+            a.username.trim().toLowerCase() == username) {
+          _resolvedAccountKey = key;
+          _resolvedAccountId = a.id;
+          return a.id;
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// تسجيل دخول خادمي لحساب FTTH مرتبط — المسار الآمن الجديد.
   /// الخادم يفكّ تشفير الاعتماد داخلياً ويسجّل الدخول لمزوّد FTTH ويُعيد
   /// التوكنات فقط، بلا أي كلمة مرور على العميل.

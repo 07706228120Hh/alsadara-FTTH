@@ -1244,6 +1244,7 @@ public class LinkedAccountsController : ControllerBase
         };
         await _db.FtthPartners.AddAsync(partner, ct);
         await _db.SaveChangesAsync(ct);
+        await TryEnsurePartnerPageAccount(partner);
         return Ok(new { success = true, data = new { id = partner.Id }, message = "تمت إضافة الشريك" });
     }
 
@@ -1271,7 +1272,25 @@ public class LinkedAccountsController : ControllerBase
         partner.UpdatedAt = DateTime.UtcNow;
         _db.FtthPartners.Update(partner);
         await _db.SaveChangesAsync(ct);
+        await TryEnsurePartnerPageAccount(partner);
         return Ok(new { success = true, message = "تم تعديل الشريك" });
+    }
+
+    /// <summary>
+    /// Creates (or renames) the partner's page-balance ledger account. Best effort: a company without a chart
+    /// of accounts, or a transient failure, must never fail the partner operation — the account is created
+    /// lazily on first use anyway.
+    /// </summary>
+    private async Task TryEnsurePartnerPageAccount(FtthPartner partner)
+    {
+        try
+        {
+            await Sadara.API.Services.PartnerPageBalanceHelper.EnsurePartnerPageAccount(_db, partner);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not ensure page-balance account for FTTH partner {PartnerId}", partner.Id);
+        }
     }
 
     /// <summary>حذف شريك (حذف ناعم). لا يحذف حسابات الموظفين المرتبطة (تبقى بلا شريك).</summary>

@@ -22,6 +22,7 @@ import '../../theme/accounting_responsive.dart';
 import 'client_accounts_page.dart';
 import 'ftth_operator_linking_page.dart';
 import 'ftth_operator_transactions_page.dart';
+import 'partner_page_balance_panel.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
 import '../../frontend/components/sd_app_bar.dart';
@@ -4146,6 +4147,16 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ═══ رصيد الصفحة العام + رصيد كل شريك (شحن/تحويل/كشف) ═══
+          PartnerPageBalancePanel(
+            selectedPartnerId: _selectedOursPartnerId,
+            onSelectPartner: (id) {
+              if (id == null || !_oursPartners.any((p) => p['id'] == id)) return;
+              setState(() => _selectedOursPartnerId = id);
+              _loadOursData();
+            },
+          ),
+          SizedBox(height: context.accR.spaceM),
           // ═══ بطاقات الملخص الرئيسية ═══
           _buildOursSummary(),
           SizedBox(height: context.accR.spaceM),
@@ -4560,6 +4571,7 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
                           companyId: _companyId,
                           fromDate: _fromDate,
                           toDate: _toDate,
+                          filterPartnerName: _selectedOursPartnerName,
                           operators: _ftthOperators.keys
                               .where((k) => k.isNotEmpty)
                               .toList()
@@ -5318,9 +5330,20 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
           operators: _oursOperators.map((o) => (o['ftthUsername'] ?? '').toString()).where((s) => s.isNotEmpty).toList(),
           filterCollectionType: collectionType,
           filterOperationType: operationType,
+          filterPartnerName: _selectedOursPartnerName,
         ),
       ),
     );
+  }
+
+  /// اسم الشريك المختار في فلتر «خادمنا» (null = كل الشركاء).
+  String? get _selectedOursPartnerName {
+    final id = _selectedOursPartnerId;
+    if (id == null) return null;
+    for (final p in _oursPartners) {
+      if (p['id'] == id) return p['name']?.toString();
+    }
+    return null;
   }
 
   /// dialog تفصيل حقل معيّن لكل مشغل (إيرادات، مصاريف، إلخ)
@@ -12659,6 +12682,8 @@ class _AllOperationsPage extends StatefulWidget {
   final String? filterOperationType;
   /// هل الفلتر على فني (يبحث في عمود الفني بدل المُفعِّل)
   final bool filterIsTechnician;
+  /// فلتر الشريك (اسمنا للشريك) — يُطبَّق على عمود «الشريك» عند الفتح
+  final String? filterPartnerName;
 
   const _AllOperationsPage({
     required this.companyId,
@@ -12671,6 +12696,7 @@ class _AllOperationsPage extends StatefulWidget {
     this.filterCollectionType,
     this.filterOperationType,
     this.filterIsTechnician = false,
+    this.filterPartnerName,
   });
 
   @override
@@ -13391,6 +13417,12 @@ class _AllOperationsPageState extends State<_AllOperationsPage> {
         _colFilters['نوع العملية'] = matchingValues;
         changed = true;
       }
+    }
+    // فلتر الشريك — يُثبَّت حتى لو لا توجد صفوف مطابقة (شريك بلا عمليات = جدول فارغ لا كل العمليات)
+    final partnerName = (widget.filterPartnerName ?? '').trim();
+    if (partnerName.isNotEmpty) {
+      _colFilters['الشريك'] = {partnerName};
+      changed = true;
     }
     if (changed) _applyFiltersFromRecords(_records);
   }
