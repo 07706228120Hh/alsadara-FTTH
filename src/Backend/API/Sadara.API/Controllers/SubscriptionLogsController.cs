@@ -48,6 +48,21 @@ public class SubscriptionLogsController : ControllerBase
     }
 
     /// <summary>
+    /// Logs of the caller's company only. Explicit scope from the token, independent of
+    /// the global Tenancy:EnforceIsolation flag; a caller without a company sees nothing.
+    /// </summary>
+    private IQueryable<SubscriptionLog> ScopedLogs()
+    {
+        var query = _unitOfWork.SubscriptionLogs.AsQueryable();
+        if (_tenant.IsSuperAdmin)
+            return query;
+        var companyId = _tenant.CompanyId;
+        return companyId.HasValue
+            ? query.Where(x => x.CompanyId == companyId.Value)
+            : query.Where(x => false);
+    }
+
+    /// <summary>
     /// جلب جميع السجلات مع تصفية وترقيم
     /// </summary>
     [HttpGet]
@@ -61,7 +76,7 @@ public class SubscriptionLogsController : ControllerBase
         [FromQuery] DateTime? fromDate = null,
         [FromQuery] DateTime? toDate = null)
     {
-        var query = _unitOfWork.SubscriptionLogs.AsQueryable();
+        var query = ScopedLogs();
 
         // تطبيق الفلاتر
         if (!string.IsNullOrEmpty(zoneId))
@@ -94,7 +109,7 @@ public class SubscriptionLogsController : ControllerBase
     [RequirePermission("subscriptions", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetById(long id)
     {
-        var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
+        var log = await ScopedLogs().FirstOrDefaultAsync(x => x.Id == id);
         if (log == null)
             return NotFound(new { success = false, message = "السجل غير موجود" });
 
@@ -404,7 +419,7 @@ public class SubscriptionLogsController : ControllerBase
     [RequirePermission("subscriptions", "edit", PermissionSystem.Second)]
     public async Task<IActionResult> Update(long id, [FromBody] UpdateSubscriptionLogRequest request)
     {
-        var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
+        var log = await ScopedLogs().FirstOrDefaultAsync(x => x.Id == id);
         if (log == null)
             return NotFound(new { success = false, message = "السجل غير موجود" });
 
@@ -789,8 +804,9 @@ public class SubscriptionLogsController : ControllerBase
     [RequirePermission("subscriptions", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetBySubscription(string subscriptionId)
     {
-        var logs = await _unitOfWork.SubscriptionLogs
-            .FindAsync(x => x.SubscriptionId == subscriptionId);
+        var logs = await ScopedLogs()
+            .Where(x => x.SubscriptionId == subscriptionId)
+            .ToListAsync();
 
         return Ok(new { success = true, data = logs });
     }
@@ -804,7 +820,7 @@ public class SubscriptionLogsController : ControllerBase
     public async Task<IActionResult> GetStats([FromQuery] DateTime? date = null)
     {
         var targetDate = date?.Date ?? DateTime.UtcNow.AddHours(3).Date;
-        var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+        var query = ScopedLogs()
             .Where(x => x.ActivationDate.HasValue && x.ActivationDate.Value.Date == targetDate);
 
         var stats = new
@@ -835,7 +851,7 @@ public class SubscriptionLogsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 500)
     {
-        var query = _unitOfWork.SubscriptionLogs.AsQueryable()
+        var query = ScopedLogs()
             .Where(x => !string.IsNullOrEmpty(x.TechnicianName));
 
         if (!string.IsNullOrEmpty(technicianName))
@@ -896,7 +912,7 @@ public class SubscriptionLogsController : ControllerBase
     [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> UpdatePaymentStatus(long id, [FromBody] UpdatePaymentStatusRequest request)
     {
-        var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
+        var log = await ScopedLogs().FirstOrDefaultAsync(x => x.Id == id);
         if (log == null)
             return NotFound(new { success = false, message = "السجل غير موجود" });
 
@@ -916,8 +932,9 @@ public class SubscriptionLogsController : ControllerBase
     [RequirePermission("accounting.ftth_operators", "edit")]
     public async Task<IActionResult> BulkUpdatePaymentStatus([FromBody] BulkUpdatePaymentStatusRequest request)
     {
-        var logs = await _unitOfWork.SubscriptionLogs
-            .FindAsync(x => request.Ids.Contains(x.Id));
+        var logs = await ScopedLogs()
+            .Where(x => request.Ids.Contains(x.Id))
+            .ToListAsync();
 
         foreach (var log in logs)
         {
@@ -928,7 +945,7 @@ public class SubscriptionLogsController : ControllerBase
 
         await _unitOfWork.SaveChangesAsync();
 
-        return Ok(new { success = true, message = $"تم تحديث {logs.Count()} سجل", count = logs.Count() });
+        return Ok(new { success = true, message = $"تم تحديث {logs.Count} سجل", count = logs.Count });
     }
 }
 

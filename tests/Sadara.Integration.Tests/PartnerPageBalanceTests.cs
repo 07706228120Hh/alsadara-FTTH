@@ -442,6 +442,44 @@ public class PartnerPageBalanceTests : IDisposable
     }
 
     [SkippableFact]
+    public async Task SubscriptionLogs_ReadAndWriteById_AreScopedToTheCallersCompany()
+    {
+        _fx.SkipIfUnavailable();
+        Seed(CompanyA);
+        Seed(CompanyB);
+        long foreignId, ownId;
+        await using (var ctx = _fx.CreateContext(PostgresFixture.SystemTenant))
+        {
+            var foreign = new SubscriptionLog { CompanyId = CompanyB, CustomerName = "foreign", SubscriptionId = "sub-iso", PaymentStatus = "unpaid" };
+            var own = new SubscriptionLog { CompanyId = CompanyA, CustomerName = "own", SubscriptionId = "sub-iso", PaymentStatus = "unpaid" };
+            ctx.AddRange(foreign, own);
+            await ctx.SaveChangesAsync();
+            foreignId = foreign.Id;
+            ownId = own.Id;
+        }
+
+        await using var db = _fx.CreateContext(PostgresFixture.SystemTenant);
+        var controller = new SubscriptionLogsController(new UnitOfWork(db), db,
+            NullLogger<SubscriptionLogsController>.Instance, new TestTenant { CompanyId = CompanyA });
+        static int Code(IActionResult r) => (r as ObjectResult)?.StatusCode ?? 0;
+
+        Assert.Equal(404, Code(await controller.GetById(foreignId)));
+        Assert.Equal(404, Code(await controller.Update(foreignId, new UpdateSubscriptionLogRequest { IsPrinted = true })));
+        Assert.Equal(404, Code(await controller.UpdatePaymentStatus(foreignId, new UpdatePaymentStatusRequest { PaymentStatus = "paid" })));
+        await controller.BulkUpdatePaymentStatus(new BulkUpdatePaymentStatusRequest { Ids = new List<long> { foreignId, ownId }, PaymentStatus = "paid" });
+        Assert.Equal(200, Code(await controller.GetById(ownId)));
+        Assert.Equal(200, Code(await controller.Update(ownId, new UpdateSubscriptionLogRequest { IsPrinted = true })));
+
+        await using var check = _fx.CreateContext(PostgresFixture.SystemTenant);
+        var rows = await check.Set<SubscriptionLog>().IgnoreQueryFilters().AsNoTracking()
+            .Where(l => l.Id == foreignId || l.Id == ownId).ToDictionaryAsync(l => l.Id);
+        Assert.Equal("unpaid", rows[foreignId].PaymentStatus);
+        Assert.False(rows[foreignId].IsPrinted);
+        Assert.Equal("paid", rows[ownId].PaymentStatus);
+        Assert.True(rows[ownId].IsPrinted);
+    }
+
+    [SkippableFact]
     public async Task TenantIsolation_OtherCompanyCannotFundReverseOrRead()
     {
         _fx.SkipIfUnavailable();
