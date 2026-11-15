@@ -185,6 +185,19 @@ public interface IUnitOfWork : IDisposable
     Task BeginTransactionAsync(CancellationToken ct = default);
     Task CommitTransactionAsync(CancellationToken ct = default);
     Task RollbackTransactionAsync(CancellationToken ct = default);
+
+    /// <summary>True while a database transaction started on this unit of work is open.</summary>
+    bool HasActiveTransaction { get; }
+
+    /// <summary>False for stores without transactions and row locks (the in-memory test provider).</summary>
+    bool SupportsRowLocks { get; }
+
+    /// <summary>
+    /// Locks the given account rows until the current transaction ends and reloads their balance
+    /// from the database, keeping any unsaved balance change already made on a tracked account.
+    /// Must be called inside a transaction.
+    /// </summary>
+    Task LockAndRefreshAccountBalancesAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken ct = default);
 }
 
 public interface IPasswordHasher

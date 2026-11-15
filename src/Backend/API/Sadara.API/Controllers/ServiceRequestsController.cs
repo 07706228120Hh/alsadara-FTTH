@@ -3679,63 +3679,89 @@ public static class ServiceRequestAccountingHelper
             }).ToList()
         };
 
-        await unitOfWork.JournalEntries.AddAsync(entry);
-
-        foreach (var line in lines)
+        // Balances are read-modify-write, so two concurrent postings to the same account would
+        // lose one update. Lock the account rows and re-read their balance first; the lock lives
+        // until the transaction ends (the caller's one, or a local one opened here).
+        var lockRows = unitOfWork.SupportsRowLocks;
+        var ownsTransaction = lockRows && !unitOfWork.HasActiveTransaction;
+        if (ownsTransaction)
+            await unitOfWork.BeginTransactionAsync();
+        try
         {
-            var account = await unitOfWork.Accounts.GetByIdAsync(line.AccountId);
-            if (account == null) continue;
-
-            if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
-            {
-                account.CurrentBalance += line.DebitAmount - line.CreditAmount;
-            }
-            else
-            {
-                account.CurrentBalance += line.CreditAmount - line.DebitAmount;
-            }
-            unitOfWork.Accounts.Update(account);
+            var entryIdResult = await PostLockedAsync();
+            if (ownsTransaction)
+                await unitOfWork.CommitTransactionAsync();
+            return entryIdResult;
+        }
+        catch
+        {
+            if (ownsTransaction && unitOfWork.HasActiveTransaction)
+                await unitOfWork.RollbackTransactionAsync();
+            throw;
         }
 
-        // حفظ مع إعادة المحاولة عند تعارض EntryNumber (طلبات متزامنة)
-        const int maxRetries = 3;
-        for (int attempt = 0; attempt < maxRetries; attempt++)
+        async Task<Guid> PostLockedAsync()
         {
-            // توليد رقم القيد — ترتيب بالطول ثم أبجدياً لتجنب مشكلة 9999 > 10000 نصياً
-            var prefix = $"JE-{year}-";
-            var maxEntry = await unitOfWork.JournalEntries.AsQueryable()
-                .IgnoreQueryFilters()
-                .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year
-                    && j.EntryNumber.StartsWith(prefix))
-                .OrderByDescending(j => j.EntryNumber.Length)
-                .ThenByDescending(j => j.EntryNumber)
-                .Select(j => j.EntryNumber)
-                .FirstOrDefaultAsync();
-            int nextNum = 1;
-            if (maxEntry != null && maxEntry.StartsWith(prefix))
-            {
-                if (int.TryParse(maxEntry.Substring(prefix.Length), out var maxNum))
-                    nextNum = maxNum + 1;
-            }
-            entry.EntryNumber = $"{prefix}{nextNum:D5}";
+            if (lockRows)
+                await unitOfWork.LockAndRefreshAccountBalancesAsync(lines.Select(l => l.AccountId).ToList());
+            await unitOfWork.JournalEntries.AddAsync(entry);
 
-            try
+            foreach (var line in lines)
             {
-                await unitOfWork.SaveChangesAsync();
-                return entryId;
+                var account = await unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                if (account == null) continue;
+
+                if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
+                {
+                    account.CurrentBalance += line.DebitAmount - line.CreditAmount;
+                }
+                else
+                {
+                    account.CurrentBalance += line.CreditAmount - line.DebitAmount;
+                }
+                unitOfWork.Accounts.Update(account);
             }
-            catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
-                when (ex.InnerException is Npgsql.PostgresException pgEx
-                    && pgEx.SqlState == "23505"
-                    && (pgEx.ConstraintName?.Contains("EntryNumber") == true))
+
+            // حفظ مع إعادة المحاولة عند تعارض EntryNumber (طلبات متزامنة)
+            const int maxRetries = 3;
+            for (int attempt = 0; attempt < maxRetries; attempt++)
             {
-                // تعارض رقم قيد بسبب طلب متزامن — إعادة المحاولة برقم جديد
-                if (attempt == maxRetries - 1) throw;
-                await Task.Delay(10 * (attempt + 1)); // تأخير قصير تصاعدي
+                // توليد رقم القيد — ترتيب بالطول ثم أبجدياً لتجنب مشكلة 9999 > 10000 نصياً
+                var prefix = $"JE-{year}-";
+                var maxEntry = await unitOfWork.JournalEntries.AsQueryable()
+                    .IgnoreQueryFilters()
+                    .Where(j => j.CompanyId == companyId && j.EntryDate.Year == year
+                        && j.EntryNumber.StartsWith(prefix))
+                    .OrderByDescending(j => j.EntryNumber.Length)
+                    .ThenByDescending(j => j.EntryNumber)
+                    .Select(j => j.EntryNumber)
+                    .FirstOrDefaultAsync();
+                int nextNum = 1;
+                if (maxEntry != null && maxEntry.StartsWith(prefix))
+                {
+                    if (int.TryParse(maxEntry.Substring(prefix.Length), out var maxNum))
+                        nextNum = maxNum + 1;
+                }
+                entry.EntryNumber = $"{prefix}{nextNum:D5}";
+
+                try
+                {
+                    await unitOfWork.SaveChangesAsync();
+                    return entryId;
+                }
+                catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+                    when (ex.InnerException is Npgsql.PostgresException pgEx
+                        && pgEx.SqlState == "23505"
+                        && (pgEx.ConstraintName?.Contains("EntryNumber") == true))
+                {
+                    // تعارض رقم قيد بسبب طلب متزامن — إعادة المحاولة برقم جديد
+                    if (attempt == maxRetries - 1) throw;
+                    await Task.Delay(10 * (attempt + 1)); // تأخير قصير تصاعدي
+                }
             }
+
+            return entryId;
         }
-
-        return entryId;
     }
 }
 

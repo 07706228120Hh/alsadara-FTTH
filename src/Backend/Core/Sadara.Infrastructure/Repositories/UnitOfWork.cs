@@ -1,4 +1,5 @@
-﻿using Sadara.Domain.Entities;
+﻿using Microsoft.EntityFrameworkCore;
+using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 using Sadara.Infrastructure.Data;
 
@@ -526,6 +527,51 @@ public class UnitOfWork : IUnitOfWork
     public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
     {
         await _context.Database.RollbackTransactionAsync(cancellationToken);
+    }
+
+    public bool HasActiveTransaction => _context.Database.CurrentTransaction != null;
+
+    public bool SupportsRowLocks => _context.Database.IsRelational();
+
+    public async Task LockAndRefreshAccountBalancesAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default)
+    {
+        if (_context.Database.CurrentTransaction == null)
+            throw new InvalidOperationException("Account rows can only be locked inside a transaction.");
+
+        // Accounts with an unsaved change are written by the same SaveChanges, so they join the
+        // lock set; otherwise their row lock would be taken later, outside the sorted order.
+        var ids = accountIds
+            .Concat(_context.ChangeTracker.Entries<Account>()
+                .Where(e => e.State == EntityState.Modified)
+                .Select(e => e.Entity.Id))
+            .Distinct()
+            .ToArray();
+        if (ids.Length == 0) return;
+
+        // Ordered by Id so concurrent postings always take the row locks in the same order.
+        // NO KEY UPDATE is the lock a plain UPDATE takes: it serializes writers of the balance
+        // without blocking inserts that only reference the account through a foreign key.
+        var rows = await _context.Database
+            .SqlQuery<AccountBalanceRow>($"SELECT \"Id\", \"CurrentBalance\" FROM \"Accounts\" WHERE \"Id\" = ANY({ids}) ORDER BY \"Id\" FOR NO KEY UPDATE")
+            .ToListAsync(cancellationToken);
+        var fresh = rows.ToDictionary(r => r.Id, r => r.CurrentBalance);
+
+        foreach (var entry in _context.ChangeTracker.Entries<Account>())
+        {
+            if (entry.State is EntityState.Added or EntityState.Detached) continue;
+            if (!fresh.TryGetValue(entry.Entity.Id, out var balance)) continue;
+
+            var property = entry.Property(a => a.CurrentBalance);
+            var pending = property.CurrentValue - property.OriginalValue;
+            property.OriginalValue = balance;
+            property.CurrentValue = balance + pending;
+        }
+    }
+
+    private sealed class AccountBalanceRow
+    {
+        public Guid Id { get; set; }
+        public decimal CurrentBalance { get; set; }
     }
 
     #endregion
