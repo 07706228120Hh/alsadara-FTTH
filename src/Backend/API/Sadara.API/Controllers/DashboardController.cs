@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sadara.API.Authorization;
+using Sadara.Application.Interfaces;
+using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 
 namespace Sadara.API.Controllers;
@@ -12,17 +14,35 @@ namespace Sadara.API.Controllers;
 public class DashboardController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenant _tenant;
 
-    public DashboardController(IUnitOfWork unitOfWork)
+    public DashboardController(IUnitOfWork unitOfWork, ICurrentTenant tenant)
     {
         _unitOfWork = unitOfWork;
+        _tenant = tenant;
+    }
+
+    /// <summary>
+    /// Users of the caller's company only (explicit scope from the token, independent of the
+    /// global Tenancy:EnforceIsolation flag). Store entities (orders/merchants/products) carry
+    /// no CompanyId and stay platform-wide.
+    /// </summary>
+    private IQueryable<User> ScopedUsers()
+    {
+        var query = _unitOfWork.Users.AsQueryable();
+        if (_tenant.IsSuperAdmin)
+            return query;
+        var companyId = _tenant.CompanyId;
+        return companyId.HasValue
+            ? query.Where(u => u.CompanyId == companyId.Value)
+            : query.Where(u => false);
     }
 
     [HttpGet("stats")]
     [RequirePermission("dashboard_project", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetStats()
     {
-        var totalUsers = await _unitOfWork.Users.CountAsync();
+        var totalUsers = await ScopedUsers().CountAsync();
         var totalMerchants = await _unitOfWork.Merchants.CountAsync();
         var totalCustomers = await _unitOfWork.Customers.CountAsync();
         var totalProducts = await _unitOfWork.Products.CountAsync();
@@ -153,7 +173,7 @@ public class DashboardController : ControllerBase
     [RequirePermission("dashboard_project", "view", PermissionSystem.Second)]
     public async Task<IActionResult> GetRecentUsers([FromQuery] int count = 10)
     {
-        var recentUsers = await _unitOfWork.Users.AsQueryable()
+        var recentUsers = await ScopedUsers()
             .OrderByDescending(u => u.CreatedAt)
             .Take(count)
             .Select(u => new

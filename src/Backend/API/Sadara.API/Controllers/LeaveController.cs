@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sadara.API.Authorization;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Interfaces;
 using System.Security.Claims;
@@ -11,10 +12,35 @@ namespace Sadara.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "Admin")]
-public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> logger) : ControllerBase
+public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> logger, ICurrentTenant tenant) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<LeaveController> _logger = logger;
+    private readonly ICurrentTenant _tenant = tenant;
+
+    // Explicit tenant scope from the token, independent of the global Tenancy:EnforceIsolation flag.
+    private bool CanAccess(Guid? companyId) =>
+        _tenant.IsSuperAdmin || (companyId.HasValue && companyId == _tenant.CompanyId);
+
+    /// <summary>Only a SuperAdmin may pick the company; everyone else is pinned to the token's company.</summary>
+    private IQueryable<LeaveRequest> ScopedRequests(Guid? requestedCompanyId)
+    {
+        var query = _unitOfWork.LeaveRequests.AsQueryable();
+        if (_tenant.IsSuperAdmin)
+            return requestedCompanyId.HasValue
+                ? query.Where(lr => lr.CompanyId == requestedCompanyId.Value)
+                : query;
+        var companyId = _tenant.CompanyId;
+        return companyId.HasValue
+            ? query.Where(lr => lr.CompanyId == companyId.Value)
+            : query.Where(lr => false);
+    }
+
+    private async Task<LeaveRequest?> FindScopedRequest(long id)
+    {
+        var found = await _unitOfWork.LeaveRequests.GetByIdAsync(id);
+        return found != null && CanAccess(found.CompanyId) ? found : null;
+    }
 
     private Guid? GetAuthenticatedUserId()
     {
@@ -36,7 +62,9 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
         Guid userId = tokenUserId ?? request.UserId;
 
         var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null) return NotFound(new { message = "المستخدم غير موجود" });
+        // A user id taken from the body (no id in the token) must belong to the caller's company.
+        if (user == null || (tokenUserId == null && !CanAccess(user.CompanyId)))
+            return NotFound(new { message = "المستخدم غير موجود" });
 
         // حساب عدد الأيام
         var startDate = DateOnly.Parse(request.StartDate);
@@ -109,13 +137,10 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
-        var query = _unitOfWork.LeaveRequests.AsQueryable();
+        var query = ScopedRequests(companyId);
 
         if (userId.HasValue)
             query = query.Where(lr => lr.UserId == userId.Value);
-
-        if (companyId.HasValue)
-            query = query.Where(lr => lr.CompanyId == companyId.Value);
 
         if (status.HasValue)
             query = query.Where(lr => (int)lr.Status == status.Value);
@@ -166,7 +191,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
     [RequirePermission("hr.leaves", "view")]
     public async Task<IActionResult> GetLeaveRequest(long id)
     {
-        var lr = await _unitOfWork.LeaveRequests.GetByIdAsync(id);
+        var lr = await FindScopedRequest(id);
         if (lr == null) return NotFound(new { message = "طلب الإجازة غير موجود" });
         return Ok(lr);
     }
@@ -176,7 +201,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
     [RequirePermission("hr.leaves", "edit")]
     public async Task<IActionResult> CancelLeaveRequest(long id)
     {
-        var lr = await _unitOfWork.LeaveRequests.GetByIdAsync(id);
+        var lr = await FindScopedRequest(id);
         if (lr == null) return NotFound(new { message = "طلب الإجازة غير موجود" });
 
         if (lr.Status != LeaveRequestStatus.Pending)
@@ -199,7 +224,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
     [RequirePermission("hr.leaves", "edit")]
     public async Task<IActionResult> ApproveLeaveRequest(long id, [FromBody] ReviewLeaveDto? review = null)
     {
-        var lr = await _unitOfWork.LeaveRequests.GetByIdAsync(id);
+        var lr = await FindScopedRequest(id);
         if (lr == null) return NotFound(new { message = "طلب الإجازة غير موجود" });
 
         if (lr.Status != LeaveRequestStatus.Pending)
@@ -246,7 +271,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
     [RequirePermission("hr.leaves", "edit")]
     public async Task<IActionResult> RejectLeaveRequest(long id, [FromBody] ReviewLeaveDto? review = null)
     {
-        var lr = await _unitOfWork.LeaveRequests.GetByIdAsync(id);
+        var lr = await FindScopedRequest(id);
         if (lr == null) return NotFound(new { message = "طلب الإجازة غير موجود" });
 
         if (lr.Status != LeaveRequestStatus.Pending)
@@ -283,9 +308,13 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
     public async Task<IActionResult> GetLeaveBalances(Guid userId, [FromQuery] int? year)
     {
         var targetYear = year ?? DateTime.UtcNow.Year;
-        var balances = await _unitOfWork.LeaveBalances.AsQueryable()
-            .Where(b => b.UserId == userId && b.Year == targetYear)
-            .ToListAsync();
+        // Another company's employee yields an empty list (same response shape as "no balances").
+        var owner = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var balances = owner != null && CanAccess(owner.CompanyId)
+            ? await _unitOfWork.LeaveBalances.AsQueryable()
+                .Where(b => b.UserId == userId && b.Year == targetYear)
+                .ToListAsync()
+            : new List<LeaveBalance>();
 
         return Ok(new
         {
@@ -308,6 +337,10 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
     [RequirePermission("hr.leaves", "edit")]
     public async Task<IActionResult> SetLeaveBalance([FromBody] SetLeaveBalanceRequest request)
     {
+        var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
+        if (user == null || !CanAccess(user.CompanyId))
+            return NotFound(new { message = "المستخدم غير موجود" });
+
         var existing = await _unitOfWork.LeaveBalances.FirstOrDefaultAsync(b =>
             b.UserId == request.UserId &&
             b.Year == request.Year &&
@@ -321,11 +354,10 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
         }
         else
         {
-            var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
             var balance = new LeaveBalance
             {
                 UserId = request.UserId,
-                CompanyId = user?.CompanyId,
+                CompanyId = user.CompanyId,
                 Year = request.Year,
                 LeaveType = (LeaveType)request.LeaveType,
                 TotalAllowance = request.TotalAllowance,
@@ -343,8 +375,13 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
     [RequirePermission("hr.leaves", "edit")]
     public async Task<IActionResult> BulkSetLeaveBalances([FromBody] BulkSetBalanceRequest request)
     {
+        // The company comes from the token; only a SuperAdmin may name another one in the body.
+        var targetCompanyId = _tenant.IsSuperAdmin ? request.CompanyId : _tenant.CompanyId;
+        if (targetCompanyId == null || targetCompanyId == Guid.Empty)
+            return StatusCode(403, new { message = "لا تملك صلاحية إجراء عملية على شركة أخرى" });
+
         var companyUsers = await _unitOfWork.Users.AsQueryable()
-            .Where(u => u.CompanyId == request.CompanyId && u.IsActive)
+            .Where(u => u.CompanyId == targetCompanyId && u.IsActive)
             .ToListAsync();
 
         var targetYear = request.Year ?? DateTime.UtcNow.Year;
@@ -368,7 +405,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
                 await _unitOfWork.LeaveBalances.AddAsync(new LeaveBalance
                 {
                     UserId = user.Id,
-                    CompanyId = request.CompanyId,
+                    CompanyId = targetCompanyId,
                     Year = targetYear,
                     LeaveType = leaveType,
                     TotalAllowance = request.TotalAllowance,
@@ -381,7 +418,7 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
         await _unitOfWork.SaveChangesAsync();
 
         _logger.LogInformation("📊 رصيد {Type} لسنة {Year}: أُنشئ {Created}، حُدّث {Updated} لشركة {CompanyId}",
-            leaveType, targetYear, created, updated, request.CompanyId);
+            leaveType, targetYear, created, updated, targetCompanyId);
 
         return Ok(new { message = $"تم تحديث رصيد {companyUsers.Count} موظف", created, updated });
     }
@@ -392,11 +429,8 @@ public class LeaveController(IUnitOfWork unitOfWork, ILogger<LeaveController> lo
     public async Task<IActionResult> GetLeaveSummary([FromQuery] Guid? companyId, [FromQuery] int? year)
     {
         var targetYear = year ?? DateTime.UtcNow.Year;
-        var query = _unitOfWork.LeaveRequests.AsQueryable()
+        var query = ScopedRequests(companyId)
             .Where(lr => lr.StartDate.Year == targetYear || lr.EndDate.Year == targetYear);
-
-        if (companyId.HasValue)
-            query = query.Where(lr => lr.CompanyId == companyId.Value);
 
         var requests = await query.ToListAsync();
 

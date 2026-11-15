@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sadara.API.Authorization;
 using Sadara.API.Constants;
+using Sadara.Application.Interfaces;
 using Sadara.Domain.Entities;
 using Sadara.Domain.Enums;
 using Sadara.Domain.Interfaces;
@@ -13,10 +14,21 @@ namespace Sadara.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Policy = "Admin")]
-public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<WithdrawalRequestController> logger) : ControllerBase
+public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<WithdrawalRequestController> logger, ICurrentTenant tenant) : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
     private readonly ILogger<WithdrawalRequestController> _logger = logger;
+    private readonly ICurrentTenant _tenant = tenant;
+
+    // Explicit tenant scope from the token, independent of the global Tenancy:EnforceIsolation flag.
+    private bool CanAccess(Guid? companyId) =>
+        _tenant.IsSuperAdmin || (companyId.HasValue && companyId == _tenant.CompanyId);
+
+    private async Task<WithdrawalRequest?> FindScopedRequest(long id)
+    {
+        var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);
+        return req != null && CanAccess(req.CompanyId) ? req : null;
+    }
 
     private Guid? GetAuthenticatedUserId()
     {
@@ -38,7 +50,9 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
         Guid userId = tokenUserId ?? request.UserId;
 
         var user = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (user == null) return NotFound(new { message = "المستخدم غير موجود" });
+        // A user id taken from the body (no id in the token) must belong to the caller's company.
+        if (user == null || (tokenUserId == null && !CanAccess(user.CompanyId)))
+            return NotFound(new { message = "المستخدم غير موجود" });
 
         if (request.Amount <= 0)
             return BadRequest(new { message = "المبلغ يجب أن يكون أكبر من صفر" });
@@ -85,9 +99,19 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
         if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var uid))
             query = query.Where(r => r.UserId == uid);
 
-        // فلترة حسب الشركة
-        if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cid))
-            query = query.Where(r => r.CompanyId == cid);
+        // فلترة حسب الشركة — only a SuperAdmin may pick the company; everyone else is pinned to the token's company.
+        if (_tenant.IsSuperAdmin)
+        {
+            if (!string.IsNullOrEmpty(companyId) && Guid.TryParse(companyId, out var cid))
+                query = query.Where(r => r.CompanyId == cid);
+        }
+        else
+        {
+            var tokenCompanyId = _tenant.CompanyId;
+            query = tokenCompanyId.HasValue
+                ? query.Where(r => r.CompanyId == tokenCompanyId.Value)
+                : query.Where(r => false);
+        }
 
         // فلترة حسب الحالة
         if (status.HasValue)
@@ -196,7 +220,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
     [RequirePermission("accounting.withdrawals", "edit")]
     public async Task<IActionResult> ApproveWithdrawalRequest(long id, [FromBody] ReviewWithdrawalDto? review = null)
     {
-        var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);
+        var req = await FindScopedRequest(id);
         if (req == null) return NotFound(new { message = "الطلب غير موجود" });
 
         if (req.Status != WithdrawalRequestStatus.Pending)
@@ -233,7 +257,8 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
         var targetYear = year ?? DateTime.UtcNow.Year;
 
         var employee = await _unitOfWork.Users.FirstOrDefaultAsync(u => u.Id == userId);
-        if (employee == null) return NotFound(new { message = "الموظف غير موجود" });
+        if (employee == null || (employee.Id != GetAuthenticatedUserId() && !CanAccess(employee.CompanyId)))
+            return NotFound(new { message = "الموظف غير موجود" });
 
         var result = await CalculateMaxWithdrawal(employee, targetMonth, targetYear);
         return Ok(result);
@@ -303,7 +328,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
     {
         try
         {
-            var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);
+            var req = await FindScopedRequest(id);
             if (req == null) return NotFound(new { message = "الطلب غير موجود" });
 
             if (req.Status != WithdrawalRequestStatus.Pending && req.Status != WithdrawalRequestStatus.Approved)
@@ -418,7 +443,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
     [RequirePermission("accounting.withdrawals", "edit")]
     public async Task<IActionResult> RejectWithdrawalRequest(long id, [FromBody] ReviewWithdrawalDto? review = null)
     {
-        var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);
+        var req = await FindScopedRequest(id);
         if (req == null) return NotFound(new { message = "الطلب غير موجود" });
 
         if (req.Status != WithdrawalRequestStatus.Pending)
@@ -449,7 +474,7 @@ public class WithdrawalRequestController(IUnitOfWork unitOfWork, ILogger<Withdra
     [RequirePermission("accounting.withdrawals", "edit")]
     public async Task<IActionResult> CancelWithdrawalRequest(long id)
     {
-        var req = await _unitOfWork.WithdrawalRequests.FirstOrDefaultAsync(r => r.Id == id);
+        var req = await FindScopedRequest(id);
         if (req == null) return NotFound(new { message = "الطلب غير موجود" });
 
         // التحقق من أن المعلقة فقط يمكن إلغاؤها

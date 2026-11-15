@@ -439,12 +439,16 @@ public class TechnicianTransactionsController(IUnitOfWork unitOfWork, ILogger<Te
             // تحديد شركة المستخدم الحالي لفلترة البيانات
             var currentUserId = GetCurrentUserId();
             var currentUser = await _unitOfWork.Users.GetByIdAsync(currentUserId);
-            var userCompanyId = currentUser?.CompanyId;
+            // Non-SuperAdmin callers are pinned to the token's company (never "all companies").
+            var userCompanyId = _tenant.IsSuperAdmin ? currentUser?.CompanyId : _tenant.CompanyId;
+            if (!_tenant.IsSuperAdmin && userCompanyId == null)
+                return GuardCompany(null)!;
 
             // === المصدر الموحّد: حساب الأرصدة من JournalEntryLines (كشف الحسابات = مصدر الحقيقة) ===
             // جلب حساب "ذمم الفنيين" الأب
             var techParent = await _unitOfWork.Accounts.AsQueryable()
-                .FirstOrDefaultAsync(a => a.Code == AccountCodes.TechnicianReceivables);
+                .FirstOrDefaultAsync(a => a.Code == AccountCodes.TechnicianReceivables
+                    && (userCompanyId == null || a.CompanyId == userCompanyId));
 
             // جلب الحسابات الفرعية (حساب لكل فني)
             var techAccounts = techParent != null
