@@ -4,7 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
 import '../../permissions/permission_manager.dart';
+import 'dart:convert';
 import '../../services/accounting_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/linked_accounts_service.dart';
 
 /// Reads a field from a backend DTO regardless of casing (records are
 /// serialized PascalCase, anonymous wrappers camelCase).
@@ -893,4 +896,461 @@ class _StatementDialogState extends State<_StatementDialog> {
       ]),
     );
   }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Partner balances window — opened from the main accounts page
+// ════════════════════════════════════════════════════════════════
+
+/// Opens the dedicated partner-balances window.
+Future<void> showPartnerBalancesDialog(BuildContext context) =>
+    showDialog<void>(
+        context: context, builder: (_) => const PartnerBalancesDialog());
+
+/// Per-partner FTTH («صفحة الشريك») fetch state.
+class _FtthBalanceState {
+  final bool loading;
+  final double? balance;
+  final String? error;
+  const _FtthBalanceState({this.loading = true, this.balance, this.error});
+}
+
+/// Dialog that lists every FTTH partner with two balances side by side —
+/// «خادمنا» (our page-balance account) and «صفحة الشريك» (the partner's real
+/// FTTH wallet) — their difference, and all operations (top-up / transfer /
+/// return / statement). The FTTH column is loaded automatically on open,
+/// one partner at a time (a login + wallet query per partner).
+class PartnerBalancesDialog extends StatefulWidget {
+  const PartnerBalancesDialog({super.key});
+
+  @override
+  State<PartnerBalancesDialog> createState() => _PartnerBalancesDialogState();
+}
+
+class _PartnerBalancesDialogState extends State<PartnerBalancesDialog> {
+  bool _loading = true;
+  String? _error;
+  Map<String, dynamic>? _overview;
+  final Map<String, _FtthBalanceState> _ftth = {}; // PartnerId → state
+
+  bool get _canEdit =>
+      PermissionManager.instance.canEdit('accounting.ftth_operators');
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAll();
+  }
+
+  Future<void> _loadAll() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final res = await AccountingService.instance.getPartnerPageBalances();
+      if (!mounted) return;
+      if (res['success'] == true && res['data'] is Map) {
+        _overview = Map<String, dynamic>.from(res['data'] as Map);
+      } else {
+        _error = (res['message'] ?? 'تعذّر جلب الأرصدة').toString();
+      }
+    } catch (_) {
+      _error = 'تعذّر جلب الأرصدة';
+    }
+    if (!mounted) return;
+    setState(() => _loading = false);
+    if (_error == null) _loadAllFtth();
+  }
+
+  List<Map<String, dynamic>> get _partners {
+    final raw = _overview == null ? null : _f(_overview!, 'Partners');
+    if (raw is! List) return const [];
+    return [
+      for (final p in raw)
+        if (p is Map) Map<String, dynamic>.from(p)
+    ];
+  }
+
+  Future<void> _loadAllFtth() async {
+    // Sequential: each partner needs its own FTTH login, and hammering the
+    // provider in parallel is neither needed nor polite.
+    for (final p in _partners) {
+      if (!mounted) return;
+      if (_f(p, 'PartnerDeleted') == true) continue;
+      await _loadFtthFor(p);
+    }
+  }
+
+  Future<void> _loadFtthFor(Map<String, dynamic> partner) async {
+    final partnerId = _f(partner, 'PartnerId')?.toString();
+    final ftthId = _f(partner, 'PartnerAccountId')?.toString();
+    if (partnerId == null || partnerId.isEmpty) return;
+    if (!mounted) return;
+    setState(() => _ftth[partnerId] = const _FtthBalanceState(loading: true));
+    if (ftthId == null || ftthId.isEmpty) {
+      if (mounted) {
+        setState(() => _ftth[partnerId] = const _FtthBalanceState(
+            loading: false, error: 'لا يوجد معرّف FTTH'));
+      }
+      return;
+    }
+    try {
+      final loginRes =
+          await LinkedAccountsService.instance.loginPartner(partnerId);
+      if (!mounted) return;
+      final data = loginRes['data'];
+      final token = (loginRes['success'] == true && data is Map)
+          ? (data['accessToken'] ?? data['AccessToken'])?.toString()
+          : null;
+      if (token == null || token.isEmpty) {
+        setState(() => _ftth[partnerId] =
+            const _FtthBalanceState(loading: false, error: 'تعذّر الدخول'));
+        return;
+      }
+      final response = await AuthService.instance.authenticatedRequest(
+        'GET',
+        'https://api.ftth.iq/api/partners/$ftthId/wallets/balance',
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      if (!mounted) return;
+      if (response.statusCode == 200) {
+        final model =
+            (jsonDecode(response.body)['model'] ?? {}) as Map<String, dynamic>;
+        setState(() => _ftth[partnerId] = _FtthBalanceState(
+            loading: false, balance: _num(model['balance'])));
+      } else {
+        setState(() => _ftth[partnerId] = _FtthBalanceState(
+            loading: false, error: 'خطأ ${response.statusCode}'));
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _ftth[partnerId] =
+            const _FtthBalanceState(loading: false, error: 'تعذّر الجلب'));
+      }
+    }
+  }
+
+  Future<void> _openFund(Map<String, dynamic> partner,
+      {required bool fromGeneral, bool toGeneral = false}) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _FundDialog(
+        partner: partner,
+        overview: _overview!,
+        fromGeneral: fromGeneral,
+        toGeneral: toGeneral,
+      ),
+    );
+    if (ok == true) _loadAll();
+  }
+
+  Future<void> _openStatement(Map<String, dynamic> partner) async {
+    final changed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _StatementDialog(partner: partner, canEdit: _canEdit),
+    );
+    if (changed == true) _loadAll();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Container(
+        width: min(900, size.width * 0.95),
+        constraints: BoxConstraints(maxHeight: size.height * 0.9),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _header(),
+            const SizedBox(height: 10),
+            if (_loading)
+              const Padding(
+                padding: EdgeInsets.all(40),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_error != null)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child:
+                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.error_outline, color: SdColors.danger),
+                  const SizedBox(width: 8),
+                  Text(_error!,
+                      style: const TextStyle(
+                          fontFamily: _cairo, color: SdColors.danger)),
+                  const SizedBox(width: 12),
+                  TextButton(
+                      onPressed: _loadAll,
+                      child: const Text('إعادة المحاولة',
+                          style: TextStyle(fontFamily: _cairo))),
+                ]),
+              )
+            else
+              Flexible(child: _body()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _header() {
+    final general =
+        _overview == null ? 0.0 : _num(_f(_overview!, 'GeneralBalance'));
+    final partnersTotal =
+        _overview == null ? 0.0 : _num(_f(_overview!, 'PartnersTotal'));
+    return Row(children: [
+      const Icon(Icons.account_balance_wallet_outlined,
+          color: SdColors.primary, size: 22),
+      const SizedBox(width: 8),
+      const Text('أرصدة الشركاء',
+          style: TextStyle(
+              fontFamily: _cairo, fontSize: 16, fontWeight: FontWeight.bold)),
+      const SizedBox(width: 16),
+      if (!_loading && _error == null) ...[
+        Flexible(child: _chip('الرصيد العام', general, SdColors.primary)),
+        const SizedBox(width: 8),
+        Flexible(child: _chip('مجموع الشركاء', partnersTotal, SdColors.info)),
+      ],
+      const Spacer(),
+      IconButton(
+        tooltip: 'تحديث',
+        onPressed: _loading ? null : _loadAll,
+        icon: const Icon(Icons.refresh, color: SdColors.faint),
+      ),
+      IconButton(
+        tooltip: 'إغلاق',
+        onPressed: () => Navigator.of(context).pop(),
+        icon: const Icon(Icons.close, color: SdColors.faint),
+      ),
+    ]);
+  }
+
+  Widget _chip(String label, double value, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text('$label: ',
+              style: const TextStyle(
+                  fontFamily: _cairo, fontSize: 11, color: Colors.black54)),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(_fmt(value),
+                  textDirection: TextDirection.ltr,
+                  style: TextStyle(
+                      fontFamily: _cairo,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: value < 0 ? SdColors.danger : Colors.black87)),
+            ),
+          ),
+        ]),
+      );
+
+  Widget _body() {
+    final partners = _partners;
+    if (partners.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(
+            child: Text('لا يوجد شركاء',
+                style: TextStyle(fontFamily: _cairo, color: SdColors.faint))),
+      );
+    }
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _rowHeader(),
+          const Divider(height: 1),
+          for (final p in partners) _partnerRow(p),
+        ],
+      ),
+    );
+  }
+
+  static const _wName = 3;
+  static const _wNum = 2;
+  static const _wActions = 2;
+
+  Widget _rowHeader() {
+    const st = TextStyle(
+        fontFamily: _cairo,
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+        color: Colors.black54);
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      child: Row(children: [
+        Expanded(flex: _wName, child: Text('الشريك', style: st)),
+        Expanded(
+            flex: _wNum,
+            child: Text('خادمنا', style: st, textAlign: TextAlign.center)),
+        Expanded(
+            flex: _wNum,
+            child: Text('صفحة الشريك', style: st, textAlign: TextAlign.center)),
+        Expanded(
+            flex: _wNum,
+            child: Text('الفرق', style: st, textAlign: TextAlign.center)),
+        Expanded(
+            flex: _wActions,
+            child: Text('إجراءات', style: st, textAlign: TextAlign.center)),
+      ]),
+    );
+  }
+
+  Widget _partnerRow(Map<String, dynamic> p) {
+    final partnerId = _f(p, 'PartnerId')?.toString();
+    final deleted = _f(p, 'PartnerDeleted') == true;
+    final name = (_f(p, 'Name') ?? '').toString();
+    final ourBalance = _num(_f(p, 'Balance'));
+    final ftth = partnerId == null ? null : _ftth[partnerId];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0x11000000))),
+      ),
+      child: Row(children: [
+        Expanded(
+          flex: _wName,
+          child: Row(children: [
+            Icon(deleted ? Icons.undo : Icons.business,
+                size: 15, color: deleted ? SdColors.danger : SdColors.accent),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(deleted ? '$name (محذوف)' : name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontFamily: _cairo, fontSize: 12)),
+            ),
+          ]),
+        ),
+        Expanded(flex: _wNum, child: _money(ourBalance)),
+        Expanded(flex: _wNum, child: _ftthCell(deleted, ftth)),
+        Expanded(flex: _wNum, child: _diffCell(ourBalance, deleted, ftth)),
+        Expanded(flex: _wActions, child: _actions(p, deleted)),
+      ]),
+    );
+  }
+
+  Widget _money(double v, {Color? color}) => FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          _fmt(v),
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+              fontFamily: _cairo,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: color ?? (v < 0 ? SdColors.danger : Colors.black87)),
+        ),
+      );
+
+  Widget _ftthCell(bool deleted, _FtthBalanceState? ftth) {
+    if (deleted) {
+      return const Text('—',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontFamily: _cairo, color: SdColors.faint));
+    }
+    if (ftth == null || ftth.loading) {
+      return const Center(
+          child: SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(strokeWidth: 2)));
+    }
+    if (ftth.error != null) {
+      return Text(ftth.error!,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+              fontFamily: _cairo, fontSize: 11, color: SdColors.danger));
+    }
+    return _money(ftth.balance ?? 0);
+  }
+
+  Widget _diffCell(double ourBalance, bool deleted, _FtthBalanceState? ftth) {
+    if (deleted ||
+        ftth == null ||
+        ftth.loading ||
+        ftth.error != null ||
+        ftth.balance == null) {
+      return const Text('—',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontFamily: _cairo, color: SdColors.faint));
+    }
+    final diff = ourBalance - ftth.balance!;
+    if (diff.abs() < 0.5) {
+      return const Icon(Icons.check_circle, size: 16, color: SdColors.success);
+    }
+    return _money(diff, color: SdColors.warning);
+  }
+
+  Widget _actions(Map<String, dynamic> p, bool deleted) {
+    return PopupMenuButton<String>(
+      tooltip: 'إجراءات',
+      iconSize: 18,
+      icon: const Icon(Icons.more_horiz, size: 18, color: SdColors.faint),
+      onSelected: (v) {
+        switch (v) {
+          case 'topup':
+            _openFund(p, fromGeneral: false);
+            break;
+          case 'fromGeneral':
+            _openFund(p, fromGeneral: true);
+            break;
+          case 'toGeneral':
+            _openFund(p, fromGeneral: false, toGeneral: true);
+            break;
+          case 'statement':
+            _openStatement(p);
+            break;
+          case 'refreshFtth':
+            _loadFtthFor(p);
+            break;
+        }
+      },
+      itemBuilder: (_) => [
+        if (_canEdit && !deleted)
+          _menuItem('topup', 'شحن', Icons.add_card, SdColors.success),
+        if (_canEdit && !deleted)
+          _menuItem('fromGeneral', 'تحويل من الرصيد العام', Icons.swap_horiz,
+              SdColors.info),
+        if (_canEdit)
+          _menuItem('toGeneral', 'إرجاع إلى الرصيد العام', Icons.undo,
+              SdColors.danger),
+        if (!deleted)
+          _menuItem('statement', 'كشف الحساب', Icons.receipt_long,
+              SdColors.primary),
+        if (!deleted)
+          _menuItem('refreshFtth', 'تحديث صفحة الشريك', Icons.refresh,
+              SdColors.faint),
+      ],
+    );
+  }
+
+  PopupMenuItem<String> _menuItem(
+          String value, String label, IconData icon, Color color) =>
+      PopupMenuItem<String>(
+        value: value,
+        height: 38,
+        child: Row(children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Text(label, style: const TextStyle(fontFamily: _cairo, fontSize: 12)),
+        ]),
+      );
 }
