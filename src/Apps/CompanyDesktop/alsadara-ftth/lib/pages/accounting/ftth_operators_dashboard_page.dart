@@ -22,7 +22,6 @@ import '../../theme/accounting_responsive.dart';
 import 'client_accounts_page.dart';
 import 'ftth_operator_linking_page.dart';
 import 'ftth_operator_transactions_page.dart';
-import 'partner_page_balance_panel.dart';
 
 import '../../frontend/tokens/sd_colors.dart' show SdColors;
 import '../../frontend/components/sd_app_bar.dart';
@@ -4147,16 +4146,9 @@ class _FtthOperatorsDashboardPageState extends State<FtthOperatorsDashboardPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ═══ رصيد الصفحة العام + رصيد كل شريك (شحن/تحويل/كشف) ═══
-          PartnerPageBalancePanel(
-            selectedPartnerId: _selectedOursPartnerId,
-            onSelectPartner: (id) {
-              if (id == null || !_oursPartners.any((p) => p['id'] == id)) return;
-              setState(() => _selectedOursPartnerId = id);
-              _loadOursData();
-            },
-          ),
-          SizedBox(height: context.accR.spaceM),
+          // ملاحظة: رصيد الصفحة لكل شريك انتقل إلى الواجهة الرئيسية للحسابات
+          // (بطاقة واحدة بقائمة منسدلة بالشركاء). فلترة المشغّلين هنا تبقى عبر
+          // القائمة المنسدلة «الشريك» في شريط الأدوات.
           // ═══ بطاقات الملخص الرئيسية ═══
           _buildOursSummary(),
           SizedBox(height: context.accR.spaceM),

@@ -16,6 +16,7 @@ import '../../services/accounting_cache_service.dart';
 import '../../services/accounting_event_bus.dart';
 import '../../services/accounting_reminder_service.dart';
 import '../../permissions/permissions.dart';
+import 'partner_page_balance_panel.dart';
 import 'chart_of_accounts_page.dart';
 import 'salaries_page.dart';
 import 'collections_page.dart';
@@ -985,6 +986,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           color: SdColors.accent,
           onTap: () => _navigateTo(
               FtthOperatorsDashboardPage(companyId: widget.companyId)),
+        ),
+      if (pm.canView('accounting.ftth_operators'))
+        _SectionItem(
+          title: 'أرصدة الشركاء',
+          subtitle: 'المقارنة بين خادمنا وصفحة الشريك + العمليات',
+          icon: Icons.account_balance_wallet_outlined,
+          color: SdColors.info,
+          onTap: () => showPartnerBalancesDialog(context),
         ),
       if (pm.canView('accounting.ftth_operators'))
         _SectionItem(
