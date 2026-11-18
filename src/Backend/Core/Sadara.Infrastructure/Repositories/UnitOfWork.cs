@@ -568,18 +568,18 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
-    public async Task<Sadara.Domain.Enums.JournalEntryStatus?> LockJournalEntryForUpdateAsync(Guid entryId, CancellationToken cancellationToken = default)
+    public async Task<bool?> LockSubscriptionLogForUpdateAsync(long logId, CancellationToken cancellationToken = default)
     {
         if (!_context.Database.IsRelational())
-            return null; // لا أقفال على مزوّد الذاكرة — المستدعي يرجع لفحص الحالة في الذاكرة.
+            return null;
         if (_context.Database.CurrentTransaction == null)
-            throw new InvalidOperationException("Journal entry can only be locked inside a transaction.");
+            throw new InvalidOperationException("Subscription log can only be locked inside a transaction.");
 
-        // FOR UPDATE يقفل صف القيد حتى نهاية المعاملة ⇒ يُسلسل عمليات العكس المتزامنة لنفس القيد.
-        var statuses = await _context.Database
-            .SqlQuery<int>($"SELECT \"Status\" AS \"Value\" FROM \"JournalEntries\" WHERE \"Id\" = {entryId} FOR UPDATE")
+        // نقطة التسلسل الموحّدة لكل مسارات حذف/عكس السجل (حتى بلا قيد محاسبي).
+        var flags = await _context.Database
+            .SqlQuery<bool>($"SELECT \"IsDeleted\" AS \"Value\" FROM \"SubscriptionLogs\" WHERE \"Id\" = {logId} FOR UPDATE")
             .ToListAsync(cancellationToken);
-        return statuses.Count > 0 ? (Sadara.Domain.Enums.JournalEntryStatus)statuses[0] : (Sadara.Domain.Enums.JournalEntryStatus?)null;
+        return flags.Count > 0 ? flags[0] : (bool?)null;
     }
 
     private sealed class AccountBalanceRow

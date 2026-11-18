@@ -446,31 +446,41 @@ public class SubscriptionLogsController : ControllerBase
     [HttpDelete("{id:long}")]
     [Authorize(Policy = "SuperAdmin")]
     [RequirePermission("subscriptions", "delete", PermissionSystem.Second)]
-    public async Task<IActionResult> Delete(long id)
+    public async Task<IActionResult> Delete(long id, CancellationToken ct = default)
     {
-        var log = await _unitOfWork.SubscriptionLogs.GetByIdAsync(id);
+        // جلب متّسق مع عزل المتحكّم (ScopedLogs يختم CompanyId من التوكن؛ غير مفلتر للسوبر‑أدمن).
+        var log = await ScopedLogs().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (log == null)
             return NotFound(new { success = false, message = "السجل غير موجود" });
 
         // كل العكوسات + الإلغاء + الحذف الناعم ضمن معاملة واحدة ⇒ تنجح كلها أو تتراجع كلها.
         var lockRows = _unitOfWork.SupportsRowLocks;
         var ownsTx = lockRows && !_unitOfWork.HasActiveTransaction;
-        if (ownsTx) await _unitOfWork.BeginTransactionAsync();
+        if (ownsTx) await _unitOfWork.BeginTransactionAsync(ct);
         try
         {
-            // idempotency بحماية تزامن: نقفل صف القيد ونعيد فحص حالته داخل المعاملة.
-            // عكسان متزامنان لنفس القيد: الثاني ينتظر القفل ثم يرى Voided ⇒ لا يعكس مرتين.
+            // نقطة تسلسل موحّدة لكل المسارات (بقيد أو بلا قيد): نقفل صف السجل ونعيد فحص IsDeleted
+            // داخل المعاملة. حذفان متزامنان لنفس السجل: الثاني ينتظر القفل ثم يرى الحذف ⇒ لا يعكس مرتين.
+            if (lockRows)
+            {
+                var alreadyDeleted = await _unitOfWork.LockSubscriptionLogForUpdateAsync(id, ct);
+                if (alreadyDeleted != false) // null (غير موجود) أو true (محذوف) ⇒ لا شيء نعكسه
+                {
+                    if (ownsTx) await _unitOfWork.CommitTransactionAsync(ct);
+                    return Ok(new { success = true, message = "تم حذف السجل والقيد المحاسبي وعكس الأرصدة بنجاح" });
+                }
+            }
+
+            // فحص حالة القيد في الذاكرة يكفي الآن لأن قفل صف السجل سلسل عمليات الحذف المتزامنة.
             bool reverseJournal = false;
             if (log.JournalEntryId.HasValue)
             {
-                var status = lockRows
-                    ? await _unitOfWork.LockJournalEntryForUpdateAsync(log.JournalEntryId.Value)
-                    : (await _unitOfWork.JournalEntries.GetByIdAsync(log.JournalEntryId.Value))?.Status;
-                reverseJournal = status.HasValue && status.Value != JournalEntryStatus.Voided;
+                var jeStatus = (await _unitOfWork.JournalEntries.GetByIdAsync(log.JournalEntryId.Value))?.Status;
+                reverseJournal = jeStatus.HasValue && jeStatus.Value != JournalEntryStatus.Voided;
             }
 
             // عكس الذمم المالية (الفني/الوكيل) يتم مرة واحدة: للعمليات ذات القيد يُقيَّد ببوابة reverseJournal
-            // (يمنع التكرار)؛ وللعمليات بلا قيد يُنفَّذ كالسابق.
+            // (يمنع التكرار)؛ وللعمليات بلا قيد يُنفَّذ (مُسلسَلاً بقفل صف السجل أعلاه).
             if (reverseJournal || !log.JournalEntryId.HasValue)
             {
                 // عكس رصيد الفني إذا كان مرتبطاً
@@ -522,11 +532,11 @@ public class SubscriptionLogsController : ControllerBase
             {
                 var je = await _unitOfWork.JournalEntries.AsQueryable()
                     .Include(j => j.Lines)
-                    .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId!.Value);
+                    .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId!.Value, ct);
                 if (je != null)
                 {
                     await ServiceRequestAccountingHelper.ReverseJournalBalancesAsync(
-                        _unitOfWork, je.Lines.Where(l => !l.IsDeleted).ToList());
+                        _unitOfWork, je.Lines.Where(l => !l.IsDeleted).ToList(), ct);
 
                     je.Status = JournalEntryStatus.Voided;
                     je.IsDeleted = true;
@@ -546,12 +556,12 @@ public class SubscriptionLogsController : ControllerBase
             log.DeletedAt = DateTime.UtcNow;
             _unitOfWork.SubscriptionLogs.Update(log);
 
-            if (ownsTx) await _unitOfWork.CommitTransactionAsync();
-            else await _unitOfWork.SaveChangesAsync();
+            if (ownsTx) await _unitOfWork.CommitTransactionAsync(ct);
+            else await _unitOfWork.SaveChangesAsync(ct);
         }
         catch
         {
-            if (ownsTx && _unitOfWork.HasActiveTransaction) await _unitOfWork.RollbackTransactionAsync();
+            if (ownsTx && _unitOfWork.HasActiveTransaction) await _unitOfWork.RollbackTransactionAsync(ct);
             throw;
         }
 

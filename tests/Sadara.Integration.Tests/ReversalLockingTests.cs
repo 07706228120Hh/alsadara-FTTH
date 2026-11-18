@@ -187,4 +187,47 @@ public class ReversalLockingTests : IDisposable
         Assert.Equal(JournalEntryStatus.Voided, st.jeStatus);
         Assert.True(st.jeDeleted);
     }
+
+    /// <summary>A legacy log with a technician charge but NO journal entry — serialized only by the
+    /// subscription-log row lock. Concurrent deletes must still reverse the technician charge once.</summary>
+    private (long LogId, Guid TechId) SeedNoJournal()
+    {
+        using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
+        ctx.Set<Company>().Add(new Company { Id = CompanyA, Name = "ش-عكس", Code = "C-REV" });
+        var techId = Guid.NewGuid();
+        ctx.Set<User>().Add(new User
+        {
+            Id = techId, Username = $"t-{techId:N}"[..12], FullName = "فني",
+            PhoneNumber = "0781" + techId.ToString("N")[..7], CompanyId = CompanyA, Role = UserRole.Employee,
+            TechTotalCharges = 100, TechTotalPayments = 0, TechNetBalance = -100
+        });
+        var log = new SubscriptionLog
+        {
+            CompanyId = CompanyA, CustomerName = "عميل", SubscriptionId = "sub-noje", PaymentStatus = "paid",
+            UserId = techId, LinkedTechnicianId = techId, PlanPrice = 100, JournalEntryId = null, PlanName = "BASIC"
+        };
+        ctx.Set<SubscriptionLog>().Add(log);
+        ctx.SaveChanges();
+        return (log.Id, techId);
+    }
+
+    [SkippableFact]
+    public async Task Delete_NoJournalEntry_UnderConcurrency_ReversesTechChargeOnce()
+    {
+        _fx.SkipIfUnavailable();
+        var (logId, techId) = SeedNoJournal();
+
+        async Task<int> RunDelete()
+        {
+            await using var db = _fx.CreateContext(PostgresFixture.SystemTenant);
+            try { return Code(await Controller(db).Delete(logId)); }
+            catch { return 500; }
+        }
+        var codes = await Task.WhenAll(Task.Run(RunDelete), Task.Run(RunDelete));
+        Assert.All(codes, c => Assert.Contains(c, new[] { 200, 404 }));
+
+        using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
+        // The technician charge is reversed exactly once (0), not twice (−100): the log row lock serializes.
+        Assert.Equal(0, ctx.Set<User>().IgnoreQueryFilters().Single(u => u.Id == techId).TechTotalCharges);
+    }
 }
