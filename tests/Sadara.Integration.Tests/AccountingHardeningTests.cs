@@ -288,4 +288,30 @@ public class IntegrityCheckTests : IDisposable
         var result = await Controller(db, tenantCompany: null, superAdmin: false).IntegrityCheck(companyId: null);
         Assert.Equal(403, Code(result));
     }
+
+    [SkippableFact]
+    public async Task TrialBalance_IgnoresClientCompanyId_ForNonSuperAdmin_AndRejectsWhenNoCompany()
+    {
+        _fx.SkipIfUnavailable();
+        var otherCompany = Guid.Parse("e2e2e2e2-0000-4000-8000-000000000002");
+        using (var ctx = _fx.CreateContext(PostgresFixture.SystemTenant))
+        {
+            ctx.Set<Company>().Add(new Company { Id = CompanyA, Name = "ش-أ", Code = "C-A" });
+            ctx.Set<Account>().Add(new Account { Id = Guid.NewGuid(), Code = "1110", Name = "نقد أ", AccountType = AccountType.Assets, Level = 3, IsLeaf = true, IsActive = true, CurrentBalance = 10, CompanyId = CompanyA });
+            ctx.SaveChanges();
+        }
+
+        await using var db = _fx.CreateContext(PostgresFixture.SystemTenant);
+        // Company-A admin passes a FOREIGN companyId → must be ignored (scoped to own company only).
+        var ok = await Controller(db, CompanyA, superAdmin: false).GetTrialBalance(companyId: otherCompany);
+        Assert.Equal(200, Code(ok));
+        var accounts = Nav((ok as ObjectResult)!.Value, "data") as System.Collections.IEnumerable;
+        Assert.NotNull(accounts);
+        foreach (var a in accounts!) // every returned account must belong to Company A
+            Assert.Equal("1110", Nav(a, "Code"));
+
+        // No company in token (non-super) → 403.
+        var rejected = await Controller(db, tenantCompany: null, superAdmin: false).GetTrialBalance(companyId: null);
+        Assert.Equal(403, Code(rejected));
+    }
 }

@@ -4911,9 +4911,21 @@ public class AccountingController : ControllerBase
     {
         try
         {
+            // عزل صريح مستقل عن علَم العزل المركزي: غير SuperAdmin مُقيَّد بشركة التوكن
+            // ولا يُوثَق بـ companyId من العميل؛ SuperAdmin وحده يفحص شركة محدّدة أو الكل.
+            Guid? scope;
+            if (_tenant.IsSuperAdmin)
+                scope = companyId;
+            else
+            {
+                if (_tenant.CompanyId == null)
+                    return StatusCode(403, new { success = false, message = "لا تملك صلاحية عرض ميزان المراجعة" });
+                scope = _tenant.CompanyId.Value;
+            }
+
             var query = _unitOfWork.Accounts.AsQueryable().Where(a => a.IsLeaf && a.IsActive);
-            if (companyId.HasValue)
-                query = query.Where(a => a.CompanyId == companyId);
+            if (scope.HasValue)
+                query = query.Where(a => a.CompanyId == scope.Value);
 
             var accounts = await query.OrderBy(a => a.Code).Select(a => new
             {
@@ -5147,8 +5159,9 @@ public class AccountingController : ControllerBase
         }
         catch (Exception ex)
         {
+            // لا نكشف تفاصيل الاستثناء للعميل — تُسجَّل داخلياً فقط.
             _logger.LogError(ex, "خطأ في إعادة حساب الأرصدة");
-            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 
