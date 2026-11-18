@@ -39,6 +39,20 @@ public class AccountingBalanceGuardTests
         // no throw
         ServiceRequestAccountingHelper.AssertBalanced(lines, JournalReferenceType.Manual, "ref-2");
     }
+
+    [Fact]
+    public void AssertBalanced_RespectsToleranceBoundary_At_0_001()
+    {
+        // gap 0.0009 (≤ 0.001) passes
+        ServiceRequestAccountingHelper.AssertBalanced(
+            new List<(Guid, decimal, decimal, string?)> { L(100m, 0), L(0, 99.9991m) },
+            JournalReferenceType.Manual, "tol-pass");
+        // gap 0.0011 (> 0.001) throws
+        Assert.Throws<InvalidOperationException>(() =>
+            ServiceRequestAccountingHelper.AssertBalanced(
+                new List<(Guid, decimal, decimal, string?)> { L(100m, 0), L(0, 99.9989m) },
+                JournalReferenceType.Manual, "tol-throw"));
+    }
 }
 
 [Collection("Postgres")]
