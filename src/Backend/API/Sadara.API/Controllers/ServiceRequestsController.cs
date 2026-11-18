@@ -3466,6 +3466,21 @@ public class SummaryCollectionTechnician
 /// </summary>
 public static class ServiceRequestAccountingHelper
 {
+    /// <summary>
+    /// حارس مركزي: يرفض ترحيل قيد غير متوازن (مدين ≠ دائن) بهامش تقريب 0.001.
+    /// يُستدعى من كل مسارات الترحيل المباشرة لمنع كسر ميزان المراجعة بصمت.
+    /// </summary>
+    public static void AssertBalanced(
+        IReadOnlyCollection<(Guid AccountId, decimal DebitAmount, decimal CreditAmount, string? LineDescription)> lines,
+        JournalReferenceType referenceType, string? referenceId)
+    {
+        var totalDebit = lines.Sum(l => l.DebitAmount);
+        var totalCredit = lines.Sum(l => l.CreditAmount);
+        if (Math.Abs(totalDebit - totalCredit) > 0.001m)
+            throw new InvalidOperationException(
+                $"قيد غير متوازن: مدين={totalDebit} دائن={totalCredit} (مرجع={referenceType}/{referenceId})");
+    }
+
     public static async Task<Account?> FindAccountByCode(IUnitOfWork unitOfWork, string code, Guid companyId)
     {
         return await unitOfWork.Accounts.AsQueryable()
@@ -3648,11 +3663,7 @@ public static class ServiceRequestAccountingHelper
 
         // ═══ تأكيد توازن القيد (مدين=دائن) قبل الحفظ — حماية مركزية لكل المستدعين ═══
         // يمنع ترحيل قيد غير متوازن بصمت يكسر ميزان المراجعة (بهامش تقريب 0.001).
-        var totalDebitCheck = lines.Sum(l => l.DebitAmount);
-        var totalCreditCheck = lines.Sum(l => l.CreditAmount);
-        if (Math.Abs(totalDebitCheck - totalCreditCheck) > 0.001m)
-            throw new InvalidOperationException(
-                $"قيد غير متوازن: مدين={totalDebitCheck} دائن={totalCreditCheck} (مرجع={referenceType}/{referenceId})");
+        AssertBalanced(lines, referenceType, referenceId);
 
         var entryId = Guid.NewGuid();
         var entry = new JournalEntry

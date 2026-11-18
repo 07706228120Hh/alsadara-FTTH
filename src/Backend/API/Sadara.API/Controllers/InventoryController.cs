@@ -4152,6 +4152,9 @@ public class InventoryController : ControllerBase
         }
         var entryNumber = $"{prefix}{nextNum:D5}";
 
+        // حارس التوازن المركزي — يمنع ترحيل قيد غير متوازن عبر مسار المخزون.
+        ServiceRequestAccountingHelper.AssertBalanced(lines, referenceType, referenceId);
+
         var entryId = Guid.NewGuid();
         var entry = new JournalEntry
         {

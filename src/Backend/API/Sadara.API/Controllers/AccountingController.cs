@@ -4949,14 +4949,29 @@ public class AccountingController : ControllerBase
     /// إعادة حساب CurrentBalance لجميع الحسابات من القيود المرحّلة النشطة
     /// </summary>
     [HttpPost("recalculate-balances")]
-    public async Task<IActionResult> RecalculateAllBalances()
+    [Authorize(Policy = "CompanyAdminOrAbove")]
+    public async Task<IActionResult> RecalculateAllBalances([FromQuery] Guid? companyId = null)
     {
         try
         {
-            // جلب كل الحسابات النشطة (leaf)
-            var accounts = await _unitOfWork.Accounts.AsQueryable()
-                .Where(a => a.IsLeaf && a.IsActive)
-                .ToListAsync();
+            // نطاق التصحيح: غير SuperAdmin ⇒ شركته من التوكن حصراً (منع العبور بين الشركات).
+            // SuperAdmin ⇒ شركة محدّدة صراحةً، أو الكل عند عدم التمرير (صيانة مقصودة).
+            Guid? scopeCompanyId;
+            if (_tenant.IsSuperAdmin)
+                scopeCompanyId = companyId;
+            else
+            {
+                if (_tenant.CompanyId == null)
+                    return StatusCode(403, new { success = false, message = "لا تملك صلاحية إعادة حساب الأرصدة" });
+                scopeCompanyId = _tenant.CompanyId.Value;
+            }
+
+            // جلب الحسابات النشطة (leaf) ضمن النطاق
+            var accountsQuery = _unitOfWork.Accounts.AsQueryable()
+                .Where(a => a.IsLeaf && a.IsActive);
+            if (scopeCompanyId != null)
+                accountsQuery = accountsQuery.Where(a => a.CompanyId == scopeCompanyId.Value);
+            var accounts = await accountsQuery.ToListAsync();
 
             var results = new List<object>();
 
@@ -5466,6 +5481,9 @@ public class AccountingController : ControllerBase
             throw new InvalidOperationException($"الفترة المحاسبية {baghdadDate:yyyy/MM} مقفلة — لا يمكن إنشاء قيود جديدة");
         }
 
+        // حارس التوازن المركزي — يمنع ترحيل قيد غير متوازن عبر هذا المسار المحلي.
+        ServiceRequestAccountingHelper.AssertBalanced(lines, referenceType, referenceId);
+
         var entryNumber = await GenerateEntryNumber(companyId);
         var entry = new JournalEntry
         {
@@ -5532,6 +5550,9 @@ public class AccountingController : ControllerBase
                 baghdadDate.Year, baghdadDate.Month, description);
             throw new InvalidOperationException($"الفترة المحاسبية {baghdadDate:yyyy/MM} مقفلة — لا يمكن إنشاء قيود جديدة");
         }
+
+        // حارس التوازن المركزي — يمنع ترحيل قيد غير متوازن عبر هذا المسار المحلي.
+        ServiceRequestAccountingHelper.AssertBalanced(lines, referenceType, referenceId);
 
         var entryNumber = await GenerateEntryNumber(companyId);
         var entryId = Guid.NewGuid();
