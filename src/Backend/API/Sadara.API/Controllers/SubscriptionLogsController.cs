@@ -452,91 +452,108 @@ public class SubscriptionLogsController : ControllerBase
         if (log == null)
             return NotFound(new { success = false, message = "السجل غير موجود" });
 
-        // عكس رصيد الفني إذا كان مرتبطاً
-        if (log.LinkedTechnicianId.HasValue && log.PlanPrice.HasValue)
+        // كل العكوسات + الإلغاء + الحذف الناعم ضمن معاملة واحدة ⇒ تنجح كلها أو تتراجع كلها.
+        var lockRows = _unitOfWork.SupportsRowLocks;
+        var ownsTx = lockRows && !_unitOfWork.HasActiveTransaction;
+        if (ownsTx) await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
-            if (tech != null)
+            // idempotency بحماية تزامن: نقفل صف القيد ونعيد فحص حالته داخل المعاملة.
+            // عكسان متزامنان لنفس القيد: الثاني ينتظر القفل ثم يرى Voided ⇒ لا يعكس مرتين.
+            bool reverseJournal = false;
+            if (log.JournalEntryId.HasValue)
             {
-                tech.TechTotalCharges -= log.PlanPrice.Value;
-                tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
-                _unitOfWork.Users.Update(tech);
-
-                // حذف معاملة الفني المرتبطة
-                var techTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                    .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString() && !t.IsDeleted);
-                if (techTx != null)
-                {
-                    techTx.IsDeleted = true;
-                    techTx.DeletedAt = DateTime.UtcNow;
-                    _unitOfWork.TechnicianTransactions.Update(techTx);
-                }
+                var status = lockRows
+                    ? await _unitOfWork.LockJournalEntryForUpdateAsync(log.JournalEntryId.Value)
+                    : (await _unitOfWork.JournalEntries.GetByIdAsync(log.JournalEntryId.Value))?.Status;
+                reverseJournal = status.HasValue && status.Value != JournalEntryStatus.Voided;
             }
-        }
 
-        // عكس رصيد الوكيل إذا كان مرتبطاً
-        if (log.LinkedAgentId.HasValue && log.PlanPrice.HasValue)
-        {
-            var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
-            if (agent != null)
+            // عكس الذمم المالية (الفني/الوكيل) يتم مرة واحدة: للعمليات ذات القيد يُقيَّد ببوابة reverseJournal
+            // (يمنع التكرار)؛ وللعمليات بلا قيد يُنفَّذ كالسابق.
+            if (reverseJournal || !log.JournalEntryId.HasValue)
             {
-                agent.TotalCharges -= log.PlanPrice.Value;
-                agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
-                _unitOfWork.Agents.Update(agent);
-
-                // حذف معاملة الوكيل المرتبطة
-                var agentTx = await _unitOfWork.AgentTransactions.AsQueryable()
-                    .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString() && !t.IsDeleted);
-                if (agentTx != null)
+                // عكس رصيد الفني إذا كان مرتبطاً
+                if (log.LinkedTechnicianId.HasValue && log.PlanPrice.HasValue)
                 {
-                    agentTx.IsDeleted = true;
-                    agentTx.DeletedAt = DateTime.UtcNow;
-                    _unitOfWork.AgentTransactions.Update(agentTx);
-                }
-            }
-        }
-
-        // حذف القيد المحاسبي المرتبط (عكس أرصدة + void + soft delete)
-        if (log.JournalEntryId.HasValue)
-        {
-            var je = await _unitOfWork.JournalEntries.AsQueryable()
-                .Include(j => j.Lines)
-                .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId.Value);
-            if (je != null && je.Status != JournalEntryStatus.Voided)
-            {
-                // عكس أرصدة الحسابات أولاً
-                foreach (var line in je.Lines.Where(l => !l.IsDeleted))
-                {
-                    var account = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
-                    if (account != null)
+                    var tech = await _unitOfWork.Users.GetByIdAsync(log.LinkedTechnicianId.Value);
+                    if (tech != null)
                     {
-                        if (account.AccountType == AccountType.Assets || account.AccountType == AccountType.Expenses)
-                            account.CurrentBalance -= line.DebitAmount - line.CreditAmount;
-                        else
-                            account.CurrentBalance -= line.CreditAmount - line.DebitAmount;
-                        _unitOfWork.Accounts.Update(account);
+                        tech.TechTotalCharges -= log.PlanPrice.Value;
+                        tech.TechNetBalance = tech.TechTotalPayments - tech.TechTotalCharges;
+                        _unitOfWork.Users.Update(tech);
+
+                        var techTx = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                            .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString() && !t.IsDeleted);
+                        if (techTx != null)
+                        {
+                            techTx.IsDeleted = true;
+                            techTx.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.TechnicianTransactions.Update(techTx);
+                        }
                     }
                 }
 
-                je.Status = JournalEntryStatus.Voided;
-                je.IsDeleted = true;
-                je.DeletedAt = DateTime.UtcNow;
-                _unitOfWork.JournalEntries.Update(je);
-
-                // حذف سطور القيد
-                foreach (var line in je.Lines.Where(l => !l.IsDeleted))
+                // عكس رصيد الوكيل إذا كان مرتبطاً
+                if (log.LinkedAgentId.HasValue && log.PlanPrice.HasValue)
                 {
-                    line.IsDeleted = true;
-                    line.DeletedAt = DateTime.UtcNow;
-                    _unitOfWork.JournalEntryLines.Update(line);
+                    var agent = await _unitOfWork.Agents.GetByIdAsync(log.LinkedAgentId.Value);
+                    if (agent != null)
+                    {
+                        agent.TotalCharges -= log.PlanPrice.Value;
+                        agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
+                        _unitOfWork.Agents.Update(agent);
+
+                        var agentTx = await _unitOfWork.AgentTransactions.AsQueryable()
+                            .FirstOrDefaultAsync(t => t.ReferenceNumber == log.Id.ToString() && !t.IsDeleted);
+                        if (agentTx != null)
+                        {
+                            agentTx.IsDeleted = true;
+                            agentTx.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.AgentTransactions.Update(agentTx);
+                        }
+                    }
                 }
             }
-        }
 
-        log.IsDeleted = true;
-        log.DeletedAt = DateTime.UtcNow;
-        _unitOfWork.SubscriptionLogs.Update(log);
-        await _unitOfWork.SaveChangesAsync();
+            // عكس القيد المحاسبي: عكس الأرصدة (بقفل صفوف ثابت الترتيب) + void + حذف ناعم للسطور.
+            // يحفظ السجل المحاسبي التاريخي (soft delete + Voided) ولا يحذفه فعلياً.
+            if (reverseJournal)
+            {
+                var je = await _unitOfWork.JournalEntries.AsQueryable()
+                    .Include(j => j.Lines)
+                    .FirstOrDefaultAsync(j => j.Id == log.JournalEntryId!.Value);
+                if (je != null)
+                {
+                    await ServiceRequestAccountingHelper.ReverseJournalBalancesAsync(
+                        _unitOfWork, je.Lines.Where(l => !l.IsDeleted).ToList());
+
+                    je.Status = JournalEntryStatus.Voided;
+                    je.IsDeleted = true;
+                    je.DeletedAt = DateTime.UtcNow;
+                    _unitOfWork.JournalEntries.Update(je);
+
+                    foreach (var line in je.Lines.Where(l => !l.IsDeleted))
+                    {
+                        line.IsDeleted = true;
+                        line.DeletedAt = DateTime.UtcNow;
+                        _unitOfWork.JournalEntryLines.Update(line);
+                    }
+                }
+            }
+
+            log.IsDeleted = true;
+            log.DeletedAt = DateTime.UtcNow;
+            _unitOfWork.SubscriptionLogs.Update(log);
+
+            if (ownsTx) await _unitOfWork.CommitTransactionAsync();
+            else await _unitOfWork.SaveChangesAsync();
+        }
+        catch
+        {
+            if (ownsTx && _unitOfWork.HasActiveTransaction) await _unitOfWork.RollbackTransactionAsync();
+            throw;
+        }
 
         _logger.LogInformation("تم حذف سجل الاشتراك {LogId} مع القيد المحاسبي وعكس الأرصدة", id);
         return Ok(new { success = true, message = "تم حذف السجل والقيد المحاسبي وعكس الأرصدة بنجاح" });

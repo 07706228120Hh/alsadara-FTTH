@@ -3481,6 +3481,41 @@ public static class ServiceRequestAccountingHelper
                 $"قيد غير متوازن: مدين={totalDebit} دائن={totalCredit} (مرجع={referenceType}/{referenceId})");
     }
 
+    /// <summary>
+    /// إشارة أثر السطر على CurrentBalance وفق طبيعة الحساب:
+    /// أصول/مصروفات (مدينة الطبيعة) = مدين−دائن؛ خصوم/حقوق ملكية/إيرادات (دائنة الطبيعة) = دائن−مدين.
+    /// نفس المعادلة المستخدمة في الترحيل وإعادة الحساب ⇒ العكس (طرح هذه الدلتا) يُلغي الترحيل تماماً
+    /// لأي نوع حساب (بما فيه أي نوع غير معروف يُعامَل كدائن‑الطبيعة، اتساقاً مع الترحيل).
+    /// </summary>
+    public static decimal PostingDelta(AccountType type, decimal debit, decimal credit)
+        => (type == AccountType.Assets || type == AccountType.Expenses) ? debit - credit : credit - debit;
+
+    /// <summary>
+    /// يعكس أثر سطور قيد مرحّل على أرصدة الحسابات بأمان تزامن: يقفل صفوف الحسابات (ترتيب ثابت
+    /// عبر <see cref="IUnitOfWork.LockAndRefreshAccountBalancesAsync"/>) ثم يطرح دلتا الترحيل لكل سطر.
+    /// يجب استدعاؤه ضمن معاملة قائمة (المستدعي يملكها لضمان الذرّية مع الإلغاء/الحذف الناعم).
+    /// </summary>
+    public static async Task ReverseJournalBalancesAsync(
+        IUnitOfWork unitOfWork,
+        IReadOnlyCollection<JournalEntryLine> lines,
+        CancellationToken ct = default)
+    {
+        var active = lines.Where(l => !l.IsDeleted).ToList();
+        if (active.Count == 0) return;
+
+        if (unitOfWork.SupportsRowLocks)
+            await unitOfWork.LockAndRefreshAccountBalancesAsync(
+                active.Select(l => l.AccountId).Distinct().ToList(), ct);
+
+        foreach (var line in active)
+        {
+            var account = await unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+            if (account == null) continue;
+            account.CurrentBalance -= PostingDelta(account.AccountType, line.DebitAmount, line.CreditAmount);
+            unitOfWork.Accounts.Update(account);
+        }
+    }
+
     public static async Task<Account?> FindAccountByCode(IUnitOfWork unitOfWork, string code, Guid companyId)
     {
         return await unitOfWork.Accounts.AsQueryable()

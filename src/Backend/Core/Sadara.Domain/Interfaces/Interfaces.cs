@@ -198,6 +198,14 @@ public interface IUnitOfWork : IDisposable
     /// Must be called inside a transaction.
     /// </summary>
     Task LockAndRefreshAccountBalancesAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Locks a journal entry row (FOR UPDATE) until the current transaction ends and returns its
+    /// current <see cref="Sadara.Domain.Enums.JournalEntryStatus"/> (null if the row does not exist).
+    /// Serializes concurrent reversals of the same entry so a reversal cannot run twice.
+    /// Must be called inside a transaction; returns null (no lock) on non-relational stores.
+    /// </summary>
+    Task<Sadara.Domain.Enums.JournalEntryStatus?> LockJournalEntryForUpdateAsync(Guid entryId, CancellationToken ct = default);
 }
 
 public interface IPasswordHasher
