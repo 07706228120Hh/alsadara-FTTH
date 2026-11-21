@@ -68,13 +68,15 @@ public class SasAgentActivateBilledTests
 
     /// <summary>
     /// مضاعف ISasServiceClient مخصّص للفوترة:
-    ///  - SasGetAsync → ActivationDataResponse (مثلاً {"n_required_amount":25000,"profile_name":"باقة 50"}).
+    ///  - SasGetAsync → ActivationDataResponse (مثلاً {"n_required_amount":25,"profile_name":"باقة 50"}).
+    ///    ملاحظة: SAS4 يُعيد السعر بوحدة الآلاف؛ يُضرب في AmountMultiplier (افتراضي 1000) للدينار الكامل
+    ///    (مؤكّد على الإنتاج: حسابات الساس AmountMultiplier=1000 وأسعار حقيقية 16,000–18,000 دينار).
     ///  - UserActionAsync → UserActionResponse (نجاح) أو يرمي SasServiceUnavailableException إن ThrowOnUserAction.
     /// يلتقط: هل استُدعي SasGet/UserAction، والباسوورد المفكوك الممرَّر لـ UserActionAsync (للتحقّق من العزل/الأسرار).
     /// </summary>
     private sealed class BilledSasClient : ISasServiceClient
     {
-        public string ActivationDataResponse { get; set; } = """{"n_required_amount":25000,"profile_name":"باقة 50"}""";
+        public string ActivationDataResponse { get; set; } = """{"n_required_amount":25,"profile_name":"باقة 50"}""";
         public string UserActionResponse { get; set; } = """{"ok":true,"username":"sub_user_42"}""";
         public bool ThrowOnUserAction { get; set; } = false;
         public bool ThrowOnSasGet { get; set; } = false;
@@ -333,7 +335,7 @@ public class SasAgentActivateBilledTests
         Assert.Equal(UserA, log.UserId);           // مختوم من مالك الحساب
         Assert.Equal(accId, log.SasAccountId);
         Assert.Equal("u42", log.SubscriberUid);
-        Assert.Equal(25000m, log.BasePrice);       // من activationData لا من العميل
+        Assert.Equal(25000m, log.BasePrice);       // 25 (وحدة آلاف الساس) × AmountMultiplier 1000 = 25,000 دينار؛ من activationData لا من العميل
         Assert.Equal("باقة 50", log.PlanName);     // profile_name من activationData
         Assert.NotNull(log.JournalEntryId);
         Assert.Equal(jeFromResponse, log.JournalEntryId!.Value);
@@ -354,7 +356,7 @@ public class SasAgentActivateBilledTests
 
         var sas     = new BilledSasClient
         {
-            ActivationDataResponse = """{"n_required_amount":30000,"profile_name":"باقة 100"}"""
+            ActivationDataResponse = """{"n_required_amount":30,"profile_name":"باقة 100"}"""  // 30 × AmountMultiplier 1000 = 30,000 دينار
         };
         var tenantA = new FakeTenant { CompanyId = CompanyA };
         using var db = NewInMemoryContext(dbName, tenantA);
