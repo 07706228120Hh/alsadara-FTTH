@@ -40,7 +40,7 @@ public class AuthzFailClosedTests : IDisposable
             "DELETE FROM \"Users\" WHERE \"CompanyId\" = {0}; DELETE FROM \"Companies\" WHERE \"Id\" = {0};", CompanyA);
     }
 
-    private Guid SeedUser(UserRole role, string? firstV2)
+    private Guid SeedUser(UserRole role, string? firstV2, string? secondV2 = null)
     {
         using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
         if (!ctx.Set<Company>().IgnoreQueryFilters().Any(c => c.Id == CompanyA))
@@ -50,7 +50,7 @@ public class AuthzFailClosedTests : IDisposable
         {
             Id = id, Username = $"u-{id:N}"[..12], FullName = "مستخدم",
             PhoneNumber = "0781" + id.ToString("N")[..7], CompanyId = CompanyA, Role = role,
-            FirstSystemPermissionsV2 = firstV2
+            FirstSystemPermissionsV2 = firstV2, SecondSystemPermissionsV2 = secondV2
         });
         ctx.SaveChanges();
         return id;
@@ -124,6 +124,24 @@ public class AuthzFailClosedTests : IDisposable
         _fx.SkipIfUnavailable();
         var uid = SeedUser(UserRole.SuperAdmin, null);
         Assert.Equal(0, await Authorize(uid, "SuperAdmin", "accounting", "delete")); // role bypass preserved
+    }
+
+    [SkippableFact]
+    public async Task ProposedSyncAccountLeastPrivilege_AllowsSubscription_DeniesManualAccounting()
+    {
+        _fx.SkipIfUnavailable();
+        // صلاحية «مزامنة» المقترحة (أقل امتياز): subscriptions add/edit في النظام الثاني فقط —
+        // تطابق نشاطها (تجديد/تغيير FTTH) بلا أي صلاحية محاسبة يدوية.
+        var uid = SeedUser(UserRole.Employee, firstV2: null,
+            secondV2: "{\"subscriptions\":{\"add\":true,\"edit\":true}}");
+
+        // يُسمح بإنشاء/تعديل الاشتراك (مسار المزامنة الفعلي) — النظام الثاني.
+        Assert.Equal(0, await Authorize(uid, "Employee", "subscriptions", "add", PermissionSystem.Second));
+        Assert.Equal(0, await Authorize(uid, "Employee", "subscriptions", "edit", PermissionSystem.Second));
+        // ويُرفَض أي إنشاء/ترحيل محاسبي يدوي (لا تصعيد مالي خارج نطاق المزامنة).
+        Assert.Equal(403, await Authorize(uid, "Employee", "accounting", "add"));
+        Assert.Equal(403, await Authorize(uid, "Employee", "accounting", "edit"));
+        Assert.Equal(403, await Authorize(uid, "Employee", "subscriptions", "delete", PermissionSystem.Second));
     }
 
     [SkippableFact]
