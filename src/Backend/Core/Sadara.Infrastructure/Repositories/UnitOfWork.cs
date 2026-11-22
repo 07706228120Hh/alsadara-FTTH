@@ -568,6 +568,20 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    public async Task<bool?> LockSubscriptionLogForUpdateAsync(long logId, CancellationToken cancellationToken = default)
+    {
+        if (!_context.Database.IsRelational())
+            return null;
+        if (_context.Database.CurrentTransaction == null)
+            throw new InvalidOperationException("Subscription log can only be locked inside a transaction.");
+
+        // نقطة التسلسل الموحّدة لكل مسارات حذف/عكس السجل (حتى بلا قيد محاسبي).
+        var flags = await _context.Database
+            .SqlQuery<bool>($"SELECT \"IsDeleted\" AS \"Value\" FROM \"SubscriptionLogs\" WHERE \"Id\" = {logId} FOR UPDATE")
+            .ToListAsync(cancellationToken);
+        return flags.Count > 0 ? flags[0] : (bool?)null;
+    }
+
     private sealed class AccountBalanceRow
     {
         public Guid Id { get; set; }

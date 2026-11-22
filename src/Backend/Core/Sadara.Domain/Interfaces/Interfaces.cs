@@ -198,6 +198,14 @@ public interface IUnitOfWork : IDisposable
     /// Must be called inside a transaction.
     /// </summary>
     Task LockAndRefreshAccountBalancesAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Locks a subscription-log row (FOR UPDATE) until the current transaction ends and returns its
+    /// current IsDeleted flag (null if the row does not exist). A single serialization point for every
+    /// delete/reversal path of that log — including ones without a journal entry — so reversals of the
+    /// same log cannot run twice. Must be called inside a transaction; returns null on non-relational stores.
+    /// </summary>
+    Task<bool?> LockSubscriptionLogForUpdateAsync(long logId, CancellationToken ct = default);
 }
 
 public interface IPasswordHasher
