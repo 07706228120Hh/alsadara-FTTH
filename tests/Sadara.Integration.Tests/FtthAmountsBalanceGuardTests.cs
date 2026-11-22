@@ -202,4 +202,80 @@ public class FtthAmountsBalanceGuardTests : IDisposable
             .Count(j => j.CompanyId == CompanyA && j.Status == JournalEntryStatus.Posted && !j.IsDeleted
                      && (j.TotalDebit - j.TotalCredit > 0.001m || j.TotalCredit - j.TotalDebit > 0.001m)));
     }
+
+    // البند 5: عدم فقدان تغييرات مشروعة. FixBasePrices يحفظ تصحيح BasePrice للسجل (السطر 2925) **قبل**
+    // استدعاء UpdateJournalEntryAmounts؛ ثم يفشل الحارس (بلا 5110) ويُصفّر ChangeTracker. يجب أن يبقى
+    // تصحيح BasePrice المحفوظ سليماً (التصفير يطال فقط تعديلات المعاملة الفاشلة، لا ما حُفظ قبلها).
+    [SkippableFact]
+    public async Task GuardRollback_PreservesCommittedLogCorrection_NoEntryLeak()
+    {
+        _fx.SkipIfUnavailable();
+        // نفس بذرة بلا-5110 لكن بـ BasePrice خاطئ (99999) يحتاج تصحيحاً إلى 35000.
+        var s = SeedWithoutPromoAccount();
+        using (var pre = _fx.CreateContext(PostgresFixture.SystemTenant))
+        {
+            var lg = pre.Set<SubscriptionLog>().IgnoreQueryFilters().Single(l => l.Id == s.LogId);
+            lg.BasePrice = 99999m; pre.SaveChanges();
+        }
+
+        await using (var db = _fx.CreateContext(PostgresFixture.SystemTenant))
+            await Controller(db).FixBasePrices(new List<FixBasePriceItem> { new(s.LogId, 35000m) });
+
+        using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
+        // (أ) تصحيح BasePrice المشروع (المحفوظ قبل الفشل) بقي — لم يُفقَد بالتصفير.
+        var log = ctx.Set<SubscriptionLog>().IgnoreQueryFilters().Single(l => l.Id == s.LogId);
+        Assert.Equal(35000m, log.BasePrice);
+        // (ب) القيد ورصيد الحساب لم يتغيّرا (التعديل الفاشل لم يتسرّب).
+        var je = ctx.Set<JournalEntry>().IgnoreQueryFilters().Single(j => j.Id == s.JeId);
+        Assert.Equal(35000m, je.TotalDebit);
+        Assert.Equal(35000m, je.TotalCredit);
+        var collBal = ctx.Set<Account>().IgnoreQueryFilters().Single(a => a.Id == s.CollectionAccId).CurrentBalance;
+        Assert.Equal(35000m, collBal);
+    }
+
+    // البند 5: إعادة المحاولة بلا تكرار. تطبيق نفس التصحيح مرّتين يجب أن يُبقي سطر 5110 واحداً فقط
+    // ورصيد المصروف = الخصم مرّة واحدة (لا مضاعفة)، والقيد متوازناً.
+    [SkippableFact]
+    public async Task RepeatedEdit_IsIdempotent_NoDuplicatePromoLine_NoDoubleBalance()
+    {
+        _fx.SkipIfUnavailable();
+        var s = Seed();
+
+        for (int i = 0; i < 2; i++)
+            await using (var db = _fx.CreateContext(PostgresFixture.SystemTenant))
+                await Controller(db).FixBasePrices(new List<FixBasePriceItem> { new(s.LogId, 35000m) });
+
+        var st = State(s);
+        Assert.Equal(st.td, st.tc);        // متوازن
+        Assert.Equal(1, st.promoLines);    // سطر 5110 واحد فقط — لا تكرار بعد الإعادة
+        using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
+        var promoBal = ctx.Set<Account>().IgnoreQueryFilters().Single(a => a.Id == s.PromoAccId).CurrentBalance;
+        Assert.Equal(35000m, promoBal);    // رصيد المصروف = الخصم مرّة واحدة (ليس 70000)
+    }
+
+    // البند 5: التزامن. تعديلان متوازيان لنفس القيد يتسلسلان عبر قفل الصفوف (FOR NO KEY UPDATE)؛
+    // الناتج النهائي متوازن، سطر 5110 واحد، ورصيد المصروف غير مضاعَف.
+    [SkippableFact]
+    public async Task ConcurrentEdits_SerializeViaRowLock_FinalBalanced_NoDoubleBooking()
+    {
+        _fx.SkipIfUnavailable();
+        var s = Seed();
+
+        async Task RunOnce()
+        {
+            await using var db = _fx.CreateContext(PostgresFixture.SystemTenant);
+            await Controller(db).FixBasePrices(new List<FixBasePriceItem> { new(s.LogId, 35000m) });
+        }
+        await Task.WhenAll(Task.Run(RunOnce), Task.Run(RunOnce));
+
+        var st = State(s);
+        Assert.Equal(st.td, st.tc);        // متوازن مهما كان ترتيب التنفيذ
+        Assert.Equal(1, st.promoLines);    // لا سطر 5110 مزدوج
+        using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
+        var promoBal = ctx.Set<Account>().IgnoreQueryFilters().Single(a => a.Id == s.PromoAccId).CurrentBalance;
+        Assert.Equal(35000m, promoBal);    // رصيد المصروف غير مضاعَف
+        Assert.Equal(0, ctx.Set<JournalEntry>().IgnoreQueryFilters()
+            .Count(j => j.CompanyId == CompanyA && j.Status == JournalEntryStatus.Posted && !j.IsDeleted
+                     && (j.TotalDebit - j.TotalCredit > 0.001m || j.TotalCredit - j.TotalDebit > 0.001m)));
+    }
 }
