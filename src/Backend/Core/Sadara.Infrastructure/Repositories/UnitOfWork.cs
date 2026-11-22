@@ -529,6 +529,13 @@ public class UnitOfWork : IUnitOfWork
         await _context.Database.RollbackTransactionAsync(cancellationToken);
     }
 
+    public void DiscardTrackedChanges()
+    {
+        // A DB rollback undoes the transaction but the change tracker still holds the pending
+        // Modified/Added entities; detach them so a later SaveChanges on this context cannot flush them.
+        _context.ChangeTracker.Clear();
+    }
+
     public bool HasActiveTransaction => _context.Database.CurrentTransaction != null;
 
     public bool SupportsRowLocks => _context.Database.IsRelational();

@@ -186,6 +186,13 @@ public interface IUnitOfWork : IDisposable
     Task CommitTransactionAsync(CancellationToken ct = default);
     Task RollbackTransactionAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// Detaches every tracked entity so no in-memory change survives. A database rollback undoes the
+    /// transaction but leaves the change tracker dirty; without this, those orphaned changes would be
+    /// flushed by a later SaveChanges on the same context. Call after rolling back work we own.
+    /// </summary>
+    void DiscardTrackedChanges();
+
     /// <summary>True while a database transaction started on this unit of work is open.</summary>
     bool HasActiveTransaction { get; }
 

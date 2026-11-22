@@ -131,4 +131,75 @@ public class FtthAmountsBalanceGuardTests : IDisposable
             .Count(j => j.CompanyId == CompanyA && j.Status == JournalEntryStatus.Posted && !j.IsDeleted
                      && (j.TotalDebit - j.TotalCredit > 0.001m || j.TotalCredit - j.TotalDebit > 0.001m)));
     }
+
+    // نفس الشكل لكن بلا حساب «5110» في الشركة: الحارس يُطلَق (لا يمكن إضافة السطر المقابل) فيتراجع.
+    // قبل إصلاح P1 كان التراجع يُبطل معاملة القاعدة فقط، وتبقى تعديلات الأرصدة + تصفير سطر التحصيل
+    // متعقَّبة في ChangeTracker فيفلشها SaveChanges النهائي في FixBasePrices خارج المعاملة ⇒ تسرّب
+    // (رصيد محرَّف + قيد غير متوازن محفوظ). بعد الإصلاح (DiscardTrackedChanges): لا أثر إطلاقاً.
+    private Seeded SeedWithoutPromoAccount()
+    {
+        using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
+        ctx.Set<Company>().Add(new Company { Id = CompanyA, Name = "ش-FTTH", Code = "C-FT" });
+        var uid = Guid.NewGuid();
+        ctx.Set<User>().Add(new User { Id = uid, Username = $"u-{uid:N}"[..12], FullName = "مشغل", PhoneNumber = "0781" + uid.ToString("N")[..7], CompanyId = CompanyA, Role = UserRole.Employee });
+
+        var cash = new Account { Id = Guid.NewGuid(), Code = AccountCodes.Cash, Name = "النقد", AccountType = AccountType.Assets, Level = 3, IsLeaf = false, IsActive = true, CompanyId = CompanyA };
+        var collection = new Account { Id = Guid.NewGuid(), Code = "111099", Name = "صندوق المشغل", AccountType = AccountType.Assets, ParentAccountId = cash.Id, Level = 4, IsLeaf = true, IsActive = true, CurrentBalance = 35000, CompanyId = CompanyA };
+        var page = new Account { Id = Guid.NewGuid(), Code = AccountCodes.PageBalance, Name = "رصيد الصفحة", AccountType = AccountType.Assets, ParentAccountId = cash.Id, Level = 4, IsLeaf = true, IsActive = true, CurrentBalance = 0, CompanyId = CompanyA };
+        // لا حساب 5110 إطلاقاً.
+        ctx.Set<Account>().AddRange(cash, collection, page);
+
+        var jeId = Guid.NewGuid();
+        ctx.Set<JournalEntry>().Add(new JournalEntry
+        {
+            Id = jeId, EntryNumber = "JE-FT-NP", EntryDate = DateTime.UtcNow, Description = "تجديد BASIC",
+            TotalDebit = 35000, TotalCredit = 35000, Status = JournalEntryStatus.Posted, CompanyId = CompanyA, CreatedById = uid,
+            ReferenceType = JournalReferenceType.FtthSubscription,
+            Lines = new List<JournalEntryLine>
+            {
+                new() { AccountId = collection.Id, DebitAmount = 35000, CreditAmount = 0, CompanyId = CompanyA, Description = "صندوق المشغل - تجديد BASIC" },
+                new() { AccountId = page.Id, DebitAmount = 0, CreditAmount = 35000, CompanyId = CompanyA, Description = "خصم من رصيد الصفحة - تجديد BASIC" },
+            }
+        });
+
+        var log = new SubscriptionLog
+        {
+            CompanyId = CompanyA, UserId = uid, CustomerName = "عميل", SubscriptionId = "sub-ft-np", PaymentStatus = "paid",
+            PlanName = "BASIC", PlanPrice = 35000, BasePrice = 35000, ManualDiscount = 35000, CompanyDiscount = 0, MaintenanceFee = 0,
+            CollectionType = "cash", OperationType = "renew", JournalEntryId = jeId
+        };
+        ctx.Set<SubscriptionLog>().Add(log);
+        ctx.SaveChanges();
+        return new Seeded(log.Id, jeId, collection.Id, Guid.Empty);
+    }
+
+    [SkippableFact]
+    public async Task FullDiscountEdit_WhenNoPromoAccount_GuardRollsBack_NoBalanceLeak()
+    {
+        _fx.SkipIfUnavailable();
+        var s = SeedWithoutPromoAccount();
+
+        await using (var db = _fx.CreateContext(PostgresFixture.SystemTenant))
+        {
+            // يُطلَق الحارس (لا 5110 ليستوعب الخصم) ⇒ يجب أن يتراجع بلا أي أثر.
+            var result = await Controller(db).FixBasePrices(new List<FixBasePriceItem> { new(s.LogId, 35000m) });
+            Assert.IsType<Microsoft.AspNetCore.Mvc.OkObjectResult>(result);
+        }
+
+        using var ctx = _fx.CreateContext(PostgresFixture.SystemTenant);
+        // القيد ورصيد الحساب وسطر التحصيل كما بُذِرت تماماً — لا تسرّب من التعديل الفاشل.
+        var je = ctx.Set<JournalEntry>().IgnoreQueryFilters().Single(j => j.Id == s.JeId);
+        Assert.Equal(35000m, je.TotalDebit);
+        Assert.Equal(35000m, je.TotalCredit);     // ما زال متوازناً (قبل الإصلاح: 0 ≠ 35000)
+        var collDr = ctx.Set<JournalEntryLine>().IgnoreQueryFilters()
+            .Where(l => l.JournalEntryId == s.JeId && l.AccountId == s.CollectionAccId && !l.IsDeleted)
+            .Select(l => l.DebitAmount).Single();
+        Assert.Equal(35000m, collDr);             // سطر التحصيل لم يُصفَّر (قبل الإصلاح: 0)
+        var collBal = ctx.Set<Account>().IgnoreQueryFilters().Single(a => a.Id == s.CollectionAccId).CurrentBalance;
+        Assert.Equal(35000m, collBal);            // رصيد الحساب لم يُحرَّف (قبل الإصلاح: 0)
+        // ولا قيد غير متوازن في الشركة.
+        Assert.Equal(0, ctx.Set<JournalEntry>().IgnoreQueryFilters()
+            .Count(j => j.CompanyId == CompanyA && j.Status == JournalEntryStatus.Posted && !j.IsDeleted
+                     && (j.TotalDebit - j.TotalCredit > 0.001m || j.TotalCredit - j.TotalDebit > 0.001m)));
+    }
 }

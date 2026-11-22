@@ -3430,6 +3430,7 @@ public class FtthAccountingController : ControllerBase
                     {
                         _logger.LogError("⛔ حساب مفقود {AccountId} في قيد {EntryId} — تم إيقاف تحديث المبالغ", line.AccountId, entry.Id);
                         if (ownsTx && _unitOfWork.HasActiveTransaction) await _unitOfWork.RollbackTransactionAsync();
+                        if (!_unitOfWork.HasActiveTransaction) _unitOfWork.DiscardTrackedChanges();
                         return false;
                     }
 
@@ -3480,6 +3481,10 @@ public class FtthAccountingController : ControllerBase
                     _logger.LogError("⛔ تعديل مبالغ القيد {EntryId} ينتج قيداً غير متوازن (مدين={D} دائن={C}) — أُلغي التعديل بالكامل",
                         entry.Id, entry.TotalDebit, entry.TotalCredit);
                     if (ownsTx && _unitOfWork.HasActiveTransaction) await _unitOfWork.RollbackTransactionAsync();
+                    // ضروري: التراجع يُبطل معاملة القاعدة لكن ChangeTracker يبقى يحمل تعديلات الأرصدة وسطر 5110
+                    // المُضاف؛ بلا تصفير يفلشها SaveChanges لاحق في المُستدعي (FixBasePrices/إعادة الحساب) خارج
+                    // المعاملة ⇒ تسرّب أرصدة يُبطل الحارس. التصفير آمن ما لم نكن داخل معاملة خارجية (غير مُستخدَم).
+                    if (!_unitOfWork.HasActiveTransaction) _unitOfWork.DiscardTrackedChanges();
                     return false;
                 }
 
@@ -3497,6 +3502,8 @@ public class FtthAccountingController : ControllerBase
         catch
         {
             if (ownsTx && _unitOfWork.HasActiveTransaction) await _unitOfWork.RollbackTransactionAsync();
+            // نظّف أي تعديلات يتيمة قبل إعادة الرمي حتى لا يفلشها SaveChanges لاحق في المُستدعي الذي يبتلع الاستثناء.
+            if (!_unitOfWork.HasActiveTransaction) _unitOfWork.DiscardTrackedChanges();
             throw;
         }
     }
