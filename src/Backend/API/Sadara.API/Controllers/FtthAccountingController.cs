@@ -3375,78 +3375,130 @@ public class FtthAccountingController : ControllerBase
             .Where(a => a.CompanyId == companyId && new[] { "11102", "4110", "4120", "5110" }.Contains(a.Code))
             .ToDictionaryAsync(a => a.Code, a => a.Id);
 
-        bool changed = false;
-
-        foreach (var line in lines)
+        // كل التعديل ضمن معاملة واحدة + قفل صفوف الحسابات (ترتيب ثابت) ⇒ ذرّية ومنع lost-update.
+        var lockRows = _unitOfWork.SupportsRowLocks;
+        var ownsTx = lockRows && !_unitOfWork.HasActiveTransaction;
+        if (ownsTx) await _unitOfWork.BeginTransactionAsync();
+        try
         {
-            var acctCode = await _unitOfWork.Accounts.AsQueryable()
-                .Where(a => a.Id == line.AccountId)
-                .Select(a => a.Code)
-                .FirstOrDefaultAsync();
-
-            decimal newDebit = line.DebitAmount, newCredit = line.CreditAmount;
-
-            if (AccountCodes.IsPageBalanceCode(acctCode)) // رصيد الصفحة (عام أو شريك) — دائن = المستقطع
+            if (lockRows)
             {
-                newDebit = 0; newCredit = pageDeduction;
-            }
-            else if (acctCode == "4110") // إيراد صيانة — دائن = أجور الصيانة
-            {
-                newDebit = 0; newCredit = maintenanceFee;
-            }
-            else if (acctCode == "4120") // إيراد خصم الشركة — دائن = خصم الشركة (إذا غير مفعّل)
-            {
-                newDebit = 0; newCredit = companyDiscountProfit;
-            }
-            else if (acctCode == "5110") // مصاريف عروض — مدين = الخصم اليدوي
-            {
-                newDebit = manualDiscount; newCredit = 0;
-            }
-            else if (line.DebitAmount > 0) // حساب التحصيل — مدين = الإجمالي
-            {
-                newDebit = totalCollected; newCredit = 0;
+                var affected = lines.Select(l => l.AccountId).ToList();
+                if (manualDiscount > 0 && accounts.TryGetValue(AccountCodes.PromotionExpense, out var preId)) affected.Add(preId);
+                await _unitOfWork.LockAndRefreshAccountBalancesAsync(affected.Distinct().ToList());
             }
 
-            if (line.DebitAmount != newDebit || line.CreditAmount != newCredit)
+            bool changed = false;
+            bool hasPromoLine = false;
+
+            foreach (var line in lines)
             {
-                // عكس الرصيد القديم وتطبيق الجديد
-                var acct = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
-                if (acct == null)
+                var acctCode = await _unitOfWork.Accounts.AsQueryable()
+                    .Where(a => a.Id == line.AccountId)
+                    .Select(a => a.Code)
+                    .FirstOrDefaultAsync();
+
+                if (acctCode == AccountCodes.PromotionExpense) hasPromoLine = true;
+
+                decimal newDebit = line.DebitAmount, newCredit = line.CreditAmount;
+
+                if (AccountCodes.IsPageBalanceCode(acctCode)) // رصيد الصفحة (عام أو شريك) — دائن = المستقطع
                 {
-                    // حساب مفقود — إيقاف التحديث لمنع خلل تراكمي
-                    _logger.LogError("⛔ حساب مفقود {AccountId} في قيد {EntryId} — تم إيقاف تحديث المبالغ", line.AccountId, entry.Id);
+                    newDebit = 0; newCredit = pageDeduction;
+                }
+                else if (acctCode == "4110") // إيراد صيانة — دائن = أجور الصيانة
+                {
+                    newDebit = 0; newCredit = maintenanceFee;
+                }
+                else if (acctCode == "4120") // إيراد خصم الشركة — دائن = خصم الشركة (إذا غير مفعّل)
+                {
+                    newDebit = 0; newCredit = companyDiscountProfit;
+                }
+                else if (acctCode == AccountCodes.PromotionExpense) // مصاريف عروض — مدين = الخصم اليدوي
+                {
+                    newDebit = manualDiscount; newCredit = 0;
+                }
+                else if (line.DebitAmount > 0) // حساب التحصيل — مدين = الإجمالي
+                {
+                    newDebit = totalCollected; newCredit = 0;
+                }
+
+                if (line.DebitAmount != newDebit || line.CreditAmount != newCredit)
+                {
+                    var acct = await _unitOfWork.Accounts.GetByIdAsync(line.AccountId);
+                    if (acct == null)
+                    {
+                        _logger.LogError("⛔ حساب مفقود {AccountId} في قيد {EntryId} — تم إيقاف تحديث المبالغ", line.AccountId, entry.Id);
+                        if (ownsTx && _unitOfWork.HasActiveTransaction) await _unitOfWork.RollbackTransactionAsync();
+                        return false;
+                    }
+
+                    acct.CurrentBalance -= ServiceRequestAccountingHelper.PostingDelta(acct.AccountType, line.DebitAmount, line.CreditAmount);
+                    acct.CurrentBalance += ServiceRequestAccountingHelper.PostingDelta(acct.AccountType, newDebit, newCredit);
+                    _unitOfWork.Accounts.Update(acct);
+
+                    line.DebitAmount = newDebit;
+                    line.CreditAmount = newCredit;
+                    _unitOfWork.JournalEntryLines.Update(line);
+                    changed = true;
+                }
+            }
+
+            // ═══ الإصلاح الجذري ═══ السبب الأصلي للقيود غير المتوازنة: عند تطبيق خصم يدوي كامل
+            // على قيد أُنشئ بلا سطر «مصاريف عروض 5110»، كان طرف التحصيل يُصفَّر دون سطر مقابل
+            // يستوعب الخصم ⇒ قيد غير متوازن. نضيف سطر 5110 المفقود (مدين = الخصم اليدوي).
+            if (manualDiscount > 0 && !hasPromoLine && accounts.TryGetValue(AccountCodes.PromotionExpense, out var promoAcctId))
+            {
+                var promoLine = new JournalEntryLine
+                {
+                    JournalEntryId = entry.Id,
+                    AccountId = promoAcctId,
+                    DebitAmount = manualDiscount,
+                    CreditAmount = 0,
+                    CompanyId = entry.CompanyId,
+                    Description = $"خصم اختياري - {log.CustomerName}"
+                };
+                await _unitOfWork.JournalEntryLines.AddAsync(promoLine);
+                var promoAcct = await _unitOfWork.Accounts.GetByIdAsync(promoAcctId);
+                if (promoAcct != null)
+                {
+                    promoAcct.CurrentBalance += ServiceRequestAccountingHelper.PostingDelta(promoAcct.AccountType, manualDiscount, 0);
+                    _unitOfWork.Accounts.Update(promoAcct);
+                }
+                lines.Add(promoLine); // ليشمله مجموع رأس القيد
+                changed = true;
+            }
+
+            if (changed)
+            {
+                entry.TotalDebit = lines.Sum(l => l.DebitAmount);
+                entry.TotalCredit = lines.Sum(l => l.CreditAmount);
+
+                // ═══ حارس التوازن ═══ لا يُرحَّل قيد غير متوازن إطلاقاً: تفشل العملية وتتراجع بالكامل.
+                if (Math.Abs(entry.TotalDebit - entry.TotalCredit) > 0.001m)
+                {
+                    _logger.LogError("⛔ تعديل مبالغ القيد {EntryId} ينتج قيداً غير متوازن (مدين={D} دائن={C}) — أُلغي التعديل بالكامل",
+                        entry.Id, entry.TotalDebit, entry.TotalCredit);
+                    if (ownsTx && _unitOfWork.HasActiveTransaction) await _unitOfWork.RollbackTransactionAsync();
                     return false;
                 }
 
-                if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
-                    acct.CurrentBalance -= (line.DebitAmount - line.CreditAmount);
-                else
-                    acct.CurrentBalance -= (line.CreditAmount - line.DebitAmount);
-
-                // تطبيق الرصيد الجديد
-                if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
-                    acct.CurrentBalance += (newDebit - newCredit);
-                else
-                    acct.CurrentBalance += (newCredit - newDebit);
-
-                _unitOfWork.Accounts.Update(acct);
-
-                line.DebitAmount = newDebit;
-                line.CreditAmount = newCredit;
-                _unitOfWork.JournalEntryLines.Update(line);
-                changed = true;
+                _unitOfWork.JournalEntries.Update(entry);
+                if (ownsTx) await _unitOfWork.CommitTransactionAsync();
+                else await _unitOfWork.SaveChangesAsync();
             }
-        }
+            else if (ownsTx && _unitOfWork.HasActiveTransaction)
+            {
+                await _unitOfWork.RollbackTransactionAsync(); // لا تغيير — إغلاق المعاملة
+            }
 
-        if (changed)
+            return changed;
+        }
+        catch
         {
-            entry.TotalDebit = lines.Sum(l => l.DebitAmount);
-            entry.TotalCredit = lines.Sum(l => l.CreditAmount);
-            _unitOfWork.JournalEntries.Update(entry);
-            await _unitOfWork.SaveChangesAsync();
+            if (ownsTx && _unitOfWork.HasActiveTransaction) await _unitOfWork.RollbackTransactionAsync();
+            throw;
         }
-
-        return changed;
     }
 
     // ==================== 9.5 دمج العمليات المكررة ====================
