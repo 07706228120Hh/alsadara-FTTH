@@ -3351,12 +3351,6 @@ public class FtthAccountingController : ControllerBase
         var entry = await _unitOfWork.JournalEntries.GetByIdAsync(log.JournalEntryId.Value);
         if (entry == null || entry.Status == JournalEntryStatus.Voided) return false;
 
-        var lines = await _unitOfWork.JournalEntryLines.AsQueryable()
-            .IgnoreQueryFilters()
-            .Where(jl => jl.JournalEntryId == entry.Id && !jl.IsDeleted)
-            .ToListAsync();
-        if (!lines.Any()) return false;
-
         // حساب المبالغ الصحيحة من العملية
         var basePrice = log.BasePrice ?? log.PlanPrice ?? 0;
         var companyDiscount = log.CompanyDiscount ?? 0;
@@ -3375,12 +3369,27 @@ public class FtthAccountingController : ControllerBase
             .Where(a => a.CompanyId == companyId && new[] { "11102", "4110", "4120", "5110" }.Contains(a.Code))
             .ToDictionaryAsync(a => a.Code, a => a.Id);
 
-        // كل التعديل ضمن معاملة واحدة + قفل صفوف الحسابات (ترتيب ثابت) ⇒ ذرّية ومنع lost-update.
+        // كل التعديل ضمن معاملة واحدة + قفل صف القيد ثم قفل صفوف الحسابات (ترتيب ثابت) ⇒ ذرّية ومنع lost-update.
         var lockRows = _unitOfWork.SupportsRowLocks;
         var ownsTx = lockRows && !_unitOfWork.HasActiveTransaction;
         if (ownsTx) await _unitOfWork.BeginTransactionAsync();
         try
         {
+            // اقفل صف القيد أولاً: معاملة متزامنة تعدّل نفس القيد تنتظر هنا حتى تُنهي الأولى وتُودِع سطر 5110،
+            // فتقرأ هذه السطورَ بعدها طازجةً وترى السطر المُودَع ⇒ لا تضيف سطراً مكرراً ولا تُحرّف الرصيد.
+            if (lockRows) await _unitOfWork.LockJournalEntryForUpdateAsync(entry.Id);
+
+            var lines = await _unitOfWork.JournalEntryLines.AsQueryable()
+                .IgnoreQueryFilters()
+                .Where(jl => jl.JournalEntryId == entry.Id && !jl.IsDeleted)
+                .ToListAsync();
+            if (!lines.Any())
+            {
+                if (ownsTx && _unitOfWork.HasActiveTransaction) await _unitOfWork.RollbackTransactionAsync();
+                if (!_unitOfWork.HasActiveTransaction) _unitOfWork.DiscardTrackedChanges();
+                return false;
+            }
+
             if (lockRows)
             {
                 var affected = lines.Select(l => l.AccountId).ToList();
@@ -3495,6 +3504,9 @@ public class FtthAccountingController : ControllerBase
             else if (ownsTx && _unitOfWork.HasActiveTransaction)
             {
                 await _unitOfWork.RollbackTransactionAsync(); // لا تغيير — إغلاق المعاملة
+                // تحصين تناظري: لا شيء متعقَّب عندما changed==false اليوم، لكن نُصفّر ليبقى المسار آمناً
+                // لو أُضيف لاحقاً تعديلٌ قبل الحلقة دون رفع changed.
+                if (!_unitOfWork.HasActiveTransaction) _unitOfWork.DiscardTrackedChanges();
             }
 
             return changed;
