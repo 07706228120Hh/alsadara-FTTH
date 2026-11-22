@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sadara.API.Controllers;
@@ -120,6 +121,9 @@ public static class SummaryTestHarness
     {
         using var ctx = fx.CreateContext(PostgresFixture.SystemTenant);
         var n = 0;
+        // الطوابع المقصودة لكل صفّ — تُعاد بعد الحفظ لأن SaveChanges في SadaraDbContext يختم
+        // CreatedAt=UtcNow على كل كيان جديد (تدقيق إنتاجي مقصود)، فيطمس CreatedAt التاريخي المزروع.
+        var intendedCreatedAt = new List<(Guid Id, DateTime CreatedAt)>();
         foreach (var s in specs)
         {
             string? details = s.RawDetails;
@@ -136,15 +140,18 @@ public static class SummaryTestHarness
             var department = NormalizeDetailValue(s.Details, "department");
             var technicianName = NormalizeDetailValue(s.Details, "technician");
 
+            var id = Guid.NewGuid();
+            var createdAt = DateTime.SpecifyKind(s.CreatedAt, DateTimeKind.Utc);
+            intendedCreatedAt.Add((id, createdAt));
             ctx.Set<ServiceRequest>().Add(new ServiceRequest
             {
-                Id = Guid.NewGuid(),
+                Id = id,
                 RequestNumber = $"SR-TEST-{Guid.NewGuid():N}".Substring(0, 20) + (n++),
                 ServiceId = serviceId,
                 OperationTypeId = operationTypeId,
                 CompanyId = s.CompanyId,
                 Status = s.Status,
-                CreatedAt = DateTime.SpecifyKind(s.CreatedAt, DateTimeKind.Utc),
+                CreatedAt = createdAt,
                 AgentId = s.AgentId,
                 FinalCost = s.FinalCost,
                 IsDeleted = s.IsDeleted,
@@ -155,6 +162,12 @@ public static class SummaryTestHarness
             });
         }
         ctx.SaveChanges();
+
+        // استعادة CreatedAt التاريخي عبر SQL خام (يتجاوز ختم التدقيق في SaveChanges) ليتمكّن
+        // اختبار فلتر التاريخ من زرع تواريخ ماضية. لا يمسّ الإنتاج — كود اختبار فقط.
+        foreach (var (id, createdAt) in intendedCreatedAt)
+            ctx.Database.ExecuteSqlInterpolated(
+                $"UPDATE \"ServiceRequests\" SET \"CreatedAt\" = {createdAt} WHERE \"Id\" = {id}");
     }
 
     /// <summary>
