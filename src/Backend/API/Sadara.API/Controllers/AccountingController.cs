@@ -4928,9 +4928,21 @@ public class AccountingController : ControllerBase
     {
         try
         {
+            // عزل صريح مستقل عن علَم العزل المركزي: غير SuperAdmin مُقيَّد بشركة التوكن
+            // ولا يُوثَق بـ companyId من العميل؛ SuperAdmin وحده يفحص شركة محدّدة أو الكل.
+            Guid? scope;
+            if (_tenant.IsSuperAdmin)
+                scope = companyId;
+            else
+            {
+                if (_tenant.CompanyId == null)
+                    return StatusCode(403, new { success = false, message = "لا تملك صلاحية عرض ميزان المراجعة" });
+                scope = _tenant.CompanyId.Value;
+            }
+
             var query = _unitOfWork.Accounts.AsQueryable().Where(a => a.IsLeaf && a.IsActive);
-            if (companyId.HasValue)
-                query = query.Where(a => a.CompanyId == companyId);
+            if (scope.HasValue)
+                query = query.Where(a => a.CompanyId == scope.Value);
 
             var accounts = await query.OrderBy(a => a.Code).Select(a => new
             {
@@ -4958,6 +4970,116 @@ public class AccountingController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في ميزان المراجعة");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// فحص سلامة النظام المحاسبي (قراءة فقط — لا يعدّل أي بيان):
+    /// (1) توازن الأستاذ (Σمدين=Σدائن على القيود المرحّلة)،
+    /// (2) انزياح الأرصدة المعروضة (CurrentBalance) عن المحسوب من السطور،
+    /// (3) القيود المرحّلة غير المتوازنة بذاتها (TotalDebit≠TotalCredit).
+    /// مقيّد بشركة التوكن (SuperAdmin فقط يمرّر companyId صراحةً أو يفحص الكل).
+    /// </summary>
+    [HttpGet("integrity-check")]
+    [Authorize(Policy = "CompanyAdminOrAbove")]
+    public async Task<IActionResult> IntegrityCheck([FromQuery] Guid? companyId = null)
+    {
+        try
+        {
+            Guid? scope;
+            if (_tenant.IsSuperAdmin)
+                scope = companyId;
+            else
+            {
+                if (_tenant.CompanyId == null)
+                    return StatusCode(403, new { success = false, message = "لا تملك صلاحية فحص السلامة المحاسبية" });
+                scope = _tenant.CompanyId.Value;
+            }
+
+            // مجاميع السطور لكل حساب (مرحّلة نشطة فقط) ضمن النطاق
+            var lineSumsQuery = _unitOfWork.JournalEntryLines.AsQueryable()
+                .Where(l => !l.IsDeleted
+                    && l.JournalEntry != null
+                    && l.JournalEntry.Status == JournalEntryStatus.Posted
+                    && !l.JournalEntry.IsDeleted);
+            if (scope != null)
+                lineSumsQuery = lineSumsQuery.Where(l => l.JournalEntry!.CompanyId == scope.Value);
+
+            var lineSums = await lineSumsQuery
+                .GroupBy(l => l.AccountId)
+                .Select(g => new { AccountId = g.Key, Debit = g.Sum(x => x.DebitAmount), Credit = g.Sum(x => x.CreditAmount) })
+                .ToListAsync();
+            var sumByAccount = lineSums.ToDictionary(x => x.AccountId, x => (x.Debit, x.Credit));
+
+            // توازن الأستاذ الكلّي
+            var tbDebit = lineSums.Sum(x => x.Debit);
+            var tbCredit = lineSums.Sum(x => x.Credit);
+            var tbDiff = tbDebit - tbCredit;
+
+            // انزياح أرصدة الحسابات النهائية النشطة
+            var accountsQuery = _unitOfWork.Accounts.AsQueryable().Where(a => a.IsLeaf && a.IsActive);
+            if (scope != null)
+                accountsQuery = accountsQuery.Where(a => a.CompanyId == scope.Value);
+            var accounts = await accountsQuery
+                .Select(a => new { a.Id, a.Code, a.Name, a.AccountType, a.CurrentBalance })
+                .ToListAsync();
+
+            var drift = new List<(string Code, string Name, string Type, decimal Current, decimal Ledger, decimal Correction)>();
+            decimal totalAbsDrift = 0, netCorrection = 0;
+            foreach (var a in accounts)
+            {
+                sumByAccount.TryGetValue(a.Id, out var s);
+                var recomputed = (a.AccountType == AccountType.Assets || a.AccountType == AccountType.Expenses)
+                    ? s.Item1 - s.Item2
+                    : s.Item2 - s.Item1;
+                var d = recomputed - a.CurrentBalance; // التصحيح اللازم (الأستاذ − المعروض)
+                if (Math.Abs(d) > 0.001m)
+                {
+                    totalAbsDrift += Math.Abs(d);
+                    netCorrection += d;
+                    drift.Add((a.Code, a.Name, a.AccountType.ToString(), a.CurrentBalance, recomputed, d));
+                }
+            }
+
+            // القيود المرحّلة غير المتوازنة بذاتها
+            var unbalancedQuery = _unitOfWork.JournalEntries.AsQueryable()
+                .Where(j => !j.IsDeleted && j.Status == JournalEntryStatus.Posted
+                    && (j.TotalDebit - j.TotalCredit > 0.001m || j.TotalCredit - j.TotalDebit > 0.001m));
+            if (scope != null)
+                unbalancedQuery = unbalancedQuery.Where(j => j.CompanyId == scope.Value);
+            var unbalanced = await unbalancedQuery
+                .OrderBy(j => j.EntryDate)
+                .Select(j => new { j.EntryNumber, j.EntryDate, j.ReferenceType, j.ReferenceId, j.TotalDebit, j.TotalCredit, Gap = j.TotalDebit - j.TotalCredit })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                success = true,
+                data = new
+                {
+                    scope = new { companyId = scope, allCompanies = scope == null },
+                    trialBalance = new { totalDebit = tbDebit, totalCredit = tbCredit, difference = tbDiff, balanced = Math.Abs(tbDiff) <= 0.001m },
+                    accountDrift = new
+                    {
+                        driftingAccounts = drift.Count,
+                        totalAbsDrift,
+                        netCorrection,
+                        top = drift.OrderByDescending(x => Math.Abs(x.Correction)).Take(25)
+                            .Select(x => new { x.Code, x.Name, AccountType = x.Type, Current = x.Current, Ledger = x.Ledger, Correction = x.Correction })
+                    },
+                    unbalancedEntries = new
+                    {
+                        count = unbalanced.Count,
+                        netGap = unbalanced.Sum(x => x.Gap),
+                        items = unbalanced.Take(100)
+                    }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في فحص السلامة المحاسبية");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
@@ -5054,8 +5176,9 @@ public class AccountingController : ControllerBase
         }
         catch (Exception ex)
         {
+            // لا نكشف تفاصيل الاستثناء للعميل — تُسجَّل داخلياً فقط.
             _logger.LogError(ex, "خطأ في إعادة حساب الأرصدة");
-            return StatusCode(500, new { success = false, message = "خطأ داخلي: " + ex.Message });
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
 
