@@ -576,7 +576,8 @@ ORDER BY ""TotalCollected"" DESC;";
             .Select(u => u.FirstSystemPermissionsV2)
             .FirstOrDefaultAsync();
 
-        return RequirePermissionAttribute.HasPermission(perms, "accounting.collections", "view");
+        // fail-closed: فراغ V2 ⇒ لا يرى التحصيلات (اتساقاً مع الإصلاح الجذري secure-by-default).
+        return RequirePermissionAttribute.HasPermission(perms, "accounting.collections", "view", failClosed: true);
     }
 
     /// <summary>
@@ -585,7 +586,7 @@ ORDER BY ""TotalCollected"" DESC;";
     /// فيلزم قبول من يملك tasks/add أو tasks/edit — وهو ما لا يوفّره RequirePermissionAttribute الواحد.
     ///  - SuperAdmin/CompanyAdmin => مسموح دائماً (نفس آلية الأدوار في بقية الـController).
     ///  - غيرهما => فحص FirstSystemPermissionsV2 على tasks/add أو tasks/edit عبر RequirePermissionAttribute.HasPermission.
-    /// ملاحظة: HasPermission سلوكه fail-open عند صلاحيات V2 فارغة (سلوك النظام القائم — لا يُغيَّر هنا).
+    /// fail-closed: فراغ V2 ⇒ لا يُمنَح (اتساقاً مع الإصلاح الجذري secure-by-default).
     /// </summary>
     private async Task<bool> CanAddOrEditTasksAsync()
     {
@@ -611,8 +612,8 @@ ORDER BY ""TotalCollected"" DESC;";
             .Select(u => u.FirstSystemPermissionsV2)
             .FirstOrDefaultAsync();
 
-        return RequirePermissionAttribute.HasPermission(perms, "tasks", "add")
-            || RequirePermissionAttribute.HasPermission(perms, "tasks", "edit");
+        return RequirePermissionAttribute.HasPermission(perms, "tasks", "add", failClosed: true)
+            || RequirePermissionAttribute.HasPermission(perms, "tasks", "edit", failClosed: true);
     }
 
     /// <summary>

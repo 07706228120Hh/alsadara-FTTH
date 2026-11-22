@@ -467,7 +467,7 @@ public class TasksSourceAccountRegionTests
         ResetAll();
         SeedCompanies(_fx);
         SeedServiceAndOperation(_fx);
-        var ownerA = SeedUser(_fx, CompanyA, UserRole.Employee, null);
+        var ownerA = SeedUser(_fx, CompanyA, UserRole.Employee, "{\"tasks\":{\"add\":true}}"); // يحتاج صلاحية مهام (fail-closed)
 
         const string ftthSecret = "FTTH_ENC_SECRET_ZZZ_1";
         const string sasSecret = "SAS_ENC_SECRET_ZZZ_2";
@@ -503,7 +503,7 @@ public class TasksSourceAccountRegionTests
         ResetAll();
         SeedCompanies(_fx);
         SeedServiceAndOperation(_fx);
-        var ownerA = SeedUser(_fx, CompanyA, UserRole.Employee, null);
+        var ownerA = SeedUser(_fx, CompanyA, UserRole.Employee, "{\"tasks\":{\"add\":true}}"); // يحتاج صلاحية مهام (fail-closed)
         var ownerB = SeedUser(_fx, CompanyB, UserRole.Employee, null);
 
         // الشركة أ

@@ -549,6 +549,7 @@ public class AccountingController : ControllerBase
     /// إنشاء قيد محاسبي يدوي
     /// </summary>
     [HttpPost("journal-entries")]
+    [RequirePermission("accounting", "add")]
     public async Task<IActionResult> CreateJournalEntry([FromBody] CreateJournalEntryDto dto)
     {
         try
@@ -639,6 +640,7 @@ public class AccountingController : ControllerBase
     /// اعتماد/ترحيل قيد - يحدّث أرصدة الحسابات
     /// </summary>
     [HttpPost("journal-entries/{id}/post")]
+    [RequirePermission("accounting", "edit")]
     public async Task<IActionResult> PostJournalEntry(Guid id, [FromBody] PostJournalEntryDto dto)
     {
         try
@@ -713,6 +715,7 @@ public class AccountingController : ControllerBase
     /// إلغاء قيد (عكس الأرصدة إذا كان مُعتمداً)
     /// </summary>
     [HttpPost("journal-entries/{id}/void")]
+    [RequirePermission("accounting", "delete")]
     public async Task<IActionResult> VoidJournalEntry(Guid id)
     {
         try
@@ -905,6 +908,7 @@ public class AccountingController : ControllerBase
     /// إنشاء صندوق جديد
     /// </summary>
     [HttpPost("cashboxes")]
+    [RequirePermission("accounting", "add")]
     public async Task<IActionResult> CreateCashBox([FromBody] CreateCashBoxDto dto)
     {
         try
@@ -1108,6 +1112,7 @@ public class AccountingController : ControllerBase
     /// إيداع في الصندوق
     /// </summary>
     [HttpPost("cashboxes/{id}/deposit")]
+    [RequirePermission("accounting", "edit")]
     public async Task<IActionResult> DepositToCashBox(Guid id, [FromBody] CashBoxOperationDto dto)
     {
         try
@@ -1194,6 +1199,7 @@ public class AccountingController : ControllerBase
     /// سحب من الصندوق
     /// </summary>
     [HttpPost("cashboxes/{id}/withdraw")]
+    [RequirePermission("accounting", "edit")]
     public async Task<IActionResult> WithdrawFromCashBox(Guid id, [FromBody] CashBoxOperationDto dto)
     {
         try
@@ -2697,6 +2703,7 @@ public class AccountingController : ControllerBase
     /// تسجيل تحصيل جديد
     /// </summary>
     [HttpPost("collections")]
+    [RequirePermission("accounting", "add")]
     public async Task<IActionResult> CreateCollection([FromBody] CreateCollectionDto dto)
     {
         try
@@ -2766,6 +2773,7 @@ public class AccountingController : ControllerBase
     /// تسليم تحصيل للصندوق
     /// </summary>
     [HttpPost("collections/{id}/deliver")]
+    [RequirePermission("accounting", "edit")]
     public async Task<IActionResult> DeliverCollection(long id, [FromBody] DeliverCollectionDto dto)
     {
         try
@@ -2945,6 +2953,7 @@ public class AccountingController : ControllerBase
     /// تسجيل مصروف جديد
     /// </summary>
     [HttpPost("expenses")]
+    [RequirePermission("accounting", "add")]
     public async Task<IActionResult> CreateExpense([FromBody] CreateExpenseDto dto)
     {
         try
@@ -3040,6 +3049,7 @@ public class AccountingController : ControllerBase
     /// تعديل مصروف
     /// </summary>
     [HttpPut("expenses/{id}")]
+    [RequirePermission("accounting", "edit")]
     public async Task<IActionResult> UpdateExpense(long id, [FromBody] UpdateExpenseDto dto)
     {
         try
@@ -3129,6 +3139,7 @@ public class AccountingController : ControllerBase
     /// حذف مصروف (ناعم) وإلغاء القيد المرتبط
     /// </summary>
     [HttpDelete("expenses/{id}")]
+    [RequirePermission("accounting", "delete")]
     public async Task<IActionResult> DeleteExpense(long id)
     {
         try
@@ -3189,6 +3200,7 @@ public class AccountingController : ControllerBase
     /// تعديل تحصيل
     /// </summary>
     [HttpPut("collections/{id}")]
+    [RequirePermission("accounting", "edit")]
     public async Task<IActionResult> UpdateCollection(long id, [FromBody] UpdateCollectionDto dto)
     {
         try
@@ -3221,6 +3233,7 @@ public class AccountingController : ControllerBase
     /// حذف تحصيل (ناعم) وإلغاء القيد المرتبط
     /// </summary>
     [HttpDelete("collections/{id}")]
+    [RequirePermission("accounting", "delete")]
     public async Task<IActionResult> DeleteCollection(long id)
     {
         try
@@ -3281,6 +3294,7 @@ public class AccountingController : ControllerBase
     /// تعديل صندوق
     /// </summary>
     [HttpPut("cashboxes/{id}")]
+    [RequirePermission("accounting", "edit")]
     public async Task<IActionResult> UpdateCashBox(Guid id, [FromBody] UpdateCashBoxDto dto)
     {
         try
@@ -3308,6 +3322,7 @@ public class AccountingController : ControllerBase
     /// حذف صندوق (ناعم)
     /// </summary>
     [HttpDelete("cashboxes/{id}")]
+    [RequirePermission("accounting", "delete")]
     public async Task<IActionResult> DeleteCashBox(Guid id)
     {
         try
@@ -3337,6 +3352,7 @@ public class AccountingController : ControllerBase
     /// تعديل قيد محاسبي (مسودة فقط)
     /// </summary>
     [HttpPut("journal-entries/{id}")]
+    [RequirePermission("accounting", "edit")]
     public async Task<IActionResult> UpdateJournalEntry(Guid id, [FromBody] UpdateJournalEntryDto dto)
     {
         try
@@ -3545,6 +3561,7 @@ public class AccountingController : ControllerBase
     /// حذف قيد محاسبي (ناعم) - يُلغي أيضاً أرصدة الحسابات والكيانات المرتبطة
     /// </summary>
     [HttpDelete("journal-entries/{id}")]
+    [RequirePermission("accounting", "delete")]
     public async Task<IActionResult> DeleteJournalEntry(Guid id)
     {
         try

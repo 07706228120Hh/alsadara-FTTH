@@ -22,9 +22,9 @@ public class RequirePermissionAttribute : Attribute, IAsyncAuthorizationFilter
     /// <param name="action">الإجراء المطلوب (view, add, edit, delete, export, import, print, send)</param>
     /// <param name="system">النظام (First أو Second)</param>
     /// <param name="failClosed">
-    /// عند true: إذا كان عمود صلاحيات V2 فارغاً ⇒ يُرفَض الوصول (fail-closed).
-    /// عند false (الافتراضي): يُبقى السلوك القديم fail-open (سماح عند فراغ الصلاحيات) لعدم حظر المستخدمين القدامى.
-    /// يُستخدم failClosed:true للميزات الحسّاسة فقط (مثل sas_agent) بلا أثر على بقية المنصّة.
+    /// مُهمَل بعد التحوّل إلى fail-closed افتراضياً (secure-by-default): فراغ صلاحيات V2 يُرفَض دائماً
+    /// بصرف النظر عن هذه القيمة. يبقى المعامل للتوافق مع الاستدعاءات القائمة (failClosed:true لا يغيّر شيئاً
+    /// الآن لأن الإغلاق هو الافتراضي). صمّام التراجع الطارئ الوحيد هو العلَم العام Authz:FailOpen.
     /// </param>
     public RequirePermissionAttribute(
         string permissionKey,
@@ -101,17 +101,19 @@ public class RequirePermissionAttribute : Attribute, IAsyncAuthorizationFilter
             ? dbUser.FirstSystemPermissionsV2
             : dbUser.SecondSystemPermissionsV2;
 
-        // علَم إنتاجي عام "Authz:FailClosed" (bool، افتراضي false) يحوّل كل فحوص
-        // RequirePermission إلى deny-by-default: عند رفعه ⇒ فراغ صلاحيات V2 يعني رفضاً.
-        // هذا العلَم بوّابة إنتاجية لا يُرفَع إلا بعد ختم V2 الكامل، ومرحلة تسجيل-فقط،
-        // وموافقة صريحة؛ OFF (الافتراضي) ⇒ صفر أثر تشغيلي والسلوك يبقى كما هو تماماً.
+        // ═══ إصلاح جذري: fail-closed افتراضياً (secure-by-default) ═══
+        // غياب/فراغ صلاحيات V2 لا يمنح أي امتياز تلقائي — يُرفَض الوصول. هذا يُغلق ثغرة
+        // fail-open جذرياً (لا على حساب واحد). الوصول الشرعي يبقى عبر: تجاوز SuperAdmin
+        // (أعلاه)، منح CompanyAdmin لـlinked_accounts (أعلاه)، وصلاحيات V2 الصريحة.
+        // صمّام طوارئ مؤقت للتراجع فقط: Authz:FailOpen=true يعيد السلوك القديم (fail-open)
+        // إن اقتضى الأمر تراجعاً سريعاً — يبقى OFF افتراضياً.
         var configuration = context.HttpContext.RequestServices
             .GetService<Microsoft.Extensions.Configuration.IConfiguration>();
-        var globalFailClosed = configuration?.GetValue<bool>("Authz:FailClosed") ?? false;
+        var globalFailOpen = configuration?.GetValue<bool>("Authz:FailOpen") ?? false;
 
-        // failClosed الفعّال = الخاص بالـattribute أو العلَم العام. عند OFF يبقى
-        // السلوك الحالي كما هو (fail-open ما لم يكن الـattribute نفسه failClosed:true).
-        var effectiveFailClosed = _failClosed || globalFailClosed;
+        // fail-closed ما لم يُرفَع صمّام التراجع الطارئ. (_failClosed لكل attribute لم يعد
+        // ضرورياً — الإغلاق هو الافتراضي الآن — لكنه يبقى متوافقاً: ما كان مغلقاً يبقى مغلقاً.)
+        var effectiveFailClosed = !globalFailOpen;
 
         if (HasPermission(permJson, _permissionKey, _action, effectiveFailClosed))
         {
