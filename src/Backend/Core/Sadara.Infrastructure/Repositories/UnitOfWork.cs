@@ -568,6 +568,20 @@ public class UnitOfWork : IUnitOfWork
         }
     }
 
+    public async Task<Sadara.Domain.Enums.JournalEntryStatus?> LockJournalEntryForUpdateAsync(Guid entryId, CancellationToken cancellationToken = default)
+    {
+        if (!_context.Database.IsRelational())
+            return null;
+        if (_context.Database.CurrentTransaction == null)
+            throw new InvalidOperationException("Journal entry can only be locked inside a transaction.");
+
+        // FOR UPDATE يقفل صف القيد حتى نهاية المعاملة ⇒ يُسلسل عمليات العكس/الإبطال المتزامنة لنفس القيد.
+        var statuses = await _context.Database
+            .SqlQuery<int>($"SELECT \"Status\" AS \"Value\" FROM \"JournalEntries\" WHERE \"Id\" = {entryId} FOR UPDATE")
+            .ToListAsync(cancellationToken);
+        return statuses.Count > 0 ? (Sadara.Domain.Enums.JournalEntryStatus)statuses[0] : (Sadara.Domain.Enums.JournalEntryStatus?)null;
+    }
+
     public async Task<bool?> LockSubscriptionLogForUpdateAsync(long logId, CancellationToken cancellationToken = default)
     {
         if (!_context.Database.IsRelational())

@@ -822,8 +822,6 @@ ORDER BY ""TotalCollected"" DESC;";
         // ═══════ المعالجة المالية (حفظ منفصل - لا يؤثر على تغيير الحالة) ═══════
         try
         {
-            bool hasFinancialChanges = false;
-
             // ═══ ملاحظة: تم إزالة التسجيل المالي على الوكيل عند إكمال الطلب ═══
             // التسجيل يتم فقط عند تفعيل الاشتراك واختيار طريقة الدفع "وكيل"
             // في SubscriptionLogsController أو FtthAccountingController
@@ -840,47 +838,40 @@ ORDER BY ""TotalCollected"" DESC;";
                     var agent = await _unitOfWork.Agents.GetByIdAsync(request.AgentId.Value);
                     if (agent != null)
                     {
-                        agent.TotalCharges -= existingCharge.Amount;
-                        agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
-                        _unitOfWork.Agents.Update(agent);
-
-                        existingCharge.IsDeleted = true;
-                        existingCharge.DeletedAt = DateTime.UtcNow;
-                        _unitOfWork.AgentTransactions.Update(existingCharge);
-                        hasFinancialChanges = true;
-
-                        // ═══ إلغاء القيد المحاسبي المرتبط ═══
-                        if (existingCharge.JournalEntryId.HasValue)
+                        // المعالجة المالية ذرّية مع قفل صفوف الحسابات؛ أي فشل يتراجع كاملاً ولا يمسّ تغيير الحالة.
+                        var lockRows = _unitOfWork.SupportsRowLocks;
+                        var ownsTx = lockRows && !_unitOfWork.HasActiveTransaction;
+                        if (ownsTx) await _unitOfWork.BeginTransactionAsync();
+                        try
                         {
-                            var agentJe = await _unitOfWork.JournalEntries.AsQueryable()
-                                .Include(j => j.Lines)
-                                .FirstOrDefaultAsync(j => j.Id == existingCharge.JournalEntryId.Value && !j.IsDeleted);
-                            if (agentJe != null)
+                            agent.TotalCharges -= existingCharge.Amount;
+                            agent.NetBalance = agent.TotalPayments - agent.TotalCharges;
+                            _unitOfWork.Agents.Update(agent);
+
+                            existingCharge.IsDeleted = true;
+                            existingCharge.DeletedAt = DateTime.UtcNow;
+                            _unitOfWork.AgentTransactions.Update(existingCharge);
+
+                            // ═══ إلغاء القيد المحاسبي المرتبط (عكس أرصدة مقفول + void + حذف ناعم) ═══
+                            if (existingCharge.JournalEntryId.HasValue)
                             {
-                                if (agentJe.Status == JournalEntryStatus.Posted)
+                                var agentJe = await _unitOfWork.JournalEntries.AsQueryable()
+                                    .Include(j => j.Lines)
+                                    .FirstOrDefaultAsync(j => j.Id == existingCharge.JournalEntryId.Value && !j.IsDeleted);
+                                if (agentJe != null)
                                 {
-                                    foreach (var jLine in agentJe.Lines)
-                                    {
-                                        var acct = await _unitOfWork.Accounts.GetByIdAsync(jLine.AccountId);
-                                        if (acct == null) continue;
-                                        if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
-                                            acct.CurrentBalance -= jLine.DebitAmount - jLine.CreditAmount;
-                                        else
-                                            acct.CurrentBalance -= jLine.CreditAmount - jLine.DebitAmount;
-                                        _unitOfWork.Accounts.Update(acct);
-                                    }
+                                    await ServiceRequestAccountingHelper.VoidJournalEntryAsync(_unitOfWork, agentJe);
+                                    _logger.LogInformation("تم إلغاء القيد المحاسبي {EntryNumber} بسبب إلغاء طلب الوكيل", agentJe.EntryNumber);
                                 }
-                                foreach (var jLine in agentJe.Lines)
-                                {
-                                    jLine.IsDeleted = true;
-                                    jLine.DeletedAt = DateTime.UtcNow;
-                                }
-                                agentJe.IsDeleted = true;
-                                agentJe.DeletedAt = DateTime.UtcNow;
-                                agentJe.Status = JournalEntryStatus.Voided;
-                                _unitOfWork.JournalEntries.Update(agentJe);
-                                _logger.LogInformation("تم إلغاء القيد المحاسبي {EntryNumber} بسبب إلغاء طلب الوكيل", agentJe.EntryNumber);
                             }
+
+                            if (ownsTx) await _unitOfWork.CommitTransactionAsync();
+                            else await _unitOfWork.SaveChangesAsync();
+                        }
+                        catch
+                        {
+                            if (ownsTx && _unitOfWork.HasActiveTransaction) await _unitOfWork.RollbackTransactionAsync();
+                            throw;
                         }
 
                         _logger.LogInformation("تم استرداد {Amount} لرصيد الوكيل {AgentId} بسبب {Status} الطلب {RequestNumber}",
@@ -888,9 +879,6 @@ ORDER BY ""TotalCollected"" DESC;";
                     }
                 }
             }
-
-            if (hasFinancialChanges)
-                await _unitOfWork.SaveChangesAsync();
         }
         catch (Exception finEx)
         {
@@ -1132,119 +1120,79 @@ ORDER BY ""TotalCollected"" DESC;";
                 }
                 else if (newStatus == ServiceRequestStatus.Cancelled || newStatus == ServiceRequestStatus.Rejected)
                 {
-                    // استرداد المبلغ إذا كانت هناك معاملة سابقة
-                    var existingTechCharge = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                        .FirstOrDefaultAsync(t => t.ServiceRequestId == id && t.Type == TechnicianTransactionType.Charge && !t.IsDeleted);
-
-                    if (existingTechCharge != null)
+                    // المعالجة المالية للإلغاء ذرّية مع قفل صفوف الحسابات؛ أي فشل يتراجع كاملاً ولا يمسّ الحالة.
+                    // (مسار الإلغاء لا يُنشئ قيوداً جديدة — عكس وإبطال فقط — فلا خطر savepoint من إعادة ترقيم القيد.)
+                    var cancelLockRows = _unitOfWork.SupportsRowLocks;
+                    var cancelOwnsTx = cancelLockRows && !_unitOfWork.HasActiveTransaction;
+                    if (cancelOwnsTx) await _unitOfWork.BeginTransactionAsync();
+                    try
                     {
-                        var technician = await _unitOfWork.Users.GetByIdAsync(existingTechCharge.TechnicianId);
-                        if (technician != null)
+                        // استرداد المبلغ إذا كانت هناك معاملة سابقة
+                        var existingTechCharge = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                            .FirstOrDefaultAsync(t => t.ServiceRequestId == id && t.Type == TechnicianTransactionType.Charge && !t.IsDeleted);
+
+                        if (existingTechCharge != null)
                         {
-                            technician.TechTotalCharges -= existingTechCharge.Amount;
-                            technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
-                            _unitOfWork.Users.Update(technician);
-
-                            existingTechCharge.IsDeleted = true;
-                            existingTechCharge.DeletedAt = DateTime.UtcNow;
-                            _unitOfWork.TechnicianTransactions.Update(existingTechCharge);
-                            hasTechFinancialChanges = true;
-
-                            // ═══ إلغاء القيد المحاسبي المرتبط ═══
-                            if (existingTechCharge.JournalEntryId.HasValue)
+                            var technician = await _unitOfWork.Users.GetByIdAsync(existingTechCharge.TechnicianId);
+                            if (technician != null)
                             {
-                                var techJe = await _unitOfWork.JournalEntries.AsQueryable()
-                                    .Include(j => j.Lines)
-                                    .FirstOrDefaultAsync(j => j.Id == existingTechCharge.JournalEntryId.Value && !j.IsDeleted);
+                                technician.TechTotalCharges -= existingTechCharge.Amount;
+                                technician.TechNetBalance = technician.TechTotalPayments - technician.TechTotalCharges;
+                                _unitOfWork.Users.Update(technician);
+
+                                existingTechCharge.IsDeleted = true;
+                                existingTechCharge.DeletedAt = DateTime.UtcNow;
+                                _unitOfWork.TechnicianTransactions.Update(existingTechCharge);
+                                hasTechFinancialChanges = true;
+
+                                // ═══ إلغاء القيد المحاسبي المرتبط: بالمعرّف، وإلا fallback بالمرجع (سجلات قديمة) ═══
+                                JournalEntry? techJe = existingTechCharge.JournalEntryId.HasValue
+                                    ? await _unitOfWork.JournalEntries.AsQueryable().Include(j => j.Lines)
+                                        .FirstOrDefaultAsync(j => j.Id == existingTechCharge.JournalEntryId.Value && !j.IsDeleted)
+                                    : await _unitOfWork.JournalEntries.AsQueryable().Include(j => j.Lines)
+                                        .FirstOrDefaultAsync(j => j.ReferenceType == JournalReferenceType.ServiceRequest
+                                            && j.ReferenceId == id.ToString() && !j.IsDeleted);
                                 if (techJe != null)
                                 {
-                                    if (techJe.Status == JournalEntryStatus.Posted)
-                                    {
-                                        foreach (var jLine in techJe.Lines)
-                                        {
-                                            var acct = await _unitOfWork.Accounts.GetByIdAsync(jLine.AccountId);
-                                            if (acct == null) continue;
-                                            if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
-                                                acct.CurrentBalance -= jLine.DebitAmount - jLine.CreditAmount;
-                                            else
-                                                acct.CurrentBalance -= jLine.CreditAmount - jLine.DebitAmount;
-                                            _unitOfWork.Accounts.Update(acct);
-                                        }
-                                    }
-                                    foreach (var jLine in techJe.Lines)
-                                    {
-                                        jLine.IsDeleted = true;
-                                        jLine.DeletedAt = DateTime.UtcNow;
-                                    }
-                                    techJe.IsDeleted = true;
-                                    techJe.DeletedAt = DateTime.UtcNow;
-                                    techJe.Status = JournalEntryStatus.Voided;
-                                    _unitOfWork.JournalEntries.Update(techJe);
+                                    await ServiceRequestAccountingHelper.VoidJournalEntryAsync(_unitOfWork, techJe);
                                     _logger.LogInformation("تم إلغاء القيد المحاسبي {EntryNumber} بسبب إلغاء مهمة الفني", techJe.EntryNumber);
                                 }
-                            }
-                            else
-                            {
-                                // بحث عن القيد عبر ReferenceType + ReferenceId (للسجلات القديمة بدون JournalEntryId)
-                                var techJeFallback = await _unitOfWork.JournalEntries.AsQueryable()
-                                    .Include(j => j.Lines)
-                                    .FirstOrDefaultAsync(j => j.ReferenceType == JournalReferenceType.ServiceRequest
-                                        && j.ReferenceId == id.ToString() && !j.IsDeleted);
-                                if (techJeFallback != null)
-                                {
-                                    if (techJeFallback.Status == JournalEntryStatus.Posted)
-                                    {
-                                        foreach (var jLine in techJeFallback.Lines)
-                                        {
-                                            var acct = await _unitOfWork.Accounts.GetByIdAsync(jLine.AccountId);
-                                            if (acct == null) continue;
-                                            if (acct.AccountType == AccountType.Assets || acct.AccountType == AccountType.Expenses)
-                                                acct.CurrentBalance -= jLine.DebitAmount - jLine.CreditAmount;
-                                            else
-                                                acct.CurrentBalance -= jLine.CreditAmount - jLine.DebitAmount;
-                                            _unitOfWork.Accounts.Update(acct);
-                                        }
-                                    }
-                                    foreach (var jLine in techJeFallback.Lines)
-                                    {
-                                        jLine.IsDeleted = true;
-                                        jLine.DeletedAt = DateTime.UtcNow;
-                                    }
-                                    techJeFallback.IsDeleted = true;
-                                    techJeFallback.DeletedAt = DateTime.UtcNow;
-                                    techJeFallback.Status = JournalEntryStatus.Voided;
-                                    _unitOfWork.JournalEntries.Update(techJeFallback);
-                                    _logger.LogInformation("تم إلغاء القيد المحاسبي {EntryNumber} (fallback) بسبب إلغاء مهمة الفني", techJeFallback.EntryNumber);
-                                }
-                            }
 
-                            _logger.LogInformation("تم استرداد {Amount} من الفني {TechName} بسبب {Status} المهمة {RequestNumber}",
-                                existingTechCharge.Amount, technician.FullName, newStatus, request.RequestNumber);
+                                _logger.LogInformation("تم استرداد {Amount} من الفني {TechName} بسبب {Status} المهمة {RequestNumber}",
+                                    existingTechCharge.Amount, technician.FullName, newStatus, request.RequestNumber);
+                            }
                         }
-                    }
 
-                    // ═══ استرداد أجور إضافية عند الإلغاء (توصيل/تنصيب/أخرى) ═══
-                    var feeCategories = new[] { TechnicianTransactionCategory.DeliveryFee, TechnicianTransactionCategory.InstallationFee, TechnicianTransactionCategory.OtherFee };
-                    var existingFeeCharges = await _unitOfWork.TechnicianTransactions.AsQueryable()
-                        .Where(t => t.ServiceRequestId == id && feeCategories.Contains(t.Category) && !t.IsDeleted)
-                        .ToListAsync();
-                    foreach (var feeCharge in existingFeeCharges)
-                    {
-                        var techForFee = await _unitOfWork.Users.GetByIdAsync(feeCharge.TechnicianId);
-                        if (techForFee != null)
+                        // ═══ استرداد أجور إضافية عند الإلغاء (توصيل/تنصيب/أخرى) ═══
+                        var feeCategories = new[] { TechnicianTransactionCategory.DeliveryFee, TechnicianTransactionCategory.InstallationFee, TechnicianTransactionCategory.OtherFee };
+                        var existingFeeCharges = await _unitOfWork.TechnicianTransactions.AsQueryable()
+                            .Where(t => t.ServiceRequestId == id && feeCategories.Contains(t.Category) && !t.IsDeleted)
+                            .ToListAsync();
+                        foreach (var feeCharge in existingFeeCharges)
                         {
-                            techForFee.TechTotalCharges -= feeCharge.Amount;
-                            techForFee.TechNetBalance = techForFee.TechTotalPayments - techForFee.TechTotalCharges;
-                            _unitOfWork.Users.Update(techForFee);
+                            var techForFee = await _unitOfWork.Users.GetByIdAsync(feeCharge.TechnicianId);
+                            if (techForFee != null)
+                            {
+                                techForFee.TechTotalCharges -= feeCharge.Amount;
+                                techForFee.TechNetBalance = techForFee.TechTotalPayments - techForFee.TechTotalCharges;
+                                _unitOfWork.Users.Update(techForFee);
 
-                            feeCharge.IsDeleted = true;
-                            feeCharge.DeletedAt = DateTime.UtcNow;
-                            _unitOfWork.TechnicianTransactions.Update(feeCharge);
-                            hasTechFinancialChanges = true;
+                                feeCharge.IsDeleted = true;
+                                feeCharge.DeletedAt = DateTime.UtcNow;
+                                _unitOfWork.TechnicianTransactions.Update(feeCharge);
+                                hasTechFinancialChanges = true;
 
-                            _logger.LogInformation("تم استرداد {Category} {Amount} من {TechName} بسبب إلغاء المهمة {RequestNumber}",
-                                feeCharge.Category, feeCharge.Amount, techForFee.FullName, request.RequestNumber);
+                                _logger.LogInformation("تم استرداد {Category} {Amount} من {TechName} بسبب إلغاء المهمة {RequestNumber}",
+                                    feeCharge.Category, feeCharge.Amount, techForFee.FullName, request.RequestNumber);
+                            }
                         }
+
+                        if (cancelOwnsTx) await _unitOfWork.CommitTransactionAsync();
+                    }
+                    catch
+                    {
+                        if (cancelOwnsTx && _unitOfWork.HasActiveTransaction) await _unitOfWork.RollbackTransactionAsync();
+                        throw;
                     }
                 }
 
@@ -3515,6 +3463,38 @@ public static class ServiceRequestAccountingHelper
             account.CurrentBalance -= PostingDelta(account.AccountType, line.DebitAmount, line.CreditAmount);
             unitOfWork.Accounts.Update(account);
         }
+    }
+
+    /// <summary>
+    /// يُبطل قيداً مرحّلاً بأمان تزامن وحتمية: يقفل صف القيد ويعيد فحص حالته داخل المعاملة؛ إن كان
+    /// مُبطلاً مسبقاً (Voided) يعود دون أثر (idempotent — لا عكس مزدوج حتى تحت تزامن). وإلا يعكس أثره
+    /// على أرصدة الحسابات (بقفل صفوف ثابت الترتيب عبر <see cref="ReverseJournalBalancesAsync"/>) إن كان
+    /// Posted، ثم يحذف سطوره ناعماً ويضبط Voided+IsDeleted+DeletedAt (يحفظ السجل التاريخي، لا يحذفه).
+    /// يجب استدعاؤه ضمن معاملة قائمة ليعمل القفل وتبقى العملية ذرّية مع مُحيطها.
+    /// </summary>
+    public static async Task VoidJournalEntryAsync(
+        IUnitOfWork unitOfWork, JournalEntry entry, CancellationToken ct = default)
+    {
+        // قفل صف القيد وإعادة فحص الحالة تحت القفل ⇒ عكسان متزامنان: الثاني ينتظر ثم يرى Voided فيعود.
+        var lockedStatus = await unitOfWork.LockJournalEntryForUpdateAsync(entry.Id, ct);
+        var status = lockedStatus ?? entry.Status; // المزوّد غير العلائقي: لا قفل ⇒ نعتمد حالة الذاكرة
+        if (status == JournalEntryStatus.Voided)
+            return; // أُبطل في معاملة أخرى — لا نعكس مرتين
+
+        var lines = entry.Lines.Where(l => !l.IsDeleted).ToList();
+        if (status == JournalEntryStatus.Posted)
+            await ReverseJournalBalancesAsync(unitOfWork, lines, ct);
+
+        foreach (var line in lines)
+        {
+            line.IsDeleted = true;
+            line.DeletedAt = DateTime.UtcNow;
+            unitOfWork.JournalEntryLines.Update(line);
+        }
+        entry.Status = JournalEntryStatus.Voided;
+        entry.IsDeleted = true;
+        entry.DeletedAt = DateTime.UtcNow;
+        unitOfWork.JournalEntries.Update(entry);
     }
 
     public static async Task<Account?> FindAccountByCode(IUnitOfWork unitOfWork, string code, Guid companyId)
