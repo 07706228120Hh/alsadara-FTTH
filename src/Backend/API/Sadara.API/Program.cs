@@ -498,19 +498,28 @@ app.MapHealthChecks("/health");
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<SadaraDbContext>();
-    
-    // Apply pending migrations only in Development (production uses manual SQL migrations)
-    if (context.Database.IsInMemory())
-    {
-        await context.Database.EnsureCreatedAsync();
-    }
-    else
-    {
-        try { await context.Database.MigrateAsync(); }
-        catch (Exception ex) { Console.WriteLine($"Migration note: {ex.Message}"); }
-    }
-    
-    // Seed core data (permissions, services, operation types, super admin)
+
+    // Startup database strategy — Production MUST NEVER auto-migrate. The decision is centralized and
+    // unit-tested in StartupDatabasePolicy: in-memory (tests) ⇒ create schema; Development ⇒ migrate;
+    // Production/Staging ⇒ do nothing (migrations are applied out-of-band by a deliberate, reviewed
+    // process). This guarantees that restarting the service in Production cannot run any migration or
+    // mutate __EFMigrationsHistory.
+    var dbStrategy = Sadara.API.Startup.StartupDatabasePolicy.Decide(
+        isInMemory: context.Database.IsInMemory(),
+        isDevelopment: app.Environment.IsDevelopment());
+
+    if (dbStrategy == Sadara.API.Startup.StartupDbStrategy.None)
+        Log.Information(
+            "Startup DB migration skipped (hosting environment is '{Environment}', not Development); " +
+            "schema migrations are applied out-of-band, never by the running application.",
+            app.Environment.EnvironmentName);
+
+    // Single, test-covered place that may touch the schema at startup (see StartupDatabasePolicy.ApplyAsync).
+    await Sadara.API.Startup.StartupDatabasePolicy.ApplyAsync(context.Database, dbStrategy);
+
+    // Seed core data (permissions, services, operation types, super admin). Every seeder is idempotent:
+    // it inserts only when its target set is empty and never updates or deletes existing rows, so this
+    // is a no-op on a populated Production database.
     await SeedData.SeedAsync(context);
     
     // Seed test data in development
