@@ -28,6 +28,7 @@ import 'client_accounts_page.dart';
 import 'statistics_page.dart';
 import '../super_admin/agents_management_page.dart';
 import 'ftth_operators_dashboard_page.dart';
+import 'ftth_operators_manage_page.dart';
 import 'funds_overview_page.dart';
 import 'fixed_expenses_page.dart';
 import 'withdrawal_requests_page.dart';
@@ -1058,6 +1059,14 @@ class _AccountingDashboardPageState extends State<AccountingDashboardPage> {
           color: SdColors.primaryLight,
           onTap: () =>
               _navigateTo(AgentsManagementPage(companyId: widget.companyId)),
+        ),
+      if (pm.canView('accounting.agent_transactions'))
+        _SectionItem(
+          title: 'إدارة المشغّلين',
+          subtitle: 'إضافة وتعديل وشحن محافظ مشغّلي الشريك (FTTH)',
+          icon: Icons.manage_accounts,
+          color: SdColors.success,
+          onTap: () => _navigateTo(const FtthOperatorsManagePage()),
         ),
       if (pm.canView('accounting.withdrawals'))
         _SectionItem(

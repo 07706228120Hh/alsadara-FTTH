@@ -6,6 +6,7 @@ import '../../frontend/frontend.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import '../../services/accounting_service.dart';
 import '../../services/auth_service.dart';
+import 'ftth_add_operator_page.dart';
 
 /// صفحة ربط مشغلي FTTH بمستخدمي خادمنا
 /// تعرض المشغلين من FTTH (كما في زر الفريق) وتسمح بربط كل مشغل بموظف من نظامنا
@@ -344,6 +345,14 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
     }
   }
 
+  /// فتح شاشة إضافة مشغّل جديد؛ عند النجاح يُحدِّث القائمة.
+  Future<void> _openAddOperator() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const FtthAddOperatorPage()),
+    );
+    if (created == true) await _loadData();
+  }
+
   List<Map<String, dynamic>> get _filteredOperators {
     if (_filterRole == 'الكل') return _ftthOperators;
     return _ftthOperators.where((m) {
@@ -385,6 +394,12 @@ class _FtthOperatorLinkingPageState extends State<FtthOperatorLinkingPage> {
       appBar: SdAppBar(
         title: 'ربط المشغلين ($_totalCount مشغل)',
         actions: [
+          SdAppBarAction(
+            icon: Icons.person_add_alt_1,
+            label: 'إضافة مشغّل',
+            success: true,
+            onPressed: _openAddOperator,
+          ),
           SdAppBarAction(
             icon: Icons.refresh,
             label: 'تحديث',

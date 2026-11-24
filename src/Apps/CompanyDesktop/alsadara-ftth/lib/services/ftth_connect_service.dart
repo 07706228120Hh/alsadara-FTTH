@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 /// سيرفس لعمليات توصيل المشتركين عبر FTTH API (admin.ftth.iq)
@@ -17,6 +18,43 @@ class FtthConnectService {
         'x-client-app': '53d57a7f-3f89-4e9d-873b-3d071bc6dd9f',
         'x-user-role': '0',
       };
+
+  /// قاعدة الـ API: تجاوز اختياري (مثل خادم شريك محدّد) وإلا الافتراضي admin.ftth.iq.
+  String _base(String? baseUrl) =>
+      (baseUrl == null || baseUrl.isEmpty) ? _baseUrl : '${baseUrl.replaceAll(RegExp(r'/+$'), '')}/api';
+
+  /// نداء HTTP لـ FTTH:
+  ///  - إن مُرِّر [token] (توكن شريك محدّد): نداء مباشر بترويسة Bearer + ترويسات WAF.
+  ///  - وإلا: يُستخدم توكن جلسة FTTH المزدوجة الحالية عبر [AuthService].
+  Future<http.Response> _req(
+    String method,
+    String url, {
+    String? token,
+    Map<String, String>? headers,
+    String? body,
+  }) {
+    if (token == null) {
+      return _auth.authenticatedRequest(method, url, headers: headers, body: body);
+    }
+    final h = <String, String>{
+      ..._extraHeaders,
+      ...?headers,
+      'Authorization': 'Bearer $token',
+    };
+    final uri = Uri.parse(url);
+    switch (method.toUpperCase()) {
+      case 'GET':
+        return http.get(uri, headers: h);
+      case 'POST':
+        return http.post(uri, headers: h, body: body);
+      case 'PUT':
+        return http.put(uri, headers: h, body: body);
+      case 'DELETE':
+        return http.delete(uri, headers: h, body: body);
+      default:
+        throw UnsupportedError('HTTP method $method');
+    }
+  }
 
   // ═══════════════════════════════════════════
   //  أنواع المهام
@@ -115,10 +153,11 @@ class FtthConnectService {
   // ═══════════════════════════════════════════
   //  بيانات الشبكة (Zones, FDTs, FATs, ONT)
   // ═══════════════════════════════════════════
-  Future<List<Map<String, dynamic>>> getZones() async {
-    final resp = await _auth.authenticatedRequest(
+  Future<List<Map<String, dynamic>>> getZones({String? token, String? baseUrl}) async {
+    final resp = await _req(
       'GET',
-      '$_baseUrl/locations/zones',
+      '${_base(baseUrl)}/locations/zones',
+      token: token,
       headers: _extraHeaders,
     );
     if (resp.statusCode != 200) return [];
@@ -321,5 +360,229 @@ class FtthConnectService {
       'errorType': errorType,
       'statusCode': resp.statusCode,
     };
+  }
+
+  // ═══════════════════════════════════════════
+  //  إدارة الفريق (المشغّلين) — teams/members
+  //  يُنفَّذ بجلسة الشريك الرئيسية المميّزة (dual-auth). إنشاء مشغّل
+  //  يحتاج حساباً بصلاحية إدارة الفريق (الحساب الرئيسي/السوبر أدمن).
+  // ═══════════════════════════════════════════
+
+  /// أدوار الفريق — [{id, displayValue, name, description,
+  /// canAccessAllPartnerZones, canPerformMonetaryAction}]
+  Future<List<Map<String, dynamic>>> getTeamRoles({String? token, String? baseUrl}) async {
+    final resp = await _req(
+      'GET',
+      '${_base(baseUrl)}/teams/roles',
+      token: token,
+      headers: _extraHeaders,
+    );
+    if (resp.statusCode != 200) {
+      throw Exception('فشل جلب الأدوار: ${resp.statusCode}');
+    }
+    final data = json.decode(resp.body);
+    return List<Map<String, dynamic>>.from(data['items'] ?? []);
+  }
+
+  /// سياسات كلمة المرور — [{type:{displayValue}, value}]
+  /// مثل: MinimumLength=12، UppercaseCharacters=1، LowercaseCharacters=1، Digits=1
+  Future<List<Map<String, dynamic>>> getPasswordPolicies({String? token, String? baseUrl}) async {
+    final resp = await _req(
+      'GET',
+      '${_base(baseUrl)}/passwords/policies',
+      token: token,
+      headers: _extraHeaders,
+    );
+    if (resp.statusCode != 200) return [];
+    final data = json.decode(resp.body);
+    return List<Map<String, dynamic>>.from(data['items'] ?? []);
+  }
+
+  /// التحقّق من توفّر اسم المستخدم. يرجع true إذا كان متاحاً (غير مأخوذ).
+  Future<bool> isTeamUsernameAvailable(String username, {String? token, String? baseUrl}) async {
+    final resp = await _req(
+      'GET',
+      '${_base(baseUrl)}/teams/members/validate-username?username=${Uri.encodeComponent(username)}',
+      token: token,
+      headers: _extraHeaders,
+    );
+    if (resp.statusCode != 200) return false;
+    final data = json.decode(resp.body);
+    final isTaken = (data['model'] as Map<String, dynamic>?)?['isTaken'] == true;
+    return !isTaken;
+  }
+
+  /// قائمة أعضاء الفريق (المشغّلين) — ترجع {totalCount, items[]}
+  Future<Map<String, dynamic>> getTeamMembers({
+    int pageNumber = 1,
+    int pageSize = 50,
+    String? token,
+    String? baseUrl,
+  }) async {
+    final resp = await _req(
+      'GET',
+      '${_base(baseUrl)}/teams/members?pageNumber=$pageNumber&pageSize=$pageSize',
+      token: token,
+      headers: _extraHeaders,
+    );
+    if (resp.statusCode != 200) {
+      throw Exception('فشل جلب المشغّلين: ${resp.statusCode}');
+    }
+    return json.decode(resp.body) as Map<String, dynamic>;
+  }
+
+  /// إنشاء مشغّل جديد للشريك. يرجع {success, error?, errorType?, statusCode?}.
+  /// [roleId] = معرّف الدور (GUID) من [getTeamRoles].
+  /// [walletBalance] يحرّك مالاً — لا تمرّره إلا بعد تأكيد المستخدم.
+  Future<Map<String, dynamic>> createTeamMember({
+    required String username,
+    required String firstName,
+    required String lastName,
+    required String phoneNumber,
+    required String password,
+    required List<String> zoneIds,
+    required String roleId,
+    List<String> accessibleLOBs = const ['Ftth'],
+    bool hasWallet = false,
+    num walletBalance = 0,
+    String? token,
+    String? baseUrl,
+  }) async {
+    final body = json.encode({
+      'username': username,
+      'firstName': firstName,
+      'lastName': lastName,
+      'phoneNumber': phoneNumber,
+      'password': password,
+      'zoneIds': zoneIds,
+      'role': roleId,
+      'accessibleLOBs': accessibleLOBs,
+      'walletSetup': {
+        'hasWallet': hasWallet,
+        'balance': hasWallet ? walletBalance : 0,
+      },
+    });
+
+    final resp = await _req(
+      'POST',
+      '${_base(baseUrl)}/teams/members',
+      token: token,
+      headers: {
+        ..._extraHeaders,
+        'Content-Type': 'application/json',
+      },
+      body: body,
+    );
+
+    if (resp.statusCode == 200 || resp.statusCode == 201) {
+      return {
+        'success': true,
+        'data': resp.body.isNotEmpty ? json.decode(resp.body) : null,
+      };
+    }
+
+    String errorMsg = 'فشل إنشاء المشغّل (${resp.statusCode})';
+    String? errorType;
+    try {
+      final err = json.decode(resp.body);
+      errorType = err['type'] as String?;
+      errorMsg = err['title'] as String? ?? errorMsg;
+    } catch (_) {}
+
+    // ترجمة الأخطاء المعروفة لرسائل عربية
+    switch (errorType) {
+      case 'TeamMemberPhoneNumberUsed':
+        errorMsg = 'رقم الهاتف مستخدم لمشغّل آخر';
+        break;
+      case 'TeamMemberUsernameUsed':
+        errorMsg = 'اسم المستخدم مستخدم مسبقاً';
+        break;
+    }
+    if (resp.statusCode == 401 || resp.statusCode == 403) {
+      errorMsg =
+          'لا تملك صلاحية إدارة الفريق — سجّل الدخول بحساب الشريك الرئيسي';
+    }
+
+    return {
+      'success': false,
+      'error': errorMsg,
+      'errorType': errorType,
+      'statusCode': resp.statusCode,
+    };
+  }
+
+  /// معالجة موحّدة لاستجابات التعديل/الشحن (نجاح 2xx بجسم فارغ غالباً).
+  Map<String, dynamic> _mutationResult(http.Response resp, String fallback) {
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      return {'success': true, 'statusCode': resp.statusCode};
+    }
+    String errorMsg = '$fallback (${resp.statusCode})';
+    String? errorType;
+    try {
+      final err = json.decode(resp.body);
+      errorType = err['type'] as String?;
+      errorMsg = err['title'] as String? ?? errorMsg;
+    } catch (_) {}
+    if (errorType == 'TeamMemberPhoneNumberUsed') {
+      errorMsg = 'رقم الهاتف مستخدم لمشغّل آخر';
+    }
+    if (resp.statusCode == 401 || resp.statusCode == 403) {
+      errorMsg = 'لا تملك صلاحية إدارة الفريق';
+    }
+    return {
+      'success': false,
+      'error': errorMsg,
+      'errorType': errorType,
+      'statusCode': resp.statusCode,
+    };
+  }
+
+  /// تعديل مشغّل — PUT **جزئي**: تُرسَل فقط الحقول المُمرَّرة (كما في بوّابة FTTH).
+  /// [roleId] = معرّف الدور (GUID). [walletBalance] لا يُعدَّل هنا (استعمل [refillTeamMemberWallet]).
+  Future<Map<String, dynamic>> updateTeamMember({
+    required String id,
+    String? firstName,
+    String? lastName,
+    String? phoneNumber,
+    String? password,
+    String? roleId,
+    List<String>? zoneIds,
+    String? token,
+    String? baseUrl,
+  }) async {
+    final body = <String, dynamic>{};
+    if (firstName != null) body['firstName'] = firstName;
+    if (lastName != null) body['lastName'] = lastName;
+    if (phoneNumber != null) body['phoneNumber'] = phoneNumber;
+    if (password != null && password.isNotEmpty) body['password'] = password;
+    if (roleId != null) body['role'] = roleId;
+    if (zoneIds != null) body['zoneIds'] = zoneIds;
+    if (body.isEmpty) return {'success': true, 'statusCode': 200};
+
+    final resp = await _req(
+      'PUT',
+      '${_base(baseUrl)}/teams/members/$id',
+      token: token,
+      headers: {..._extraHeaders, 'Content-Type': 'application/json'},
+      body: json.encode(body),
+    );
+    return _mutationResult(resp, 'فشل تعديل المشغّل');
+  }
+
+  /// شحن محفظة مشغّل موجود — POST wallet-refill. يحرّك مالاً من محفظة الشريك؛ بتأكيد فقط.
+  Future<Map<String, dynamic>> refillTeamMemberWallet({
+    required String id,
+    required num amount,
+    String? token,
+    String? baseUrl,
+  }) async {
+    final resp = await _req(
+      'POST',
+      '${_base(baseUrl)}/teams/members/$id/wallet-refill',
+      token: token,
+      headers: {..._extraHeaders, 'Content-Type': 'application/json'},
+      body: json.encode({'amount': amount}),
+    );
+    return _mutationResult(resp, 'فشل شحن المحفظة');
   }
 }
