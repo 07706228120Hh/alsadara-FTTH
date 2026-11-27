@@ -272,6 +272,17 @@ class LinkedAccountsService {
     return _toMap(response);
   }
 
+  /// التحقّق من صحة حساب الساس (محاولة دخول لنظام الساس عبر البوّابة).
+  /// يُرجع data = {verified}. لا يُخزَّن أي سرّ ولا يُغيَّر صفّ.
+  Future<Map<String, dynamic>> verifySas(String id) async {
+    final response = await _client.post(
+      '/linked-accounts/sas/$id/verify',
+      {},
+      (json) => json,
+    );
+    return _toMap(response);
+  }
+
   /// تحويل رصيد العمولة إلى المحفظة الرئيسية في نظام FTTH عبر بوّابة الصدارة.
   /// الخادم يفرض الصلاحية `transfer_commission` + العزل، ويفكّ الاعتماد داخلياً،
   /// ويجلب partnerId/الرصيد حيّاً ويفرض الحدّ (لا نعتمد على العميل للأمن).

@@ -37,6 +37,10 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
   /// كلمات مرور FTTH المكشوفة مؤقتاً (id ← password) — لا تُخزَّن إلا في الذاكرة.
   final Map<String, String> _revealed = {};
 
+  /// نتيجة آخر تحقّق لحساب ساس ضمن الجلسة (id ← true موثّق / false فشل).
+  /// لا تُخزَّن في الخادم (كيان SasAccount بلا حقل حالة) — تعطي تغذية راجعة فورية فقط.
+  final Map<String, bool> _sasVerified = {};
+
   List<LinkedAccount> get _ftth => _accounts.where((a) => a.isFtth).toList();
   List<LinkedAccount> get _sas => _accounts.where((a) => a.isSas).toList();
 
@@ -103,6 +107,26 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
           (verified ? 'تم التوثيق' : 'فشل التحقّق — تأكّد من البيانات');
       _toast(msg, color: verified ? SdColors.success : SdColors.warning);
       _load(); // يُظهر الشريك المُسنَد على البطاقة
+    } else {
+      _toast(res['message']?.toString() ?? 'تعذّر التحقّق', color: SdColors.danger);
+    }
+  }
+
+  /// التحقّق من اعتماد حساب الساس (محاولة دخول حيّ لنظام الساس عبر البوّابة).
+  /// يُحدّث شارة البطاقة ضمن الجلسة ويُظهر السبب الحقيقي عند الفشل (مثل رفض المزوّد).
+  Future<void> _verifySas(LinkedAccount a) async {
+    setState(() => _busy = true);
+    final res = await _service.verifySas(a.id);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (res['success'] == true) {
+      final data = res['data'];
+      final verified =
+          data is Map ? (data['verified'] == true || data['Verified'] == true) : false;
+      setState(() => _sasVerified[a.id] = verified);
+      final msg = res['message']?.toString() ??
+          (verified ? 'تم التحقّق' : 'فشل التحقّق — تأكّد من البيانات');
+      _toast(msg, color: verified ? SdColors.success : SdColors.warning);
     } else {
       _toast(res['message']?.toString() ?? 'تعذّر التحقّق', color: SdColors.danger);
     }
@@ -1158,6 +1182,21 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
         status: SdStatus.neutral, icon: Icons.help_outline);
   }
 
+  /// شارة حالة حساب الساس — تعكس نتيجة «تحقّق» ضمن الجلسة (غير مخزّنة بالخادم).
+  Widget _sasStatusChip(LinkedAccount a) {
+    final v = _sasVerified[a.id];
+    if (v == true) {
+      return const SdStatusChip('موثّق',
+          status: SdStatus.success, icon: Icons.check_circle_outline);
+    }
+    if (v == false) {
+      return const SdStatusChip('فشل التحقّق',
+          status: SdStatus.danger, icon: Icons.error_outline);
+    }
+    return const SdStatusChip('غير موثّق',
+        status: SdStatus.neutral, icon: Icons.help_outline);
+  }
+
   Widget _actionBtn(
       String label, IconData icon, Color color, VoidCallback onTap) {
     return Material(
@@ -1219,7 +1258,7 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                _statusChip(a),
+                _sasStatusChip(a),
               ],
             ),
             const Divider(height: 20, color: SdColors.divider),
@@ -1253,6 +1292,8 @@ class _LinkedAccountsTabState extends State<LinkedAccountsTab> {
               spacing: 8,
               runSpacing: 8,
               children: [
+                _actionBtn('تحقّق', Icons.verified_outlined, SdColors.info,
+                    () => _verifySas(a)),
                 _actionBtn('تعديل', Icons.edit_outlined, SdColors.platformBase,
                     () => _openSasDialog(existing: a)),
                 _actionBtn('حذف', Icons.delete_outline, SdColors.danger,

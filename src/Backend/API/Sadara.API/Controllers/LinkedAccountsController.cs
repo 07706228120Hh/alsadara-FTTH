@@ -46,6 +46,7 @@ public class LinkedAccountsController : ControllerBase
     private readonly ICurrentTenant _tenant;
     private readonly ISecretProtector _secretProtector;
     private readonly IFtthCommissionClient _ftthClient;
+    private readonly ISasServiceClient _sasClient;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
     private readonly ILogger<LinkedAccountsController> _logger;
@@ -55,6 +56,7 @@ public class LinkedAccountsController : ControllerBase
         ICurrentTenant tenant,
         ISecretProtector secretProtector,
         IFtthCommissionClient ftthClient,
+        ISasServiceClient sasClient,
         IHttpClientFactory httpClientFactory,
         IConfiguration configuration,
         ILogger<LinkedAccountsController> logger)
@@ -63,6 +65,7 @@ public class LinkedAccountsController : ControllerBase
         _tenant = tenant;
         _secretProtector = secretProtector;
         _ftthClient = ftthClient;
+        _sasClient = sasClient;
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
         _logger = logger;
@@ -591,6 +594,53 @@ public class LinkedAccountsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطأ في التحقق من حساب FTTH");
+            return StatusCode(500, new { success = false, message = "خطأ داخلي" });
+        }
+    }
+
+    /// <summary>
+    /// التحقّق من صحة اعتماد حساب الساس: فكّ التشفير في الذاكرة + محاولة تسجيل دخول لنظام الساس
+    /// عبر الخدمة الداخلية (sidecar). يعيد نجاح/فشل فقط — لا توكن ولا سرّ. لا يُغيّر أي صفّ
+    /// (كيان SasAccount بلا حقل حالة توثيق). نفس بوّابة FTTH verify (صلاحية linked_accounts.manage + rate-limit).
+    /// </summary>
+    [HttpPost("sas/{id}/verify")]
+    [RequirePermission("linked_accounts", "manage", PermissionSystem.Second, failClosed: true)]
+    [EnableRateLimiting("credential-reveal")]
+    public async Task<IActionResult> VerifySas(Guid id, CancellationToken ct)
+    {
+        if (!TryResolveScope(out var companyId, out var currentUserId, out var denied))
+            return denied!;
+
+        var account = await GetAccessibleSasAccountAsync(id, companyId, currentUserId, ct);
+        if (account == null)
+            return NotFound(new { success = false, message = "حساب الساس غير موجود" });
+
+        try
+        {
+            var password = _secretProtector.Unprotect(account.PasswordEncrypted); // في الذاكرة فقط
+            var result = await _sasClient.LoginAsync(account.ServerUrl, account.Username, password, ct);
+
+            var msg = result.Success
+                ? "تم التحقّق بنجاح — الاتصال بنظام الساس ناجح"
+                : (string.IsNullOrWhiteSpace(result.Message)
+                    ? "فشل التحقّق — رفض نظام الساس الاعتماد"
+                    : $"فشل التحقّق — {result.Message}");
+
+            return Ok(new
+            {
+                success = true,
+                data = new { verified = result.Success },
+                message = msg
+            });
+        }
+        catch (Sadara.Infrastructure.Services.Sas.SasServiceUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "خدمة الساس غير متاحة أثناء التحقّق من الحساب");
+            return StatusCode(503, new { success = false, message = "خدمة الساس غير متاحة حالياً" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطأ في التحقّق من حساب الساس");
             return StatusCode(500, new { success = false, message = "خطأ داخلي" });
         }
     }
