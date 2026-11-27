@@ -42,27 +42,21 @@ bash deploy/sas-sidecar/verify-sidecar.sh
 
 ---
 
-## 3) P0-2 — تسريب `sas.db` (PII) في Git (يحتاج موافقة صريحة: يمسّ تاريخ main المدفوع)
+## 3) P0-2 — وسائط عقار متعقَّبة في Git (خطورة منخفضة بعد التصحيح)
 
-> **الخطر:** `modules/sas-agent/service/data/sas.db` (619 صفّ مشترك حقيقي) و`data/media/premises/1/house.jpg` مُتعقَّبان في git رغم أن `.gitignore` يتجاهل `*.db` (أُضيفا قبل القاعدة).
+> **تصحيح مهم:** `sas.db` (قاعدة الـ619 مشتركاً) **غير متعقَّب في git إطلاقاً** — تجاهُل `*.db` يعمل، والقاعدة على القرص فقط. المتعقَّب الوحيد هو صورة عقار واحدة: `modules/sas-agent/service/data/media/premises/1/house.jpg`.
 
-### الخطوة الآمنة (بلا إعادة كتابة تاريخ) — إيقاف التتبّع من الآن:
-```bash
-git rm --cached modules/sas-agent/service/data/sas.db
-git rm --cached modules/sas-agent/service/data/media/premises/1/house.jpg
-git commit -m "chore(sas): إيقاف تتبّع قاعدة الساز المحلية ووسائطها (PII)"
-```
-هذا يمنع التسريب المستقبلي لكنه **لا يحذف الملفين من التاريخ** (يبقيان في اللقطات القديمة).
+### الإصلاح المطبَّق على هذا الفرع (آمن، بلا إعادة كتابة تاريخ):
+- إيقاف تتبّع `house.jpg` (يبقى على القرص).
+- توسيع `data/.gitignore` ليشمل `media/` فمستقبلاً لا تُتعقَّب أي وسائط مرفوعة.
 
-### التطهير الكامل من التاريخ (مدمّر — يحتاج force-push + تنسيق الفريق):
+### (اختياري) تطهير الصورة من التاريخ — فقط إن اعتبرتها حسّاسة:
 ```bash
 # نسخة احتياطية أولاً، ثم:
-git filter-repo --path modules/sas-agent/service/data/sas.db \
-                --path modules/sas-agent/service/data/media/premises/1/house.jpg --invert-paths
-git push --force-with-lease origin main        # ← يحتاج موافقتك الصريحة
+git filter-repo --path modules/sas-agent/service/data/media/premises/1/house.jpg --invert-paths
+git push --force-with-lease origin main        # ← يحتاج موافقتك الصريحة (force push = قاعدة ذهبية)
 ```
-> ⚠️ **لا تُنفَّذ الخطوة المدمّرة إلا بموافقة صريحة منك.** `force push` على `main` عملية خطرة (قاعدة ذهبية #9) وتتطلّب تنسيق كل من يعمل على المستودع.
-> واعتبر بيانات الـ619 مشتركاً مكشوفةً تاريخياً ⇒ قيّم الحاجة لإشعار/تدوير أي اعتماد مرتبط.
+> ⚠️ صورة واحدة فقط ⇒ الخطورة منخفضة؛ `force push` على `main` قد لا يستحقّ العناء — قرارك.
 
 ---
 
