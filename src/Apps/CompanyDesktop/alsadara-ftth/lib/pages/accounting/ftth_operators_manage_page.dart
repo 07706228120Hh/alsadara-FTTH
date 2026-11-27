@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart' show NumberFormat;
+import 'package:intl/intl.dart' show NumberFormat, DateFormat;
 import '../../frontend/frontend.dart';
 import '../../services/ftth_connect_service.dart';
 import '../../services/linked_accounts_service.dart';
@@ -35,6 +35,90 @@ class _FtthOperatorsManagePageState extends State<FtthOperatorsManagePage> {
   List<Map<String, dynamic>> _zones = []; // {id, name}
   List<Map<String, dynamic>> _policies = [];
   List<Map<String, dynamic>> _members = [];
+
+  // بحث وتصفية
+  final _searchCtrl = TextEditingController();
+  String _search = '';
+  bool _onlyLowBalance = false;
+  String? _roleFilter; // null = كل الأدوار
+  static const double _lowBalanceThreshold = 1000000; // أقل من مليون = يحتاج شحن
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  double _memberBalance(Map<String, dynamic> m) =>
+      ((m['walletSetup'] as Map?)?['balance'] as num?)?.toDouble() ?? 0;
+
+  String _memberName(Map<String, dynamic> m) {
+    final n = '${m['firstName'] ?? ''} ${m['lastName'] ?? ''}'.trim();
+    return n.isNotEmpty ? n : (m['username']?.toString() ?? '');
+  }
+
+  String _roleName(Map<String, dynamic> m) =>
+      (m['role'] as Map?)?['displayValue']?.toString() ??
+      (m['role'] as Map?)?['name']?.toString() ??
+      '';
+
+  // أدوار متاحة للفلترة (بالترتيب الأبجدي، بلا الحساب الرئيسي).
+  List<String> get _availableRoles {
+    final s = <String>{};
+    for (final m in _members) {
+      if (m['isMainPartner'] == true) continue;
+      final r = _roleName(m);
+      if (r.isNotEmpty) s.add(r);
+    }
+    final list = s.toList()..sort();
+    return list;
+  }
+
+  // يحتاج محفظة مموّلة = دور مالي مقيّد بمناطق (ZoneAdmin): monetary=true & allZones=false.
+  // يستثني SuperAdmin (allZones=true) والفني (monetary=false) — لا يحتاجون رصيداً.
+  bool _needsWallet(Map<String, dynamic> m) {
+    if (m['isMainPartner'] == true) return false;
+    final role = m['role'] as Map?;
+    return role?['canPerformMonetaryAction'] == true &&
+        role?['canAccessAllPartnerZones'] != true;
+  }
+
+  // رصيد منخفض = يحتاج محفظة ورصيده < الحد.
+  bool _isLow(Map<String, dynamic> m) =>
+      _needsWallet(m) && _memberBalance(m) < _lowBalanceThreshold;
+
+  List<Map<String, dynamic>> get _filteredMembers {
+    final q = _search.trim().toLowerCase();
+    final list = _members.where((m) {
+      if (_onlyLowBalance && !_isLow(m)) return false;
+      if (_roleFilter != null && _roleName(m) != _roleFilter) return false;
+      if (q.isEmpty) return true;
+      final first = (m['firstName']?.toString() ?? '');
+      final last = (m['lastName']?.toString() ?? '');
+      final hay = '$first $last ${m['username'] ?? ''} ${m['phoneNumber'] ?? ''}'
+          .toLowerCase();
+      return hay.contains(q);
+    }).toList();
+    // ترتيب ذكي: الحساب الرئيسي أولاً، ثم المحتاجون للشحن (الأقل رصيداً أولاً)، ثم أبجدياً.
+    list.sort((a, b) {
+      final am = a['isMainPartner'] == true ? 0 : 1;
+      final bm = b['isMainPartner'] == true ? 0 : 1;
+      if (am != bm) return am - bm;
+      final al = _isLow(a) ? 0 : 1;
+      final bl = _isLow(b) ? 0 : 1;
+      if (al != bl) return al - bl;
+      if (al == 0) return _memberBalance(a).compareTo(_memberBalance(b));
+      return _memberName(a).compareTo(_memberName(b));
+    });
+    return list;
+  }
+
+  // ملخّص مالي
+  double get _totalBalance =>
+      _members.fold(0.0, (s, m) => s + _memberBalance(m));
+  int get _lowCount => _members.where(_isLow).length;
+  int get _operatorsCount =>
+      _members.where((m) => m['isMainPartner'] != true).length;
 
   @override
   void initState() {
@@ -138,23 +222,37 @@ class _FtthOperatorsManagePageState extends State<FtthOperatorsManagePage> {
       _ftth.getTeamRoles(token: _token, baseUrl: _serverUrl),
       _ftth.getZones(token: _token, baseUrl: _serverUrl),
       _ftth.getPasswordPolicies(token: _token, baseUrl: _serverUrl),
-      _ftth.getTeamMembers(token: _token, baseUrl: _serverUrl, pageSize: 50),
+      _fetchAllMembers(),
     ]);
     if (!mounted) return;
-    _roles = results[0] as List<Map<String, dynamic>>;
-    _zones = _normalizeZones(results[1] as List<Map<String, dynamic>>);
-    _policies = results[2] as List<Map<String, dynamic>>;
-    final members = results[3] as Map<String, dynamic>;
-    _members = List<Map<String, dynamic>>.from(members['items'] ?? []);
+    _roles = results[0];
+    _zones = _normalizeZones(results[1]);
+    _policies = results[2];
+    _members = results[3];
+  }
+
+  /// جلب كل المشغّلين عبر الصفحات (pageSize=50 لتفادي حجب الـWAF للصفحات الكبيرة).
+  Future<List<Map<String, dynamic>>> _fetchAllMembers() async {
+    const size = 50;
+    final all = <Map<String, dynamic>>[];
+    var page = 1;
+    while (true) {
+      final res = await _ftth.getTeamMembers(
+          token: _token, baseUrl: _serverUrl, pageNumber: page, pageSize: size);
+      final items = List<Map<String, dynamic>>.from(res['items'] ?? []);
+      all.addAll(items);
+      final total = (res['totalCount'] as num?)?.toInt() ?? all.length;
+      if (items.length < size || all.length >= total || page >= 50) break;
+      page++;
+    }
+    return all;
   }
 
   Future<void> _refreshMembers() async {
     try {
-      final members =
-          await _ftth.getTeamMembers(token: _token, baseUrl: _serverUrl, pageSize: 50);
+      final all = await _fetchAllMembers();
       if (!mounted) return;
-      setState(() =>
-          _members = List<Map<String, dynamic>>.from(members['items'] ?? []));
+      setState(() => _members = all);
     } catch (_) {}
   }
 
@@ -183,6 +281,24 @@ class _FtthOperatorsManagePageState extends State<FtthOperatorsManagePage> {
       content: Text(msg, style: const TextStyle(fontFamily: 'Cairo')),
       backgroundColor: status.tone.base,
     ));
+  }
+
+  void _copy(String value, String label) {
+    Clipboard.setData(ClipboardData(text: value));
+    _snack('نُسخ $label', SdStatus.success);
+  }
+
+  /// آخر دخول بصيغة عربية موجزة، أو null إن لم يدخل.
+  String? _formatLastLogin(dynamic raw) {
+    if (raw == null) return null;
+    final dt = DateTime.tryParse(raw.toString())?.toLocal();
+    if (dt == null) return null;
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'الآن';
+    if (diff.inMinutes < 60) return 'قبل ${diff.inMinutes} دقيقة';
+    if (diff.inHours < 24) return 'قبل ${diff.inHours} ساعة';
+    if (diff.inDays < 30) return 'قبل ${diff.inDays} يوم';
+    return DateFormat('yyyy/MM/dd', 'en_US').format(dt);
   }
 
   // ═══════════════════════════════════════════
@@ -328,6 +444,12 @@ class _FtthOperatorsManagePageState extends State<FtthOperatorsManagePage> {
       appBar: SdAppBar(
         title: 'إدارة المشغّلين',
         actions: [
+          if (_selectedPartner != null && !_loadingData)
+            SdAppBarAction(
+              icon: Icons.refresh,
+              label: 'تحديث',
+              onPressed: _refreshMembers,
+            ),
           SdAppBarAction(
             icon: Icons.person_add_alt_1,
             label: 'إضافة مشغّل',
@@ -413,11 +535,177 @@ class _FtthOperatorsManagePageState extends State<FtthOperatorsManagePage> {
     if (_members.isEmpty) {
       return const Center(child: SdEmptyState(title: 'لا يوجد مشغّلون'));
     }
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 16),
-      itemCount: _members.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (_, i) => _memberCard(_members[i]),
+    final list = _filteredMembers;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _summaryBar(),
+        _searchBar(_lowCount),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _refreshMembers,
+            color: SdColors.accent,
+            child: list.isEmpty
+                ? ListView(
+                    children: const [
+                      SizedBox(height: 80),
+                      Center(child: SdEmptyState(title: 'لا نتائج مطابقة')),
+                    ],
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(12, 2, 12, 16),
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) => _memberCard(list[i]),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _summaryBar() {
+    Widget stat(IconData ic, String label, String value, Color c) => Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+            decoration: BoxDecoration(
+              color: SdColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: SdColors.edge),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(ic, size: 14, color: c),
+                    const SizedBox(width: 3),
+                    Flexible(
+                      child: Text(value,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: c)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(label,
+                    style: const TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 10.5,
+                        color: SdColors.muted)),
+              ],
+            ),
+          ),
+        );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
+      child: Row(
+        children: [
+          stat(Icons.account_balance_wallet, 'إجمالي الأرصدة',
+              '${_currency.format(_totalBalance)} د.ع', SdColors.success),
+          const SizedBox(width: 8),
+          stat(Icons.groups_2_outlined, 'المشغّلون', '$_operatorsCount',
+              SdColors.accent),
+          const SizedBox(width: 8),
+          stat(Icons.error_outline, 'يحتاج شحن', '$_lowCount',
+              _lowCount > 0 ? SdColors.danger : SdColors.muted),
+        ],
+      ),
+    );
+  }
+
+  Widget _searchBar(int lowCount) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _searchCtrl,
+            onChanged: (v) => setState(() => _search = v),
+            decoration: _dec(
+              'بحث بالاسم أو المستخدم أو الهاتف',
+              suffix: _search.isEmpty
+                  ? const Icon(Icons.search, color: SdColors.faint, size: 20)
+                  : IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        setState(() => _search = '');
+                      },
+                    ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 34,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                FilterChip(
+                  selected: _onlyLowBalance,
+                  onSelected: (v) => setState(() => _onlyLowBalance = v),
+                  showCheckmark: false,
+                  visualDensity: VisualDensity.compact,
+                  avatar: Icon(Icons.warning_amber_rounded,
+                      size: 16,
+                      color: _onlyLowBalance ? Colors.white : SdColors.danger),
+                  label: Text('رصيد منخفض ($lowCount)',
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: _onlyLowBalance
+                              ? Colors.white
+                              : SdColors.danger)),
+                  backgroundColor: SdColors.dangerTint,
+                  selectedColor: SdColors.danger,
+                  side: const BorderSide(color: SdColors.dangerTintEdge),
+                ),
+                const SizedBox(width: 6),
+                _roleChip('الكل', _roleFilter == null,
+                    () => setState(() => _roleFilter = null)),
+                for (final r in _availableRoles) ...[
+                  const SizedBox(width: 6),
+                  _roleChip(r, _roleFilter == r,
+                      () => setState(() => _roleFilter = r)),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+                'المعروض: ${_filteredMembers.length} / ${_operatorsCount + 1}',
+                style: const TextStyle(
+                    fontFamily: 'Cairo', fontSize: 11.5, color: SdColors.muted)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _roleChip(String label, bool selected, VoidCallback onTap) {
+    return FilterChip(
+      selected: selected,
+      onSelected: (_) => onTap(),
+      showCheckmark: false,
+      visualDensity: VisualDensity.compact,
+      label: Text(label,
+          style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: selected ? Colors.white : SdColors.accent)),
+      backgroundColor: SdColors.accentTint,
+      selectedColor: SdColors.accent,
+      side: const BorderSide(color: SdColors.accentTintEdge),
     );
   }
 
@@ -428,33 +716,99 @@ class _FtthOperatorsManagePageState extends State<FtthOperatorsManagePage> {
     final name = '$first $last'.trim();
     final phone = m['phoneNumber']?.toString() ?? '';
     final role = (m['role'] as Map?)?['displayValue']?.toString() ?? '-';
-    final balance =
-        ((m['walletSetup'] as Map?)?['balance'] as num?)?.toDouble() ?? 0;
+    final balance = _memberBalance(m);
     final isMain = m['isMainPartner'] == true;
+    final hasWallet = _needsWallet(m);
+    final zoneCount = (m['zoneIds'] as List?)?.length ?? 0;
+    // الدور يحتاج مناطق صراحةً إذا لم يكن له وصول لكل مناطق الشريك.
+    final needsZones =
+        (m['role'] as Map?)?['canAccessAllPartnerZones'] != true && !isMain;
+    final low = _isLow(m);
+    final noName = name.isEmpty && !isMain;
+    final lastLogin = _formatLastLogin(m['lastLoginAt']);
 
-    return SdCard(
+    return Container(
+      decoration: BoxDecoration(
+        color: low ? SdColors.dangerTint : SdColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+            color: low ? SdColors.danger : SdColors.edge,
+            width: low ? 1.3 : 1),
+      ),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.person, color: SdColors.accent, size: 20),
+              Icon(Icons.person,
+                  color: low ? SdColors.danger : SdColors.accent, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name.isNotEmpty ? name : username,
-                        style: const TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800)),
-                    Text(
-                        '$username${phone.isNotEmpty ? ' • $phone' : ''}',
-                        style: const TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 11.5,
-                            color: SdColors.muted)),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(name.isNotEmpty ? name : username,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800)),
+                        ),
+                        if (noName) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: SdColors.warningTint,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                  color: SdColors.warningTintEdge),
+                            ),
+                            child: const Text('بلا اسم',
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: SdColors.warningText)),
+                          ),
+                        ],
+                      ],
+                    ),
+                    InkWell(
+                      onTap: () => _copy(username, 'اسم المستخدم'),
+                      onLongPress: phone.isEmpty
+                          ? null
+                          : () => _copy(phone, 'رقم الهاتف'),
+                      child: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                                '$username${phone.isNotEmpty ? ' • $phone' : ''}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11.5,
+                                    color: SdColors.muted)),
+                          ),
+                          const SizedBox(width: 3),
+                          const Icon(Icons.copy,
+                              size: 11, color: SdColors.faint),
+                        ],
+                      ),
+                    ),
+                    if (lastLogin != null)
+                      Text('آخر دخول: $lastLogin',
+                          style: const TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 10,
+                              color: SdColors.faint)),
                   ],
                 ),
               ),
@@ -463,24 +817,77 @@ class _FtthOperatorsManagePageState extends State<FtthOperatorsManagePage> {
           ),
           const SizedBox(height: 8),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Icon(Icons.account_balance_wallet_outlined,
-                  size: 16, color: SdColors.muted),
-              const SizedBox(width: 4),
-              Text('${_currency.format(balance)} د.ع',
-                  style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color:
-                          balance > 0 ? SdColors.success : SdColors.faint)),
-              const Spacer(),
+              Expanded(
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (hasWallet || isMain)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.account_balance_wallet_outlined,
+                              size: 16,
+                              color: low ? SdColors.danger : SdColors.muted),
+                          const SizedBox(width: 4),
+                          Text('${_currency.format(balance)} د.ع',
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: low
+                                      ? SdColors.danger
+                                      : (balance > 0
+                                          ? SdColors.success
+                                          : SdColors.faint))),
+                          if (low) ...[
+                            const SizedBox(width: 4),
+                            const Icon(Icons.error_outline,
+                                size: 14, color: SdColors.danger),
+                            const Text(' يحتاج شحن',
+                                style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: SdColors.danger)),
+                          ],
+                        ],
+                      ),
+                    if (needsZones)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.map_outlined,
+                              size: 15,
+                              color: zoneCount == 0
+                                  ? SdColors.danger
+                                  : SdColors.muted),
+                          const SizedBox(width: 3),
+                          Text('$zoneCount منطقة',
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: zoneCount == 0
+                                      ? SdColors.danger
+                                      : SdColors.muted)),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
               if (!isMain) ...[
                 _smallBtn('تعديل', Icons.edit, SdColors.info,
                     () => _openEdit(m)),
-                const SizedBox(width: 6),
-                _smallBtn('شحن', Icons.add_card, SdColors.accent,
-                    () => _openTopUp(m)),
+                if (hasWallet) ...[
+                  const SizedBox(width: 6),
+                  _smallBtn('شحن', Icons.add_card, SdColors.accent,
+                      () => _openTopUp(m)),
+                ],
               ] else
                 const Text('الحساب الرئيسي',
                     style: TextStyle(
@@ -839,14 +1246,67 @@ class _EditOperatorPageState extends State<_EditOperatorPage> {
   bool _setEquals(Set<String> a, Set<String> b) =>
       a.length == b.length && a.containsAll(b);
 
+  bool get _dirty {
+    final m = widget.member;
+    final origFirst = (m['firstName']?.toString() ?? '').trim();
+    final origLast = (m['lastName']?.toString() ?? '').trim();
+    final origPhone = (m['phoneNumber']?.toString() ?? '').trim();
+    final origRole = (m['role'] as Map?)?['id']?.toString();
+    final origZones =
+        ((m['zoneIds'] as List?)?.map((e) => e.toString()).toSet()) ??
+            <String>{};
+    return _firstCtrl.text.trim() != origFirst ||
+        _lastCtrl.text.trim() != origLast ||
+        _phoneCtrl.text.trim() != origPhone ||
+        (_role?['id']?.toString()) != origRole ||
+        !_setEquals(_zones, origZones) ||
+        _changePassword;
+  }
+
+  Future<bool> _confirmDiscard() async {
+    if (!_dirty) return true;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تغييرات غير محفوظة',
+            style: TextStyle(fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
+        content: const Text('لديك تعديلات لم تُحفظ. هل تريد المغادرة وتجاهلها؟',
+            style: TextStyle(fontFamily: 'Cairo')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('البقاء', style: TextStyle(fontFamily: 'Cairo')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: SdColors.danger,
+                foregroundColor: Colors.white),
+            child: const Text('تجاهل والمغادرة',
+                style: TextStyle(fontFamily: 'Cairo')),
+          ),
+        ],
+      ),
+    );
+    return ok == true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final username = widget.member['username']?.toString() ?? '';
-    return SdPage(
-      scrollable: true,
-      maxWidth: 720,
-      appBar: SdAppBar(title: 'تعديل: $username'),
-      body: Form(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (await _confirmDiscard() && mounted) {
+          Navigator.of(context).pop(false);
+        }
+      },
+      child: SdPage(
+        scrollable: true,
+        maxWidth: 720,
+        appBar: SdAppBar(title: 'تعديل: $username'),
+        body: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1058,6 +1518,7 @@ class _EditOperatorPageState extends State<_EditOperatorPage> {
             ),
             const SizedBox(height: 8),
           ],
+        ),
         ),
       ),
     );
