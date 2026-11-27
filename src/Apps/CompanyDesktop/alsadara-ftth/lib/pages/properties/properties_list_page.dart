@@ -19,14 +19,6 @@ import 'property_qr_batches_page.dart';
 import 'property_qr_scanner.dart';
 import 'property_ui.dart';
 
-/// جزء من شريط النِسَب في لوحة التحليل (تسمية + عدد + لون).
-class _Seg {
-  final String label;
-  final int count;
-  final Color color;
-  const _Seg(this.label, this.count, this.color);
-}
-
 class PropertiesListPage extends StatefulWidget {
   const PropertiesListPage({super.key});
 
@@ -49,7 +41,6 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
   String? _serviceTypeFilter; // Internet / Master / Iptv / Other
   String _sort = 'newest'; // newest / oldest / npn
   PropertySummary _summary = const PropertySummary();
-  bool _showInsights = true; // توسيع لوحة التحليل
   int _page = 1;
   int _total = 0;
   bool _hasMore = false;
@@ -329,7 +320,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
               )
             : null,
         body: PropContentWrap(
-          maxWidth: 1000,
+          maxWidth: 1500,
           child: Column(
             children: [
               _searchBar(),
@@ -395,22 +386,9 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                       fontWeight: FontWeight.w800,
                       fontSize: 13.5,
                       color: PropUi.ink)),
-              const Spacer(),
-              InkWell(
-                onTap: () => setState(() => _showInsights = !_showInsights),
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(
-                      _showInsights
-                          ? Icons.expand_less_rounded
-                          : Icons.expand_more_rounded,
-                      color: SdColors.muted),
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
               _kpiTile('الإجمالي', '${s.total}', Icons.home_work_rounded,
@@ -423,31 +401,65 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                   () => _setHasService(_hasServiceFilter == true ? null : true)),
             ],
           ),
-          if (_showInsights) ...[
-            const SizedBox(height: 14),
-            _proportionRow('نوع العقار', [
-              _Seg('سكني', s.residential, SdColors.primary),
-              _Seg('تجاري', s.commercial, SdColors.warning),
-            ]),
-            const SizedBox(height: 11),
-            _proportionRow('الملكية', [
-              _Seg('ملك', s.owned, SdColors.success),
-              _Seg('إيجار', s.rent, SdColors.info),
-            ]),
-            const SizedBox(height: 11),
-            _proportionRow('تغطية الموقع', [
-              _Seg('لها موقع', s.withLocation, SdColors.success),
-              _Seg('بلا موقع', s.withoutLocation, SdColors.faint),
-            ]),
-            const SizedBox(height: 11),
-            _proportionRow('الخدمات', [
-              _Seg('إنترنت', s.internet, SdColors.info),
-              _Seg('ماستر', s.master, SdColors.accent),
-              _Seg('IPTV', s.iptv, SdColors.warning),
-              _Seg('بلا خدمة', s.withoutService, SdColors.faint),
-            ]),
-          ],
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              _miniStat('سكني', s.residential, SdColors.primary,
+                  () => _setProperty(
+                      _propertyFilter == 'Residential' ? null : 'Residential')),
+              _miniStat('تجاري', s.commercial, SdColors.warning,
+                  () => _setProperty(
+                      _propertyFilter == 'Commercial' ? null : 'Commercial')),
+              _miniStat('ملك', s.owned, SdColors.success,
+                  () => _setOwnership(_ownershipFilter == 'Owned' ? null : 'Owned')),
+              _miniStat('إيجار', s.rent, SdColors.info,
+                  () => _setOwnership(_ownershipFilter == 'Rent' ? null : 'Rent')),
+              _miniStat('إنترنت', s.internet, SdColors.info,
+                  () => _setServiceType(
+                      _serviceTypeFilter == 'Internet' ? null : 'Internet')),
+              _miniStat('بلا خدمة', s.withoutService, SdColors.faint,
+                  () => _setHasService(_hasServiceFilter == false ? null : false)),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  /// شريحة إحصاء صغيرة (تسمية + عدد) قابلة للنقر كفلتر سريع.
+  Widget _miniStat(String label, int count, Color color, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color.withValues(alpha: 0.20)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('$label ',
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 11.5,
+                      color: SdColors.muted,
+                      fontWeight: FontWeight.w600)),
+              Text('$count',
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 12.5,
+                      color: color,
+                      fontWeight: FontWeight.w800)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -494,63 +506,6 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
           ),
         ),
       ),
-    );
-  }
-
-  /// شريط نِسَب أفقي مجزّأ + أسطورة (dot + تسمية + عدد) — عرض احترافي للتوزيع.
-  Widget _proportionRow(String title, List<_Seg> segs) {
-    final total = segs.fold<int>(0, (a, b) => a + b.count);
-    final shown = segs.where((e) => e.count > 0).toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: TextStyle(
-                fontFamily: 'Cairo',
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-                color: PropUi.ink)),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: SizedBox(
-            height: 11,
-            child: total == 0
-                ? Container(color: SdColors.faint.withValues(alpha: 0.18))
-                : Row(
-                    children: [
-                      for (final e in shown)
-                        Expanded(
-                            flex: e.count, child: Container(color: e.color)),
-                    ],
-                  ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 12,
-          runSpacing: 3,
-          children: [
-            for (final e in segs)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                      width: 9,
-                      height: 9,
-                      decoration: BoxDecoration(
-                          color: e.color, shape: BoxShape.circle)),
-                  const SizedBox(width: 4),
-                  Text('${e.label} ${e.count}',
-                      style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 11,
-                          color: SdColors.muted)),
-                ],
-              ),
-          ],
-        ),
-      ],
     );
   }
 
@@ -667,13 +622,48 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
             : null,
       );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(14, 6, 14, 96),
-      itemCount: _rows.length + 1,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (_, i) {
-        if (i == _rows.length) return _pager();
-        return _card(_rows[i]);
+    // تجاوب مع الشاشة: عمودان على الشاشات العريضة (≥1050) لملء المساحة، وعمود على الضيّقة.
+    return LayoutBuilder(
+      builder: (context, c) {
+        final cols = c.maxWidth >= 1050 ? 2 : 1;
+        if (cols == 1) {
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 96),
+            itemCount: _rows.length + 1,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (_, i) {
+              if (i == _rows.length) return _pager();
+              return _card(_rows[i]);
+            },
+          );
+        }
+        // عمودان: نجمّع البطاقات أزواجاً في صفوف.
+        final pairs = <List<Property>>[];
+        for (int i = 0; i < _rows.length; i += 2) {
+          pairs.add(_rows.sublist(
+              i, (i + 2) > _rows.length ? _rows.length : i + 2));
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(14, 6, 14, 96),
+          itemCount: pairs.length + 1,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (_, i) {
+            if (i == pairs.length) return _pager();
+            final pair = pairs[i];
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _card(pair[0])),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: pair.length > 1
+                      ? _card(pair[1])
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            );
+          },
+        );
       },
     );
   }
@@ -756,8 +746,9 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // العنوان الرئيسي = اسم الساكن/المالك (أُزيل رقم الدار من البطاقة).
                     Text(
-                      p.displayTitle,
+                      residentName.isNotEmpty ? residentName : 'عقار بلا اسم',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -766,52 +757,33 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                           fontSize: 15,
                           color: PropUi.ink),
                     ),
+                    if (residentPhone.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          const Icon(Icons.phone_rounded,
+                              size: 13, color: SdColors.success),
+                          const SizedBox(width: 4),
+                          Text(
+                            residentPhone,
+                            textDirection: TextDirection.ltr,
+                            style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12.5,
+                                color: SdColors.muted),
+                          ),
+                        ],
+                      ),
+                    ],
                     if (p.shortAddress.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(p.shortAddress,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                               fontFamily: 'Cairo',
-                              fontSize: 12, color: SdColors.muted)),
-                    ],
-                    if (residentName.isNotEmpty ||
-                        residentPhone.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.person_rounded,
-                              size: 14, color: SdColors.primary),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              residentName.isNotEmpty ? residentName : '—',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: PropUi.ink),
-                            ),
-                          ),
-                          if (residentPhone.isNotEmpty) ...[
-                            const SizedBox(width: 10),
-                            const Icon(Icons.phone_rounded,
-                                size: 13, color: SdColors.success),
-                            const SizedBox(width: 3),
-                            Text(
-                              residentPhone,
-                              textDirection: TextDirection.ltr,
-                              style: TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                  color: SdColors.muted),
-                            ),
-                          ],
-                        ],
-                      ),
+                              fontSize: 11.5, color: SdColors.muted)),
                     ],
                     const SizedBox(height: 6),
                     Wrap(
