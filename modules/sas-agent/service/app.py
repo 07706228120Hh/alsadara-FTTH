@@ -38,7 +38,7 @@ if _BACKEND_APP not in sys.path:
     sys.path.insert(0, os.path.abspath(_BACKEND_APP))
 
 from integrations.sas_client import SASClient, SASError, sas_decrypt  # noqa: E402
-from integrations.sas_user_client import SASUserClient          # noqa: E402
+# ملاحظة: SASUserClient غير مستخدَم في هذا الـsidecar (أُزيل الاستيراد الميّت).
 from sas_premises import router as _premises_router, PREMISES_DDL  # noqa: E402 — اسم فريد لتفادي تصادم حزمة backend/app/premises عبر sys.path
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Request, status  # noqa: E402
@@ -1980,9 +1980,12 @@ async def _call_sas(server_url: str, username: str, password: str,
                     fetcher, **kwargs) -> Any:
     try:
         # نُفضّل HTTPS (المتصفّح يستخدمه؛ بعض النقاط مثل user/traffic تُرجع 200 فارغاً على HTTP).
-        # verify_tls=False لأن لوحات SAS غالباً بشهادة ذاتية التوقيع.
+        # verify_tls: الافتراضي False (لوحات SAS غالباً بشهادة ذاتية التوقيع) — سلوك قائم.
+        # يمكن تفعيل التحقّق من الشهادة بضبط SADARA_SAS_VERIFY_TLS=1 (بعد التأكّد أن خادم SAS4
+        # يقدّم شهادة صالحة/مثبّتة) دون أي تعديل كود — علم إعداد غير كاسر.
+        verify_tls = os.environ.get("SADARA_SAS_VERIFY_TLS", "0").strip().lower() in ("1", "true", "yes", "on")
         async with SASClient(server_url, username, password,
-                             https=True, verify_tls=False) as sas:
+                             https=True, verify_tls=verify_tls) as sas:
             return await fetcher(sas, **kwargs)
     except SASError as exc:
         logger.warning("فشل نداء SAS: %s", _safe_msg(exc))
@@ -2065,9 +2068,11 @@ async def _fetch_finance(sas: SASClient) -> Any:
     if isinstance(data, dict):
         _inject(data)
         _inject(data.get("data"))
-        logger.warning("[finance] keys=%s balance=%r (inner keys=%s)",
-                       list(data.keys()), data.get("balance"),
-                       list(data.get("data", {}).keys()) if isinstance(data.get("data"), dict) else None)
+        # تشخيص بلا كشف بيانات مالية: نسجّل بنية الرد فقط (المفاتيح) على مستوى DEBUG،
+        # ولا نطبع قيمة الرصيد إطلاقاً (كانت تُطبع سابقاً على WARNING في كل نداء).
+        logger.debug("[finance] keys=%s has_balance=%s (inner keys=%s)",
+                     list(data.keys()), ("balance" in data),
+                     list(data.get("data", {}).keys()) if isinstance(data.get("data"), dict) else None)
     return data
 
 

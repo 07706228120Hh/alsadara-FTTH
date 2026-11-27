@@ -15,8 +15,8 @@
   7. الوسائط: data/media/premises/<id>/house.<ext> تحت مجلد الخدمة.
 
 يُستورَد هذا الملف في app.py بسطر:
-    from premises import router as premises_router
-    app.include_router(premises_router)
+    from sas_premises import router as _premises_router
+    app.include_router(_premises_router)
 """
 from __future__ import annotations
 

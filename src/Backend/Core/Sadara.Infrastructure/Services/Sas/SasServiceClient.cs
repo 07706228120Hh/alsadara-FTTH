@@ -52,8 +52,11 @@ public class SasServiceClient : ISasServiceClient
         var baseUrl = configuration["SasService:BaseUrl"] ?? DefaultBaseUrl;
         if (_httpClient.BaseAddress is null)
             _httpClient.BaseAddress = new Uri(baseUrl);
+        // المهلة قابلة للإعداد عبر SasService:TimeoutSeconds (الافتراضي 20 = السلوك القائم).
+        // ترفعها للعمليات الدفعية (التجديد/المزامنة لحسابات كبيرة) دون تعديل كود.
+        var timeoutSeconds = int.TryParse(configuration["SasService:TimeoutSeconds"], out var t) && t > 0 ? t : 20;
         if (_httpClient.Timeout == default || _httpClient.Timeout == TimeSpan.FromSeconds(100))
-            _httpClient.Timeout = TimeSpan.FromSeconds(20);
+            _httpClient.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
 
         _internalSecret = configuration["SasService:InternalSecret"]
                           ?? Environment.GetEnvironmentVariable("SADARA_SAS_INTERNAL_SECRET")

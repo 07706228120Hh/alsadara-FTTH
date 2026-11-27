@@ -247,7 +247,7 @@ class SadaraApiService {
 
     if (token != null) {
       headers['Authorization'] = 'Bearer $token';
-      debugPrint('🔑 SadaraAPI: Token found (${token.length} chars)');
+      debugPrint('🔑 SadaraAPI: Token present');
     } else {
       debugPrint('⚠️ SadaraAPI: No auth token available from any source');
     }
