@@ -1,48 +1,34 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # sadara-sas-sidecar.service — وحدة systemd لخدمة الساز (SAS sidecar)
 #
-# يعالج P0-1: الخدمة لم تكن مُدارة ضمن النشر ⇒ تتعطّل صامتةً بعد أي reboot.
-# هذه الوحدة تضمن: إقلاع تلقائي + إعادة تشغيل عند الفشل + ربط على 127.0.0.1 فقط.
+# هذه نسخة طبق الأصل من الوحدة الحيّة على الإنتاج (72.61.183.61:/etc/systemd/system/)
+# مُلتقَطة بتاريخ 2026-11-27 — محفوظة كمرجع/نسخة احتياطية.
 #
-# ⚠️ قبل التطبيق تحقّق من المسارات الفعلية على الإنتاج (WorkingDirectory / ExecStart / EnvironmentFile).
-#    التثبيت: راجع deploy/sas-sidecar/README.md (يحتاج موافقة بشرية — تغيير بنية تحتية).
+# الحالة على الإنتاج: active + enabled (تقلع تلقائياً + تتعافى عند الفشل). P0-1 مُطبَّق.
+# أسفلها اقتراحات تقوية إضافية (معلّقة) — طبّقها فقط بعد اختبار على staging.
 # ══════════════════════════════════════════════════════════════════════════════
 [Unit]
-Description=Sadara SAS Sidecar (FastAPI on 127.0.0.1:8100)
-Documentation=file:///srv/sas-service/README.md
-After=network-online.target
-Wants=network-online.target
+Description=Sadara SAS Sidecar (127.0.0.1:8100)
+After=network.target
 
 [Service]
 Type=simple
-User=sadara
-Group=sadara
-
-# المسار الفعلي للخدمة على الإنتاج (عدّله إن اختلف).
-WorkingDirectory=/srv/sas-service
-
-# يحمل SADARA_SAS_INTERNAL_SECRET (إلزامي — fail-closed) وأي SADARA_SAS_* أخرى.
+User=www-data
+WorkingDirectory=/opt/sadara/sas/service
 EnvironmentFile=/etc/sadara/sas-sidecar.env
-
-# الربط على 127.0.0.1 حصراً — الخدمة غير مكشوفة للإنترنت إطلاقاً.
-ExecStart=/srv/sas-service/.venv/bin/python -m uvicorn app:app --host 127.0.0.1 --port 8100 --log-level info
-
+ExecStart=/opt/sadara/sas/venv/bin/python -m uvicorn app:app --host 127.0.0.1 --port 8100 --log-level info
 Restart=on-failure
 RestartSec=5
-TimeoutStopSec=20
-
-# ── تقوية (hardening) ──
 NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-# اسمح بالكتابة لمجلد البيانات (SQLite + وسائط العقارات) فقط.
-ReadWritePaths=/srv/sas-service/data
-ProtectKernelTunables=true
-ProtectControlGroups=true
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
-# دفاع بالعمق: لا اتصالات شبكية صادرة/واردة إلا عبر loopback + وجهة SAS4.
-# (IPAddressAllow/Deny اختياري — فعّله فقط إن كنت تعرف عناوين SAS4 الثابتة.)
+
+# ── اقتراحات تقوية إضافية (اختيارية — اختبرها قبل التفعيل) ──
+# PrivateTmp=true
+# ProtectSystem=strict
+# ProtectHome=true
+# ReadWritePaths=/opt/sadara/sas/service/data
+# ProtectKernelTunables=true
+# ProtectControlGroups=true
+# RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 
 [Install]
 WantedBy=multi-user.target

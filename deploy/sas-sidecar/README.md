@@ -19,7 +19,7 @@ ssh root@72.61.183.61 'bash -s' < deploy/sas-sidecar/verify-sidecar.sh
 
 > **الخطر الأصلي:** الخدمة كانت تُشغَّل يدوياً وليست ضمن `deploy-backend.sh` ⇒ بعد أي reboot تتعطّل الوحدة صامتةً (كل `/api/sas-agent/*` تُرجع 503).
 
-**قبل التطبيق:** تأكّد من المسارات الفعلية (`WorkingDirectory`, `ExecStart`, `EnvironmentFile`) في [sadara-sas-sidecar.service](sadara-sas-sidecar.service) — المثال يفترض `/srv/sas-service`.
+**المسارات الفعلية على الإنتاج (مُتحقَّقة 2026-11-27):** الخدمة في `/opt/sadara/sas/service`، الـvenv في `/opt/sadara/sas/venv`، قاعدة `sas.db` في `/opt/sadara/sas/service/data/`، EnvFile `/etc/sadara/sas-sidecar.env` (السرّ مضبوط)، المستخدم `www-data`. الوحدة الحيّة محفوظة في [sadara-sas-sidecar.service](sadara-sas-sidecar.service) — **الخدمة مُثبَّتة ومُفعَّلة أصلاً (active + enabled)**، فهذا القسم مرجعي/للتعافي لا للتثبيت الأولي.
 
 ```bash
 # 1) تأكّد أن السرّ الداخلي مضبوط (نفس قيمة الباكند SADARA_SAS_INTERNAL_SECRET):

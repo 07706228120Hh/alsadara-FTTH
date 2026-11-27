@@ -12,9 +12,10 @@
 # ══════════════════════════════════════════════════════════════════════════════
 set -u
 
+# القيم الافتراضية مطابقة لبنية الإنتاج الفعلية (مُتحقَّقة 2026-11-27).
 SVC="${SAS_SERVICE_NAME:-sadara-sas-sidecar}"
 PORT="${SAS_PORT:-8100}"
-SAS_DIR="${SAS_DIR:-/srv/sas-service}"
+SAS_DIR="${SAS_DIR:-/opt/sadara/sas/service}"   # app.py + data/sas.db هنا
 ENV_FILE="${SAS_ENV_FILE:-/etc/sadara/sas-sidecar.env}"
 BACKUP_DIR="${BACKUP_DIR:-/root/backups}"
 
