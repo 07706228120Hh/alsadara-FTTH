@@ -1,0 +1,48 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# sadara-sas-sidecar.service — وحدة systemd لخدمة الساز (SAS sidecar)
+#
+# يعالج P0-1: الخدمة لم تكن مُدارة ضمن النشر ⇒ تتعطّل صامتةً بعد أي reboot.
+# هذه الوحدة تضمن: إقلاع تلقائي + إعادة تشغيل عند الفشل + ربط على 127.0.0.1 فقط.
+#
+# ⚠️ قبل التطبيق تحقّق من المسارات الفعلية على الإنتاج (WorkingDirectory / ExecStart / EnvironmentFile).
+#    التثبيت: راجع deploy/sas-sidecar/README.md (يحتاج موافقة بشرية — تغيير بنية تحتية).
+# ══════════════════════════════════════════════════════════════════════════════
+[Unit]
+Description=Sadara SAS Sidecar (FastAPI on 127.0.0.1:8100)
+Documentation=file:///srv/sas-service/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sadara
+Group=sadara
+
+# المسار الفعلي للخدمة على الإنتاج (عدّله إن اختلف).
+WorkingDirectory=/srv/sas-service
+
+# يحمل SADARA_SAS_INTERNAL_SECRET (إلزامي — fail-closed) وأي SADARA_SAS_* أخرى.
+EnvironmentFile=/etc/sadara/sas-sidecar.env
+
+# الربط على 127.0.0.1 حصراً — الخدمة غير مكشوفة للإنترنت إطلاقاً.
+ExecStart=/srv/sas-service/.venv/bin/python -m uvicorn app:app --host 127.0.0.1 --port 8100 --log-level info
+
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+
+# ── تقوية (hardening) ──
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# اسمح بالكتابة لمجلد البيانات (SQLite + وسائط العقارات) فقط.
+ReadWritePaths=/srv/sas-service/data
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+# دفاع بالعمق: لا اتصالات شبكية صادرة/واردة إلا عبر loopback + وجهة SAS4.
+# (IPAddressAllow/Deny اختياري — فعّله فقط إن كنت تعرف عناوين SAS4 الثابتة.)
+
+[Install]
+WantedBy=multi-user.target
