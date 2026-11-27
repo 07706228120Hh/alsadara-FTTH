@@ -251,6 +251,46 @@ class CitizenHit {
       );
 }
 
+/// ملخّص عدّادات العقارات (من `/properties/summary`).
+class PropertySummary {
+  final int total;
+  final int residential;
+  final int commercial;
+  final int owned;
+  final int rent;
+  final int withLocation;
+  final int withoutLocation;
+  final int withService;
+  final int withoutService;
+
+  const PropertySummary({
+    this.total = 0,
+    this.residential = 0,
+    this.commercial = 0,
+    this.owned = 0,
+    this.rent = 0,
+    this.withLocation = 0,
+    this.withoutLocation = 0,
+    this.withService = 0,
+    this.withoutService = 0,
+  });
+
+  static int _i(dynamic v) =>
+      v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0);
+
+  factory PropertySummary.fromJson(Map<String, dynamic> j) => PropertySummary(
+        total: _i(j['total']),
+        residential: _i(j['residential']),
+        commercial: _i(j['commercial']),
+        owned: _i(j['owned']),
+        rent: _i(j['rent']),
+        withLocation: _i(j['withLocation']),
+        withoutLocation: _i(j['withoutLocation']),
+        withService: _i(j['withService']),
+        withoutService: _i(j['withoutService']),
+      );
+}
+
 class PropertyApiService {
   PropertyApiService._();
   static final PropertyApiService instance = PropertyApiService._();
@@ -264,6 +304,11 @@ class PropertyApiService {
     String? q,
     String? propertyType,
     String? ownership,
+    bool? hasLocation,
+    bool? hasService,
+    String? serviceType,
+    String? governorate,
+    String? sort,
     int page = 1,
     int pageSize = 30,
   }) async {
@@ -272,6 +317,13 @@ class PropertyApiService {
       if (propertyType != null && propertyType.isNotEmpty)
         'propertyType': propertyType,
       if (ownership != null && ownership.isNotEmpty) 'ownership': ownership,
+      if (hasLocation != null) 'hasLocation': '$hasLocation',
+      if (hasService != null) 'hasService': '$hasService',
+      if (serviceType != null && serviceType.isNotEmpty)
+        'serviceType': serviceType,
+      if (governorate != null && governorate.isNotEmpty)
+        'governorate': governorate,
+      if (sort != null && sort.isNotEmpty) 'sort': sort,
       'page': '$page',
       'pageSize': '$pageSize',
     };
@@ -293,6 +345,18 @@ class PropertyApiService {
       pageSize:
           _asInt(res['pageSize']) == 0 ? pageSize : _asInt(res['pageSize']),
     );
+  }
+
+  /// ملخّص عدّادات العقارات (إجمالي + حسب النوع/الملكية/الموقع/الخدمة).
+  /// يُستخدم لشريط الإحصاء أعلى القائمة وعدّادات الفلاتر. يفشل بهدوء (يعيد ملخّصاً فارغاً).
+  Future<PropertySummary> summary() async {
+    try {
+      final res = await _api.get('/properties/summary');
+      final d = (res['data'] as Map?)?.cast<String, dynamic>() ?? const {};
+      return PropertySummary.fromJson(d);
+    } catch (_) {
+      return const PropertySummary();
+    }
   }
 
   /// نقاط الخريطة: كل عقارات الشركة التي تملك إحداثيات (حمولة خفيفة).

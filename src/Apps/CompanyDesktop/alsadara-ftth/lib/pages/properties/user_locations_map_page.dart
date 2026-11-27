@@ -211,10 +211,19 @@ class _UserLocationsMapPageState extends State<UserLocationsMapPage>
   /// استقبال رسائل الخريطة: جهوزية / اختيار منزل / نتيجة مسار.
   void _onWebMessage(dynamic raw) {
     try {
-      final s = raw is String ? raw : '$raw';
-      final txt = s.trim();
-      if (!txt.startsWith('{')) return;
-      final m = jsonDecode(txt) as Map<String, dynamic>;
+      // إضافة webview_windows المحلّية تبثّ الرسالة ككائن Map مفكوك مسبقاً،
+      // بينما الجوال يبثّها نصّاً عبر قناة JS. نتعامل مع الحالتين حتى تعمل
+      // ready (إظهار الخارطة) + select (نقر العلامة) + route (المسار) على كل المنصّات.
+      // (سابقاً كان يُفترض النصّ دائماً فيتحوّل الـMap إلى "{action: ready}" ويفشل jsonDecode
+      //  على ويندوز ⇒ يبقى غطاء التحميل فوق الخارطة للأبد.)
+      final Map<String, dynamic> m;
+      if (raw is Map) {
+        m = raw.cast<String, dynamic>();
+      } else {
+        final txt = (raw is String ? raw : '$raw').trim();
+        if (!txt.startsWith('{')) return;
+        m = jsonDecode(txt) as Map<String, dynamic>;
+      }
       switch ((m['action'] ?? '').toString()) {
         case 'ready':
           if (mounted) setState(() => _mapLoaded = true);

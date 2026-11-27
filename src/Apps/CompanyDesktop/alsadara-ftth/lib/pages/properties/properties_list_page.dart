@@ -36,6 +36,11 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
   String? _error;
   String? _propertyFilter; // Residential / Commercial
   String? _ownershipFilter; // Owned / Rent
+  bool? _hasLocationFilter; // null=الكل · true=لها موقع · false=بلا موقع
+  bool? _hasServiceFilter; // null=الكل · true=لها خدمة · false=بلا خدمة
+  String? _serviceTypeFilter; // Internet / Master / Iptv / Other
+  String _sort = 'newest'; // newest / oldest / npn
+  PropertySummary _summary = const PropertySummary();
   int _page = 1;
   int _total = 0;
   bool _hasMore = false;
@@ -76,14 +81,21 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
         q: _q.text,
         propertyType: _propertyFilter,
         ownership: _ownershipFilter,
+        hasLocation: _hasLocationFilter,
+        hasService: _hasServiceFilter,
+        serviceType: _serviceTypeFilter,
+        sort: _sort,
         page: page,
         pageSize: _pageSize,
       );
+      // الملخّص عدّادات عامّة (غير متأثّرة بالبحث/الفلتر) — نجلبه مع الصفحة الأولى فقط.
+      final summary = page == 1 ? await _api.summary() : _summary;
       if (!mounted) return;
       setState(() {
         _rows = r.items;
         _total = r.total;
         _hasMore = r.hasMore;
+        _summary = summary;
         _loading = false;
       });
     } catch (e) {
@@ -102,6 +114,44 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
 
   void _setOwnership(String? v) {
     setState(() => _ownershipFilter = v);
+    _load();
+  }
+
+  void _setHasLocation(bool? v) {
+    setState(() => _hasLocationFilter = v);
+    _load();
+  }
+
+  void _setHasService(bool? v) {
+    setState(() => _hasServiceFilter = v);
+    _load();
+  }
+
+  void _setServiceType(String? v) {
+    setState(() => _serviceTypeFilter = v);
+    _load();
+  }
+
+  void _setSort(String v) {
+    setState(() => _sort = v);
+    _load();
+  }
+
+  bool get _anyFilterActive =>
+      _propertyFilter != null ||
+      _ownershipFilter != null ||
+      _hasLocationFilter != null ||
+      _hasServiceFilter != null ||
+      _serviceTypeFilter != null;
+
+  void _clearFilters() {
+    setState(() {
+      _propertyFilter = null;
+      _ownershipFilter = null;
+      _hasLocationFilter = null;
+      _hasServiceFilter = null;
+      _serviceTypeFilter = null;
+    });
     _load();
   }
 
@@ -274,6 +324,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
           child: Column(
             children: [
               _searchBar(),
+              _statsBar(),
               _filters(),
               Expanded(child: _list()),
             ],
@@ -311,27 +362,138 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
     );
   }
 
-  Widget _filters() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-      child: Row(
+  /// شريط عدّادات/ملخّص أعلى القائمة — بلاطات بأرقام (بعضها قابل للنقر كفلتر سريع).
+  Widget _statsBar() {
+    final s = _summary;
+    if (s.total == 0) return const SizedBox(height: 4);
+    return SizedBox(
+      height: 60,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
         children: [
-          _chip('الكل',
-              _propertyFilter == null && _ownershipFilter == null, () {
-            setState(() {
-              _propertyFilter = null;
-              _ownershipFilter = null;
-            });
-            _load();
-          }),
-          for (final e in kPropertyTypeLabels.entries)
-            _chip(e.value, _propertyFilter == e.key,
-                () => _setProperty(_propertyFilter == e.key ? null : e.key)),
+          _statTile('الإجمالي', s.total, SdColors.primary, null),
+          _statTile('سكني', s.residential, SdColors.primary,
+              () => _setProperty(
+                  _propertyFilter == 'Residential' ? null : 'Residential')),
+          _statTile('تجاري', s.commercial, SdColors.warning,
+              () => _setProperty(
+                  _propertyFilter == 'Commercial' ? null : 'Commercial')),
+          _statTile('لها موقع', s.withLocation, SdColors.success,
+              () => _setHasLocation(_hasLocationFilter == true ? null : true)),
+          _statTile('بلا موقع', s.withoutLocation, SdColors.danger,
+              () => _setHasLocation(_hasLocationFilter == false ? null : false)),
+          _statTile('لها خدمة', s.withService, SdColors.info,
+              () => _setHasService(_hasServiceFilter == true ? null : true)),
+          _statTile('بلا خدمة', s.withoutService, SdColors.faint,
+              () => _setHasService(_hasServiceFilter == false ? null : false)),
+        ],
+      ),
+    );
+  }
+
+  Widget _statTile(String label, int count, Color color, VoidCallback? onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 62),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: color.withValues(alpha: 0.25)),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('$count',
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        color: color)),
+                Text(label,
+                    style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10.5,
+                        color: SdColors.muted)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _filters() {
+    return SizedBox(
+      height: 42,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+        children: [
+          _anyFilterActive
+              ? _chip('مسح الفلاتر ✕', false, _clearFilters)
+              : _chip('الكل', true, () {}),
           for (final e in kOwnershipLabels.entries)
             _chip(e.value, _ownershipFilter == e.key,
                 () => _setOwnership(_ownershipFilter == e.key ? null : e.key)),
+          _chip('إنترنت', _serviceTypeFilter == 'Internet',
+              () => _setServiceType(
+                  _serviceTypeFilter == 'Internet' ? null : 'Internet')),
+          _chip('ماستر', _serviceTypeFilter == 'Master',
+              () => _setServiceType(
+                  _serviceTypeFilter == 'Master' ? null : 'Master')),
+          _chip('IPTV', _serviceTypeFilter == 'Iptv',
+              () => _setServiceType(_serviceTypeFilter == 'Iptv' ? null : 'Iptv')),
+          _sortChip(),
         ],
+      ),
+    );
+  }
+
+  /// شريحة الترتيب (قائمة منسدلة).
+  Widget _sortChip() {
+    const labels = {'newest': 'الأحدث', 'oldest': 'الأقدم', 'npn': 'رقم وطني'};
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: PopupMenuButton<String>(
+        onSelected: _setSort,
+        itemBuilder: (_) => [
+          for (final e in labels.entries)
+            PopupMenuItem(
+                value: e.key,
+                child: Text(e.value,
+                    style: const TextStyle(fontFamily: 'Cairo'))),
+        ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(PropUi.radiusPill),
+            border: Border.all(color: SdColors.faint.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.sort_rounded, size: 16, color: SdColors.muted),
+              const SizedBox(width: 4),
+              Text(labels[_sort] ?? 'الأحدث',
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                      color: SdColors.muted)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -525,11 +687,27 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                       spacing: 6,
                       runSpacing: 4,
                       children: [
+                        _locationTag(p),
                         _tag(p.propertyTypeLabel, tint),
                         _tag(p.ownershipLabel, SdColors.success),
                         ..._serviceTags(p),
                       ],
                     ),
+                    if (_cardMeta(p).isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Icon(Icons.schedule_rounded,
+                              size: 12, color: SdColors.faint),
+                          const SizedBox(width: 3),
+                          Text(_cardMeta(p),
+                              style: TextStyle(
+                                  fontFamily: 'Cairo',
+                                  fontSize: 10.5,
+                                  color: SdColors.faint)),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -539,6 +717,32 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
         ),
       ),
     );
+  }
+
+  /// شارة مؤشّر الموقع على البطاقة (أخضر=لها إحداثيات · رمادي=بلا موقع) — مرتبطة بالخارطة.
+  Widget _locationTag(Property p) {
+    final has = p.latitude != null && p.longitude != null;
+    return _iconTag(
+        has ? 'موقع' : 'بلا موقع',
+        has ? Icons.location_on_rounded : Icons.location_off_rounded,
+        has ? SdColors.success : SdColors.faint);
+  }
+
+  /// سطر معلومات مختصر أسفل البطاقة (عدد الخدمات · تاريخ الإضافة).
+  String _cardMeta(Property p) {
+    final parts = <String>[];
+    if (p.serviceCount > 0) parts.add('${p.serviceCount} خدمة');
+    final d = _shortDate(p.createdAt);
+    if (d.isNotEmpty) parts.add('أُضيف $d');
+    return parts.join('   ·   ');
+  }
+
+  String _shortDate(String iso) {
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    final l = dt.toLocal();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${l.year}/${two(l.month)}/${two(l.day)}';
   }
 
   /// شارات خدمات العقار على البطاقة: شارة لكل نوع خدمة مميّز (إنترنت/ماستر/…)

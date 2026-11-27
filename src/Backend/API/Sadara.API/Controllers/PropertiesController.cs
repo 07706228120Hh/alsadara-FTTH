@@ -83,6 +83,11 @@ public class PropertiesController : ControllerBase
         [FromQuery] string? q,
         [FromQuery] PropertyType? propertyType,
         [FromQuery] PropertyOwnership? ownership,
+        [FromQuery] bool? hasLocation,
+        [FromQuery] bool? hasService,
+        [FromQuery] PropertyServiceType? serviceType,
+        [FromQuery] string? governorate,
+        [FromQuery] string? sort,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 30,
         CancellationToken ct = default)
@@ -94,6 +99,22 @@ public class PropertiesController : ControllerBase
         var query = _db.Properties.AsNoTracking().Where(x => x.CompanyId == companyId);
         if (propertyType.HasValue) query = query.Where(x => x.PropertyType == propertyType.Value);
         if (ownership.HasValue) query = query.Where(x => x.Ownership == ownership.Value);
+        // فلتر الموقع (لها/بلا إحداثيات) — مرتبط بخارطة المواقع.
+        if (hasLocation == true) query = query.Where(x => x.Latitude != null && x.Longitude != null);
+        else if (hasLocation == false) query = query.Where(x => x.Latitude == null || x.Longitude == null);
+        // فلتر المحافظة (مطابقة تامّة).
+        if (!string.IsNullOrWhiteSpace(governorate)) query = query.Where(x => x.Governorate == governorate);
+        // فلتر نوع خدمة محدّد (للعقار خدمة غير محذوفة من هذا النوع).
+        if (serviceType.HasValue)
+            query = query.Where(x => _db.PropertyServices.Any(s =>
+                s.PropertyId == x.Id && s.CompanyId == companyId && !s.IsDeleted && s.ServiceType == serviceType.Value));
+        // فلتر وجود خدمة من عدمه (لها/بلا خدمة).
+        if (hasService == true)
+            query = query.Where(x => _db.PropertyServices.Any(s =>
+                s.PropertyId == x.Id && s.CompanyId == companyId && !s.IsDeleted));
+        else if (hasService == false)
+            query = query.Where(x => !_db.PropertyServices.Any(s =>
+                s.PropertyId == x.Id && s.CompanyId == companyId && !s.IsDeleted));
         if (!string.IsNullOrWhiteSpace(q))
         {
             var s = q.Trim();
@@ -116,8 +137,14 @@ public class PropertiesController : ControllerBase
         }
 
         var total = await query.CountAsync(ct);
-        var pageProps = await query
-            .OrderByDescending(x => x.CreatedAt)
+        // الترتيب: الأحدث (افتراضي) · الأقدم · حسب الرقم الوطني.
+        var ordered = sort switch
+        {
+            "oldest" => query.OrderBy(x => x.CreatedAt),
+            "npn" => query.OrderBy(x => x.Npn),
+            _ => query.OrderByDescending(x => x.CreatedAt),
+        };
+        var pageProps = await ordered
             .Skip((page - 1) * pageSize).Take(pageSize)
             .ToListAsync(ct);
 
@@ -156,6 +183,44 @@ public class PropertiesController : ControllerBase
         }).ToList();
 
         return Ok(new { success = true, data = rows, total, page, pageSize });
+    }
+
+    /// <summary>
+    /// ملخّص عدّادات عقارات الشركة (إجمالي + حسب النوع/الملكية/الموقع/الخدمة) — لعرضه أعلى القائمة.
+    /// معزول بالشركة (CompanyId من التوكن). قراءة فقط، بلا أسرار.
+    /// </summary>
+    [HttpGet("summary")]
+    [RequirePermission("property_registry", "view", PermissionSystem.Second, failClosed: true)]
+    public async Task<IActionResult> GetPropertiesSummary(CancellationToken ct = default)
+    {
+        if (!TryResolveScope(out var companyId, out _, out var denied)) return denied!;
+        var baseQ = _db.Properties.AsNoTracking().Where(x => x.CompanyId == companyId);
+
+        var total = await baseQ.CountAsync(ct);
+        var residential = await baseQ.CountAsync(x => x.PropertyType == PropertyType.Residential, ct);
+        var commercial = await baseQ.CountAsync(x => x.PropertyType == PropertyType.Commercial, ct);
+        var owned = await baseQ.CountAsync(x => x.Ownership == PropertyOwnership.Owned, ct);
+        var rent = await baseQ.CountAsync(x => x.Ownership == PropertyOwnership.Rent, ct);
+        var withLocation = await baseQ.CountAsync(x => x.Latitude != null && x.Longitude != null, ct);
+        var withService = await baseQ.CountAsync(x => _db.PropertyServices.Any(s =>
+            s.PropertyId == x.Id && s.CompanyId == companyId && !s.IsDeleted), ct);
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                total,
+                residential,
+                commercial,
+                owned,
+                rent,
+                withLocation,
+                withoutLocation = total - withLocation,
+                withService,
+                withoutService = total - withService,
+            }
+        });
     }
 
     /// <summary>
