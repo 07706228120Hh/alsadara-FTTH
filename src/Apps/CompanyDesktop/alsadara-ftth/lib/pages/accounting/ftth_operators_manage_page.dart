@@ -780,15 +780,50 @@ class _EditOperatorPageState extends State<_EditOperatorPage> {
       return;
     }
 
+    // ── إرسال الحقول المتغيّرة فقط (نموذج «تعديل لكل حقل») ──
+    // خادم FTTH يمسح الاسم عند أي طلب يغيّر الزونات؛ لذلك نفصل الاهتمامات:
+    // لا نُرسل zoneIds إلا إذا تغيّرت فعلاً، ولا نُرسل الاسم إلا إذا تغيّر.
+    final m = widget.member;
+    final origFirst = (m['firstName']?.toString() ?? '').trim();
+    final origLast = (m['lastName']?.toString() ?? '').trim();
+    final origPhone = (m['phoneNumber']?.toString() ?? '').trim();
+    final origRole = (m['role'] as Map?)?['id']?.toString();
+    final origZones =
+        ((m['zoneIds'] as List?)?.map((e) => e.toString()).toSet()) ??
+            <String>{};
+
+    final curFirst = _firstCtrl.text.trim();
+    final curLast = _lastCtrl.text.trim();
+    final curPhone = _phoneCtrl.text.trim();
+    final curRole = _role!['id'].toString();
+    final curZones = _zones;
+
+    final nameChanged = curFirst != origFirst || curLast != origLast;
+    final phoneChanged = curPhone != origPhone;
+    final roleChanged = curRole != origRole;
+    final zonesChanged = !_setEquals(curZones, origZones);
+
+    if (!nameChanged &&
+        !phoneChanged &&
+        !roleChanged &&
+        !zonesChanged &&
+        !_changePassword) {
+      setState(() => _saving = false);
+      Navigator.of(context).pop(false);
+      return;
+    }
+
+    // عند تغيير الزونات يُمسَح الاسم على الخادم ⇒ أعِد ختمه بالقيمة الحالية.
+    final mustStampName = nameChanged || zonesChanged;
     setState(() => _saving = true);
     final result = await _ftth.updateTeamMember(
       id: widget.member['id'].toString(),
-      firstName: _firstCtrl.text.trim(),
-      lastName: _lastCtrl.text.trim(),
-      phoneNumber: _phoneCtrl.text.trim(),
+      firstName: mustStampName ? curFirst : null,
+      lastName: mustStampName ? curLast : null,
+      phoneNumber: phoneChanged ? curPhone : null,
       password: _changePassword ? _passwordCtrl.text : null,
-      roleId: _role!['id'].toString(),
-      zoneIds: _zonesRequired ? _zones.toList() : const [],
+      roleId: roleChanged ? curRole : null,
+      zoneIds: (_zonesRequired && zonesChanged) ? curZones.toList() : null,
       token: widget.token,
       baseUrl: widget.baseUrl,
     );
@@ -800,6 +835,9 @@ class _EditOperatorPageState extends State<_EditOperatorPage> {
       _snack(result['error']?.toString() ?? 'فشل الحفظ', SdStatus.danger);
     }
   }
+
+  bool _setEquals(Set<String> a, Set<String> b) =>
+      a.length == b.length && a.containsAll(b);
 
   @override
   Widget build(BuildContext context) {

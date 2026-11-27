@@ -537,8 +537,15 @@ class FtthConnectService {
     };
   }
 
-  /// تعديل مشغّل — PUT **جزئي**: تُرسَل فقط الحقول المُمرَّرة (كما في بوّابة FTTH).
-  /// [roleId] = معرّف الدور (GUID). [walletBalance] لا يُعدَّل هنا (استعمل [refillTeamMemberWallet]).
+  /// تعديل مشغّل — **كل حقل في طلب مستقلّ** (نموذج بوّابة FTTH الرسمية).
+  ///
+  /// سبب الفصل: خادم FTTH فيه عطل — أي طلب يحتوي `zoneIds` يُعيد بناء المشغّل
+  /// ويمسح `firstName`/`lastName` إلى null (حتى لو لم يُرسَل الاسم إطلاقاً).
+  /// لذلك نُرسل الزونات وحدها، ثم **نُعيد ختم الاسم بطلب اسم-فقط في النهاية**،
+  /// وتعديل الاسم المنفرد يعمل ويثبت بشكل موثوق.
+  ///
+  /// [nameForRestamp] = مرِّر true عندما يجب إعادة ختم الاسم بعد تغيير الزونات
+  /// (لأن الزونات ستمسحه). [roleId] = معرّف الدور (GUID).
   Future<Map<String, dynamic>> updateTeamMember({
     required String id,
     String? firstName,
@@ -547,26 +554,44 @@ class FtthConnectService {
     String? password,
     String? roleId,
     List<String>? zoneIds,
+    bool restampName = false,
     String? token,
     String? baseUrl,
   }) async {
-    final body = <String, dynamic>{};
-    if (firstName != null) body['firstName'] = firstName;
-    if (lastName != null) body['lastName'] = lastName;
-    if (phoneNumber != null) body['phoneNumber'] = phoneNumber;
-    if (password != null && password.isNotEmpty) body['password'] = password;
-    if (roleId != null) body['role'] = roleId;
-    if (zoneIds != null) body['zoneIds'] = zoneIds;
-    if (body.isEmpty) return {'success': true, 'statusCode': 200};
+    Future<http.Response> put(Map<String, dynamic> b) => _req(
+          'PUT',
+          '${_base(baseUrl)}/teams/members/$id',
+          token: token,
+          headers: {..._extraHeaders, 'Content-Type': 'application/json'},
+          body: json.encode(b),
+        );
 
-    final resp = await _req(
-      'PUT',
-      '${_base(baseUrl)}/teams/members/$id',
-      token: token,
-      headers: {..._extraHeaders, 'Content-Type': 'application/json'},
-      body: json.encode(body),
-    );
-    return _mutationResult(resp, 'فشل تعديل المشغّل');
+    http.Response? last;
+
+    // 1) الهاتف منفرداً
+    if (phoneNumber != null) last = await put({'phoneNumber': phoneNumber});
+    // 2) الدور منفرداً
+    if (roleId != null) last = await put({'role': roleId});
+    // 3) كلمة المرور منفردة
+    if (password != null && password.isNotEmpty) {
+      last = await put({'password': password});
+    }
+    // 4) الزونات منفردة (تمسح الاسم على الخادم)
+    if (zoneIds != null) last = await put({'zoneIds': zoneIds});
+    // 5) الاسم آخراً ومنفرداً — يُثبّت الاسم بعد أن مسحته الزونات
+    final doName = (firstName != null || lastName != null) &&
+        (firstName != null && firstName.isNotEmpty ||
+            lastName != null && lastName.isNotEmpty ||
+            restampName);
+    if (doName) {
+      last = await put({
+        if (firstName != null) 'firstName': firstName,
+        if (lastName != null) 'lastName': lastName,
+      });
+    }
+
+    if (last == null) return {'success': true, 'statusCode': 200};
+    return _mutationResult(last, 'فشل تعديل المشغّل');
   }
 
   /// شحن محفظة مشغّل موجود — POST wallet-refill. يحرّك مالاً من محفظة الشريك؛ بتأكيد فقط.
