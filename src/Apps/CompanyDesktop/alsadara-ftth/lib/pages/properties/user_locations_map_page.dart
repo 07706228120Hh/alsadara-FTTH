@@ -997,7 +997,7 @@ class _UserLocationsMapPageState extends State<UserLocationsMapPage>
 
   function addData(){
     if (map.getSource('pts')) return;
-    map.addSource('pts', { type:'geojson', data: fc(), cluster:true, clusterRadius:48, clusterMaxZoom:14 });
+    map.addSource('pts', { type:'geojson', data: fc(), cluster:false });
 
     map.addLayer({ id:'heat', type:'heatmap', source:'pts', layout:{visibility:'none'},
       paint:{ 'heatmap-radius':['interpolate',['linear'],['zoom'],5,8,14,40],
@@ -1066,7 +1066,12 @@ class _UserLocationsMapPageState extends State<UserLocationsMapPage>
 
   if (map){
     map.addControl(new maplibregl.ScaleControl(), 'top-left');
-    map.on('load', function(){ addData(); fitView(); post({action:'ready'}); });
+    map.on('load', function(){
+      addData(); fitView(); post({action:'ready'});
+      // نُدغة إعادة رسم: بعض محرّكات WebView (ويندوز) لا تُحدّث طبقات أُضيفت وقت
+      // التشغيل حتى يقع تغيير حجم/رسم — نجبرها بعد لحظة قصيرة من اكتمال التحميل.
+      setTimeout(function(){ try{ map.resize(); map.triggerRepaint(); }catch(e){} }, 300);
+    });
 
     window.sadaraSetMode = function(mode){
       var target = (mode==='satellite') ? satelliteStyle() : STREETS;

@@ -262,6 +262,9 @@ class PropertySummary {
   final int withoutLocation;
   final int withService;
   final int withoutService;
+  final int internet;
+  final int master;
+  final int iptv;
 
   const PropertySummary({
     this.total = 0,
@@ -273,6 +276,9 @@ class PropertySummary {
     this.withoutLocation = 0,
     this.withService = 0,
     this.withoutService = 0,
+    this.internet = 0,
+    this.master = 0,
+    this.iptv = 0,
   });
 
   static int _i(dynamic v) =>
@@ -288,6 +294,9 @@ class PropertySummary {
         withoutLocation: _i(j['withoutLocation']),
         withService: _i(j['withService']),
         withoutService: _i(j['withoutService']),
+        internet: _i(j['internet']),
+        master: _i(j['master']),
+        iptv: _i(j['iptv']),
       );
 }
 

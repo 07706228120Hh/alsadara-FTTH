@@ -19,6 +19,14 @@ import 'property_qr_batches_page.dart';
 import 'property_qr_scanner.dart';
 import 'property_ui.dart';
 
+/// جزء من شريط النِسَب في لوحة التحليل (تسمية + عدد + لون).
+class _Seg {
+  final String label;
+  final int count;
+  final Color color;
+  const _Seg(this.label, this.count, this.color);
+}
+
 class PropertiesListPage extends StatefulWidget {
   const PropertiesListPage({super.key});
 
@@ -41,6 +49,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
   String? _serviceTypeFilter; // Internet / Master / Iptv / Other
   String _sort = 'newest'; // newest / oldest / npn
   PropertySummary _summary = const PropertySummary();
+  bool _showInsights = true; // توسيع لوحة التحليل
   int _page = 1;
   int _total = 0;
   bool _hasMore = false;
@@ -324,7 +333,7 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
           child: Column(
             children: [
               _searchBar(),
-              _statsBar(),
+              _insightsPanel(),
               _filters(),
               Expanded(child: _list()),
             ],
@@ -362,73 +371,186 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
     );
   }
 
-  /// شريط عدّادات/ملخّص أعلى القائمة — بلاطات بأرقام (بعضها قابل للنقر كفلتر سريع).
-  Widget _statsBar() {
+  /// لوحة تحليل احترافية أعلى القائمة: مؤشّرات رئيسية (KPIs) + أشرطة نِسَب
+  /// (نوع/ملكية/تغطية موقع/خدمات). المؤشّرات قابلة للنقر كفلتر سريع.
+  Widget _insightsPanel() {
     final s = _summary;
     if (s.total == 0) return const SizedBox(height: 4);
-    return SizedBox(
-      height: 60,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
+    int pct(int n) => s.total == 0 ? 0 : ((n * 100) / s.total).round();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 8, 14, 2),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: PropUi.card(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _statTile('الإجمالي', s.total, SdColors.primary, null),
-          _statTile('سكني', s.residential, SdColors.primary,
-              () => _setProperty(
-                  _propertyFilter == 'Residential' ? null : 'Residential')),
-          _statTile('تجاري', s.commercial, SdColors.warning,
-              () => _setProperty(
-                  _propertyFilter == 'Commercial' ? null : 'Commercial')),
-          _statTile('لها موقع', s.withLocation, SdColors.success,
-              () => _setHasLocation(_hasLocationFilter == true ? null : true)),
-          _statTile('بلا موقع', s.withoutLocation, SdColors.danger,
-              () => _setHasLocation(_hasLocationFilter == false ? null : false)),
-          _statTile('لها خدمة', s.withService, SdColors.info,
-              () => _setHasService(_hasServiceFilter == true ? null : true)),
-          _statTile('بلا خدمة', s.withoutService, SdColors.faint,
-              () => _setHasService(_hasServiceFilter == false ? null : false)),
+          Row(
+            children: [
+              const Icon(Icons.insights_rounded,
+                  size: 18, color: SdColors.primary),
+              const SizedBox(width: 6),
+              Text('تحليل العقارات',
+                  style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                      color: PropUi.ink)),
+              const Spacer(),
+              InkWell(
+                onTap: () => setState(() => _showInsights = !_showInsights),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                      _showInsights
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      color: SdColors.muted),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _kpiTile('الإجمالي', '${s.total}', Icons.home_work_rounded,
+                  SdColors.primary, null),
+              _kpiTile('تغطية الموقع', '${pct(s.withLocation)}%',
+                  Icons.location_on_rounded, SdColors.success,
+                  () => _setHasLocation(_hasLocationFilter == true ? null : true)),
+              _kpiTile('مشمول بخدمة', '${pct(s.withService)}%',
+                  Icons.wifi_rounded, SdColors.info,
+                  () => _setHasService(_hasServiceFilter == true ? null : true)),
+            ],
+          ),
+          if (_showInsights) ...[
+            const SizedBox(height: 14),
+            _proportionRow('نوع العقار', [
+              _Seg('سكني', s.residential, SdColors.primary),
+              _Seg('تجاري', s.commercial, SdColors.warning),
+            ]),
+            const SizedBox(height: 11),
+            _proportionRow('الملكية', [
+              _Seg('ملك', s.owned, SdColors.success),
+              _Seg('إيجار', s.rent, SdColors.info),
+            ]),
+            const SizedBox(height: 11),
+            _proportionRow('تغطية الموقع', [
+              _Seg('لها موقع', s.withLocation, SdColors.success),
+              _Seg('بلا موقع', s.withoutLocation, SdColors.faint),
+            ]),
+            const SizedBox(height: 11),
+            _proportionRow('الخدمات', [
+              _Seg('إنترنت', s.internet, SdColors.info),
+              _Seg('ماستر', s.master, SdColors.accent),
+              _Seg('IPTV', s.iptv, SdColors.warning),
+              _Seg('بلا خدمة', s.withoutService, SdColors.faint),
+            ]),
+          ],
         ],
       ),
     );
   }
 
-  Widget _statTile(String label, int count, Color color, VoidCallback? onTap) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            constraints: const BoxConstraints(minWidth: 62),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color.withValues(alpha: 0.25)),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('$count',
-                    style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color: color)),
-                Text(label,
-                    style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 10.5,
-                        color: SdColors.muted)),
-              ],
+  /// مؤشّر رئيسي (KPI) — رقم كبير + أيقونة + تسمية، قابل للنقر كفلتر سريع.
+  Widget _kpiTile(
+      String label, String value, IconData icon, Color color, VoidCallback? onTap) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 6),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: color.withValues(alpha: 0.18)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 17, color: color),
+                  const SizedBox(height: 3),
+                  Text(value,
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 17,
+                          color: color)),
+                  Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 10.5,
+                          color: SdColors.muted)),
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// شريط نِسَب أفقي مجزّأ + أسطورة (dot + تسمية + عدد) — عرض احترافي للتوزيع.
+  Widget _proportionRow(String title, List<_Seg> segs) {
+    final total = segs.fold<int>(0, (a, b) => a + b.count);
+    final shown = segs.where((e) => e.count > 0).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style: TextStyle(
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: PropUi.ink)),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: SizedBox(
+            height: 11,
+            child: total == 0
+                ? Container(color: SdColors.faint.withValues(alpha: 0.18))
+                : Row(
+                    children: [
+                      for (final e in shown)
+                        Expanded(
+                            flex: e.count, child: Container(color: e.color)),
+                    ],
+                  ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 12,
+          runSpacing: 3,
+          children: [
+            for (final e in segs)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                      width: 9,
+                      height: 9,
+                      decoration: BoxDecoration(
+                          color: e.color, shape: BoxShape.circle)),
+                  const SizedBox(width: 4),
+                  Text('${e.label} ${e.count}',
+                      style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          color: SdColors.muted)),
+                ],
+              ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -605,11 +727,20 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
         borderRadius: BorderRadius.circular(PropUi.radius),
         onTap: () => _open(p),
         child: Container(
-          padding: const EdgeInsets.all(12),
           decoration: PropUi.card(),
-          child: Row(
-            children: [
-              PropUi.gradientBadge(
+          clipBehavior: Clip.antiAlias,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // شريط لوني جانبي حسب نوع العقار (لمسة احترافية).
+                Container(width: 4, color: tint),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        PropUi.gradientBadge(
                 icon: commercial
                     ? Icons.storefront_rounded
                     : Icons.home_rounded,
@@ -711,8 +842,14 @@ class _PropertiesListPageState extends State<PropertiesListPage> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_left_rounded, color: SdColors.faint),
-            ],
+                        const Icon(Icons.chevron_left_rounded,
+                            color: SdColors.faint),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

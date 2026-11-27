@@ -205,6 +205,14 @@ public class PropertiesController : ControllerBase
         var withService = await baseQ.CountAsync(x => _db.PropertyServices.Any(s =>
             s.PropertyId == x.Id && s.CompanyId == companyId && !s.IsDeleted), ct);
 
+        // توزيع العقارات حسب نوع الخدمة (العقار يُحسب لكل نوع يملكه) — لتحليل انتشار الخدمات.
+        async Task<int> CountByServiceAsync(PropertyServiceType t) => await baseQ.CountAsync(
+            x => _db.PropertyServices.Any(s =>
+                s.PropertyId == x.Id && s.CompanyId == companyId && !s.IsDeleted && s.ServiceType == t), ct);
+        var internet = await CountByServiceAsync(PropertyServiceType.Internet);
+        var master = await CountByServiceAsync(PropertyServiceType.Master);
+        var iptv = await CountByServiceAsync(PropertyServiceType.Iptv);
+
         return Ok(new
         {
             success = true,
@@ -219,6 +227,9 @@ public class PropertiesController : ControllerBase
                 withoutLocation = total - withLocation,
                 withService,
                 withoutService = total - withService,
+                internet,
+                master,
+                iptv,
             }
         });
     }
